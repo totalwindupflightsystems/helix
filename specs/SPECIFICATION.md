@@ -21,23 +21,22 @@
 ## Table of Contents
 
 1. Platform Architecture
-2. Component Specifications
-3. Integration Contracts
-4. Data Flow
-5. Identity & IAM
-6. Execution Model
+2. Data Flow and Execution Model
+3. Component Specifications
+4. Integration Contracts
+5. Identity and Access Management (IAM)
+6. Security Model
 7. Quality Gates
 8. Observability
-9. Security
-10. Deployment
-11. Operations
-12. Performance SLAs
-13. Test Strategy
-14. Build Order
-15. Error Recovery
-16. API Contracts
-17. Glossary
-18. Appendices
+9. Deployment Architecture
+10. Operations
+11. Performance SLAs
+12. Test Strategy
+13. Build Order
+14. Error Recovery
+15. API Contracts
+16. Glossary
+17. Appendices
 
 <!-- SENTINEL: CHUNK_INSERTION_POINT -->
 
@@ -3524,25 +3523,1401 @@ Cold start = new container. Warm start = reuse of existing paused container.
 
 ---
 
+## 12. Test Strategy
+
+### 12.1 Test Pyramid
+
+```
+         /\        Adversarial (2%)  — Red-team, assumption-buster, chaos
+        /--\       E2E (8%)          — Full 12-step flow, PR → merge
+       /----\      Integration (20%) — Cross-component contracts, gates
+      /------\     Unit (70%)        — Per-package, per-function, per-hook
+     /--------\
+```
+
+| Layer | Target % | Tooling | Runtime per run |
+|-------|----------|---------|-----------------|
+| Unit | 70% | pytest (Python), go test (Go), vitest (TS) | <30s |
+| Integration | 20% | pytest + testcontainers, go test + docker | <5m |
+| E2E | 8% | Custom harness (12-step flow validation) | <15m |
+| Adversarial | 2% | Axiom adversarial agents + manual scenarios | <30m |
+
+### 12.2 Coverage Requirements
+
+| Metric | Minimum | Target | Enforcement |
+|--------|---------|--------|-------------|
+| Line coverage | 85% | 90% | CI gate (hard fail) |
+| Branch coverage | 80% | 85% | CI gate (advisory) |
+| Function coverage | 90% | 95% | CI gate (hard fail) |
+| Gate path coverage | 100% | 100% | CI gate (hard fail — every gate outcome must be tested) |
+
+**Gate path coverage** is unique to Helix: every possible gate outcome (PASS, FAIL, WARN) must have a test. If GitReins Tier 1 can produce 7 check results, there must be at least 7 unit tests covering each failure path.
+
+### 12.3 Per-Component Test Strategy
+
+**Forgejo Hooks (GitReins):**
+- **Unit:** Each Tier 1 check tested in isolation with mock git objects. Test: secrets scan on known bad diff, lint on intentionally malformed code, build on broken compilation.
+- **Integration:** Full pre-receive hook pipeline against a real Forgejo Docker container. Push good commits, bad commits, edge cases (empty commit, binary file, 500KB file).
+- **Key test:** Push a commit with a hardcoded AWS key → verify Tier 1 blocks. Push same commit with key removed → verify passes.
+
+**GitReins Evaluator (Tier 2):**
+- **Unit:** Prompt template rendering, response parsing, JSON schema validation.
+- **Integration:** Evaluator called with real diffs. Verify it catches: inverted condition, SQL injection, nil dereference. Verify it does NOT flag safe code.
+- **Key test:** Submit a purposely broken PR (off-by-one in loop boundary) → verify Tier 2 catches it. Submit the fix → verify Tier 2 passes.
+
+**Chimera Formation Engine:**
+- **Unit:** Rewriter strategies, dispatcher assignment logic, judge scoring math, audit verification.
+- **Integration:** Full formation with mock LLM responses (pre-recorded). Test that weighted voting produces correct results for known inputs.
+- **Key test:** Formation where 2 judges agree on PASS, 1 disagrees → verify weighted threshold correctly resolves. Formation where audit disagrees by >0.3 → verify flag.
+
+**Conscientiousness Loop:**
+- **Unit:** Loop controller (iteration counting, termination conditions), severity classifier, report formatter.
+- **Integration:** 1-iteration loop with pre-recorded LLM response. 3-iteration loop where each iteration finds new issues. Loop where findings are all LOW (should pass after 1 iteration).
+- **Key test:** Submit PR with a CRITICAL bug → verify loop catches it on iteration 1, agent fixes it, loop re-runs and passes.
+
+**Hivemind Memory:**
+- **Unit:** Inbox batching, deduplication, compiled entry serialization, _index generation.
+- **Integration:** Full memory lifecycle: write event → compile → query → read _index. Concurrent writes from 3 agents. Memory compaction.
+- **Key test:** Write 100 events from 3 agents within 5 minutes → verify they're batched and deduplicated correctly.
+
+**H4F Agent Provisioning:**
+- **Unit:** known-friends.json parsing, Forgejo API request construction, SSH key generation, PAT creation.
+- **Integration:** Full provision cycle against real Forgejo: create user → create SSH key → create PAT → verify agent can clone repo. Deprovision: archive user → verify agent can no longer authenticate.
+- **Key test:** Provision agent → agent pushes to feat/* branch → verify success. Agent attempts push to main → verify blocked.
+
+**Muster MCP Generation:**
+- **Unit:** OpenAPI spec parsing, tool schema generation, CLI command generation, Starlark DSL.
+- **Integration:** Feed Muster a real Forgejo OpenAPI spec → verify generated MCP tools work against a live Forgejo instance. Test caching: second call within TTL returns cached result.
+- **Key test:** Generate MCP tools for Forgejo → use generated tool to create a user → verify user exists via Forgejo API.
+
+### 12.4 Adversarial Testing
+
+Adversarial tests are NOT CI-gated. They run on a schedule (daily) or are triggered manually before major releases.
+
+**Agent roster for adversarial testing:**
+
+| Agent | Role | Runs |
+|-------|------|------|
+| `@assumption-buster` | Surfaces undocumented prerequisites, ambiguous specs | Every PR touching specs/ |
+| `@devils-advocate` | Challenges design decisions, forces explicit tradeoffs | Every architectural PR |
+| `@redteam` | Adversarial falsification, attack matrix, exploitable paths | Every security-sensitive PR |
+| `@whitehat` | Authorized penetration validation, exploitability checks | After security fixes |
+| `@chaos-engineer` | Fault injection, resilience testing | Weekly against staging |
+| `@finops-cost` | Cost-risk detection, cardinality guardrails | Every cost-sensitive change |
+
+**Scenario examples:**
+1. **Gate bypass attempt:** Agent tries to merge without co-approval. Verify blocked.
+2. **Budget exhaustion:** Agent burns through monthly budget. Verify 403, verify other agents unaffected.
+3. **Key leak simulation:** Agent's PAT is intentionally added to a commit. Verify secrets scan catches it.
+4. **Network isolation:** Agent container tries to reach host services directly. Verify blocked by network policy.
+5. **Race condition:** Two agents try to acquire the same Ralph Loop lock. Verify exactly one succeeds.
+
+### 12.5 Test Infrastructure
+
+**CI Pipeline (.forgejo/workflows/test.yml):**
+```yaml
+name: Test
+on: [push, pull_request]
+jobs:
+  unit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: go test ./... -cover -coverprofile=coverage.out
+      - run: go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//' | xargs -I{} sh -c 'if [ {} -lt 85 ]; then echo "Coverage {}% below 85%"; exit 1; fi'
+  integration:
+    runs-on: ubuntu-24.04
+    needs: unit
+    services:
+      forgejo:
+        image: codeberg.org/forgejo/forgejo:9
+        env:
+          FORGEJO__security__INSTALL_LOCK: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - run: go test ./... -tags=integration -count=1
+```
+
+**Test data management:**
+- Test data is generated, not copied. No production data in tests.
+- Agent fixtures defined in `testdata/agents/` (SSH keys, PATs — all test-only, never valid).
+- LLM responses are pre-recorded in `testdata/responses/` to avoid API costs during CI.
+- Integration tests use Docker containers (Forgejo, Postgres) with ephemeral volumes.
+
+**Flaky test policy:**
+- Any test that fails >2 times in a rolling 24-hour window is quarantined.
+- Quarantined tests are skipped in CI but logged. Owner has 48 hours to fix or delete.
+- Quarantine count is a Prometheus metric (`helix_flaky_tests_total`).
+
+---
+
+## 13. Build Order
+
+### 13.1 Dependency Graph
+
+```
+Phase 1: Forgejo + GitReins + Agent Identity
+  ├── No dependencies. Foundation.
+  │
+  ├──► Phase 2: H4F Agents + Ralph Loop + Muster
+  │      Depends on: Forgejo (git host), Agent Identity (agent accounts)
+  │
+  ├──► Phase 3: Chimera + Conscientiousness
+  │      Depends on: Forgejo (PRs to review), H4F (agent containers), Muster (API bridges)
+  │
+  ├──► Phase 4: PromptFoo + Prompt Registry + Hivemind
+  │      Depends on: Forgejo CI (runs PromptFoo), GitReins (prompt link verification)
+  │
+  ├──► Phase 5: LangFuse + Prometheus + Grafana
+  │      Depends on: All components emitting traces/metrics
+  │
+  └──► Phase 6: Agent Marketplace + Cost Estimator + PR Negotiation
+         Depends on: Everything above (full platform operational)
+```
+
+### 13.2 Phase 1: Foundation (Weeks 1-2)
+
+**Goal:** Agents can push code to a git forge with quality gates.
+
+| Day | Task | Deliverable |
+|-----|------|-------------|
+| 1-2 | Provision Hetzner server, install Docker, clone Helix monorepo | Server running, SSH access |
+| 3-4 | Deploy Forgejo via Docker Compose, configure DNS (helixloop.dev → Forgejo) | Forgejo accessible at https://helixloop.dev |
+| 5-6 | Install GitReins pre-receive hook, configure Tier 1 checks | Secrets scan, lint, tests, build running on push |
+| 7-8 | Implement Agent Identity: known-friends.json → Forgejo OAuth | `hermes agent provision sandbox-7` creates real Forgejo account |
+| 9-10 | Wire scoped permissions: feat/* push, main block, PR open | Agent pushes to branch, opens PR, blocked from direct merge |
+| 11-12 | Implement GitReins Tier 2 (agentic evaluator) | LLM-based diff review running, posting findings |
+| 13-14 | Integration testing: full agent push → review → gate loop | Agent provisions, pushes code, passes Tier 1+2, opens PR |
+
+**Phase 1 success criteria:**
+- Forgejo running at a registered domain
+- Agent creates Forgejo account with SSH key + PAT from known-friends.json
+- Agent pushes to feat/* branch successfully
+- Agent blocked from pushing to main
+- GitReins Tier 1 blocks known-bad commits (secret in code, lint failure, test failure)
+- GitReins Tier 2 posts review findings on the PR
+
+### 13.3 Phase 2: Agent Infrastructure (Weeks 3-4)
+
+**Goal:** Agents run in isolated containers with full tool access.
+
+| Day | Task | Deliverable |
+|-----|------|-------------|
+| 1-3 | H4F container generator: per-agent Docker Compose with gluetun VPN | `h4f-cli agent create sandbox-7` produces running container |
+| 4-5 | Hermes agent config injection: per-agent API keys, Forgejo tokens, budgets | Agent container has HERMES_PROFILE, OPENROUTER_API_KEY, FORGEJO_TOKEN |
+| 6-7 | Ralph Loop: lock acquisition, worktree creation, commit protocol | Agent acquires lock, creates worktree, commits with attestation |
+| 8-9 | Muster: generate MCP tools for Forgejo API | `muster generate https://helixloop.dev/swagger.json` produces working MCP tools |
+| 10-11 | Wire agent container → Forgejo git operations | Agent clones repo, writes code, pushes to branch — all inside container |
+| 12-14 | Integration test: agent provisions → implements simple feature → pushes PR | Full Phase 1+2 integration: provision, code, push, gates, PR |
+
+**Phase 2 success criteria:**
+- Agent container starts with correct config, budget, and permissions
+- Agent clones Helix repo inside container
+- Agent acquires Ralph Loop lock, creates worktree
+- Agent commits with Co-authored-by trailer
+- Agent pushes to branch, gates run, PR opens
+- Muster generates working Forgejo API tools
+
+### 13.4 Phase 3: Quality Gates (Weeks 5-6)
+
+**Goal:** Multi-model code review and adversarial validation on every PR.
+
+| Day | Task | Deliverable |
+|-----|------|-------------|
+| 1-3 | Deploy Chimera as a service, configure default formation | Chimera running, health check passing |
+| 4-5 | Wire Chimera to Forgejo webhooks: PR opened → Chimera reviews | PR opened, Chimera runs multi-model review, posts results |
+| 6-7 | Deploy Conscientiousness service, configure adversarial loop | Conscientiousness running, health check passing |
+| 8-9 | Wire Conscientiousness: Chimera review complete → Conscientiousness loop | After Chimera, Conscientiousness runs adversarial check |
+| 10-11 | Configure co-approval gate: 1 human + 1 agent required | Branch protection enforces both approvals |
+| 12-14 | Integration test: full gate pipeline on a real PR | Tier 1 → Tier 2 → Chimera → Conscientiousness → Co-approval → merge |
+
+**Phase 3 success criteria:**
+- PR opened triggers Chimera multi-model review within 5 minutes
+- Chimera posts structured review with weighted score
+- Conscientiousness runs adversarial loop, catches injected bugs
+- PR blocked until 1 human + 1 agent approve
+- Agent can veto merge with BLOCKING comment
+
+### 13.5 Phase 4: Prompts & Memory (Weeks 7-8)
+
+**Goal:** Every prompt is version-controlled, every agent decision is remembered.
+
+| Day | Task | Deliverable |
+|-----|------|-------------|
+| 1-2 | PromptFoo CI integration: .promptfoo.yaml in every repo | PromptFoo runs on push to prompts/ changes |
+| 3-4 | Prompt Registry: prompts/ directory standard, versioning convention | prompts/agent-identity/v3.md committed, linked in commit attestation |
+| 5-6 | GitReins prompt link verification: commits must reference prompt version | Commit without prompt link blocked by Tier 1 |
+| 7-8 | Hivemind memory bank: inbox → compiled → _index → DuckBrain | Agent events flow through memory lifecycle |
+| 9-10 | Hivemind agent scheduling: task assignment, budget enforcement | Axiom assigns tasks, Hivemind tracks state |
+| 11-14 | Integration test: prompt change → PromptFoo CI → agent uses new prompt → attestation verified | Full prompt lifecycle validated |
+
+**Phase 4 success criteria:**
+- PromptFoo catches a prompt regression and blocks merge
+- Commit links to exact prompt version (verified by GitReins)
+- Agent decisions appear in Hivemind memory bank
+- Agent task lifecycle: assigned → in_progress → completed with evidence
+
+### 13.6 Phase 5: Observability (Weeks 9-10)
+
+**Goal:** Every token, every decision, every millisecond is traced and measured.
+
+| Day | Task | Deliverable |
+|-----|------|-------------|
+| 1-2 | Deploy LangFuse, configure trace ingestion from all components | LangFuse dashboard shows agent LLM calls |
+| 3-4 | Deploy Prometheus + Grafana, configure agent metrics | Grafana dashboard shows active agents, cost, latency |
+| 5-6 | Configure alerting: HighCostAgent, GateFailureSpike, AgentDown, PRStuck | Alerts fire on threshold breach |
+| 7-8 | Deploy Loki for structured log aggregation | All component logs searchable in Grafana |
+| 9-10 | Wire DuckBrain persistent memory | Agent decisions stored, queryable, version-controlled |
+| 11-14 | Integration test: full trace from task creation → merge with all metrics | LangFuse shows complete trace, Prometheus shows all metrics |
+
+**Phase 5 success criteria:**
+- Every LLM call appears in LangFuse with cost, tokens, duration
+- Grafana dashboard shows real-time agent activity
+- Alert fires within 30s of threshold breach
+- DuckBrain query returns agent's past decisions
+
+### 13.7 Phase 6: Advanced Features (Weeks 11-12)
+
+**Goal:** Agent marketplace, cost estimation, and agent-to-agent negotiation.
+
+| Day | Task | Deliverable |
+|-----|------|-------------|
+| 1-3 | Pre-flight cost estimator: estimate token burn before task execution | Before Ralph Loop spawns, cost estimate shown |
+| 4-6 | Agent marketplace registry: discoverable agent profiles with reputation | `helix marketplace search "rust security auditor"` returns results |
+| 7-9 | Agent-to-agent PR negotiation: Chimera tie-breaks agent disagreements | Two agents disagree → Chimera resolves with evidence |
+| 10-12 | Trust escalation: agent earns merge rights over time | Agent with >95% acceptance rate earns trusted status |
+| 13-14 | Full platform integration test: all 12 steps with all features | Complete Helix platform operational |
+
+**Phase 6 success criteria:**
+- Cost estimator predicts within 20% of actual cost
+- Agent marketplace shows agent profiles with reputation scores
+- Agent disagreement in PR → Chimera resolves → decision auditable
+- Trusted agent can satisfy co-approval requirement
+
+---
+
+## 14. Error Recovery
+
+### 14.1 Component Failure Matrix
+
+| Component | Failure Mode | Detection | Impact | Recovery |
+|-----------|-------------|-----------|--------|----------|
+| Forgejo | Process crash | Health check fails (HTTP 503) | ALL agents blocked. No git operations. | Restart container. If data corruption: restore from backup. RTO: 5 min (restart), 1 hour (restore). |
+| Forgejo | Disk full | Write errors, health check | Agents can't push. PRs can't be created. | Clear old CI artifacts, expand volume. RTO: 15 min. |
+| GitReins hook | Hook timeout/crash | Push fails with hook error | Agents can't push commits. | Disable hook temporarily (emergency), fix hook code, re-enable. RTO: 10 min. |
+| Chimera | API timeout | Review doesn't complete | PR review blocked. Co-approval (agent side) unavailable. | Human can manually approve PR. Chimera retries on next PR. RTO: 5 min (restart). |
+| Conscientiousness | Loop stall (>10 min) | Timeout, no report | Adversarial review blocked. | Kill loop, restart service. PR proceeds without adversarial check (human override). RTO: 3 min. |
+| Hivemind | SQLite corruption | Read/write errors | Memory bank unavailable. Task scheduling degraded. | Restore from daily backup. Agents operate without memory (degraded). RTO: 15 min. |
+| Hivemind | Process crash | Health check fails | Task scheduling stops. No new tasks assigned. | Restart container. In-flight tasks preserved (agent state). RTO: 2 min. |
+| Agent container | OOM kill | Container exits, metrics drop | That agent stops working. Other agents unaffected. | H4F restarts container. Agent resumes from last commit. RTO: 1 min. |
+| Agent container | Budget exhausted | API returns 403 | Agent can't make LLM calls. | Human approves budget increase, or agent waits until next cycle. RTO: manual. |
+| LangFuse | Postgres down | Trace writes fail | Traces not ingested. Observability degraded. | Restore Postgres. Traces buffered and replayed. RTO: 10 min. |
+| LangFuse | Process crash | Health check fails | Same as above. | Restart container. RTO: 2 min. |
+| Prometheus | TSDB corruption | Scrapes fail, metrics missing | Alerting degraded. No metric history. | Restore from backup or restart with fresh TSDB. RTO: 5 min. |
+| Caddy | Process crash | HTTPS down, Forgejo unreachable | Platform unreachable externally. Internal services still work. | Restart Caddy. RTO: 1 min. |
+| DNS | Resolution failure | Forgejo unreachable by domain | External access blocked. Agents use internal Docker network (unaffected). | Fix DNS record, reduce TTL. RTO: varies (DNS propagation). |
+
+### 14.2 Graceful Degradation
+
+What still works when each component is down:
+
+| Component Down | What Still Works |
+|----------------|------------------|
+| Forgejo | Agents can write code locally. Chimera/Conscientiousness still run (no new PRs). |
+| Chimera | Human review still works. Conscientiousness still runs. PRs can be merged with human-only approval. |
+| Conscientiousness | Chimera review still runs. Co-approval still works. Adversarial layer absent — elevated risk accepted. |
+| Hivemind | Agents operate from local memory. Task scheduling pauses. Existing work continues. |
+| LangFuse | All components operational. Traces lost for the outage window only. |
+| Prometheus | All components operational. Metrics gap for the outage window. Alerts may miss events. |
+| Agent container (single) | Other agents unaffected. That agent's in-flight work lost (replay from last commit). |
+| Caddy | Internal services operational. External access blocked — human intervention needed for merge. |
+
+### 14.3 Retry Policies
+
+**LLM API calls (all components):**
+```
+Attempt 1: immediate
+Attempt 2: 2s delay (exponential: 2^1)
+Attempt 3: 4s delay (exponential: 2^2)
+Attempt 4: 8s delay (exponential: 2^3) — max
+Give up after 4 attempts. Surface error to agent.
+```
+
+**Circuit breaker (external APIs — Forgejo, LangFuse):**
+```
+Failure threshold: 5 failures in 60s window
+Open state: 30s
+Half-open: 1 request allowed. If succeeds → close circuit. If fails → reset open timer.
+```
+
+**GitReins hook retry:**
+```
+Hook failure: agent receives error, retries push after fixing.
+Hook timeout (>5s): hook killed. Agent notified. Push NOT blocked (timeout ≠ failure — hook may be broken upstream).
+```
+
+**Ralph Loop lock contention:**
+```
+Lock acquisition: immediate, no retry (one agent per repo).
+Lock timeout: 30 minutes. If agent holds lock >30m, lock auto-released, agent notified, task re-queued.
+```
+
+### 14.4 Data Recovery Runbooks
+
+**Forgejo repository corruption:**
+```bash
+# 1. Stop Forgejo
+docker compose stop forgejo
+
+# 2. Restore from latest backup
+BACKUP=$(ls -t /mnt/backups/helix/forgejo-*.tar.gz | head -1)
+rm -rf /var/lib/docker/volumes/helix_forgejo_data/
+tar -xzf "$BACKUP" -C /
+
+# 3. Recover recent pushes from agent worktrees
+for agent in /worktrees/agent-*; do
+  git --git-dir="$agent/.git" log --since="24 hours ago" --oneline
+  # Push any commits newer than backup
+done
+
+# 4. Start Forgejo
+docker compose start forgejo
+```
+
+**Hivemind memory corruption:**
+```bash
+# SQLite recovery
+sqlite3 /data/hivemind.db "PRAGMA integrity_check;"
+# If corrupt:
+cp /mnt/backups/helix/hivemind-$(date +%Y%m%d).db /data/hivemind.db
+systemctl restart helix-platform
+```
+
+---
+
+## 15. API Contracts
+
+### 15.1 Forgejo API
+
+**Base URL:** `https://helixloop.dev/api/v1`
+**Authentication:** PAT in `Authorization: token <token>` header.
+
+#### Create User
+```
+POST /admin/users
+Content-Type: application/json
+Authorization: token <admin-token>
+
+Request:
+{
+  "username": "agent-sandbox-7",
+  "email": "agent-sandbox-7@helix",
+  "password": "<generated>",
+  "full_name": "Helix Agent (Sandbox 7)",
+  "must_change_password": false,
+  "send_notify": false
+}
+
+Response 201:
+{
+  "id": 42,
+  "username": "agent-sandbox-7",
+  "email": "agent-sandbox-7@helix",
+  "full_name": "Helix Agent (Sandbox 7)",
+  "login": "agent-sandbox-7"
+}
+
+Errors: 400 (invalid), 403 (not admin), 409 (username taken), 422 (validation)
+```
+
+#### Create SSH Key
+```
+POST /admin/users/{username}/keys
+Authorization: token <admin-token>
+
+Request:
+{
+  "key": "ssh-ed25519 AAAAC3... agent-sandbox-7@helix",
+  "title": "agent-sandbox-7-key",
+  "read_only": false
+}
+
+Response 201:
+{
+  "id": 128,
+  "key": "ssh-ed25519 AAAAC3...",
+  "title": "agent-sandbox-7-key",
+  "created_at": "2026-06-19T14:00:00Z"
+}
+```
+
+#### Create Access Token
+```
+POST /users/{username}/tokens
+Authorization: token <admin-token>
+
+Request:
+{
+  "name": "agent-sandbox-7-pat",
+  "scopes": ["read:repository", "write:repository", "read:user"]
+}
+
+Response 201:
+{
+  "id": 256,
+  "name": "agent-sandbox-7-pat",
+  "sha1": "abc123...",
+  "token_last_eight": "...a1b2c3d4"
+}
+```
+
+**CRITICAL:** The full token value is only returned ONCE in this response. Store immediately.
+
+#### Get Pull Request
+```
+GET /repos/{owner}/{repo}/pulls/{index}
+
+Response 200:
+{
+  "id": 1842,
+  "number": 42,
+  "title": "feat: add agent identity provisioning",
+  "state": "open",
+  "mergeable": true,
+  "head": {"ref": "feat/agent-identity", "sha": "abc123"},
+  "base": {"ref": "main", "sha": "def456"},
+  "user": {"login": "agent-sandbox-7"},
+  "requested_reviewers": [{"login": "bane"}]
+}
+```
+
+#### Merge Pull Request
+```
+POST /repos/{owner}/{repo}/pulls/{index}/merge
+
+Request:
+{
+  "do": "merge",
+  "merge_method": "squash"
+}
+
+Response 200:
+{
+  "merged": true,
+  "message": "Pull request successfully merged",
+  "sha": "ghi789"
+}
+
+Errors: 405 (not mergeable — gates not passed, conflicts, reviews missing)
+```
+
+### 15.2 Chimera API
+
+**Base URL:** `https://chimera.helixloop.dev`
+**Authentication:** API key in `X-API-Key: <key>` header.
+
+#### Run Deliberation
+```
+POST /deliberate
+
+Request:
+{
+  "prompt": "<full PR diff and context>",
+  "formation": "code-review-standard"
+}
+
+Response 200:
+{
+  "deliberation_id": "del-abc123",
+  "formation": "code-review-standard",
+  "score": 0.82,
+  "status": "APPROVE",
+  "judges": [
+    {"model": "anthropic/claude-sonnet-4", "domain": "logic_correctness", "score": 0.85, "findings": [...]},
+    {"model": "google/gemini-2.5-pro", "domain": "security_audit", "score": 0.78, "findings": [...]},
+    {"model": "openai/gpt-5.2", "domain": "style_maintainability", "score": 0.83, "findings": [...]}
+  ],
+  "audit": {
+    "model": "meta-llama/llama-4-maverick",
+    "agreement": 0.91,
+    "flagged": false
+  },
+  "trace_id": "trace-xyz789"
+}
+
+Errors: 400 (invalid formation), 429 (rate limited), 500 (model error), 504 (timeout)
+```
+
+#### List Formations
+```
+GET /formations
+
+Response 200:
+{
+  "formations": [
+    {"name": "code-review-standard", "models": 3, "timeout": 300},
+    {"name": "approval-check", "models": 1, "timeout": 30},
+    {"name": "security-deep-audit", "models": 4, "timeout": 600}
+  ]
+}
+```
+
+#### Health Check
+```
+GET /health
+
+Response 200: {"status": "ok", "models_available": 12}
+Response 503: {"status": "degraded", "models_available": 3}
+```
+
+### 15.3 Conscientiousness API
+
+**Base URL:** `https://conscience.helixloop.dev`
+**Authentication:** API key in `X-API-Key: <key>` header.
+
+#### Evaluate PR
+```
+POST /evaluate
+
+Request:
+{
+  "pr_diff": "<full diff>",
+  "pr_context": {"repo": "totalwindupflightsystems/helix", "number": 42, "author": "agent-sandbox-7"},
+  "max_iterations": 3,
+  "adversarial_agents": ["assumption-buster", "devils-advocate", "redteam"]
+}
+
+Response 200:
+{
+  "evaluation_id": "eval-abc123",
+  "iterations": 2,
+  "status": "PASS",
+  "findings": [
+    {"severity": "HIGH", "agent": "devils-advocate", "finding": "Error handling on line 47...", "resolved": true},
+    {"severity": "MEDIUM", "agent": "assumption-buster", "finding": "Assumes Forgejo always returns 200...", "resolved": true}
+  ],
+  "blocked": false
+}
+```
+
+#### Get Report
+```
+GET /report/{evaluation_id}
+
+Response 200:
+{
+  "evaluation_id": "eval-abc123",
+  "status": "PASS",
+  "full_report": "<markdown report with all findings, resolutions, and trace>"
+}
+```
+
+#### Health Check
+```
+GET /health
+
+Response 200: {"status": "ok", "uptime_seconds": 86400}
+```
+
+### 15.4 Hivemind API
+
+**Base URL:** `https://hivemind.helixloop.dev`
+**Authentication:** API key in `X-API-Key: <key>` header.
+
+#### Write Memory
+```
+POST /memory/write
+
+Request:
+{
+  "agent_id": "agent-sandbox-7",
+  "repo": "totalwindupflightsystems/helix",
+  "event_type": "gate_failure",
+  "summary": "Lint failure on pkg/identity/syncer.go: unused import 'fmt'",
+  "resolution": "Removed import, re-pushed. Passed Tier 1.",
+  "tags": ["tier1", "lint", "ruff"]
+}
+
+Response 201:
+{
+  "memory_id": "mem-2026-06-19-042",
+  "persisted": true
+}
+```
+
+#### Query Memory
+```
+GET /memory/query?agent=agent-sandbox-7&repo=totalwindupflightsystems/helix&limit=20
+
+Response 200:
+{
+  "results": [
+    {
+      "memory_id": "mem-2026-06-19-042",
+      "timestamp": "2026-06-19T14:22:00Z",
+      "event_type": "gate_failure",
+      "summary": "Lint failure on pkg/identity/syncer.go: unused import 'fmt'",
+      "tags": ["tier1", "lint"]
+    }
+  ],
+  "total": 1
+}
+```
+
+#### List Agents
+```
+GET /agents
+
+Response 200:
+{
+  "agents": [
+    {"id": "agent-sandbox-7", "status": "active", "current_task": "pr-1842", "budget_remaining": 142.50},
+    {"id": "agent-sandbox-9", "status": "idle", "current_task": null, "budget_remaining": 150.00}
+  ]
+}
+```
+
+#### Assign Task
+```
+POST /tasks/assign
+
+Request:
+{
+  "agent_id": "agent-sandbox-7",
+  "repo": "totalwindupflightsystems/helix",
+  "task": {"type": "implement", "pr_number": 42, "prompt_ref": "prompts/agent-identity/v3.md"}
+}
+
+Response 200:
+{
+  "task_id": "task-abc123",
+  "status": "assigned",
+  "agent_id": "agent-sandbox-7"
+}
+
+Errors: 409 (agent busy), 402 (budget exhausted)
+```
+
+#### Health Check
+```
+GET /health
+
+Response 200: {"status": "ok", "db_size_mb": 45, "memory_entries": 1842}
+```
+
+### 15.5 Muster API
+
+**Base URL:** `https://muster.helixloop.dev`
+**Authentication:** API key in `X-API-Key: <key>` header.
+
+#### Generate MCP Tools
+```
+POST /generate
+
+Request:
+{
+  "openapi_spec_url": "https://helixloop.dev/swagger.v1.json",
+  "output_format": "mcp",
+  "cache_ttl_seconds": 3600
+}
+
+Response 200:
+{
+  "tools": [
+    {
+      "name": "forgejo_create_user",
+      "description": "Create a new Forgejo user account",
+      "parameters": {...},
+      "endpoint": "POST /api/v1/admin/users"
+    }
+  ],
+  "tool_count": 47,
+  "cached": false
+}
+```
+
+#### List Specifications
+```
+GET /specs
+
+Response 200:
+{
+  "specs": [
+    {"name": "forgejo", "url": "https://helixloop.dev/swagger.v1.json", "last_generated": "2026-06-19T14:00:00Z"},
+    {"name": "chimera", "url": "https://chimera.helixloop.dev/openapi.json", "last_generated": "2026-06-19T13:00:00Z"}
+  ]
+}
+```
+
+#### Health Check
+```
+GET /health
+
+Response 200: {"status": "ok", "specs_cached": 2, "tools_generated": 94}
+```
+
+---
+
+## 16. Glossary
+
+| Term | Definition |
+|------|-----------|
+| **Agent Identity** | A Forgejo user account created for an AI agent from H4F's known-friends.json. Includes SSH key, PAT, scoped permissions, and budget. |
+| **Agent Marketplace** | Discoverable registry of pre-built agent profiles with reputation scores. "I need a Rust security auditor" → search → install → agent joins repo. |
+| **Agent Swarm** | Multiple agents working in parallel on different repos or tasks, orchestrated by Axiom. |
+| **Attestation** | Metadata embedded in every agent commit: agent UUID, prompt version hash, model used, context window size. Verified by GitReins Tier 1. |
+| **Audit (Chimera)** | Independent verification step where a model (Llama 4 Maverick) checks the weighted voting result for agreement. Flags discrepancies >0.3. |
+| **Blast Radius** | The scope of damage if an agent container is compromised. Contained by per-agent isolation, VPN routing, read-only filesystems. |
+| **Budget** | Per-agent monthly LLM spend cap. Enforced by H4F at the API key level (403 on exhaustion) and Hivemind at the task level. |
+| **Co-Approval** | The requirement that both 1 human AND 1 agent must approve a PR before merge. Enforced by Forgejo branch protection. |
+| **Commit Protocol** | The sequence: agent acquires Ralph Loop lock → creates isolated worktree → writes code → runs tests → commits with attestation → pushes. |
+| **Conscientiousness** | Go service that runs adversarial evaluation loops on PRs. Challenges code with assumption-buster, devils-advocate, and red-team agents. |
+| **Credential Pool** | Rotation of multiple API keys per provider to avoid rate limits. Managed by Hermes. |
+| **DuckBrain** | Git-backed persistent agent memory. Stores decisions, anti-patterns, and architectural tradeoffs with vector search. |
+| **Evidence Bundle** | The complete audit trail for a decision: which models reviewed, what they found, what changed, who approved. Stored in DuckBrain. |
+| **Formation (Chimera)** | A DAG of models assigned to review domains for a specific task. Example: Sonnet on logic, Gemini on security, GPT-5.2 on style. |
+| **Gate** | A mandatory check that must PASS before code progresses. Gates are ordered by cost: Tier 1 (static, free) → Tier 2 (agentic, cheap) → Chimera (multi-model, expensive) → Conscientiousness (adversarial, variable) → PromptFoo (CI, cheap) → Co-Approval (async). |
+| **GitReins** | Python tool providing pre-receive hooks (Tier 1: static analysis) and agentic evaluator (Tier 2: LLM-based review). |
+| **H4F (Hermes4Friends)** | Multi-tenant agent hosting platform. Manages per-agent Docker containers with isolated configs, API keys, budgets, and VPN routing. |
+| **Helix** | The agent-first software development platform where humans and AI agents are equal participants in the code lifecycle. |
+| **Hermes Agent** | The AI agent framework by Nous Research that runs inside Helix agent containers. Provides tool calling, memory, and provider-agnostic model access. |
+| **Hivemind** | Go service providing agent memory (inbox → compiled → _index lifecycle), task scheduling, and IAM. |
+| **Hivemind Memory Bank** | Event pipeline: raw Inbox → deduplicated Compiled entries → human-readable _index → persistent DuckBrain storage. |
+| **known-friends.json** | H4F's agent identity registry. Maps agent UUIDs to display names, API keys, budgets, model preferences. Source of truth for agent provisioning. |
+| **LangFuse** | Open-source LLM observability platform. Traces every API call with model, tokens, cost, and duration. |
+| **Muster** | Go tool that parses any OpenAPI spec and auto-generates MCP tools, CLI commands, shell completions, and Starlark DSL. |
+| **PR Negotiation** | When two agents disagree in PR comments, Chimera runs multi-model analysis of the disputed code and breaks the tie with auditable evidence. |
+| **Prompt Attestation** | Commit body linking generated code to the exact prompt version that produced it: `Prompt: prompts/agent-identity/v3.md sha256:abc123`. |
+| **Prompt Registry** | Version-controlled `prompts/` directory in every repo. Every prompt change is a PR with PromptFoo CI regression testing. |
+| **Ralph Loop** | The execution pattern: acquire lock → create worktree → agent writes code → commit → push → open PR → gates → merge → release lock. Named after the "Ralph Wiggum Loop" — the agent that keeps trying until it succeeds. |
+| **Sandbox (Agent)** | Per-agent Docker container with: gluetun VPN, dind executor, hermes-agent, scoped API keys, budget limits, read-only filesystem, no host network access. |
+| **Tier 1 (GitReins)** | Static quality checks: secrets scan, lint, tests, build, commit attestation, prompt link, file size. Runs in <5s, costs $0. |
+| **Tier 2 (GitReins)** | Agentic evaluator: LLM reviews diff for logic errors, test quality, security surface, dependency impact. Runs in <90s, costs ~$0.05. |
+| **Trust Escalation** | Agents with >95% PR acceptance rate over 50 PRs earn "trusted" status. Trusted agents' approvals count as 1.5 votes. |
+| **Veto (Agent)** | Any agent can block a PR merge by posting a review comment with `BLOCKING: <reason> <evidence>`. Human can override. |
+| **Worktree** | Isolated git working directory created by Ralph Loop. One agent per worktree — prevents conflicts. Cleaned up after merge or task cancellation. |
+| **12-Step Flow** | The full Helix pipeline: human task → Axiom assembles swarm → Ralph Loop lock → agent writes code → commit with attestation → GitReins Tier 1 → agent opens PR → Chimera review → Conscientiousness adversarial → PromptFoo CI → co-approval → merge + deploy. |
+
+---
+
+## 17. Appendices
+
+### Appendix A: Full docker-compose.yml
+
+```yaml
+# /opt/helix/docker-compose.yml — Helix Platform
+# Deploy: docker compose up -d
+# Manage: systemctl start/stop/restart helix-platform
+
+version: "3.8"
+
+services:
+  # ═══ Git Forge ═══
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:9
+    container_name: helix-forgejo
+    ports:
+      - "3000:3000"
+      - "2222:22"
+    volumes:
+      - forgejo_data:/var/lib/forgejo
+      - forgejo_config:/etc/forgejo
+      - ./gitreins/hooks:/var/lib/forgejo/gitea/custom/hooks:ro
+    environment:
+      FORGEJO__server__DOMAIN: helixloop.dev
+      FORGEJO__server__ROOT_URL: https://helixloop.dev
+      FORGEJO__server__SSH_DOMAIN: helixloop.dev
+      FORGEJO__server__LFS_START_SERVER: "true"
+      FORGEJO__security__INSTALL_LOCK: "true"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/v1/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ═══ CI Runner ═══
+  forgejo-runner:
+    image: codeberg.org/forgejo/runner:4
+    container_name: helix-runner
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner_data:/data
+    environment:
+      FORGEJO_INSTANCE_URL: http://forgejo:3000
+      FORGEJO_RUNNER_TOKEN: ${FORGEJO_RUNNER_TOKEN}
+    depends_on:
+      forgejo:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ═══ Chimera ═══
+  chimera:
+    build:
+      context: ./chimera
+      dockerfile: Dockerfile
+    container_name: helix-chimera
+    ports:
+      - "8001:8001"
+    environment:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      CHIMERA_FORMATION: code-review-standard
+      CHIMERA_PORT: "8001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ═══ Conscientiousness ═══
+  conscientiousness:
+    build:
+      context: ./conscientiousness
+      dockerfile: Dockerfile
+    container_name: helix-conscience
+    ports:
+      - "8002:8002"
+    volumes:
+      - conscience_data:/data
+    environment:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      CONSCIENCE_DB_PATH: /data/conscience.db
+      CONSCIENCE_PORT: "8002"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ═══ Hivemind ═══
+  hivemind:
+    build:
+      context: ./hivemind
+      dockerfile: Dockerfile
+    container_name: helix-hivemind
+    ports:
+      - "8003:8003"
+    volumes:
+      - hivemind_data:/data
+      - hivemind_memory:/memory
+    environment:
+      HIVEMIND_DB_PATH: /data/hivemind.db
+      HIVEMIND_MEMORY_PATH: /memory
+      HIVEMIND_PORT: "8003"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ═══ LangFuse + Postgres ═══
+  langfuse:
+    image: ghcr.io/langfuse/langfuse:3
+    container_name: helix-langfuse
+    ports:
+      - "3001:3000"
+    environment:
+      DATABASE_URL: postgresql://langfuse:${LANGFUSE_DB_PASS}@postgres:5432/langfuse
+      NEXTAUTH_SECRET: ${LANGFUSE_AUTH_SECRET}
+      SALT: ${LANGFUSE_SALT}
+      TELEMETRY_ENABLED: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: helix-postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: langfuse
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: ${LANGFUSE_DB_PASS}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ═══ Monitoring ═══
+  prometheus:
+    image: prom/prometheus:v3
+    container_name: helix-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3
+    container_name: helix-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11
+    container_name: helix-grafana
+    ports:
+      - "3002:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASS}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    restart: unless-stopped
+
+  # ═══ Reverse Proxy ═══
+  caddy:
+    image: caddy:2-alpine
+    container_name: helix-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  forgejo_data:
+  forgejo_config:
+  runner_data:
+  conscience_data:
+  hivemind_data:
+  hivemind_memory:
+  postgres_data:
+  prometheus_data:
+  loki_data:
+  grafana_data:
+  caddy_data:
+  caddy_config:
+```
+
+### Appendix B: .gitreins/config.yaml
+
+```yaml
+# .gitreins/config.yaml — placed in repo root
+# Controls pre-receive hook behavior for this repository
+
+tier1:
+  enabled: true
+  timeout: 5s
+  checks:
+    secrets:
+      enabled: true
+      tool: gitleaks
+      args: ["detect", "--no-git", "-v"]
+    lint:
+      enabled: true
+      tools:
+        go: ["golangci-lint", "run", "--timeout=30s"]
+        python: ["ruff", "check", "."]
+        typescript: ["eslint", "."]
+    tests:
+      enabled: true
+      timeout: 60s
+      commands:
+        go: ["go", "test", "./...", "-count=1"]
+        python: ["pytest", "-x", "--tb=short"]
+    build:
+      enabled: true
+      commands:
+        go: ["go", "build", "./..."]
+    attestation:
+      enabled: true
+      require_co_author: true
+    prompt_link:
+      enabled: true
+      require_for_patterns: ["*.go", "*.py", "*.ts", "*.rs"]
+    file_size:
+      enabled: true
+      max_bytes: 524288  # 500KB
+      exclude_patterns: ["assets/*", "*.pb.go", "*.gen.go"]
+
+tier2:
+  enabled: true
+  timeout: 90s
+  model: google/gemini-2.5-flash-lite
+  checks:
+    - logic_review
+    - test_quality
+    - security_surface
+    - dependency_impact
+
+results:
+  path: .gitreins/results/
+  retention_days: 30
+
+notifications:
+  on_fail: pr_comment
+  on_pass: silent
+```
+
+### Appendix C: known-friends.json (Sample)
+
+```json
+{
+  "version": "2.0",
+  "platform": "helix",
+  "agents": [
+    {
+      "uuid": "agent-sandbox-7",
+      "name": "agent-sandbox-7",
+      "display_name": "Sandbox 7 (Go Specialist)",
+      "status": "active",
+      "tier": "flash",
+      "role": "implementer",
+      "specialties": ["go", "kubernetes", "sql"],
+      "permissions": {
+        "repos": ["totalwindupflightsystems/helix"],
+        "can_push_to": ["feat/*", "fix/*", "docs/*"],
+        "can_open_pr": true,
+        "can_merge": false,
+        "can_review": true,
+        "can_veto": true
+      },
+      "budget": {
+        "monthly_usd": 150,
+        "max_per_task_usd": 10,
+        "alert_at_pct": 80
+      },
+      "model_preferences": {
+        "implementation": "deepseek-v4-pro",
+        "review": "google/gemini-2.5-flash-lite",
+        "planning": "anthropic/claude-sonnet-4"
+      },
+      "ssh_key_type": "ed25519",
+      "reputation": {
+        "prs_opened": 0,
+        "prs_merged": 0,
+        "acceptance_rate": null,
+        "trusted": false
+      }
+    },
+    {
+      "uuid": "agent-sandbox-9",
+      "name": "agent-sandbox-9",
+      "display_name": "Sandbox 9 (Security Auditor)",
+      "status": "active",
+      "tier": "pro",
+      "role": "reviewer",
+      "specialties": ["security", "python", "rust"],
+      "permissions": {
+        "repos": ["totalwindupflightsystems/helix", "totalwindupflightsystems/gitreins"],
+        "can_push_to": [],
+        "can_open_pr": false,
+        "can_merge": false,
+        "can_review": true,
+        "can_veto": true
+      },
+      "budget": {
+        "monthly_usd": 200,
+        "max_per_task_usd": 15,
+        "alert_at_pct": 80
+      },
+      "model_preferences": {
+        "implementation": null,
+        "review": "google/gemini-2.5-pro",
+        "planning": "anthropic/claude-sonnet-4"
+      },
+      "ssh_key_type": "ed25519",
+      "reputation": {
+        "prs_opened": 0,
+        "prs_merged": 0,
+        "acceptance_rate": null,
+        "trusted": false
+      }
+    },
+    {
+      "uuid": "agent-sandbox-12",
+      "name": "agent-sandbox-12",
+      "display_name": "Sandbox 12 (Documentation)",
+      "status": "active",
+      "tier": "flash",
+      "role": "implementer",
+      "specialties": ["documentation", "markdown", "typescript"],
+      "permissions": {
+        "repos": ["totalwindupflightsystems/helix"],
+        "can_push_to": ["docs/*"],
+        "can_open_pr": true,
+        "can_merge": false,
+        "can_review": true,
+        "can_veto": false
+      },
+      "budget": {
+        "monthly_usd": 50,
+        "max_per_task_usd": 3,
+        "alert_at_pct": 80
+      },
+      "model_preferences": {
+        "implementation": "google/gemini-2.5-flash-lite",
+        "review": "google/gemini-2.5-flash-lite",
+        "planning": "google/gemini-2.5-flash-lite"
+      },
+      "ssh_key_type": "ed25519",
+      "reputation": {
+        "prs_opened": 0,
+        "prs_merged": 0,
+        "acceptance_rate": null,
+        "trusted": false
+      }
+    }
+  ]
+}
+```
+
+### Appendix D: .promptfoo.yaml (Sample)
+
+```yaml
+# .promptfoo.yaml — Helix monorepo prompt evaluation
+# Runs in CI on every push that changes prompts/
+
+prompts:
+  - file://prompts/agent-identity/v3.md
+  - file://prompts/code-review/v2.md
+
+providers:
+  - id: openrouter:anthropic/claude-sonnet-4
+    config:
+      temperature: 0.3
+      max_tokens: 4096
+  - id: openrouter:google/gemini-2.5-flash-lite
+    config:
+      temperature: 0.3
+      max_tokens: 4096
+
+defaultTest:
+  assert:
+    - type: not-contains
+      value: "I apologize"
+    - type: not-contains
+      value: "as an AI"
+    - type: not-contains
+      value: "I cannot"
+
+tests:
+  # ── Agent Identity Prompt ──
+  - description: "Identity provision creates valid Forgejo account"
+    prompt: file://prompts/agent-identity/v3.md
+    vars:
+      agent_name: "test-agent-ci"
+      tier: "flash"
+      forgejo_url: "https://helixloop.dev"
+    assert:
+      - type: contains
+        value: "POST /api/v1/admin/users"
+      - type: contains
+        value: "ssh-ed25519"
+      - type: not-contains
+        value: "error"
+      - type: llm-rubric
+        value: |
+          The response describes:
+          1. Creating a Forgejo user account with the given agent name
+          2. Registering an ED25519 SSH key
+          3. Creating a personal access token with scoped permissions
+          4. Configuring the agent's git identity
+          All steps must be present and in order.
+
+  - description: "Identity provision handles duplicate user gracefully"
+    prompt: file://prompts/agent-identity/v3.md
+    vars:
+      agent_name: "existing-agent"
+      tier: "flash"
+      forgejo_url: "https://helixloop.dev"
+    assert:
+      - type: contains
+        value: "409"
+      - type: llm-rubric
+        value: "The response handles HTTP 409 (Conflict) by reporting the user already exists rather than crashing."
+
+  - description: "Identity provision enforces input validation"
+    prompt: file://prompts/agent-identity/v3.md
+    vars:
+      agent_name: "a"  # too short
+      tier: "flash"
+      forgejo_url: "https://helixloop.dev"
+    assert:
+      - type: contains
+        value: "invalid"
+      - type: llm-rubric
+        value: "The response validates that agent_name meets minimum length requirements before making API calls."
+
+  # ── Code Review Prompt ──
+  - description: "Code review catches SQL injection"
+    prompt: file://prompts/code-review/v2.md
+    vars:
+      code: |
+        func getUser(name string) (*User, error) {
+            query := fmt.Sprintf("SELECT * FROM users WHERE name = '%s'", name)
+            return db.Query(query)
+        }
+      language: "go"
+    assert:
+      - type: contains
+        value: "SQL injection"
+      - type: llm-rubric
+        value: "The review identifies the SQL injection vulnerability (string formatting into query) and recommends parameterized queries."
+
+  - description: "Code review catches nil dereference"
+    prompt: file://prompts/code-review/v2.md
+    vars:
+      code: |
+        func process(user *User) string {
+            return user.Name
+        }
+      language: "go"
+    assert:
+      - type: contains
+        value: "nil"
+      - type: llm-rubric
+        value: "The review identifies the nil pointer dereference risk and recommends adding a nil check."
+
+  - description: "Code review passes safe code"
+    prompt: file://prompts/code-review/v2.md
+    vars:
+      code: |
+        func greet(name string) string {
+            if name == "" {
+                return "Hello, world!"
+            }
+            return fmt.Sprintf("Hello, %s!", name)
+        }
+      language: "go"
+    assert:
+      - type: not-contains
+        value: "vulnerability"
+      - type: not-contains
+        value: "injection"
+      - type: llm-rubric
+        value: "The review does not flag false positives. The code is safe and the review should pass without CRITICAL or HIGH findings."
+```
+
+### Appendix E: Forgejo Branch Protection Config
+
+```yaml
+# .forgejo/branch-protection.yml
+# Enforced on the main branch
+
+main:
+  # ── Approval Requirements ──
+  required_approvals: 2          # 1 human + 1 agent = 2 minimum
+  dismiss_stale_reviews: true    # New push invalidates old approvals
+  require_code_owner_reviews: true
+  block_on_agent_veto: true      # BLOCKING comment prevents merge
+
+  # ── Push Restrictions ──
+  allow_force_pushes: false
+  allow_deletions: false
+  restrict_pushes: true
+  push_allowlist:
+    - bane                 # Platform admin (human)
+    - helix-bot            # Platform automation (CI/CD, not an agent)
+
+  # ── Status Checks (all must pass) ──
+  status_checks:
+    - gitreins/tier-1
+    - gitreins/tier-2
+    - chimera/review
+    - conscientiousness/adversarial
+    - promptfoo/regression
+    - test/unit
+    - test/integration
+
+  # ── Merge Restrictions ──
+  merge_method: squash
+  require_signed_commits: true
+  require_linear_history: false
+```
+
+### Appendix F: .env.example
+
+```bash
+# /opt/helix/.env — Helix Platform Secrets
+# chmod 600, never commit to git
+# Copy this file to .env and fill in values
+
+# ═══ Master Credentials ═══
+OPENROUTER_API_KEY=sk-or-...
+FORGEJO_ADMIN_TOKEN=...
+FORGEJO_RUNNER_TOKEN=...
+
+# ═══ LangFuse ═══
+LANGFUSE_DB_PASS=...
+LANGFUSE_AUTH_SECRET=...
+LANGFUSE_SALT=...
+LANGFUSE_PUBLIC_KEY=pk-...
+LANGFUSE_SECRET_KEY=sk-...
+
+# ═══ Grafana ═══
+GRAFANA_ADMIN_PASS=...
+
+# ═══ H4F Agent Keys (one per agent) ═══
+# Agent: Sandbox 7 (Go Specialist)
+AGENT_7_OPENROUTER_KEY=sk-or-...
+AGENT_7_FORGEJO_TOKEN=...
+# Agent: Sandbox 9 (Security Auditor)
+AGENT_9_OPENROUTER_KEY=sk-or-...
+AGENT_9_FORGEJO_TOKEN=...
+# Agent: Sandbox 12 (Documentation)
+AGENT_12_OPENROUTER_KEY=sk-or-...
+AGENT_12_FORGEJO_TOKEN=...
+
+# ═══ DuckBrain ═══
+DUCKBRAIN_REPO_PATH=/data/duckbrain
+
+# ═══ Z.AI Coding Plan (GLM-5.2) ═══
+ZAI_API_KEY=...
+
+# ═══ Optional: GitHub Mirror ═══
+GITHUB_TOKEN=ghp_...
+```
+
+---
+
 ## Document Status
 
-**Sections completed:**
-- Section 1: Platform Architecture (lines 1-264, pre-existing)
-- Section 2: Data Flow and Execution Model (12-step state machines, data contracts, latency budgets, error recovery)
-- Section 3: Component Specifications (all 17 components: role, interfaces, dependencies, scaling, failure modes)
-- Section 4: Integration Contracts (10 cross-component contracts with request/response shapes and failure semantics)
-- Section 5: Identity and IAM (known-friends.json → Forgejo OAuth, permission model, co-approval, key rotation)
-- Section 6: Security Model (threat model, secrets management, network isolation, blast radius, audit trail, incident response)
-- **Section 7: Quality Gates** — GitReins Tier 1 (static: 7 checks), Tier 2 (agentic evaluator), Chimera formation specs, Conscientiousness adversarial loop, PromptFoo CI config, co-approval gate with agent veto power
-- **Section 8: Observability** — LangFuse trace format, cost attribution model, Prometheus metrics with alert thresholds, DuckBrain memory schema, Hivemind memory bank lifecycle
-- **Section 9: Deployment** — Docker Compose topology (10+ services), Caddy reverse proxy, systemd units, agent container template, env var inventory
-- **Section 10: Operations** — Backup/restore strategy (8 paths, daily), DR scenarios table with RTO/RPO, key rotation procedure, scaling model, incident response checklist, helix-doctor diagnostics
-- **Section 11: Performance SLAs** — Sync latency (P50/P95/P99), review latency per gate, merge throughput, sandbox startup (cold/warm), API latency, cost per PR with optimization rules, monitoring SLAs
+**All sections complete.** This is the full Helix platform implementation specification.
 
-**Sections remaining for future passes:**
-- Section 12: Test Strategy (unit/integration/E2E/adversarial test pyramid, coverage requirements)
-- Section 13: Build Order (dependency-ordered implementation plan, what to build first)
-- Section 14: Error Recovery (expanded from Section 2.4 — component-level recovery runbooks)
-- Section 15: API Contracts (Forgejo, Chimera, Conscientiousness, Hivemind, Muster full API reference)
-- Section 16: Glossary
-- Section 17: Appendices (config templates, docker-compose examples, sample .gitreins/config.yaml)
+| Section | Status | Lines (approx) |
+|---------|--------|----------------|
+| 1. Platform Architecture | ✅ Complete | 264 |
+| 2. Data Flow and Execution Model | ✅ Complete | ~300 |
+| 3. Component Specifications | ✅ Complete | ~350 |
+| 4. Integration Contracts | ✅ Complete | ~280 |
+| 5. Identity and IAM | ✅ Complete | ~250 |
+| 6. Security Model | ✅ Complete | ~300 |
+| 7. Quality Gates | ✅ Complete | ~350 |
+| 8. Observability | ✅ Complete | ~280 |
+| 9. Deployment Architecture | ✅ Complete | ~350 |
+| 10. Operations | ✅ Complete | ~300 |
+| 11. Performance SLAs | ✅ Complete | ~280 |
+| 12. Test Strategy | ✅ Complete | ~200 |
+| 13. Build Order | ✅ Complete | ~250 |
+| 14. Error Recovery | ✅ Complete | ~200 |
+| 15. API Contracts | ✅ Complete | ~300 |
+| 16. Glossary | ✅ Complete | ~100 |
+| 17. Appendices | ✅ Complete | ~400 |
+
+**Total:** ~4,850 lines, 17 sections, 6 appendices.
+
+**Ready for Phase 1 implementation: Forgejo instance + GitReins hooks + Agent Identity.**
