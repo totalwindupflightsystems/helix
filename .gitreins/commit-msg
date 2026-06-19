@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# GitReins Tier 1: Commit message checks (commit-msg)
+# Checks 5-6 of the Helix 6-check harness
+# Receives the path to the commit message file as $1
+set -e
+COMMIT_MSG_FILE="$1"
+[ ! -f "$COMMIT_MSG_FILE" ] && exit 0
+
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+FAILED=0
+
+# ── Check 5: Commit attestation ──
+# Only enforce if Go files are staged (checked via pre-commit already ran)
+if echo "$COMMIT_MSG" | grep -qi 'Co-authored-by:'; then
+  echo "✓ [5/6] Commit attestation — PASS"
+else
+  echo "✗ [5/6] Commit attestation — FAIL (missing Co-authored-by: trailer)" >&2
+  echo "   Required format: Co-authored-by: Name <email>" >&2
+  FAILED=1
+fi
+
+# ── Check 6: Prompt link (only if prompts/ directory exists) ──
+if [ -d "prompts" ]; then
+  if echo "$COMMIT_MSG" | grep -qi 'Prompt:'; then
+    echo "✓ [6/6] Prompt link — PASS"
+  else
+    echo "✗ [6/6] Prompt link — FAIL (missing Prompt: reference in commit body)" >&2
+    echo "   Required format: Prompt: prompts/<name>/v<N>.md" >&2
+    FAILED=1
+  fi
+else
+  echo "✓ [6/6] Prompt link — SKIP (no prompts/ directory)"
+fi
+
+if [ $FAILED -eq 1 ]; then
+  echo ""
+  echo "═══════════════════════════════════════════════" >&2
+  echo "COMMIT BLOCKED: GitReins message checks failed" >&2
+  echo "═══════════════════════════════════════════════" >&2
+  exit 1
+fi
