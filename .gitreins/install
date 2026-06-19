@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# GitReins — Install pre-commit hook into a Helix clone
+# Run once after cloning: .gitreins/install
+set -e
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cp "$REPO_ROOT/.gitreins/pre-commit" "$REPO_ROOT/.git/hooks/pre-commit"
+chmod +x "$REPO_ROOT/.git/hooks/pre-commit"
+echo "GitReins Tier 1 installed: secrets (blocking) + lint + tests"
+echo "Config: .gitreins/config.yaml (Tier 1 + Tier 2 pipeline)"
