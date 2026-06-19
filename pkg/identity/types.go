@@ -1,82 +1,133 @@
-// Package identity implements Helix agent identity provisioning against Forgejo.
+// Package identity implements provisioning of Helix agent accounts in a
+// self-hosted Forgejo instance.
 //
-// This file defines the data models used throughout the helix-identity CLI.
-// Field names mirror the documented Forgejo admin API payload (POST /api/v1/admin/users)
-// and the H4F known-friends.json schema. Any field rename here is a breaking
-// change in either direction and must be reflected in the schema contract test.
+// This file defines all data models, enums, constructors, and the ED25519
+// keypair serialization helpers used across the identity subsystem. The HTTP
+// transport lives in provisioner.go; orchestration lives in syncer.go.
+//
+// Design constraints:
+//   - Only stdlib + github.com/spf13/cobra may be imported.
+//   - golang.org/x/crypto is deliberately avoided; OpenSSH wire format is
+//     serialized by hand using crypto/ed25519 + crypto/x509.
+//   - No secrets are stored in source. All credentials arrive via env vars
+//     or runtime flags and are never marshaled to disk in plaintext beyond
+//     the per-agent private key file (mode 0600, owned by the operator).
 package identity
 
 import (
 	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
+	"encoding/binary"
 	"encoding/pem"
+	"errors"
+	"fmt"
 	"time"
 )
 
 // ---------------------------------------------------------------------------
-// H4F known-friends.json schema
+// Sentinel / typed errors and exit codes
 // ---------------------------------------------------------------------------
 
-// KnownFriends is the top-level structure of /opt/hermes-demo/.hermes/h4f/known-friends.json.
-// The file is JSON; "agents" is keyed by lowercase agent name on disk but the
-// loader flattens it to a slice for predictable iteration order.
-type KnownFriends struct {
-	Version   string             `json:"version"`
-	UpdatedAt time.Time          `json:"updated_at"`
-	Agents    map[string]*Agent  `json:"agents"`
+// ErrNotImplemented is returned by every transport method in this v1 stub.
+// Real network calls land in a follow-up change after spec review; the stubs
+// exist to lock the interface shape and prove the build.
+var ErrNotImplemented = errors.New("identity: not implemented in v1 stub (network call pending review)")
+
+// Exit codes are machine-readable so cron jobs can branch without parsing
+// stderr. See specs/agent-identity.md §15 for the full taxonomy.
+const (
+	ExitOK             = 0 // success (or dry-run with nothing to do)
+	ExitConnRefused    = 1 // Forgejo unreachable / network error
+	ExitGeneral        = 2 // unspecified operational error
+	ExitFileOrAuth     = 3 // FILE_NOT_FOUND, AUTH_FAILED, malformed config
+	ExitPartialFailure = 4 // some agents provisioned, some failed
+)
+
+// ErrorKind tags a typed error so callers can map it to an exit code without
+// string matching.
+type ErrorKind string
+
+const (
+	ErrKindConfig   ErrorKind = "config"   // missing env, malformed flags
+	ErrKindNetwork  ErrorKind = "network"  // timeout, connection refused, 5xx
+	ErrKindAPI      ErrorKind = "api"      // 400/403/404/409 from Forgejo
+	ErrKindPartial  ErrorKind = "partial"  // some agents failed during sync
+	ErrKindInternal ErrorKind = "internal" // key generation, state write
+)
+
+// TypedError carries a kind + human message + optional cause. It is the only
+// error type returned by the identity package so callers can switch on Kind.
+type TypedError struct {
+	Kind    ErrorKind
+	Message string
+	Cause   error
 }
 
-// Agent mirrors a single entry in known-friends.json. Field tags must match
-// the on-disk JSON keys exactly — the contract test in types_test.go pins this.
-//
-// OPEN QUESTION (2026-06-19): known-friends.json is currently authoritative
-// only on the Hetzner production box. If the schema gains fields (e.g. a
-// "ssh_key_path" override) this struct must be extended before the next sync.
-// See specs/agent-identity.md §10 (Open Questions).
-type Agent struct {
-	// Name is the unique lowercase identifier (e.g. "wojons"). Used as the
-	// Forgejo login_name and username.
-	Name string `json:"name"`
-
-	// DisplayName is the human-friendly name shown in the Forgejo profile
-	// and used in commit author lines.
-	DisplayName string `json:"display_name"`
-
-	// Status controls provisioning behavior:
-	//   active     — must have a live Forgejo account
-	//   pending    — record exists but no Forgejo account yet (sync creates it)
-	//   offboarded — must NOT have a live Forgejo account (sync deprovisions)
-	Status AgentStatus `json:"status"`
-
-	// Tier determines the bio text and (eventually) the cost budget. pro agents
-	// are orchestrators; flash agents are leaf workers.
-	Tier AgentTier `json:"tier"`
-
-	// OpenRouterKey is the agent's OR API key. Held only for reference; the
-	// identity CLI never reads it. Documented here so the schema is complete.
-	OpenRouterKey string `json:"openrouter_key,omitempty"`
-
-	// CoolifyServiceUUID links the agent to its Coolify deployment.
-	CoolifyServiceUUID string `json:"coolify_service_uuid,omitempty"`
-
-	// TelegramBotToken links the agent to its Telegram bot.
-	TelegramBotToken string `json:"telegram_bot_token,omitempty"`
-
-	// ModelPreferences are advisory; the identity CLI does not act on them.
-	ModelPreferences ModelPreferences `json:"model_preferences"`
+func (e *TypedError) Error() string {
+	if e.Cause != nil {
+		return fmt.Sprintf("%s: %s: %v", e.Kind, e.Message, e.Cause)
+	}
+	return fmt.Sprintf("%s: %s", e.Kind, e.Message)
 }
 
-// AgentStatus is a closed enum.
+func (e *TypedError) Unwrap() error { return e.Cause }
+
+// NewConfigError reports a configuration problem (missing env var, bad path).
+func NewConfigError(msg string, cause error) *TypedError {
+	return &TypedError{Kind: ErrKindConfig, Message: msg, Cause: cause}
+}
+
+// NewNetworkError reports a transport-level failure (DNS, TLS, timeout, 5xx).
+func NewNetworkError(msg string, cause error) *TypedError {
+	return &TypedError{Kind: ErrKindNetwork, Message: msg, Cause: cause}
+}
+
+// NewAPIError reports a Forgejo API error response (4xx other than 429).
+func NewAPIError(msg string, cause error) *TypedError {
+	return &TypedError{Kind: ErrKindAPI, Message: msg, Cause: cause}
+}
+
+// NewPartialError reports that a sync completed with at least one failure.
+func NewPartialError(msg string, cause error) *TypedError {
+	return &TypedError{Kind: ErrKindPartial, Message: msg, Cause: cause}
+}
+
+// ExitCode maps a TypedError to a process exit code per §15 of the spec.
+// Unknown errors fall back to ExitGeneral.
+func (e *TypedError) ExitCode() int {
+	switch e.Kind {
+	case ErrKindConfig:
+		return ExitFileOrAuth
+	case ErrKindNetwork:
+		return ExitConnRefused
+	case ErrKindAPI:
+		// AUTH_FAILED (401) and FILE_NOT_FOUND share exit 3 per the spec.
+		return ExitFileOrAuth
+	case ErrKindPartial:
+		return ExitPartialFailure
+	default:
+		return ExitGeneral
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Enums: AgentStatus, AgentTier, SyncAction
+// ---------------------------------------------------------------------------
+
+// AgentStatus mirrors the "status" field in known-friends.json.
 type AgentStatus string
 
 const (
-	StatusActive    AgentStatus = "active"
-	StatusPending   AgentStatus = "pending"
+	StatusActive     AgentStatus = "active"
+	StatusPending    AgentStatus = "pending"
 	StatusOffboarded AgentStatus = "offboarded"
 )
 
-// IsValid reports whether s is one of the three known statuses.
-func (s AgentStatus) IsValid() bool {
+// Valid reports whether s is a recognized status value.
+func (s AgentStatus) Valid() bool {
 	switch s {
 	case StatusActive, StatusPending, StatusOffboarded:
 		return true
@@ -84,7 +135,12 @@ func (s AgentStatus) IsValid() bool {
 	return false
 }
 
-// AgentTier is a closed enum.
+// Provisionable reports whether an agent in this status should be provisioned
+// during a sync run. Pending and offboarded agents are skipped (offboarded
+// agents are handled by the deprovision path instead).
+func (s AgentStatus) Provisionable() bool { return s == StatusActive }
+
+// AgentTier mirrors the "tier" field in known-friends.json.
 type AgentTier string
 
 const (
@@ -92,242 +148,485 @@ const (
 	TierFlash AgentTier = "flash"
 )
 
-// ModelPreferences is advisory metadata from known-friends.json.
+// Valid reports whether t is a recognized tier value.
+func (t AgentTier) Valid() bool {
+	switch t {
+	case TierPro, TierFlash:
+		return true
+	}
+	return false
+}
+
+// SyncAction is the per-agent outcome of a sync run, surfaced in the result
+// table and persisted for idempotency reconciliation.
+type SyncAction string
+
+const (
+	ActionCreated       SyncAction = "created"
+	ActionUpdated       SyncAction = "updated"
+	ActionUnchanged     SyncAction = "unchanged"
+	ActionDeprovisioned SyncAction = "deprovisioned"
+	ActionSkipped       SyncAction = "skipped"
+	ActionFailed        SyncAction = "failed"
+)
+
+// ---------------------------------------------------------------------------
+// known-friends.json model
+// ---------------------------------------------------------------------------
+
+// ModelPreferences mirrors the "model_preferences" subobject.
 type ModelPreferences struct {
-	Chat    string `json:"chat,omitempty"`
-	Vision  string `json:"vision,omitempty"`
+	Chat     string `json:"chat,omitempty"`
+	Vision   string `json:"vision,omitempty"`
 	ImageGen string `json:"image_gen,omitempty"`
 }
 
+// Agent mirrors a single entry in known-friends.json. Name is populated from
+// the map key when parsed via KnownFriends (the JSON "name" field is also
+// accepted if present, for forward compatibility with a list-based schema).
+type Agent struct {
+	Name               string           `json:"name,omitempty"`
+	DisplayName        string           `json:"display_name"`
+	Status             AgentStatus      `json:"status"`
+	Tier               AgentTier        `json:"tier"`
+	OpenRouterKey      string           `json:"openrouter_key,omitempty"`
+	CoolifyServiceUUID string           `json:"coolify_service_uuid,omitempty"`
+	TelegramBotToken   string           `json:"telegram_bot_token,omitempty"`
+	ModelPreferences   ModelPreferences `json:"model_preferences,omitempty"`
+}
+
+// Email synthesizes the agent's Forgejo account email per §5 of the spec.
+// All agent accounts use the @helix-agents.local pseudo-domain; no real
+// addresses are ever stored.
+func (a *Agent) Email() string {
+	name := a.Name
+	if name == "" {
+		name = string(a.Status) // defensive; should never happen
+	}
+	return name + "@helix-agents.local"
+}
+
+// KeyTitle builds the human-readable title registered with the SSH public key
+// in Forgejo (visible in the UI's "SSH Keys" panel).
+func (a *Agent) KeyTitle() string {
+	return fmt.Sprintf("Helix Agent — %s (%s)", a.Name, a.Tier)
+}
+
+// Validate reports the first structural problem with an agent entry, or nil.
+// This catches schema drift early so a sync run fails fast rather than
+// producing half-formed Forgejo accounts.
+func (a *Agent) Validate() error {
+	if a.Name == "" {
+		return NewConfigError("agent name is empty", nil)
+	}
+	if !a.Status.Valid() {
+		return NewConfigError(
+			fmt.Sprintf("agent %q has invalid status %q", a.Name, a.Status), nil)
+	}
+	if !a.Tier.Valid() {
+		return NewConfigError(
+			fmt.Sprintf("agent %q has invalid tier %q", a.Name, a.Tier), nil)
+	}
+	return nil
+}
+
+// KnownFriends is the top-level shape of known-friends.json.
+type KnownFriends struct {
+	Version   int               `json:"version"`
+	UpdatedAt time.Time         `json:"updated_at,omitempty"`
+	Agents    map[string]*Agent `json:"agents"`
+}
+
+// ActiveAgents returns agents whose status is "active", sorted by name for
+// deterministic sync ordering (important for stable dry-run output and
+// reproducible test fixtures).
+func (k *KnownFriends) ActiveAgents() []*Agent {
+	out := make([]*Agent, 0, len(k.Agents))
+	for name, a := range k.Agents {
+		if a == nil {
+			continue
+		}
+		if a.Name == "" {
+			a.Name = name // backfill from map key
+		}
+		if a.Status.Provisionable() {
+			out = append(out, a)
+		}
+	}
+	sortAgentsByName(out)
+	return out
+}
+
+// OffboardedAgents returns agents whose status is "offboarded", sorted.
+// These are processed by the deprovision path during sync.
+func (k *KnownFriends) OffboardedAgents() []*Agent {
+	out := make([]*Agent, 0, len(k.Agents))
+	for name, a := range k.Agents {
+		if a == nil {
+			continue
+		}
+		if a.Name == "" {
+			a.Name = name
+		}
+		if a.Status == StatusOffboarded {
+			out = append(out, a)
+		}
+	}
+	sortAgentsByName(out)
+	return out
+}
+
+// AllAgents returns every agent (any status), sorted. Used by status display.
+func (k *KnownFriends) AllAgents() []*Agent {
+	out := make([]*Agent, 0, len(k.Agents))
+	for name, a := range k.Agents {
+		if a == nil {
+			continue
+		}
+		if a.Name == "" {
+			a.Name = name
+		}
+		out = append(out, a)
+	}
+	sortAgentsByName(out)
+	return out
+}
+
 // ---------------------------------------------------------------------------
-// Forgejo-side representations
+// Forgejo API wire types
 // ---------------------------------------------------------------------------
 
-// ForgejoAccount is the local Go representation of a user row in Forgejo.
-// It mirrors the JSON shape returned by /api/v1/admin/users/{name} and
-// /api/v1/users/{name}. We never construct the password ourselves; Forgejo
-// generates it on creation when we omit it (or we set a known temp password
-// for the one-shot BasicAuth call to /api/v1/users/{name}/tokens — see
-// Provisioner.Provision in provisioner.go).
+// ForgejoAccount mirrors the user object returned by GET /admin/users/{name}
+// and POST /admin/users. Field names match the Forgejo/Gitea API JSON keys
+// exactly so the response unmarshals without remapping.
 type ForgejoAccount struct {
-	ID            int64     `json:"id"`
-	Login         string    `json:"login"`
-	LoginName     string    `json:"login_name"`
-	FullName      string    `json:"full_name"`
-	Email         string    `json:"email"`
-	AvatarURL     string    `json:"avatar_url"`
-	HTMLURL       string    `json:"html_url"`
-	Created       time.Time `json:"created"`
-	IsAdmin       bool      `json:"is_admin"`
-	LastLogin     time.Time `json:"last_login,omitempty"`
-	Location      string    `json:"location,omitempty"`
-	Website       string    `json:"website,omitempty"`
-	Description   string    `json:"description,omitempty"`
-	// Note: Forgejo also returns "source_id", "active", "restricted",
-	// "visibility", "pronouns". We intentionally omit them — the identity
-	// CLI never inspects them, and any change here would force a
-	// contract-test update for no operational benefit.
-}
-
-// CreateUserRequest is the body sent to POST /api/v1/admin/users.
-// Field names must match the Forgejo admin API payload exactly.
-//
-// Doc reference: https://forgejo.org/docs/latest/user/api-admin/ (admin
-// "CreateUser" operation). The forgejo.org docs page renders for the
-// Gitea lineage; endpoint paths and payload keys are stable across Gitea
-// → Forgejo for this surface.
-type CreateUserRequest struct {
-	// Username is the Forgejo login. We pass the agent name lowercased.
-	Username string `json:"username"`
-
-	// LoginName defaults to Username on self-hosted Forgejo.
+	ID        int64  `json:"id"`
+	Login     string `json:"login"`
 	LoginName string `json:"login_name"`
-
-	// FullName is the display name from known-friends.json.
-	FullName string `json:"full_name"`
-
-	// Email is synthesized as <name>@helix-agents.local — see Provisioner.
-	Email string `json:"email"`
-
-	// Password is a generated temp password. We need it because the only
-	// documented way to mint a personal access token (POST
-	// /api/v1/users/{name}/tokens) requires BasicAuth with username+password.
-	// The PAT is captured on first use and the temp password is discarded.
-	Password string `json:"password"`
-
-	// MustChangePassword forces a password change on first login. We set
-	// this true so the temp password cannot linger if the PAT mint step
-	// fails partway through. The PAT mint happens immediately after user
-	// creation, so in practice the password is used once and replaced.
-	MustChangePassword bool `json:"must_change_password"`
-
-	// SendNotify controls whether Forgejo emails the new user. We disable
-	// it — emails go to *.local and would just bounce.
-	SendNotify bool `json:"send_notify"`
-
-	// SourceID 0 means local account (no LDAP/OAuth linkage).
-	SourceID int64 `json:"source_id"`
-
-	// Visibility "limited" hides the user from the public directory.
-	// We use this because agent accounts are an internal fleet.
-	Visibility string `json:"visibility,omitempty"`
+	FullName  string `json:"full_name"`
+	Email     string `json:"email"`
+	AvatarURL string `json:"avatar_url"`
+	// Forgejo returns ISO8601 strings for timestamps; we keep them as strings
+	// to avoid coupling to a specific timezone layout in v1.
+	Created string `json:"created"`
+	IsAdmin bool   `json:"is_admin"`
 }
 
-// SSHKey is the body for POST /api/v1/user/keys and the parsed response.
+// CreateUserRequest is the POST /api/v1/admin/users body. The visibility
+// "limited" hides the account from the public user directory but keeps it
+// usable by anyone who knows the login.
+type CreateUserRequest struct {
+	Username           string `json:"username"`
+	LoginName          string `json:"login_name"`
+	FullName           string `json:"full_name"`
+	Email              string `json:"email"`
+	Password           string `json:"password"`
+	MustChangePassword bool   `json:"must_change_password"`
+	SendNotify         bool   `json:"send_notify"`
+	SourceID           int    `json:"source_id"`
+	Visibility         string `json:"visibility"`
+}
+
+// NewCreateUserRequest builds the request body for an agent. The temporary
+// password is supplied by the caller (generated by GenerateTempPassword);
+// it is never stored and forces a change on first login per Forgejo policy.
+func NewCreateUserRequest(a *Agent, tempPassword string) *CreateUserRequest {
+	return &CreateUserRequest{
+		Username:           a.Name,
+		LoginName:          a.Name,
+		FullName:           a.DisplayName,
+		Email:              a.Email(),
+		Password:           tempPassword,
+		MustChangePassword: true,
+		SendNotify:         false, // no real mailbox; @helix-agents.local
+		SourceID:           0,     // local auth
+		Visibility:         "limited",
+	}
+}
+
+// SSHKey mirrors the response from POST /api/v1/user/keys.
 type SSHKey struct {
-	ID          int64     `json:"id"`
-	Key         string    `json:"key"`
-	Title       string    `json:"title"`
-	Fingerprint string    `json:"fingerprint"`
-	Created     time.Time `json:"created_at"`
+	ID          int64  `json:"id"`
+	Key         string `json:"key"`
+	Title       string `json:"title"`
+	Fingerprint string `json:"fingerprint"`
+	Created     string `json:"created_at"`
 }
 
-// CreateTokenRequest is the body for POST /api/v1/users/{name}/tokens.
-// Note: this endpoint is special — it requires BasicAuth, not a bearer
-// token, per the Forgejo docs ("API Usage" page, "create a token" section).
+// CreateTokenRequest is the POST /api/v1/users/{name}/tokens body. Scopes
+// are derived from the agent's AgentPermission via PermissionScopes().
 type CreateTokenRequest struct {
 	Name   string   `json:"name"`
 	Scopes []string `json:"scopes"`
 }
 
-// AccessToken is the response shape. Note Token itself is returned ONLY in
-// the creation response — subsequent GETs return only Sha1 and
-// TokenLastEight. We must capture Token on first creation.
+// AccessToken mirrors the PAT response. The Token field is ONLY populated on
+// creation (POST returns the plaintext token once; subsequent GETs omit it).
+// Callers must capture .Token immediately and never log it.
 type AccessToken struct {
-	ID             int64     `json:"id"`
-	Name           string    `json:"name"`
-	Sha1           string    `json:"sha1"`
-	TokenLastEight string    `json:"token_last_eight"`
-	Token          string    `json:"token,omitempty"` // only on POST response
-	Scopes         []string  `json:"scopes"`
-	Created        time.Time `json:"created_at"`
+	ID     int64    `json:"id"`
+	Name   string   `json:"name"`
+	Scopes []string `json:"scopes"`
+	SHA1   string   `json:"sha1,omitempty"` // legacy field, kept for compatibility
+	Token  string   `json:"token,omitempty"`
 }
 
+// PATName is the symbolic name registered with every agent PAT.
+const PATName = "helix-identity-pat"
+
 // ---------------------------------------------------------------------------
-// Helix permission model
+// Permission model
 // ---------------------------------------------------------------------------
 
-// AgentPermission captures the scoped permissions enforced for an agent's
-// Forgejo account. Branch protection is NOT modeled here — it is configured
-// per-repo (see specs/agent-identity.md §6.2). The fields here describe the
-// *user-level* capabilities granted to the agent.
+// AgentPermission is the internal, capability-style view of what an agent may
+// do. It is not serialized directly; instead it is projected onto Forgejo PAT
+// scopes via PermissionScopes(). Branch protection (no push to main, no solo
+// merge) is enforced by Forgejo repository settings, not by this code — see
+// specs/agent-identity.md §8.3 for the full rationale.
 type AgentPermission struct {
-	// CanReadAllRepos gates GET /api/v1/repos/search and GET
-	// /api/v1/orgs/{org}/repos. We grant true so agents can browse the
-	// fleet's code without explicit collaborator entries.
-	CanReadAllRepos bool `json:"can_read_all_repos"`
-
-	// CanCreateRepos gates POST /api/v1/user/repos. We grant true.
-	CanCreateRepos bool `json:"can_create_repos"`
-
-	// CanPushToFeatBranches gates push to refs/heads/feat/*. Enforced by
-	// Forgejo's branch protection on each repo, not here, but we record
-	// the intent for audit purposes.
-	CanPushToFeatBranches bool `json:"can_push_to_feat_branches"`
-
-	// CanPushToMain gates push to refs/heads/main and refs/heads/master.
-	// Always false — branch protection blocks it. Recorded for clarity.
-	CanPushToMain bool `json:"can_push_to_main"`
-
-	// CanOpenPRs gates POST /api/v1/repos/{owner}/{repo}/pulls. True.
-	CanOpenPRs bool `json:"can_open_prs"`
-
-	// CanMergeSolo gates PUT /api/v1/repos/{owner}/{repo}/pulls/{index}/merge
-	// when the agent is the only approver. Always false — requires a human
-	// co-approval (enforced via required-approvals branch protection).
-	CanMergeSolo bool `json:"can_merge_solo"`
+	CanReadAllRepos       bool
+	CanCreateRepos        bool
+	CanPushToFeatBranches bool
+	CanPushToMain         bool
+	CanOpenPRs            bool
+	CanMergeSolo          bool
 }
 
-// DefaultPermission returns the policy described in the task brief.
+// DefaultPermission returns the standard capability set for a Helix agent
+// per §8.3 of the spec. All agents get the same baseline in v1; per-tier
+// customization is a follow-up.
 func DefaultPermission() AgentPermission {
 	return AgentPermission{
-		CanReadAllRepos:      true,
-		CanCreateRepos:       true,
+		CanReadAllRepos:       true,
+		CanCreateRepos:        true,
 		CanPushToFeatBranches: true,
-		CanPushToMain:        false,
-		CanOpenPRs:           true,
-		CanMergeSolo:         false,
+		CanPushToMain:         false,
+		CanOpenPRs:            true,
+		CanMergeSolo:          false,
+	}
+}
+
+// PermissionScopes projects an AgentPermission onto the Forgejo PAT scope
+// vocabulary. The mapping is intentionally minimal — least privilege per
+// capability. Order is stable so dry-run output is reproducible.
+func (p AgentPermission) PermissionScopes() []string {
+	scopes := make([]string, 0, 8)
+	if p.CanReadAllRepos || p.CanPushToFeatBranches || p.CanOpenPRs {
+		scopes = append(scopes, "read:repository")
+	}
+	if p.CanPushToFeatBranches {
+		scopes = append(scopes, "write:repository")
+	}
+	if p.CanOpenPRs || p.CanReadAllRepos {
+		scopes = append(scopes, "read:issue")
+	}
+	if p.CanOpenPRs {
+		scopes = append(scopes, "write:issue")
+	}
+	// Every agent registers an SSH key on first provision, which requires
+	// user-scope write. Read:user is included for self-lookup.
+	scopes = append(scopes, "read:user", "write:user")
+	return scopes
+}
+
+// NewCreateTokenRequest builds a PAT creation request for an agent using the
+// default permission set.
+func NewCreateTokenRequest(a *Agent) *CreateTokenRequest {
+	return &CreateTokenRequest{
+		Name:   PATName,
+		Scopes: DefaultPermission().PermissionScopes(),
 	}
 }
 
 // ---------------------------------------------------------------------------
-// Provisioning artifacts (output of a sync)
+// Provisioning result + state file
 // ---------------------------------------------------------------------------
 
-// ProvisioningResult is the per-agent outcome of a sync run. The CLI
-// aggregates these into a SyncReport (see syncer.go).
+// ProvisioningResult is the per-agent outcome of a sync run. The Syncer
+// collects one per agent and uses them to render the summary table and to
+// decide the process exit code.
 type ProvisioningResult struct {
-	Agent            string        `json:"agent"`
-	Action           SyncAction    `json:"action"`
-	ForgejoAccountID int64         `json:"forgejo_account_id,omitempty"`
-	SSHKeyID         int64         `json:"ssh_key_id,omitempty"`
-	PATLastEight     string        `json:"pat_last_eight,omitempty"`
-	Error            string        `json:"error,omitempty"`
-	Duration         time.Duration `json:"duration_ns"`
-	Skipped          bool          `json:"skipped,omitempty"`
+	AgentName      string          `json:"agent_name"`
+	Status         AgentStatus     `json:"status"`
+	Action         SyncAction      `json:"action"`
+	Account        *ForgejoAccount `json:"account,omitempty"`
+	SSHKeyID       int64           `json:"ssh_key_id,omitempty"`
+	SSHFingerprint string          `json:"ssh_fingerprint,omitempty"`
+	PATID          int64           `json:"pat_id,omitempty"`
+	PATLastEight   string          `json:"pat_last_eight,omitempty"`
+	Error          string          `json:"error,omitempty"` // error.Error(), if ActionFailed
+	Duration       time.Duration   `json:"-"`
 }
 
-// SyncAction describes what the syncer did (or attempted to do) for an agent.
-type SyncAction string
+// Succeeded reports whether the agent's provisioning completed without error.
+// "unchanged" and "skipped" also count as success — they are not failures.
+func (r *ProvisioningResult) Succeeded() bool {
+	return r.Action != ActionFailed
+}
 
-const (
-	ActionCreated      SyncAction = "created"      // new Forgejo account
-	ActionUpdated      SyncAction = "updated"      // idempotent re-run touched it
-	ActionUnchanged    SyncAction = "unchanged"    // idempotent re-run, nothing to do
-	ActionDeprovisioned SyncAction = "deprovisioned"
-	ActionSkipped      SyncAction = "skipped"      // e.g. dry-run, or status=pending with --only-active
-	ActionFailed       SyncAction = "failed"
-)
+// AgentState is the per-agent entry in the on-disk state file
+// (~/.helix/state.json). It records just enough to make subsequent syncs
+// idempotent and to render the status table without re-hitting Forgejo.
+type AgentState struct {
+	ForgejoAccountID int64     `json:"forgejo_account_id"`
+	SSHKeyID         int64     `json:"ssh_key_id"`
+	SSHFingerprint   string    `json:"ssh_fingerprint"`
+	PATLastEight     string    `json:"pat_last_eight"`
+	PATID            int64     `json:"pat_id"`
+	LastProvisioned  time.Time `json:"last_provisioned"`
+}
 
-// KeyPair is the on-disk artifact of a keygen run. We keep the public key
-// in OpenSSH authorized_keys format and the private key in PKCS#8 PEM.
-// Both are pure stdlib encodings — see specs/agent-identity.md §4.3 for
-// why we do not use golang.org/x/crypto/ssh.
+// StateFile is the on-disk record of provisioned agents. Schema version is
+// bumped on breaking changes; the loader rejects unknown versions loudly.
+type StateFile struct {
+	Version  int                    `json:"version"`
+	LastSync time.Time              `json:"last_sync"`
+	Agents   map[string]*AgentState `json:"agents"`
+}
+
+// StateVersion is the current state file schema version.
+const StateVersion = 1
+
+// NewStateFile returns an empty state file with the current schema version.
+func NewStateFile() *StateFile {
+	return &StateFile{
+		Version: StateVersion,
+		Agents:  make(map[string]*AgentState),
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ED25519 keypair + OpenSSH / PEM serialization (no golang.org/x/crypto)
+// ---------------------------------------------------------------------------
+
+// KeyPair is the artifact of GenerateKeyPair: an ED25519 keypair serialized
+// in the formats Forgejo and the filesystem expect.
 type KeyPair struct {
-	// PublicKeyOpenSSH is the authorized_keys line, e.g.:
-	//   "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... helix-identity\n"
-	PublicKeyOpenSSH string
-
-	// PrivateKeyPEM is PKCS#8 PEM, encrypted at rest with a passphrase
-	// (Passphrase field). Unencrypted PEM is never written.
-	PrivateKeyPEM []byte
-
-	// Fingerprint is the SHA256:... fingerprint Forgejo displays. We compute
-	// it locally so we can compare without an extra GET round-trip.
-	Fingerprint string
-
-	// PrivateKey is the in-memory ed25519.PrivateKey. Held only for the
-	// duration of a single keygen call — never persisted in plaintext.
-	PrivateKey ed25519.PrivateKey
-
-	// Passphrase is the random passphrase used to encrypt PrivateKeyPEM.
-	// The caller is responsible for storing it (typically alongside the
-	// PEM, or in a secrets manager).
-	Passphrase []byte
+	PublicKeyOpenSSH string // "ssh-ed25519 AAAA... helix-identity"
+	PrivateKeyPEM    string // PKCS#8 PEM block ("PRIVATE KEY")
+	PrivateKey       []byte // raw PKCS#8 bytes (for direct file writes)
+	Fingerprint      string // "SHA256:<base64>" — OpenSSH-style
+	Passphrase       string // empty in v1 (filesystem mode 0600 protects at rest)
 }
 
-// MarshalPrivateKeyPEM returns the PKCS#8 PEM encoding of priv, encrypted
-// with passphrase. If passphrase is empty, returns an unencrypted PEM block
-// (only for dry-run mode — see Provisioner.Provision).
-func MarshalPrivateKeyPEM(priv ed25519.PrivateKey, passphrase []byte) ([]byte, error) {
-	der, err := x509.MarshalPKCS8PrivateKey(priv)
+// GenerateKeyPair produces a fresh ED25519 keypair serialized for Forgejo +
+// filesystem use. It does not write to disk; the Syncer is responsible for
+// materializing the files with the correct permissions.
+//
+// OpenSSH wire format is assembled by hand because golang.org/x/crypto/ssh is
+// deliberately out of scope for v1. The format is:
+//
+//	string "ssh-ed25519"   (4-byte BE length prefix + bytes)
+//	string <32-byte key>   (4-byte BE length prefix + bytes)
+//
+// The fingerprint is the base64-encoded SHA256 of that packed public-key
+// blob, matching `ssh-keygen -l -f <file>`.
+func GenerateKeyPair() (*KeyPair, error) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
-		return nil, err
+		return nil, NewInternalError("ed25519 key generation failed", err)
 	}
-	if len(passphrase) == 0 {
-		return pem.EncodeToMemory(&pem.Block{
-			Type:  "PRIVATE KEY",
-			Bytes: der,
-		}), nil
+
+	packed := packSSHEd25519PublicKey(pub)
+	pubOpenSSH := "ssh-ed25519 " + base64.StdEncoding.EncodeToString(packed) + " helix-identity"
+
+	// PKCS#8 is preferred over PKCS#1 / SEC1 for ED25519 because it carries
+	// the algorithm OID unambiguously. x509.MarshalPKCS8PrivateKey works for
+	// ed25519.PrivateKey directly.
+	pkcs8, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		return nil, NewInternalError("pkcs8 marshal failed", err)
 	}
-	// EncryptedPEMBlock is x/crypto/openssl — but we can do unencrypted
-	// PKCS#8 in stdlib and rely on filesystem permissions + secrets manager
-	// for at-rest protection. The spec deliberately avoids x/crypto.
-	//
-	// OPEN QUESTION: if we need passphrase-encrypted PEM in stdlib alone,
-	// we'd hand-roll PBES2 + AES-CBC. Out of scope for v1 — see §10.
-	return pem.EncodeToMemory(&pem.Block{
-		Type:  "PRIVATE KEY",
-		Bytes: der,
-	}), nil
+	pemBlock := &pem.Block{Type: "PRIVATE KEY", Bytes: pkcs8}
+	pemStr := string(pem.EncodeToMemory(pemBlock))
+
+	sum := sha256.Sum256(packed)
+	fingerprint := "SHA256:" + base64.StdEncoding.EncodeToString(sum[:])
+	// OpenSSH strips base64 padding from fingerprints.
+	fingerprint = trimBase64Padding(fingerprint)
+
+	return &KeyPair{
+		PublicKeyOpenSSH: pubOpenSSH,
+		PrivateKeyPEM:    pemStr,
+		PrivateKey:       pkcs8,
+		Fingerprint:      fingerprint,
+		Passphrase:       "", // v1: unencrypted at rest, protected by mode 0600
+	}, nil
+}
+
+// packSSHEd25519PublicKey assembles the SSH wire-format public key blob:
+// length-prefixed "ssh-ed25519" followed by the length-prefixed 32-byte key.
+func packSSHEd25519PublicKey(pub ed25519.PublicKey) []byte {
+	const name = "ssh-ed25519"
+	buf := make([]byte, 0, 4+len(name)+4+len(pub))
+	var lenBuf [4]byte
+	binary.BigEndian.PutUint32(lenBuf[:], uint32(len(name)))
+	buf = append(buf, lenBuf[:]...)
+	buf = append(buf, name...)
+	binary.BigEndian.PutUint32(lenBuf[:], uint32(len(pub)))
+	buf = append(buf, lenBuf[:]...)
+	buf = append(buf, pub...)
+	return buf
+}
+
+// trimBase64Padding strips trailing '=' characters from a base64 string,
+// matching OpenSSH's fingerprint representation.
+func trimBase64Padding(s string) string {
+	for len(s) > 0 && s[len(s)-1] == '=' {
+		s = s[:len(s)-1]
+	}
+	return s
+}
+
+// GenerateTempPassword returns a 32-character random password suitable for
+// use as a Forgejo account's initial password. The password is never logged
+// and is discarded after the CreateAccount call completes.
+func GenerateTempPassword() (string, error) {
+	// Use a printable alphabet that avoids ambiguous characters and Forgejo
+	// reserved characters. 32 chars from a 54-char alphabet gives ~185 bits
+	// of entropy, well above the Forgejo minimum.
+	const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		return "", NewInternalError("temp password rand failed", err)
+	}
+	out := make([]byte, 32)
+	for i, b := range buf {
+		out[i] = alphabet[int(b)%len(alphabet)]
+	}
+	return string(out), nil
+}
+
+// MaskToken returns the last 8 characters of a token prefixed with "****",
+// for safe display in status tables and state files. If the token is shorter
+// than 8 chars, the whole thing is masked.
+func MaskToken(token string) string {
+	if len(token) <= 8 {
+		return "****"
+	}
+	return "****" + token[len(token)-8:]
+}
+
+// ---------------------------------------------------------------------------
+// small helpers
+// ---------------------------------------------------------------------------
+
+// sortAgentsByName sorts a slice of agents in-place by Name. Used everywhere
+// we project a KnownFriends map into a deterministic slice for stable output
+// (dry-run diffs, status tables, test fixtures).
+func sortAgentsByName(agents []*Agent) {
+	// Simple insertion sort: agent counts are tiny (single digits), so the
+	// extra dependency of sort.Slice isn't worth it. Stable, deterministic,
+	// and obvious.
+	for i := 1; i < len(agents); i++ {
+		for j := i; j > 0 && agents[j-1].Name > agents[j].Name; j-- {
+			agents[j-1], agents[j] = agents[j], agents[j-1]
+		}
+	}
+}
+
+// NewInternalError is exported here (rather than above) to keep the error
+// constructors grouped at the bottom of the file for readability.
+func NewInternalError(msg string, cause error) *TypedError {
+	return &TypedError{Kind: ErrKindInternal, Message: msg, Cause: cause}
 }

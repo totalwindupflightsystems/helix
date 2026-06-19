@@ -1,337 +1,438 @@
-// Package identity — Forgejo API client and provisioning logic.
-//
-// This file is the STUB implementation. The contract is complete; the bodies
-// return ErrNotImplemented for every method that hits the network. Real
-// implementation lands after spec review. See specs/agent-identity.md §7
-// for the integration test matrix that must pass before this stub is replaced.
 package identity
 
+// This file defines the Forgejo HTTP client surface. Every method that would
+// touch the network is a stub returning ErrNotImplemented — the goal of v1
+// is to lock down the contract (URLs, request bodies, response types, auth
+// model, rate-limit shape, retry policy) so the real transport can be dropped
+// in without touching callers.
+//
+// What IS implemented here:
+//   - Provisioner configuration + validation
+//   - URL construction (proves the endpoint shapes compile and stringify)
+//   - DryRunMode decision logic
+//   - RateLimiter data structure (token bucket; stubbed Acquire is a no-op)
+//   - Retry policy constants
+//
+// What is NOT implemented (returns ErrNotImplemented):
+//   - CreateUser, GetAccount, RegisterKey, CreateToken, RevokeToken
+//
+// See specs/agent-identity.md §9.2 and §11 for the contract this stub models.
+
 import (
-	"bytes"
-	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
-
-// tokenBucket is a hand-rolled rate limiter (stdlib-only). The real
-// implementation lives in provisioner_bucket.go (out of scope for the
-// stub). Defined here as a named type so the Provisioner compiles.
-//
-// Spec reference: specs/agent-identity.md §7.4 (Rate Limiting).
-type tokenBucket struct {
-	ratePerSec int
-}
-
-func newTokenBucket(ratePerSec int) *tokenBucket {
-	return &tokenBucket{ratePerSec: ratePerSec}
-}
-
-// Wait blocks until a token is available or ctx is cancelled. Stub returns
-// immediately; real impl uses time.Ticker + a buffered channel.
-func (b *tokenBucket) Wait(ctx context.Context) error {
-	return nil
-}
-
-// ErrNotImplemented is returned by every stubbed method. The CLI checks for
-// this and exits with a clear "build not done yet" message rather than a
-// confusing nil-response panic.
-var ErrNotImplemented = errors.New("identity: method not implemented (stub)")
 
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
 
-// ProvisionerConfig holds runtime configuration. All fields are populated
-// from environment variables / CLI flags in cmd/helix-identity/main.go;
-// nothing here may be hardcoded.
-type ProvisionerConfig struct {
-	// ForgejoBaseURL is the root of the Forgejo instance, e.g.
-	// "https://forge.helixloop.dev". No trailing slash.
-	ForgejoBaseURL string
+// DefaultKnownFriendsPath is the canonical location of known-friends.json on
+// the H4F host. It is overridable via --known-friends / HELIX_KNOWN_FRIENDS.
+const DefaultKnownFriendsPath = "/opt/hermes-demo/.hermes/h4f/known-friends.json"
 
-	// AdminToken is a Forgejo admin user's personal access token. Used for
-	// /api/v1/admin/* endpoints. Source: HELIX_FORGEJO_ADMIN_TOKEN env.
+// DefaultSSHKeyDir is the default root for per-agent key material. The
+// syncer creates ~/.helix/keys/<agent>/ beneath this path.
+const DefaultSSHKeyDir = "~/.helix/keys"
+
+// DefaultStatePath is the default location of the idempotency state file.
+const DefaultStatePath = "~/.helix/state.json"
+
+// ProvisionerConfig holds all inputs needed to construct a Provisioner.
+// Every field can be set via CLI flag or env var (see main.go for binding).
+// No field is ever logged in full — Token and BasicAuth secrets are redacted
+// in any String() output.
+type ProvisionerConfig struct {
+	// ForgejoURL is the base URL of the Forgejo instance, e.g.
+	// "https://forgejo.example.com". No trailing slash.
+	ForgejoURL string
+
+	// AdminToken is the Forgejo admin PAT used for /admin/users endpoints.
+	// Sent as "Authorization: token <AdminToken>".
 	AdminToken string
 
-	// HTTPClient allows tests to inject a mock. Defaults to a stdlib client
-	// with a 30s timeout.
-	HTTPClient *http.Client
+	// KnownFriendsPath is the path to known-friends.json.
+	KnownFriendsPath string
 
-	// RateLimitPerSec is the conservative ceiling for outbound API calls.
-	// Forgejo's default rate limit is 10 req/s per token; we stay below it.
-	RateLimitPerSec int
+	// SSHKeyDir is the root directory for per-agent SSH key material.
+	SSHKeyDir string
 
-	// DryRun short-circuits all mutating requests. The provisioner still
-	// validates inputs and prints intended actions to the logger.
+	// StatePath is the path to the idempotency state file.
+	StatePath string
+
+	// DryRun, when true, causes every transport call to short-circuit and
+	// emit a "[DRY RUN] METHOD /path {body}" line instead of hitting Forgejo.
 	DryRun bool
 
-	// SSHKeyDir is where SSH keypairs are persisted. Created if absent.
-	SSHKeyDir string
+	// Verbose enables per-call timing + request logging to the syncer's
+	// logger.
+	Verbose bool
+
+	// HTTPTimeout caps a single HTTP request (excluding retries).
+	HTTPTimeout time.Duration
+
+	// RequestRate is the steady-state request rate (requests per second).
+	RequestRate int
+
+	// BurstRate is the token-bucket burst size.
+	BurstRate int
 }
 
-// Validate returns nil if cfg is usable, or a descriptive error otherwise.
-func (c *ProvisionerConfig) Validate() error {
-	if c.ForgejoBaseURL == "" {
-		return errors.New("identity: ForgejoBaseURL is required (HELIX_FORGEJO_URL)")
+// DefaultProvisionerConfig returns a config populated with the documented
+// defaults. Callers override the specific fields they care about.
+func DefaultProvisionerConfig() ProvisionerConfig {
+	return ProvisionerConfig{
+		ForgejoURL:       "",
+		AdminToken:       "",
+		KnownFriendsPath: DefaultKnownFriendsPath,
+		SSHKeyDir:        DefaultSSHKeyDir,
+		StatePath:        DefaultStatePath,
+		DryRun:           false,
+		Verbose:          false,
+		HTTPTimeout:      30 * time.Second,
+		RequestRate:      10,
+		BurstRate:        2,
 	}
-	if _, err := url.Parse(c.ForgejoBaseURL); err != nil {
-		return fmt.Errorf("identity: ForgejoBaseURL invalid: %w", err)
+}
+
+// Validate enforces that the config has everything needed to talk to Forgejo.
+// It returns a TypedError of kind config so the CLI can exit with code 3.
+//
+// Note: this only checks the admin-provisioning fields. Per-agent BasicAuth
+// credentials (username + temp password) are validated at use time inside
+// RegisterKey / CreateToken, because they are agent-specific.
+func (c *ProvisionerConfig) Validate() error {
+	if c.ForgejoURL == "" {
+		return NewConfigError(
+			"FORGEJO_URL not set (use --forgejo-url or FORGEJO_URL env var)", nil)
+	}
+	if _, err := url.Parse(c.ForgejoURL); err != nil {
+		return NewConfigError(fmt.Sprintf("invalid ForgejoURL %q: %v", c.ForgejoURL, err), nil)
 	}
 	if c.AdminToken == "" {
-		return errors.New("identity: AdminToken is required (HELIX_FORGEJO_ADMIN_TOKEN)")
+		return NewConfigError(
+			"FORGEJO_ADMIN_TOKEN not set (use --admin-token or FORGEJO_ADMIN_TOKEN env var)", nil)
 	}
-	if c.RateLimitPerSec <= 0 {
-		c.RateLimitPerSec = 5
+	if c.KnownFriendsPath == "" {
+		return NewConfigError("known-friends path is empty", nil)
 	}
-	if c.HTTPClient == nil {
-		c.HTTPClient = &http.Client{Timeout: 30 * time.Second}
+	if c.HTTPTimeout <= 0 {
+		return NewConfigError("HTTPTimeout must be positive", nil)
+	}
+	if c.RequestRate <= 0 {
+		return NewConfigError("RequestRate must be positive", nil)
 	}
 	return nil
 }
 
 // ---------------------------------------------------------------------------
-// Provisioner
+// Rate limiter (token bucket, hand-rolled — no x/time/rate dependency)
 // ---------------------------------------------------------------------------
 
-// Provisioner is the Forgejo-side half of helix-identity. It owns the HTTP
-// client, rate limiter, and dry-run flag. The Syncer (syncer.go) drives it.
-type Provisioner struct {
-	cfg     ProvisionerConfig
-	limiter *tokenBucket
+// RateLimiter is a hand-rolled token bucket. v1's Acquire is a no-op stub
+// (returns immediately) because the transport itself is stubbed. The real
+// implementation will use time.Ticker + a buffered channel of size Burst.
+//
+// The structure is defined here so the Provisioner can hold one and callers
+// can see the rate/burst policy without depending on a real implementation.
+type RateLimiter struct {
+	rate   int           // tokens per second
+	burst  int           // max tokens held at once
+	tokens chan struct{} // buffered channel, capacity = burst
 }
 
-// NewProvisioner constructs a Provisioner. Returns an error if cfg.Validate
-// fails — callers should treat this as a hard CLI error (exit 2).
+// NewRateLimiter constructs a token bucket. The channel is filled with
+// `burst` tokens initially; the real transport drains one per request and a
+// goroutine refills at `rate` per second.
+func NewRateLimiter(rate, burst int) *RateLimiter {
+	rl := &RateLimiter{
+		rate:   rate,
+		burst:  burst,
+		tokens: make(chan struct{}, burst),
+	}
+	for i := 0; i < burst; i++ {
+		rl.tokens <- struct{}{}
+	}
+	return rl
+}
+
+// Acquire blocks until a token is available. In v1 this is a no-op because
+// no real requests are made; the structure exists to make the contract
+// explicit and to make the real implementation a one-method swap.
+func (rl *RateLimiter) Acquire() {
+	if rl == nil || rl.tokens == nil {
+		return
+	}
+	select {
+	case <-rl.tokens:
+		return
+	default:
+		return // v1 stub: never block
+	}
+}
+
+// Rate returns the configured steady-state request rate.
+func (rl *RateLimiter) Rate() int { return rl.rate }
+
+// Burst returns the configured burst size.
+func (rl *RateLimiter) Burst() int { return rl.burst }
+
+// ---------------------------------------------------------------------------
+// Retry policy
+// ---------------------------------------------------------------------------
+
+// RetryPolicy describes how the transport retries transient failures. v1
+// stores the policy; the real transport consults it. See §11.3 of the spec.
+type RetryPolicy struct {
+	// MaxAttempts is the total number of attempts (1 = no retry).
+	MaxAttempts int
+
+	// InitialBackoff is the first sleep on a retryable failure.
+	InitialBackoff time.Duration
+
+	// MaxBackoff caps the exponential backoff.
+	MaxBackoff time.Duration
+
+	// Multiplier is applied to the previous backoff on each retry.
+	Multiplier float64
+}
+
+// DefaultRetryPolicy returns the policy documented in §11.3:
+//   - connection refused → exp backoff 1s, 2s, 4s ... cap 30s
+//   - HTTP 429 → honor Retry-After header (handled in transport, not here)
+//   - HTTP 5xx → up to 3 retries with 2s spacing
+//
+// The policy below covers the connection-refused and 5xx cases; 429 is
+// special-cased in the transport because it carries a server-provided delay.
+func DefaultRetryPolicy() RetryPolicy {
+	return RetryPolicy{
+		MaxAttempts:    4, // 1 initial + 3 retries
+		InitialBackoff: 1 * time.Second,
+		MaxBackoff:     30 * time.Second,
+		Multiplier:     2.0,
+	}
+}
+
+// BackoffFor returns the sleep duration before the (attempt+1)-th try, where
+// attempt is 0-indexed. Returns zero once attempts are exhausted.
+func (p RetryPolicy) BackoffFor(attempt int) time.Duration {
+	if attempt <= 0 || attempt >= p.MaxAttempts {
+		return 0
+	}
+	d := p.InitialBackoff
+	for i := 1; i < attempt; i++ {
+		d = time.Duration(float64(d) * p.Multiplier)
+		if d > p.MaxBackoff {
+			d = p.MaxBackoff
+			break
+		}
+	}
+	return d
+}
+
+// ---------------------------------------------------------------------------
+// Provisioner — the Forgejo HTTP client surface
+// ---------------------------------------------------------------------------
+
+// Provisioner is the thin HTTP client over the Forgejo admin + user APIs.
+// It owns an *http.Client (so connection pooling + TLS config live in one
+// place), a RateLimiter, and a RetryPolicy. Every public method maps 1:1 to
+// a documented Forgejo endpoint (§9.2).
+type Provisioner struct {
+	cfg     ProvisionerConfig
+	http    *http.Client
+	limiter *RateLimiter
+	retry   RetryPolicy
+
+	// redactedBase is ForgejoURL with any userinfo stripped, safe to log.
+	redactedBase string
+}
+
+// NewProvisioner constructs a Provisioner. It does NOT make any network
+// calls — configuration validation is the only side effect. The returned
+// Provisioner is safe to share across goroutines once constructed because
+// *http.Client is goroutine-safe.
 func NewProvisioner(cfg ProvisionerConfig) (*Provisioner, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
-	return &Provisioner{
-		cfg:     cfg,
-		limiter: newTokenBucket(cfg.RateLimitPerSec),
-	}, nil
+	p := &Provisioner{
+		cfg:          cfg,
+		http:         &http.Client{Timeout: cfg.HTTPTimeout},
+		limiter:      NewRateLimiter(cfg.RequestRate, cfg.BurstRate),
+		retry:        DefaultRetryPolicy(),
+		redactedBase: redactURL(cfg.ForgejoURL),
+	}
+	return p, nil
 }
 
-// Provision performs the full create-or-update flow for a single agent.
-// It is idempotent: re-running on an already-provisioned agent returns
-// Action=Unchanged (or Action=Updated if any field drifted).
-//
-// Order of operations:
-//
-//  1. GET /api/v1/users/{name}  — does the user already exist?
-//  2. POST /api/v1/admin/users  — create if missing
-//  3. PATCH /api/v1/admin/users/{name} — sync bio/website/email if drifted
-//  4. POST /api/v1/user/keys   — add SSH public key (idempotent by fingerprint)
-//  5. BasicAuth as the new user → POST /api/v1/users/{name}/tokens
-//     (mints the long-lived PAT; temp password is discarded)
-//
-// On any failure mid-flow, the function returns a partial ProvisioningResult
-// with Action=ActionFailed and Error populated. The Syncer decides whether
-// to continue with the next agent.
-func (p *Provisioner) Provision(ctx context.Context, a *Agent) (*ProvisioningResult, error) {
-	res := &ProvisioningResult{
-		Agent:  a.Name,
-		Action: ActionSkipped,
-	}
-	start := time.Now()
-	defer func() { res.Duration = time.Since(start) }()
+// Config returns a copy of the provisioner's config (for inspection only;
+// callers should not mutate it after construction).
+func (p *Provisioner) Config() ProvisionerConfig { return p.cfg }
 
-	if a == nil || a.Name == "" {
-		res.Action = ActionFailed
-		res.Error = "nil agent or empty name"
-		return res, errors.New(res.Error)
-	}
-	if !a.Status.IsValid() {
-		res.Action = ActionFailed
-		res.Error = fmt.Sprintf("invalid status %q", a.Status)
-		return res, errors.New(res.Error)
-	}
+// DryRun reports whether the provisioner will short-circuit all network calls.
+func (p *Provisioner) DryRun() bool { return p.cfg.DryRun }
 
-	// Dry-run short-circuit. We still want to validate inputs and print
-	// intended actions, but no HTTP calls.
+// BaseURL returns the (redacted) Forgejo base URL, safe for logging.
+func (p *Provisioner) BaseURL() string { return p.redactedBase }
+
+// ---------------------------------------------------------------------------
+// URL construction — proves the endpoint shapes stringify correctly
+// ---------------------------------------------------------------------------
+
+// adminUsersURL is POST/GET /api/v1/admin/users[/{name}].
+func (p *Provisioner) adminUsersURL(name string) string {
+	base := strings.TrimRight(p.cfg.ForgejoURL, "/")
+	if name == "" {
+		return base + "/api/v1/admin/users"
+	}
+	return base + "/api/v1/admin/users/" + url.PathEscape(name)
+}
+
+// userKeysURL is POST /api/v1/user/keys (authenticated as the agent).
+func (p *Provisioner) userKeysURL() string {
+	return strings.TrimRight(p.cfg.ForgejoURL, "/") + "/api/v1/user/keys"
+}
+
+// userTokensURL is POST /api/v1/users/{name}/tokens (BasicAuth as admin).
+func (p *Provisioner) userTokensURL(name string) string {
+	return strings.TrimRight(p.cfg.ForgejoURL, "/") + "/api/v1/users/" +
+		url.PathEscape(name) + "/tokens"
+}
+
+// userTokenURL is DELETE /api/v1/users/{name}/tokens/{id} (BasicAuth).
+func (p *Provisioner) userTokenURL(name string, id int64) string {
+	return strings.TrimRight(p.cfg.ForgejoURL, "/") + "/api/v1/users/" +
+		url.PathEscape(name) + "/tokens/" + fmt.Sprintf("%d", id)
+}
+
+// ---------------------------------------------------------------------------
+// Endpoint stubs — all return ErrNotImplemented in v1
+// ---------------------------------------------------------------------------
+
+// GetAccount calls GET /api/v1/admin/users/{name}. Returns the account if it
+// exists, or (nil, nil) if it does not (404 is treated as "not found", not
+// an error, so callers can use this as an idempotency probe).
+//
+// Auth: admin token in Authorization header.
+func (p *Provisioner) GetAccount(name string) (*ForgejoAccount, error) {
+	_ = p.adminUsersURL(name) // prove the URL stringifies
 	if p.cfg.DryRun {
-		res.Action = ActionSkipped
-		return res, nil // nil error: dry-run is a "successful preview"
+		return nil, nil // dry-run: assume not-yet-provisioned
 	}
-
-	// Steps 1–5 are stubbed. Each returns ErrNotImplemented until the
-	// build pass lands.
-	if _, err := p.userExists(ctx, a.Name); err != nil {
-		res.Action = ActionFailed
-		res.Error = err.Error()
-		return res, err
-	}
-	res.Action = ActionCreated
-	return res, ErrNotImplemented
+	return nil, ErrNotImplemented
 }
 
-// Deprovision revokes the agent's PAT and marks the Forgejo account inactive.
-// SSH keys are archived (renamed to *.offboarded) rather than deleted, so we
-// can prove the agent's git history remains attributable.
+// CreateUser calls POST /api/v1/admin/users. On success returns the newly
+// created ForgejoAccount. A 409 Conflict is mapped to a TypedError of kind
+// API so the syncer can downgrade it to ActionUnchanged rather than failing.
 //
-// Endpoints used:
-//
-//	DELETE /api/v1/users/{name}/tokens/{id}   — revoke each PAT
-//	PATCH  /api/v1/admin/users/{name}        — set active=false
-//	GET    /api/v1/users/{name}/keys         — list keys to archive
-//
-// We do NOT call DELETE /api/v1/admin/users/{name} in v1 — historical PRs
-// and comments would orphan. See specs/agent-identity.md §6.5 for the
-// deprovisioning lifecycle rationale.
-func (p *Provisioner) Deprovision(ctx context.Context, a *Agent) (*ProvisioningResult, error) {
-	res := &ProvisioningResult{
-		Agent:  a.Name,
-		Action: ActionDeprovisioned,
+// Auth: admin token in Authorization header.
+func (p *Provisioner) CreateUser(req *CreateUserRequest) (*ForgejoAccount, error) {
+	_ = p.adminUsersURL("") // POST target
+	if req == nil {
+		return nil, NewConfigError("CreateUser: nil request", nil)
 	}
-	start := time.Now()
-	defer func() { res.Duration = time.Since(start) }()
-
 	if p.cfg.DryRun {
-		return res, nil
+		return &ForgejoAccount{
+			Login: req.Username, Email: req.Email, FullName: req.FullName,
+		}, nil
 	}
-	return res, ErrNotImplemented
-}
-
-// Keygen generates a fresh ed25519 keypair, persists the encrypted PEM + the
-// OpenSSH public key line, and returns the KeyPair. Does NOT register the key
-// with Forgejo — that is a separate step in Provision.Provision.
-//
-// File layout under SSHKeyDir:
-//
-//	<name>.pub          — OpenSSH authorized_keys line
-//	<name>.key.pem      — PKCS#8 PEM (unencrypted in v1; see types.go)
-//	<name>.fingerprint  — SHA256:... fingerprint
-//
-// In v2 we will add <name>.key.pem.enc with passphrase-derived AES — out
-// of scope for v1.
-func (p *Provisioner) Keygen(a *Agent) (*KeyPair, error) {
-	if a == nil || a.Name == "" {
-		return nil, errors.New("identity: nil agent or empty name")
-	}
-	// Real implementation calls GenerateKeyPair (defined later in this
-	// file once the spec is approved) and writes the three files.
 	return nil, ErrNotImplemented
 }
+
+// RegisterKey calls POST /api/v1/user/keys. The key is registered as the
+// agent, authenticated via HTTP Basic Auth (agent username + temp password).
+// The admin token cannot register keys on behalf of a user — Forgejo's
+// user-key endpoint requires user-scoped credentials.
+//
+// Auth: HTTP Basic Auth as the agent (username + tempPassword).
+func (p *Provisioner) RegisterKey(agentName, tempPassword, publicKey, title string) (*SSHKey, error) {
+	_ = p.userKeysURL()
+	if agentName == "" {
+		return nil, NewConfigError("RegisterKey: empty agent name", nil)
+	}
+	// Dry-run short-circuits BEFORE credential validation so operators can
+	// preview the full call sequence without supplying real credentials.
+	if p.cfg.DryRun {
+		return &SSHKey{Key: publicKey, Title: title}, nil
+	}
+	if tempPassword == "" {
+		return nil, NewConfigError(
+			fmt.Sprintf("RegisterKey(%s): missing temp password", agentName), nil)
+	}
+	return nil, ErrNotImplemented
+}
+
+// CreateToken calls POST /api/v1/users/{name}/tokens. Returns the new PAT;
+// the caller MUST capture .Token immediately — Forgejo only returns the
+// plaintext token on creation. Auth: HTTP Basic Auth as the admin user
+// (NOT the admin token — the token-create endpoint requires BasicAuth).
+//
+// Note: the Forgejo admin token and the admin user's password are distinct
+// credentials. The CLI surfaces both via env vars; the syncer holds the
+// admin password in memory only for the duration of the PAT creation call.
+func (p *Provisioner) CreateToken(agentName, adminUser, adminPassword string, req *CreateTokenRequest) (*AccessToken, error) {
+	_ = p.userTokensURL(agentName)
+	if agentName == "" {
+		return nil, NewConfigError("CreateToken: empty agent name", nil)
+	}
+	if req == nil {
+		return nil, NewConfigError("CreateToken: nil request", nil)
+	}
+	// Dry-run short-circuits BEFORE credential validation — see RegisterKey.
+	if p.cfg.DryRun {
+		return &AccessToken{Name: req.Name, Scopes: req.Scopes}, nil
+	}
+	if adminUser == "" || adminPassword == "" {
+		return nil, NewConfigError(
+			fmt.Sprintf("CreateToken(%s): missing admin BasicAuth credentials", agentName), nil)
+	}
+	return nil, ErrNotImplemented
+}
+
+// RevokeToken calls DELETE /api/v1/users/{name}/tokens/{id}. Returns nil on
+// success (204 No Content). Used by the deprovision path when an agent is
+// marked offboarded.
+//
+// Auth: HTTP Basic Auth as the admin user.
+func (p *Provisioner) RevokeToken(agentName, adminUser, adminPassword string, tokenID int64) error {
+	_ = p.userTokenURL(agentName, tokenID)
+	if agentName == "" {
+		return NewConfigError("RevokeToken: empty agent name", nil)
+	}
+	if tokenID <= 0 {
+		return NewConfigError(
+			fmt.Sprintf("RevokeToken(%s): invalid token id %d", agentName, tokenID), nil)
+	}
+	// Dry-run short-circuits BEFORE credential validation — see RegisterKey.
+	if p.cfg.DryRun {
+		return nil
+	}
+	_ = adminUser
+	_ = adminPassword
+	return ErrNotImplemented
+}
+
+// Close releases any resources held by the provisioner. In v1 it is a no-op
+// because there is no transport goroutine to stop. The method exists so
+// callers can defer it without conditional code.
+func (p *Provisioner) Close() error { return nil }
 
 // ---------------------------------------------------------------------------
-// Forgejo API methods (one per documented endpoint)
+// URL redaction helper
 // ---------------------------------------------------------------------------
 
-// userExists returns (true, nil) if the user exists in Forgejo,
-// (false, nil) if a 404 came back, and (false, err) for any other failure.
-//
-// Endpoint: GET /api/v1/users/{name}
-// Auth:     none (public lookup; admin token still works fine)
-func (p *Provisioner) userExists(ctx context.Context, name string) (bool, error) {
-	return false, ErrNotImplemented
-}
-
-// createUser POSTs to /api/v1/admin/users. See CreateUserRequest for the
-// payload. On success, returns the new ForgejoAccount.
-//
-// Auth: admin token required (BasicAuth as admin user OR ?access_token=
-// query param OR Authorization: token <admin-pat> header — we use header).
-func (p *Provisioner) createUser(ctx context.Context, req CreateUserRequest) (*ForgejoAccount, error) {
-	return nil, ErrNotImplemented
-}
-
-// updateUser PATCHes /api/v1/admin/users/{name} to sync bio, website,
-// location, full_name. We only call this when fields drift — see
-// Provisioner.Provision step 3.
-func (p *Provisioner) updateUser(ctx context.Context, name string, req CreateUserRequest) (*ForgejoAccount, error) {
-	return nil, ErrNotImplemented
-}
-
-// addSSHKey POSTs to /api/v1/user/keys (auth: as the agent user, or admin).
-// We use admin auth here to keep the flow single-token.
-//
-// Idempotency: list keys first, compare fingerprint, skip if present.
-//   GET  /api/v1/users/{name}/keys
-//   POST /api/v1/users/{name}/keys   (or /api/v1/user/keys as admin)
-func (p *Provisioner) addSSHKey(ctx context.Context, name string, pub OpenSSHKey) (*SSHKey, error) {
-	return nil, ErrNotImplemented
-}
-
-// mintToken uses BasicAuth (username + temp password) to call
-// /api/v1/users/{name}/tokens. The response body contains the actual token
-// string in the `token` field — Forgejo returns this ONLY on creation.
-//
-// After this call returns successfully, the temp password is no longer
-// needed and may be forgotten. We do not log or persist it.
-func (p *Provisioner) mintToken(ctx context.Context, name, tempPassword string, scopes []string) (*AccessToken, error) {
-	return nil, ErrNotImplemented
-}
-
-// ---------------------------------------------------------------------------
-// HTTP helper (real impl)
-// ---------------------------------------------------------------------------
-
-// doRequest is the single chokepoint for all Forgejo HTTP calls. The stub
-// does not call it; real impl uses it everywhere. It applies:
-//   - rate limiting via p.limiter
-//   - admin token auth header
-//   - ctx-aware cancellation
-//   - JSON encode/decode
-//   - structured error wrapping (status code + body excerpt)
-func (p *Provisioner) doRequest(ctx context.Context, method, path string, body, out any) (*http.Response, error) {
-	if err := p.limiter.Wait(ctx); err != nil {
-		return nil, fmt.Errorf("identity: rate limiter: %w", err)
-	}
-	full := p.cfg.ForgejoBaseURL + path
-	var reader io.Reader
-	if body != nil {
-		buf, err := json.Marshal(body)
-		if err != nil {
-			return nil, fmt.Errorf("identity: marshal body: %w", err)
-		}
-		reader = bytes.NewReader(buf)
-	}
-	req, err := http.NewRequestWithContext(ctx, method, full, reader)
+// redactURL strips any userinfo from a URL so it is safe to log. If parsing
+// fails, the original is returned (better to log something than nothing).
+func redactURL(raw string) string {
+	u, err := url.Parse(raw)
 	if err != nil {
-		return nil, fmt.Errorf("identity: build request: %w", err)
+		return raw
 	}
-	req.Header.Set("Authorization", "token "+p.cfg.AdminToken)
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-	req.Header.Set("Accept", "application/json")
-
-	// Stub: do not actually send. Real impl returns client.Do(req) and
-	// decodes out if non-nil.
-	return nil, ErrNotImplemented
+	u.User = nil
+	return u.String()
 }
-
-// ---------------------------------------------------------------------------
-// OpenSSH public key marshaling (stdlib-only)
-// ---------------------------------------------------------------------------
-
-// OpenSSHKey is a typed wrapper around the marshaled public key bytes,
-// preventing accidental misuse of raw ed25519 keys as authorized_keys lines.
-type OpenSSHKey struct {
-	// Line is the full authorized_keys entry, e.g.
-	//   "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... helix-identity\n"
-	Line string
-
-	// Fingerprint is the SHA256:... fingerprint, computed locally so we
-	// don't need a round-trip to compare against Forgejo's listing.
-	Fingerprint string
-}
-
-// sshKeyTypeEd25519 is the SSH wire-format key type identifier. Per RFC 8709.
-const sshKeyTypeEd25519 = "ssh-ed25519"
-
-// sshEd25519KeyLen is the fixed public-key length for ed25519 (32 bytes).
-const sshEd25519KeyLen = 32
-
-// avatarSeed is a deterministic short string derived from an agent name,
-// used as the identicon seed in Forgejo's avatar generation. Forgejo
-// generates identicons server-side from the username, so we just pass the
-// username — this constant exists only to document the intent.
-//
-// See specs/agent-identity.md §4.4 (Avatar Generation).
-const avatarSeed = "identicon"

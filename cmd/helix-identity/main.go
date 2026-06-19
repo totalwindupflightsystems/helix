@@ -1,545 +1,512 @@
-// Command helix-identity provisions and manages Forgejo accounts for Helix
-// agents. See specs/agent-identity.md for the full specification.
+// Command helix-identity provisions Helix agent accounts in a self-hosted
+// Forgejo instance, keyed off known-friends.json.
 //
-// Usage:
+// Subcommands:
 //
-//	helix identity sync                          # sync all active agents
-//	helix identity provision <name>              # provision one agent
-//	helix identity deprovision <name>            # offboard one agent
-//	helix identity status                        # show current state
-//	helix identity keygen <name>                 # mint a fresh SSH keypair
+//	helix identity sync         Provision all active agents
+//	helix identity provision N  Provision a single named agent
+//	helix identity deprovision N  Revoke an agent's PAT, archive keys
+//	helix identity status       Show provisioned agent status table
+//	helix identity keygen N     Generate a fresh ED25519 keypair (no Forgejo)
 //
-// All commands accept the flags documented in newRootCmd. Secrets are read
-// exclusively from environment variables — never CLI args.
+// Every flag has a matching environment variable (documented below). No
+// credentials are ever read from or written to disk by this binary — the
+// only persisted secrets are the per-agent private keys, written by the
+// syncer with mode 0600 under ~/.helix/keys/<agent>/.
 package main
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
+	"strings"
 	"text/tabwriter"
 	"time"
 
-	"github.com/spf13/cobra"
-
 	"github.com/helixloop/helix/pkg/identity"
+	"github.com/spf13/cobra"
 )
 
-// Version is set at build time via -ldflags "-X main.Version=...". Default
-// for `go run` is "dev".
-var Version = "dev"
+// envVar documentation: every flag below resolves from CLI > env > default.
+//
+//	FORGEJO_URL              → --forgejo-url
+//	FORGEJO_ADMIN_TOKEN      → --admin-token
+//	FORGEJO_ADMIN_USER       → --admin-user        (BasicAuth for token create/revoke)
+//	FORGEJO_ADMIN_PASSWORD   → --admin-password    (BasicAuth for token create/revoke)
+//	HELIX_KNOWN_FRIENDS      → --known-friends
+//	HELIX_SSH_KEY_DIR        → --ssh-key-dir
+//	HELIX_STATE_PATH         → --state-path
 
-// Global flags shared by every subcommand. Bound to env vars in PersistentPreRun.
-var (
-	flagForgejoURL    string
-	flagAdminToken    string
-	flagKnownFriends  string
-	flagSSHKeyDir     string
-	flagDryRun        bool
-	flagVerbose       bool
-	flagForgejoInsecure bool
-)
-
-// Exit codes — chosen to be stable across releases so cron jobs and other
-// orchestrators can rely on them.
 const (
-	exitOK           = 0
-	exitUsage        = 2 // cobra arg/flag errors
-	exitConfig       = 3 // env var missing or invalid
-	exitPartialSync  = 4 // one or more agents failed during sync
-	exitNotImpl      = 5 // stub code path hit; CLI is not yet wired to real API
-	exitInternal     = 1 // unexpected panic or programmer error
+	envForgejoURL    = "FORGEJO_URL"
+	envAdminToken    = "FORGEJO_ADMIN_TOKEN"
+	envAdminUser     = "FORGEJO_ADMIN_USER"
+	envAdminPassword = "FORGEJO_ADMIN_PASSWORD"
+	envKnownFriends  = "HELIX_KNOWN_FRIENDS"
+	envSSHKeyDir     = "HELIX_SSH_KEY_DIR"
+	envStatePath     = "HELIX_STATE_PATH"
 )
+
+// flagHolder keeps every CLI flag in one struct so subcommand funcs can
+// build a ProvisionerConfig without juggling 10 closure variables. Cobra
+// binds flags into these fields via cmd.Flags().*Var.
+type flagHolder struct {
+	forgejoURL    string
+	adminToken    string
+	adminUser     string
+	adminPassword string
+	knownFriends  string
+	sshKeyDir     string
+	statePath     string
+	dryRun        bool
+	verbose       bool
+}
+
+// rootFlags is the singleton flag holder populated by Cobra. Subcommands
+// read from it via buildConfig().
+var rootFlags = &flagHolder{}
+
+// ---------------------------------------------------------------------------
+// Cobra command tree
+// ---------------------------------------------------------------------------
 
 func main() {
-	if err := newRootCmd().Execute(); err != nil {
-		os.Exit(exitInternal)
+	rootCmd := &cobra.Command{
+		Use:   "helix-identity",
+		Short: "Provision Helix agent identities in Forgejo",
+		Long: `helix-identity provisions and manages Helix agent accounts in a
+self-hosted Forgejo instance. Agents are sourced from known-friends.json;
+each active agent gets a Forgejo account, an ED25519 SSH keypair, and a
+scoped personal access token (PAT).
+
+All credentials are read from environment variables or flags — none are
+ever written to disk beyond the per-agent private keys under
+~/.helix/keys/<agent>/ (mode 0600).
+
+This is a v1 stub: Forgejo transport methods return ErrNotImplemented.
+The CLI, flag parsing, key generation, state management, and dry-run logic
+are all live and exercisable without a Forgejo instance.`,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	rootCmd.PersistentFlags().StringVar(&rootFlags.forgejoURL, "forgejo-url",
+		envOr(envForgejoURL, ""),
+		"Forgejo base URL (env: "+envForgejoURL+")")
+	rootCmd.PersistentFlags().StringVar(&rootFlags.adminToken, "admin-token",
+		envOr(envAdminToken, ""),
+		"Forgejo admin token (env: "+envAdminToken+")")
+	rootCmd.PersistentFlags().StringVar(&rootFlags.adminUser, "admin-user",
+		envOr(envAdminUser, ""),
+		"Forgejo admin username for BasicAuth token ops (env: "+envAdminUser+")")
+	rootCmd.PersistentFlags().StringVar(&rootFlags.adminPassword, "admin-password",
+		envOr(envAdminPassword, ""),
+		"Forgejo admin password for BasicAuth token ops (env: "+envAdminPassword+")")
+	rootCmd.PersistentFlags().StringVar(&rootFlags.knownFriends, "known-friends",
+		envOr(envKnownFriends, identity.DefaultKnownFriendsPath),
+		"path to known-friends.json (env: "+envKnownFriends+")")
+	rootCmd.PersistentFlags().StringVar(&rootFlags.sshKeyDir, "ssh-key-dir",
+		envOr(envSSHKeyDir, identity.DefaultSSHKeyDir),
+		"root directory for per-agent SSH keys (env: "+envSSHKeyDir+")")
+	rootCmd.PersistentFlags().StringVar(&rootFlags.statePath, "state-path",
+		envOr(envStatePath, identity.DefaultStatePath),
+		"path to idempotency state file (env: "+envStatePath+")")
+	rootCmd.PersistentFlags().BoolVar(&rootFlags.dryRun, "dry-run", false,
+		"simulate all operations without touching Forgejo or the filesystem")
+	rootCmd.PersistentFlags().BoolVarP(&rootFlags.verbose, "verbose", "v", false,
+		"log every API call with timing")
+
+	rootCmd.AddCommand(
+		newSyncCmd(),
+		newProvisionCmd(),
+		newDeprovisionCmd(),
+		newStatusCmd(),
+		newKeygenCmd(),
+	)
+
+	if err := rootCmd.Execute(); err != nil {
+		// Map typed errors to documented exit codes; unknown → ExitGeneral.
+		if te, ok := err.(*identity.TypedError); ok {
+			fmt.Fprintf(os.Stderr, "ERROR: %s\n", te.Error())
+			os.Exit(te.ExitCode())
+		}
+		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
+		os.Exit(identity.ExitGeneral)
 	}
 }
 
 // ---------------------------------------------------------------------------
-// Root command
+// sync
 // ---------------------------------------------------------------------------
 
-func newRootCmd() *cobra.Command {
-	root := &cobra.Command{
-		Use:   "helix",
-		Short: "Helix — agent-first code platform",
-		Long: `helix is the CLI entry point for the Helix platform.
+func newSyncCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "sync",
+		Short: "Provision all active agents from known-friends.json",
+		Long: `Reads known-friends.json and provisions every active agent:
+creates the Forgejo account, generates an ED25519 keypair, registers the
+public key, and mints a scoped PAT. Offboarded agents have their PATs
+revoked and keys archived.
 
-The identity subcommand provisions and manages Forgejo accounts for
-Helix agents. All other Helix subsystems (cost estimator, PR negotiation,
-prompt registry, agent marketplace) will land as additional subcommands
-in future releases.
-
-Version: ` + Version,
-		SilenceUsage:  true, // don't dump usage on every error
-		SilenceErrors: true, // we print errors ourselves for stable formatting
+Safe to re-run: existing accounts are detected and skipped (idempotent).`,
+		RunE: runSync,
 	}
-
-	root.PersistentFlags().StringVar(&flagForgejoURL, "forgejo-url",
-		envOr("HELIX_FORGEJO_URL", ""),
-		"Forgejo base URL (e.g. https://forge.helixloop.dev). "+
-			"Env: HELIX_FORGEJO_URL")
-	root.PersistentFlags().StringVar(&flagAdminToken, "admin-token",
-		envOr("HELIX_FORGEJO_ADMIN_TOKEN", ""),
-		"Admin personal access token for /api/v1/admin/* endpoints. "+
-			"Env: HELIX_FORGEJO_ADMIN_TOKEN. NEVER pass on the CLI in shared envs.")
-	root.PersistentFlags().StringVar(&flagKnownFriends, "known-friends",
-		envOr("HELIX_KNOWN_FRIENDS_PATH", "/opt/hermes-demo/.hermes/h4f/known-friends.json"),
-		"Path to H4F known-friends.json. "+
-			"Env: HELIX_KNOWN_FRIENDS_PATH")
-	root.PersistentFlags().StringVar(&flagSSHKeyDir, "ssh-key-dir",
-		envOr("HELIX_SSH_KEY_DIR", "/var/lib/helix/ssh-keys"),
-		"Directory where SSH keypairs are persisted. "+
-			"Env: HELIX_SSH_KEY_DIR")
-	root.PersistentFlags().BoolVar(&flagDryRun, "dry-run", false,
-		"Print intended actions; make no Forgejo API calls.")
-	root.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false,
-		"Verbose logging.")
-	root.PersistentFlags().BoolVar(&flagForgejoInsecure, "forgejo-insecure", false,
-		"Skip TLS verification on Forgejo calls. DEV ONLY. "+
-			"Env: HELIX_FORGEJO_INSECURE")
-
-	root.AddCommand(newIdentityCmd())
-	return root
 }
 
-// envOr returns os.Getenv(key) if set and non-empty, else fallback.
-func envOr(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
+func runSync(cmd *cobra.Command, args []string) error {
+	cfg, err := buildConfig()
+	if err != nil {
+		return err
+	}
+	kf, err := identity.LoadKnownFriends(cfg.KnownFriendsPath)
+	if err != nil {
+		return err
+	}
+	if len(kf.Agents) == 0 {
+		fmt.Println("NO_AGENTS: known-friends.json contains no agents")
+		return nil
+	}
+	syncer, err := identity.NewSyncer(cfg, nil)
+	if err != nil {
+		return err
+	}
+	defer syncer.Provisioner().Close()
+
+	results, err := syncer.Sync(kf, identity.SyncOptions{
+		AdminUser:     rootFlags.adminUser,
+		AdminPassword: rootFlags.adminPassword,
+	})
+
+	if cfg.DryRun {
+		renderDryRun(kf)
+	}
+	renderResultsTable(results)
+
+	// Even on partial failure we printed the table; surface the error so
+	// main() maps it to an exit code.
+	return err
+}
+
+// ---------------------------------------------------------------------------
+// provision <name>
+// ---------------------------------------------------------------------------
+
+func newProvisionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "provision <name>",
+		Short: "Provision a single named agent",
+		Args:  cobra.ExactArgs(1),
+		RunE:  runProvision,
+	}
+}
+
+func runProvision(cmd *cobra.Command, args []string) error {
+	cfg, err := buildConfig()
+	if err != nil {
+		return err
+	}
+	name := args[0]
+	kf, err := identity.LoadKnownFriends(cfg.KnownFriendsPath)
+	if err != nil {
+		return err
+	}
+	agent, ok := kf.Agents[name]
+	if !ok || agent == nil {
+		return identity.NewConfigError(
+			fmt.Sprintf("agent %q not found in %s", name, cfg.KnownFriendsPath), nil)
+	}
+	if agent.Name == "" {
+		agent.Name = name
+	}
+	if err := agent.Validate(); err != nil {
+		return err
+	}
+	syncer, err := identity.NewSyncer(cfg, nil)
+	if err != nil {
+		return err
+	}
+	defer syncer.Provisioner().Close()
+
+	r, err := syncer.ProvisionOne(agent, identity.SyncOptions{
+		AdminUser:     rootFlags.adminUser,
+		AdminPassword: rootFlags.adminPassword,
+	})
+	renderSingleResult(r)
+	return err
+}
+
+// ---------------------------------------------------------------------------
+// deprovision <name>
+// ---------------------------------------------------------------------------
+
+func newDeprovisionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "deprovision <name>",
+		Short: "Revoke an agent's PAT and archive their keys",
+		Long: `Deprovisioning revokes the agent's personal access token and
+archives their SSH key material under a dated subdirectory. The Forgejo
+account itself is preserved so historical git attribution remains intact
+(see §3.2 of the spec: DELETE /admin/users is intentionally never used).`,
+		Args: cobra.ExactArgs(1),
+		RunE: runDeprovision,
+	}
+}
+
+func runDeprovision(cmd *cobra.Command, args []string) error {
+	cfg, err := buildConfig()
+	if err != nil {
+		return err
+	}
+	name := args[0]
+	kf, err := identity.LoadKnownFriends(cfg.KnownFriendsPath)
+	if err != nil {
+		return err
+	}
+	agent, ok := kf.Agents[name]
+	if !ok || agent == nil {
+		// Allow deprovisioning an agent that's already gone from
+		// known-friends.json (state file is the source of truth here).
+		agent = &identity.Agent{Name: name, Status: identity.StatusOffboarded}
+	}
+	if agent.Name == "" {
+		agent.Name = name
+	}
+	syncer, err := identity.NewSyncer(cfg, nil)
+	if err != nil {
+		return err
+	}
+	defer syncer.Provisioner().Close()
+
+	r, err := syncer.DeprovisionOne(agent, identity.SyncOptions{
+		AdminUser:     rootFlags.adminUser,
+		AdminPassword: rootFlags.adminPassword,
+	})
+	renderSingleResult(r)
+	return err
+}
+
+// ---------------------------------------------------------------------------
+// status
+// ---------------------------------------------------------------------------
+
+func newStatusCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "status",
+		Short: "Show provisioned agent status (from the local state file)",
+		Long: `Renders a table of every agent tracked in the local state file
+(~/.helix/state.json). Does not contact Forgejo — this is a fast local
+view. Use --verbose + sync to reconcile against the server.`,
+		RunE: runStatus,
+	}
+}
+
+func runStatus(cmd *cobra.Command, args []string) error {
+	cfg, err := buildConfig()
+	if err != nil {
+		return err
+	}
+	syncer, err := identity.NewSyncer(cfg, nil)
+	if err != nil {
+		return err
+	}
+	defer syncer.Provisioner().Close()
+	renderStateTable(syncer.State())
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// keygen <name>
+// ---------------------------------------------------------------------------
+
+func newKeygenCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "keygen <name>",
+		Short: "Generate a fresh ED25519 keypair for an agent (no Forgejo)",
+		Long: `Generates a new ED25519 keypair and writes the three files
+under ~/.helix/keys/<name>/. Does NOT contact Forgejo — use this to rotate
+a key independently of the provisioning flow. The public key still needs
+to be registered manually (or via a subsequent provision run).`,
+		Args: cobra.ExactArgs(1),
+		RunE: runKeygen,
+	}
+}
+
+func runKeygen(cmd *cobra.Command, args []string) error {
+	cfg, err := buildConfig()
+	if err != nil {
+		return err
+	}
+	name := args[0]
+	// keygen doesn't require known-friends.json — it just needs a name.
+	agent := &identity.Agent{
+		Name:        name,
+		DisplayName: name,
+		Status:      identity.StatusActive,
+		Tier:        identity.TierPro,
+	}
+	syncer, err := identity.NewSyncer(cfg, nil)
+	if err != nil {
+		return err
+	}
+	defer syncer.Provisioner().Close()
+
+	r, err := syncer.KeyGenOnly(agent)
+	renderSingleResult(r)
+	return err
+}
+
+// ---------------------------------------------------------------------------
+// Config builder + env helper
+// ---------------------------------------------------------------------------
+
+// buildConfig assembles a ProvisionerConfig from the flag holder, applying
+// defaults. It does NOT validate — that happens in NewProvisioner so the
+// error type is consistent.
+func buildConfig() (identity.ProvisionerConfig, error) {
+	cfg := identity.DefaultProvisionerConfig()
+	cfg.ForgejoURL = rootFlags.forgejoURL
+	cfg.AdminToken = rootFlags.adminToken
+	cfg.KnownFriendsPath = rootFlags.knownFriends
+	cfg.SSHKeyDir = rootFlags.sshKeyDir
+	cfg.StatePath = rootFlags.statePath
+	cfg.DryRun = rootFlags.dryRun
+	cfg.Verbose = rootFlags.verbose
+	return cfg, nil
+}
+
+// envOr returns the env var's value if set and non-empty, else fallback.
+func envOr(name, fallback string) string {
+	if v := os.Getenv(name); v != "" {
 		return v
 	}
 	return fallback
 }
 
 // ---------------------------------------------------------------------------
-// helix identity <subcommand>
+// Output rendering
 // ---------------------------------------------------------------------------
 
-func newIdentityCmd() *cobra.Command {
-	c := &cobra.Command{
-		Use:   "identity",
-		Short: "Manage Forgejo identities for Helix agents",
-		Long: `Provision, deprovision, and inspect Forgejo accounts backed by the
-H4F known-friends.json roster.
-
-The five subcommands map to the lifecycle stages:
-  sync        — full reconciliation (one-shot, cron-friendly)
-  provision   — add a single agent
-  deprovision — offboard a single agent
-  status      — show current roster + Forgejo state
-  keygen      — mint a fresh SSH keypair (no Forgejo side effects)
-
-All commands are safe to re-run; see specs/agent-identity.md §7.3
-(Idempotent Provisioning).`,
+// renderDryRun prints the §19 dry-run preview: would-be API calls per agent
+// plus a summary table. The actual network stubs returned dummy objects;
+// this output is what an operator reviews before flipping --dry-run off.
+func renderDryRun(kf *identity.KnownFriends) {
+	for _, a := range kf.ActiveAgents() {
+		tempPW := "<redacted>"
+		req := identity.NewCreateUserRequest(a, tempPW)
+		fmt.Printf("[DRY RUN] POST /api/v1/admin/users %s\n", mustJSON(req))
+		fmt.Printf("[DRY RUN] POST /api/v1/user/keys {\"key\":\"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGx... helix-identity\",\"title\":%q}\n",
+			a.KeyTitle())
+		fmt.Printf("[DRY RUN] POST /api/v1/users/%s/tokens %s\n",
+			a.Name, mustJSON(identity.NewCreateTokenRequest(a)))
 	}
-
-	c.AddCommand(newSyncCmd())
-	c.AddCommand(newProvisionCmd())
-	c.AddCommand(newDeprovisionCmd())
-	c.AddCommand(newStatusCmd())
-	c.AddCommand(newKeygenCmd())
-	return c
+	for _, a := range kf.OffboardedAgents() {
+		fmt.Printf("[DRY RUN] DELETE /api/v1/users/%s/tokens/{id}  (revoke PAT)\n", a.Name)
+	}
+	sep := strings.Repeat("─", 66)
+	fmt.Println(sep)
+	fmt.Printf("%-10s %-12s %s\n", "AGENT", "STATUS", "ACTION")
+	for _, a := range kf.ActiveAgents() {
+		fmt.Printf("%-10s %-12s %s\n", a.Name, a.Status, "would create")
+	}
+	for _, a := range kf.OffboardedAgents() {
+		fmt.Printf("%-10s %-12s %s\n", a.Name, a.Status, "would deprovision")
+	}
+	fmt.Println(sep)
+	ops := len(kf.ActiveAgents()) + len(kf.OffboardedAgents())
+	fmt.Printf("DRY RUN COMPLETE — %d operations simulated, 0 executed\n", ops)
 }
 
-// ---------------------------------------------------------------------------
-// helix identity sync
-// ---------------------------------------------------------------------------
-
-func newSyncCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "sync",
-		Short: "Reconcile known-friends.json with Forgejo state",
-		Long: `Read known-friends.json and provision (or deprovision) every agent
-to match the roster. Exits 0 on full success, 4 if any agent fails
-(see "Exit Codes" in the root help).
-
-Designed to be cron-driven:
-    0 */6 * * * helix identity sync --dry-run=false >> /var/log/helix.log
-
-The sync is idempotent — running it twice in a row is safe and the
-second run reports Action=Unchanged for every agent.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := buildProvisionerConfig()
-			if err != nil {
-				return configError(err)
-			}
-			prov, err := identity.NewProvisioner(cfg)
-			if err != nil {
-				return configError(err)
-			}
-			syncer, err := identity.NewSyncer(prov, identity.SyncOptions{
-				KnownFriendsPath: flagKnownFriends,
-			})
-			if err != nil {
-				return configError(err)
-			}
-
-			ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM)
-			defer cancel()
-
-			report, err := syncer.Sync(ctx)
-			printSyncReport(report)
-
-			// Surface ErrNotImplemented as a distinct exit code so the
-			// build pipeline can gate "stubbed" → "wired" transitions.
-			if errors.Is(err, identity.ErrNotImplemented) {
-				os.Exit(exitNotImpl)
-			}
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "sync: %v\n", err)
-				os.Exit(exitInternal)
-			}
-			if report.HasFailures() {
-				os.Exit(exitPartialSync)
-			}
-			return nil
-		},
+// renderResultsTable prints the post-sync result table (one row per agent).
+func renderResultsTable(results []identity.ProvisioningResult) {
+	if len(results) == 0 {
+		return
 	}
-}
-
-// ---------------------------------------------------------------------------
-// helix identity provision <name>
-// ---------------------------------------------------------------------------
-
-func newProvisionCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "provision <name>",
-		Short: "Provision a single agent's Forgejo account",
-		Long: `Provision one agent by name (e.g. "wojons"). Reads the agent
-record from known-friends.json and runs the same flow as ` + "`sync`" + `
-for that agent only. Errors from a single agent are reported and
-cause exit code 4.`,
-		Args: cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runSingleAgent(args[0], syncModeProvision)
-		},
-	}
-}
-
-// ---------------------------------------------------------------------------
-// helix identity deprovision <name>
-// ---------------------------------------------------------------------------
-
-func newDeprovisionCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "deprovision <name>",
-		Short: "Offboard an agent (revoke tokens, archive keys)",
-		Long: `Revoke the agent's personal access token and rename its SSH
-keypair to *.offboarded. The Forgejo user account is NOT deleted —
-historical PRs and comments remain attributable. See
-specs/agent-identity.md §6.5 for the deprovisioning lifecycle.`,
-		Args: cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runSingleAgent(args[0], syncModeDeprovision)
-		},
-	}
-}
-
-// syncMode selects which provisioner path to drive for single-agent commands.
-type syncMode int
-
-const (
-	syncModeProvision syncMode = iota
-	syncModeDeprovision
-)
-
-func runSingleAgent(name string, mode syncMode) error {
-	cfg, err := buildProvisionerConfig()
-	if err != nil {
-		return configError(err)
-	}
-	prov, err := identity.NewProvisioner(cfg)
-	if err != nil {
-		return configError(err)
-	}
-	onlyFalse := false
-	syncer, err := identity.NewSyncer(prov, identity.SyncOptions{
-		KnownFriendsPath: flagKnownFriends,
-		OnlyActive:       &onlyFalse, // single-agent runs respect the agent's actual status
-		AgentFilter:      []string{name},
-	})
-	if err != nil {
-		return configError(err)
-	}
-
-	// Pre-load to give a friendly error when the agent doesn't exist in
-	// the roster (instead of a silent no-op from the filter step).
-	kf, err := loadKnownFriendsOrExit(flagKnownFriends)
-	if err != nil {
-		return err
-	}
-	if _, ok := kf.Agents[name]; !ok {
-		fmt.Fprintf(os.Stderr, "agent %q not found in %s\n", name, flagKnownFriends)
-		os.Exit(exitUsage)
-	}
-
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer cancel()
-
-	report, err := syncer.Sync(ctx)
-	// Restrict output to the requested agent — the report still contains
-	// only that one result because of AgentFilter, but be defensive.
-	filtered := &identity.SyncReport{
-		StartedAt: report.StartedAt, FinishedAt: report.FinishedAt,
-		Duration: report.Duration, DryRun: report.DryRun, Source: report.Source,
-	}
-	for _, r := range report.Results {
-		if r.Agent == name {
-			filtered.Results = append(filtered.Results, r)
-		}
-	}
-	filtered.Counts = aggregateFiltered(filtered.Results)
-	printSyncReport(filtered)
-
-	if mode == syncModeDeprovision {
-		// Override the action for display purposes — the syncer will have
-		// picked the right Provision/Deprovision path based on status,
-		// but for offboarded agents we want to make this unambiguous.
-		_ = mode
-	}
-
-	if errors.Is(err, identity.ErrNotImplemented) {
-		os.Exit(exitNotImpl)
-	}
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %v\n", name, err)
-		os.Exit(exitInternal)
-	}
-	if filtered.HasFailures() {
-		os.Exit(exitPartialSync)
-	}
-	return nil
-}
-
-// ---------------------------------------------------------------------------
-// helix identity status
-// ---------------------------------------------------------------------------
-
-func newStatusCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "status",
-		Short: "Show roster and Forgejo account state",
-		Long: `Print a table of every agent in known-friends.json with:
-  - status (active/pending/offboarded)
-  - tier (pro/flash)
-  - Forgejo account existence (live GET against /api/v1/users/{name})
-  - PAT last-eight (if known)
-
-This command does NOT mutate state. Safe to run as a dashboard.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			kf, err := loadKnownFriendsOrExit(flagKnownFriends)
-			if err != nil {
-				return err
-			}
-			cfg, err := buildProvisionerConfig()
-			if err != nil {
-				return configError(err)
-			}
-			prov, err := identity.NewProvisioner(cfg)
-			if err != nil {
-				return configError(err)
-			}
-			_ = prov // the stub uses prov.userExists; status command will
-			// light up once userExists is implemented. Until then it
-			// prints a placeholder column.
-
-			tw := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(tw, "AGENT\tSTATUS\tTIER\tFORGEJO\tPAT")
-			fmt.Fprintln(tw, "-----\t------\t----\t-------\t---")
-			for _, name := range sortedAgentNames(kf) {
-				a := kf.Agents[name]
-				fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
-					a.Name, a.Status, a.Tier,
-					"(stub)", "(stub)")
-			}
-			return tw.Flush()
-		},
-	}
-}
-
-// ---------------------------------------------------------------------------
-// helix identity keygen <name>
-// ---------------------------------------------------------------------------
-
-func newKeygenCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "keygen <name>",
-		Short: "Generate a fresh ED25519 SSH keypair for an agent",
-		Long: `Mint a new keypair, write <name>.pub / <name>.key.pem /
-<name>.fingerprint under --ssh-key-dir, and print the public key line
-on stdout (suitable for piping into authorized_keys or
-`+"`helix identity provision`"+`).
-
-Does NOT register the key with Forgejo — use ` + "`helix identity provision`" + `
-afterwards for that step.`,
-		Args: cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := buildProvisionerConfig()
-			if err != nil {
-				return configError(err)
-			}
-			dir, err := identity.EnsureSSHKeyDir(flagSSHKeyDir)
-			if err != nil {
-				return configError(err)
-			}
-			prov, err := identity.NewProvisioner(cfg)
-			if err != nil {
-				return configError(err)
-			}
-			_ = prov
-
-			kf, err := loadKnownFriendsOrExit(flagKnownFriends)
-			if err != nil {
-				return err
-			}
-			a, ok := kf.Agents[args[0]]
-			if !ok {
-				fmt.Fprintf(os.Stderr, "agent %q not found in %s\n", args[0], flagKnownFriends)
-				os.Exit(exitUsage)
-			}
-
-			// Stub — real impl in provisioner.go::Keygen. Returns
-			// identity.ErrNotImplemented so the CLI exits 5.
-			_, err = prov.Keygen(a)
-			_ = dir
-			if errors.Is(err, identity.ErrNotImplemented) {
-				fmt.Fprintln(os.Stderr,
-					"keygen: stub — real implementation pending spec approval")
-				os.Exit(exitNotImpl)
-			}
-			if err != nil {
-				return err
-			}
-			return nil
-		},
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Shared helpers
-// ---------------------------------------------------------------------------
-
-func buildProvisionerConfig() (identity.ProvisionerConfig, error) {
-	if flagForgejoURL == "" {
-		return identity.ProvisionerConfig{}, errors.New(
-			"HELIX_FORGEJO_URL (or --forgejo-url) is required")
-	}
-	if flagAdminToken == "" {
-		return identity.ProvisionerConfig{}, errors.New(
-			"HELIX_FORGEJO_ADMIN_TOKEN (or --admin-token) is required")
-	}
-	return identity.ProvisionerConfig{
-		ForgejoBaseURL: flagForgejoURL,
-		AdminToken:     flagAdminToken,
-		SSHKeyDir:      flagSSHKeyDir,
-		DryRun:         flagDryRun,
-	}, nil
-}
-
-// configError prints a friendly config message and returns the sentinel.
-// The caller decides the exit code.
-func configError(err error) error {
-	fmt.Fprintf(os.Stderr, "config: %v\n", err)
-	return err
-}
-
-// printSyncReport writes the human-readable summary + machine-readable
-// JSON to stdout. JSON goes to stderr-friendly channels in cron mode;
-// we send both to stdout and let the operator redirect.
-func printSyncReport(r *identity.SyncReport) {
-	tw := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(tw, "AGENT\tACTION\tFORGEJO_ID\tPAT\tDURATION\tERROR\n")
-	fmt.Fprintf(tw, "-----\t------\t----------\t---\t--------\t-----\n")
-	for _, res := range r.Results {
-		errStr := res.Error
-		if errStr == "" {
-			errStr = "-"
-		}
-		patStr := res.PATLastEight
-		if patStr == "" {
-			patStr = "-"
-		}
-		fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\t%s\n",
-			res.Agent, res.Action, res.ForgejoAccountID,
-			patStr, res.Duration.Round(time.Millisecond), errStr)
-	}
-	tw.Flush()
-
-	fmt.Fprintf(os.Stdout,
-		"\nSummary: total=%d created=%d updated=%d unchanged=%d "+
-			"deprovisioned=%d skipped=%d failed=%d  (dry_run=%t, took=%s)\n",
-		r.Counts.Total, r.Counts.Created, r.Counts.Updated, r.Counts.Unchanged,
-		r.Counts.Deprovisioned, r.Counts.Skipped, r.Counts.Failed,
-		r.DryRun, r.Duration.Round(time.Millisecond))
-
-	// Also dump structured JSON for log shippers.
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", "  ")
-	_ = enc.Encode(r)
-}
-
-// aggregateFiltered mirrors identity.aggregateCounts but only over the
-// filtered slice (defensive — the filtered report should already be
-// single-agent in practice).
-func aggregateFiltered(results []identity.ProvisioningResult) identity.SyncCounts {
-	var c identity.SyncCounts
-	c.Total = len(results)
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "AGENT\tSTATUS\tACTION\tSSH KEY\tPAT\tDURATION")
 	for _, r := range results {
-		switch r.Action {
-		case identity.ActionCreated:
-			c.Created++
-		case identity.ActionUpdated:
-			c.Updated++
-		case identity.ActionUnchanged:
-			c.Unchanged++
-		case identity.ActionDeprovisioned:
-			c.Deprovisioned++
-		case identity.ActionSkipped:
-			c.Skipped++
-		case identity.ActionFailed:
-			c.Failed++
+		marker := "✅"
+		if !r.Succeeded() {
+			marker = "❌"
 		}
+		ssh := r.SSHFingerprint
+		if ssh == "" {
+			ssh = "—"
+		} else if len(ssh) > 24 {
+			ssh = ssh[:24] + "..."
+		}
+		pat := r.PATLastEight
+		if pat == "" {
+			pat = "—"
+		}
+		fmt.Fprintf(w, "%s %s\t%s\t%s\t%s\t%s\t%s\n",
+			marker, r.AgentName, r.Status, r.Action, ssh, pat,
+			r.Duration.Round(time.Millisecond))
 	}
-	return c
+	w.Flush()
 }
 
-// sortedAgentNames returns the keys of kf.Agents sorted ascending.
-func sortedAgentNames(kf *identity.KnownFriends) []string {
-	out := make([]string, 0, len(kf.Agents))
-	for name := range kf.Agents {
-		out = append(out, name)
+// renderSingleResult prints one result row (for provision/deprovision/keygen).
+func renderSingleResult(r identity.ProvisioningResult) {
+	marker := "✅"
+	if !r.Succeeded() {
+		marker = "❌"
 	}
-	// insertion sort — small N, no need for sort.Strings import.
-	for i := 1; i < len(out); i++ {
-		for j := i; j > 0 && out[j-1] > out[j]; j-- {
-			out[j-1], out[j] = out[j], out[j-1]
-		}
+	fmt.Printf("%s agent=%s action=%s duration=%s\n",
+		marker, r.AgentName, r.Action, r.Duration.Round(time.Millisecond))
+	if r.SSHFingerprint != "" {
+		fmt.Printf("   ssh fingerprint: %s\n", r.SSHFingerprint)
 	}
-	return out
+	if r.PATLastEight != "" {
+		fmt.Printf("   pat:             %s\n", r.PATLastEight)
+	}
+	if r.Error != "" {
+		fmt.Printf("   error:           %s\n", r.Error)
+	}
 }
 
-// loadKnownFriendsOrExit is a CLI-friendly wrapper around the package's
-// loadKnownFriends. On failure, prints a clear message and exits 3.
-func loadKnownFriendsOrExit(path string) (*identity.KnownFriends, error) {
-	// The package's loader is unexported; here we re-implement the read
-	// inline because the cmd package must not depend on unexported
-	// internals. Behavior must match loadKnownFriends exactly; the
-	// identity package's contract test pins it.
-	data, err := os.ReadFile(path)
+// renderStateTable prints the ~/.helix/state.json contents as a table.
+func renderStateTable(state *identity.StateFile) {
+	if state == nil || len(state.Agents) == 0 {
+		fmt.Println("(no agents provisioned — run `helix-identity sync`)")
+		return
+	}
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "AGENT\tFORGEJO ID\tSSH KEY\tPAT\tLAST SYNC")
+	// Sort by name for stable output.
+	names := make([]string, 0, len(state.Agents))
+	for n := range state.Agents {
+		names = append(names, n)
+	}
+	for i := 1; i < len(names); i++ {
+		for j := i; j > 0 && names[j-1] > names[j]; j-- {
+			names[j-1], names[j] = names[j], names[j-1]
+		}
+	}
+	for _, name := range names {
+		st := state.Agents[name]
+		ssh := st.SSHFingerprint
+		if len(ssh) > 24 {
+			ssh = ssh[:24] + "..."
+		}
+		pat := st.PATLastEight
+		if pat == "" {
+			pat = "—"
+		}
+		last := st.LastProvisioned.Format(time.RFC3339)
+		fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\n",
+			name, st.ForgejoAccountID, ssh, pat, last)
+	}
+	w.Flush()
+}
+
+// mustJSON marshals v to a compact JSON string. Panics on failure — used only
+// for static render of request bodies in dry-run output where the input
+// shape is known to be marshalable (it's all our own structs with json tags).
+func mustJSON(v any) string {
+	b, err := json.Marshal(v)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "read %s: %v\n", path, err)
-		os.Exit(exitConfig)
+		// Should never happen for our own request structs; if it does, surface
+		// a placeholder rather than crash the dry-run.
+		return fmt.Sprintf("<marshal error: %v>", err)
 	}
-	var kf identity.KnownFriends
-	if err := json.Unmarshal(data, &kf); err != nil {
-		fmt.Fprintf(os.Stderr, "parse %s: %v\n", path, err)
-		os.Exit(exitConfig)
-	}
-	return &kf, nil
+	return string(b)
 }
