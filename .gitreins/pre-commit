@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-# GitReins Tier 1: Secrets (blocking) + Lint (Go) + Tests (Go)
-# Generated for Helix monorepo — 2026-06-19
+# GitReins Tier 1: Code quality checks (pre-commit)
+# Checks 1-4 of the Helix 6-check harness
+# Matches Helix spec Section 7.3
 set -e
 cd "$(git rev-parse --show-toplevel)"
 STAGED=$(git diff --cached --name-only --diff-filter=ACM)
 [ -z "$STAGED" ] && exit 0
+FAILED=0
 
-# ── Stage 1: Secrets scan (BLOCKING) ──
+# ── Check 1: Secrets scan (BLOCKING) ──
 SECRET_PATTERNS='sk-[a-zA-Z0-9_-]{20,}|ghp_[a-zA-Z0-9]{36}|-----BEGIN (RSA |EC |OPENSSH )PRIVATE KEY-----|(OPENROUTER|DEEPSEEK|ZAI|ANTHROPIC)_API_KEY\s*=\s*\S'
 PASS=1
 while IFS= read -r file; do
@@ -18,26 +20,42 @@ while IFS= read -r file; do
   fi
 done <<< "$STAGED"
 if [ $PASS -eq 0 ]; then
-  echo "COMMIT BLOCKED: secrets found" >&2
-  exit 1
+  echo "✗ [1/4] Secrets scan — FAIL" >&2
+  FAILED=1
+else
+  echo "✓ [1/4] Secrets scan — PASS"
 fi
-echo "✓ GitReins Tier 1: Secrets scan — PASS"
 
-# ── Stage 2: Lint — Go (non-blocking) ──
+# ── Check 2: Lint — Go (BLOCKING if .go staged) ──
 GO_STAGED=$(echo "$STAGED" | grep '\.go$' || true)
 if [ -n "$GO_STAGED" ]; then
   if command -v golangci-lint &>/dev/null; then
-    golangci-lint run --timeout=30s ./... 2>&1 || echo "⚠ GitReins Tier 1: Lint — WARNINGS (non-blocking)"
+    golangci-lint run --timeout=30s ./... 2>&1 && echo "✓ [2/4] Lint (golangci-lint) — PASS" || { echo "✗ [2/4] Lint — FAIL" >&2; FAILED=1; }
   else
-    go vet ./... 2>&1 || echo "⚠ GitReins Tier 1: Lint (go vet) — WARNINGS (non-blocking)"
+    go vet ./... 2>&1 && echo "✓ [2/4] Lint (go vet) — PASS" || { echo "✗ [2/4] Lint (go vet) — FAIL" >&2; FAILED=1; }
   fi
 else
-  echo "✓ GitReins Tier 1: Lint — SKIP (no Go changes)"
+  echo "✓ [2/4] Lint — SKIP (no Go changes)"
 fi
 
-# ── Stage 3: Tests — Go (non-blocking) ──
+# ── Check 3: Tests — Go (BLOCKING if .go staged) ──
 if [ -n "$(echo "$STAGED" | grep '\.go$' || true)" ]; then
-  go test ./... -count=1 2>&1 || echo "⚠ GitReins Tier 1: Tests — FAIL (non-blocking)"
+  go test ./... -count=1 2>&1 && echo "✓ [3/4] Tests — PASS" || { echo "✗ [3/4] Tests — FAIL" >&2; FAILED=1; }
 else
-  echo "✓ GitReins Tier 1: Tests — SKIP (no Go changes)"
+  echo "✓ [3/4] Tests — SKIP (no Go changes)"
+fi
+
+# ── Check 4: Build (BLOCKING if .go staged) ──
+if [ -n "$(echo "$STAGED" | grep '\.go$' || true)" ]; then
+  go build ./... 2>&1 && echo "✓ [4/4] Build — PASS" || { echo "✗ [4/4] Build — FAIL" >&2; FAILED=1; }
+else
+  echo "✓ [4/4] Build — SKIP (no Go changes)"
+fi
+
+if [ $FAILED -eq 1 ]; then
+  echo ""
+  echo "═══════════════════════════════════════════════" >&2
+  echo "COMMIT BLOCKED: GitReins Tier 1 code checks failed" >&2
+  echo "═══════════════════════════════════════════════" >&2
+  exit 1
 fi
