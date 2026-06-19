@@ -1,4 +1,4 @@
-module github.com/helixloop/helix
+module github.com/totalwindupflightsystems/helix
 
 go 1.22.0
 
