@@ -8,12 +8,13 @@
 - **AC:** `go test ./pkg/identity/... -count=1` passes with >80% coverage on types.go and syncer.go ✅
 - **Result:** types.go 94.2%, syncer.go 80.4%, overall 80.5%. Added 5 test functions for error paths.
 
-## [ ] Write Go tests for pkg/sandbox (config_test.go, isolation_test.go)
+## [x] Write Go tests for pkg/sandbox (config_test.go, isolation_test.go) (completed 2026-06-20)
 - **Priority:** high
 - **Model:** MiniMax-M3
 - **Files:** pkg/sandbox/config_test.go, pkg/sandbox/isolation_test.go
 - **Fixtures:** pkg/sandbox/testdata/valid-config.yaml, invalid-config.yaml
-- **AC:** `go test ./pkg/sandbox/... -count=1` passes with >80% coverage on config.go and isolation.go
+- **AC:** `go test ./pkg/sandbox/... -count=1` passes with >80% coverage on config.go and isolation.go ✅
+- **Result:** config.go 100% (10 functions), isolation.go 100% (6 functions). 608 lines, 13 table-driven test functions, all pass. Commit: cbd85c8
 
 ## [ ] Feature 1 Phase 2: implement Forgejo HTTP transport in provisioner.go
 - **Priority:** high
