@@ -1,8 +1,9 @@
 # GitReins Configuration — Helix monorepo
-# v0.3.0 format: separate caps, tool weighting, decimal notation
+# v0.6.0: test_mode diff, evaluator caps
 
 # ── Guards (Tier 1 static checks) ───────────────────────────
 guards:
+  test_mode: "diff"
   secrets: true         # OpenRouter + GitHub + private key patterns
   lint: true            # go vet / golangci-lint (auto-detects Go project)
   tests: true           # go test ./... -count=1
@@ -13,20 +14,13 @@ guards:
     build: true
     lint_command: "golangci-lint"
 
-# ── Evaluator Caps (v0.3.0 — all separate, all optional) ────
+# ── Evaluator Caps (Go project) ────────────────────────────
 evaluator:
-  max_iterations: 50          # LLM turns (-1 = unlimited)
-  max_time: "10m"             # wall clock limit per evaluation
-  max_input_tokens: "0.2M"    # input budget (200k tokens)
-  max_output_tokens: "0.05M"  # output budget (50k tokens)
-  tool_call_weight: 0.1       # tool calls cost 0.1 iterations each
-
-# ── Tier 2 Per-Task Overrides ───────────────────────────────
-# For simple PRs, use tighter caps via MCP:
-#   mcp_gitreins_judge_evaluate(id="task", max_iterations=25, max_time="5m", max_output_tokens="30k")
-#
-# For security audits, use wider caps:
-#   mcp_gitreins_judge_evaluate(id="task", max_iterations=100, max_time="30m", max_output_tokens="200k")
+  max_iterations: 25
+  max_time: "5m"
+  max_input_tokens: "0.2M"
+  max_output_tokens: "200k"
+  tool_call_weight: 0.1
 
 # ── Pipeline ────────────────────────────────────────────────
 pipeline:
@@ -59,5 +53,5 @@ pipeline:
       type: ai_eval
       on: [pre-eval]
       condition: "true"
-      max_iterations: 50
+      max_iterations: 25
       tools: [read_file, run_command, search_pattern, read_diff, sandbox]
