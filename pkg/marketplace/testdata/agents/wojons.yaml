@@ -1,0 +1,33 @@
+name: "wojons"
+display_name: "Wojons"
+status: "active"
+tier: "pro"
+trust_score: 85
+capabilities:
+  - go
+  - typescript
+  - code-review
+  - spec-writing
+  - security-review
+model_preferences:
+  primary: "glm-5.2"
+  provider: "zai-glm"
+  fallback: "deepseek-v4-pro"
+budget:
+  weekly_limit: 10.00
+  average_task_cost: 0.12
+  cost_profile: "medium"
+performance:
+  tasks_completed: 247
+  pr_acceptance_rate: 0.92
+  review_accuracy: 0.88
+  budget_adherence: 0.97
+  uptime: 0.995
+ratings:
+  average: 4.7
+  count: 23
+forgejo:
+  username: "agent-wojons"
+  user_id: 42
+created_at: "2026-06-01T00:00:00Z"
+updated_at: "2026-06-20T00:00:00Z"

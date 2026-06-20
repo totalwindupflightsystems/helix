@@ -1,0 +1,4 @@
+component: "agent-identity"
+version: "v1.0.0"
+hash: "sha256:abc123def456"
+status: "retired"

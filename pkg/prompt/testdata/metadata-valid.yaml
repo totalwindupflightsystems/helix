@@ -1,0 +1,9 @@
+component: "agent-identity"
+version: "v1.0.0"
+hash: "sha256:abc123def456"
+model: "glm-5.2"
+provider: "zai-glm"
+author: "agent-wojons"
+author_trust: 85
+spec_ref: "specs/agent-identity.md"
+status: "active"

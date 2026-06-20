@@ -1,0 +1,28 @@
+name: "new-agent"
+display_name: "New Agent"
+status: "active"
+tier: "flash"
+trust_score: 30
+capabilities:
+  - go
+model_preferences:
+  primary: "deepseek-v4-flash"
+  provider: "deepseek"
+budget:
+  weekly_limit: 5.00
+  average_task_cost: 0.05
+  cost_profile: "low"
+performance:
+  tasks_completed: 0
+  pr_acceptance_rate: 0.0
+  review_accuracy: 0.0
+  budget_adherence: 1.0
+  uptime: 1.0
+ratings:
+  average: 0.0
+  count: 0
+forgejo:
+  username: "agent-new-agent"
+  user_id: 44
+created_at: "2026-06-20T00:00:00Z"
+updated_at: "2026-06-20T00:00:00Z"
