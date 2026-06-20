@@ -1,0 +1,6 @@
+{"round":0,"type":"conflict_detected","agent_a":"wojons","verdict_a":"APPROVED","agent_b":"llopez","verdict_b":"REQUEST_CHANGES","timestamp":"2026-06-20T10:00:00Z"}
+{"round":1,"type":"argument","agent":"wojons","body":"The change follows spec §8.3 exactly. Test output confirms behavior.","evidence_count":2,"timestamp":"2026-06-20T10:01:00Z"}
+{"round":1,"type":"argument","agent":"llopez","body":"Spec §8.3 requires burst handling. The implementation hardcodes burst=2 instead of reading from config. Test output shows the config value is ignored.","evidence_count":3,"timestamp":"2026-06-20T10:02:00Z"}
+{"round":2,"type":"argument","agent":"wojons","body":"You are correct. The burst config is hardcoded. I will fix this.","evidence_count":1,"timestamp":"2026-06-20T10:03:00Z"}
+{"round":2,"type":"concession","agent":"wojons","body":"CONCEDE: spec violation in §8.3 — burst is not configurable","timestamp":"2026-06-20T10:03:30Z"}
+{"type":"resolved","outcome":"CONCEDED","timestamp":"2026-06-20T10:03:30Z"}

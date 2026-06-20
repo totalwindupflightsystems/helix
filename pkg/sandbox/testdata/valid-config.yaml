@@ -1,0 +1,6 @@
+# Sandbox Test Config
+isolation: workspace
+time_limit: 10
+memory_limit: 128
+network: none
+workdir: /tmp/sandbox-test

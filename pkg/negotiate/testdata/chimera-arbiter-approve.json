@@ -1,0 +1,1 @@
+{"status":"APPROVE","confidence":0.82,"summary":"All checks pass. The implementation follows the spec correctly.","findings":[],"trace":{"source":"full","stages":[{"stage":"execute","model":"deepseek-v4-pro"},{"stage":"execute","model":"glm-5.2"},{"stage":"execute","model":"claude-sonnet-4"},{"stage":"audit","model":"deepseek-v4-pro"}],"duration":4.2,"total_tokens":12500}}

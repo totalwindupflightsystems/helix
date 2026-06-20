@@ -28,7 +28,7 @@ PATH="$HOME/go/bin:$HOME/gitreins-poc/.venv/bin:$PATH" gitreins guard
 - **lint** — go vet / golangci-lint (WARNS on fail)
 - **tests** — runs tests for changed packages only (BLOCKS on fail)
 
-### Test mode: diff
+### Test mode: full
 Only packages with staged changes are tested. Pre-existing failures in
 untouched code will NOT block your commit. If you change go.mod,
 Makefile, .gitreins/config.yaml, or a config file, the full suite runs

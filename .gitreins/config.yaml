@@ -3,7 +3,7 @@
 
 # ── Guards (Tier 1 static checks) ───────────────────────────
 guards:
-  test_mode: "diff"
+  test_mode: "full"
   secrets: true         # OpenRouter + GitHub + private key patterns
   lint: true            # go vet / golangci-lint (auto-detects Go project)
   tests: true           # go test ./... -count=1
