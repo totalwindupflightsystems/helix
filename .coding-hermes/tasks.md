@@ -1,11 +1,12 @@
 # Helix Coding Tasks — Foreman Queue
 
-## [ ] Write Go tests for pkg/identity (types_test.go, syncer_test.go)
+## [x] Write Go tests for pkg/identity (types_test.go, syncer_test.go) (completed 2026-06-20)
 - **Priority:** high
 - **Model:** MiniMax-M3
 - **Files:** pkg/identity/types_test.go, pkg/identity/syncer_test.go
 - **Fixtures:** pkg/identity/testdata/known-friends.json
-- **AC:** `go test ./pkg/identity/... -count=1` passes with >80% coverage on types.go and syncer.go
+- **AC:** `go test ./pkg/identity/... -count=1` passes with >80% coverage on types.go and syncer.go ✅
+- **Result:** types.go 94.2%, syncer.go 80.4%, overall 80.5%. Added 5 test functions for error paths.
 
 ## [ ] Write Go tests for pkg/sandbox (config_test.go, isolation_test.go)
 - **Priority:** high
