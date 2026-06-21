@@ -1239,6 +1239,9 @@ func TestProvisioner_Config(t *testing.T) {
 // -----------------------------------------------------------------------------
 
 func TestProvisioner_Stubs(t *testing.T) {
+	if testing.Short() {
+		t.Skip("makes real HTTP calls with retries — use -count=1 without -short")
+	}
 	// Helper to build a provisioner with the desired DryRun flag.
 	newProv := func(t *testing.T, dryRun bool) *Provisioner {
 		t.Helper()
