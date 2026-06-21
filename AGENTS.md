@@ -1,66 +1,81 @@
 # AGENTS.md — Helix
 
-Helix is an Agent-First Code Platform where human intelligence and agent
-intelligence spiral together through every phase of the SDLC.
+Helix is an Agent-First Code Platform where humans and AI agents are equal
+participants in the software development lifecycle.
+
+## Project Structure
+
+```
+cmd/
+  helix-identity/    Agent provisioning in Forgejo
+  helix-estimate/    Pre-flight cost estimation
+  helix-negotiate/   Agent PR debate + Chimera tie-break
+  helix-prompt/      Prompt provenance + hash attestation
+  helix-marketplace/ Agent discoverability + trust scoring
+  sandbox/           Bubblewrap agent isolation
+pkg/
+  identity/          Forgejo OAuth, SSH keys, PAT management
+  estimate/          Token burn estimation, cache-aware pricing
+  negotiate/         Debate protocol, Chimera arbiter, audit logging
+  prompt/            Prompt hashing, attestation, PromptFoo bridge
+  marketplace/       Agent registry, trust scoring, human ratings
+  dispatcher/        Ralph Loop engine, task decomposition, agent assignment
+  sandbox/           Bubblewrap executor, cgroup isolation
+  integration/       End-to-end integration tests
+specs/               Feature specifications + platform docs
+prompts/             Prompt files (linked in commits via GitReins)
+```
 
 ## Tech Stack
-- CLI: Go (cobra/viper)
-- Identity: Go + Forgejo REST API
 
-## Architecture
-6-layer stack: Human Interface → Orchestration → Execution → Git Forge →
-Quality & Review → Observability & Memory.
+- **Language:** Go 1.24 (cobra/viper CLIs)
+- **Forge:** Forgejo REST API (agent identity)
+- **Review:** Chimera multi-model deliberation (PR negotiation)
+- **Quality:** GitReins (6 gates + Tier 2 evaluator)
+- **Sandbox:** Bubblewrap (Linux namespace isolation)
 
 ## GitReins Quality Harness (MANDATORY)
 
-This repo uses GitReins as its quality gate. Every commit runs static guards.
-If guards fail, the commit is BLOCKED. You cannot skip this.
+This repo uses GitReins as its quality gate. Every commit runs 6 checks. If any
+fail, the commit is BLOCKED.
 
-### Quick check before committing:
+### Gates
 
-```bash
-PATH="$HOME/go/bin:$HOME/gitreins-poc/.venv/bin:$PATH" gitreins guard
-```
+1. **Secrets scan** — API keys, tokens, passwords (BLOCKS)
+2. **Lint** — golangci-lint (BLOCKS)
+3. **Tests** — `go test -short -count=1 ./...` for changed packages (BLOCKS)
+4. **Build** — `go build ./...` (BLOCKS)
+5. **Commit attestation** — `Co-authored-by:` trailer required (BLOCKS)
+6. **Prompt link** — `Prompt: prompts/<name>/v<N>.md` in body (BLOCKS)
 
-### What's checked:
-- **secrets** — API keys, tokens, passwords (BLOCKS on fail — no exceptions)
-- **build** — compiles the project (BLOCKS on fail)
-- **lint** — go vet / golangci-lint (WARNS on fail)
-- **tests** — runs tests for changed packages only (BLOCKS on fail)
-
-### Test mode: full
-Only packages with staged changes are tested. Pre-existing failures in
-untouched code will NOT block your commit. If you change go.mod,
-Makefile, .gitreins/config.yaml, or a config file, the full suite runs
-as a safety net.
-
-### Tasks and evaluation:
+### Quick check
 
 ```bash
-# Create a task with criteria
-gitreins task create fix-auth "Fix authentication" \
-  "Login accepts email+password and returns JWT" \
-  "Invalid credentials return 401" \
-  "Rate limiting works after 5 failed attempts"
-
-# Do the work, then evaluate:
-gitreins task start fix-auth
-# ... implement ...
-gitreins task complete fix-auth    # triggers LLM evaluation
-
-# Or evaluate standalone:
-gitreins judge fix-auth
+make lint && make test && make build
 ```
 
-### If guards fail:
-1. READ the output — the guard tells you exactly what failed and where
-2. Fix the issues. Do NOT commit with --no-verify unless it's a docs-only
-   change or a GitReins self-upgrade.
-3. Re-run `gitreins guard` until it passes
-4. Then commit
+### If guards fail
 
-### Never:
-- Commit API keys or tokens — secrets guard catches these, and it's correct
-- Skip guards with --no-verify for code changes
-- Push if guards failed (let CI catch it if you must, but fix locally)
-- Commit `.gitreins/tasks.yaml` — it's local task state
+1. Read the output — it tells you exactly what failed
+2. Fix the issues — never `--no-verify` for code changes
+3. Re-commit
+
+## Development
+
+```bash
+make build    # Build all CLIs
+make test     # Run unit tests (fast)
+make lint     # Run linter
+make all      # lint + test + build
+
+# Integration tests (require Forgejo + Chimera running)
+make test-integration
+```
+
+## Commit Rules
+
+- Every commit MUST include `Co-authored-by: wojons <wojonstech@gmail.com>`
+- Every commit MUST include `Prompt: prompts/<name>/v<N>.md`
+- Never commit secrets, tokens, or passwords
+- Never use `--no-verify` for code changes
+- Run `git pull --rebase` before pushing
