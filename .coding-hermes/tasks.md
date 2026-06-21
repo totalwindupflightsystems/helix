@@ -145,12 +145,13 @@
 - **Note:** 191 lines, 5 functions. In-package tests can construct Registry directly (unexported fields). NewRegistry needs temp dirs with YAML fixtures.
 - **Result:** 5 test functions with 33 total subtests. Coverage: NewRegistry 91.3%, Register/Get/UpdateStatus 100%, Search 94.4%. Package 98.1% (from 71.8%). All 7 packages pass. Commit: 2691a86
 
-## [ ] Write Go tests for pkg/prompt/attester.go
+## [x] Write Go tests for pkg/prompt/attester.go (completed 2026-06-22)
 - **Priority:** medium
-- **Model:** MiniMax-M3
+- **Model:** MiniMax-M3 (direct write — single-file test, spawn threshold not met)
 - **Files:** pkg/prompt/attester_test.go (NEW)
-- **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with >80% coverage on attester.go
-- **Logic:** ParseCommitMessage, ValidateAttestation, Attest, GetCommitAttestation
+- **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with >80% coverage on attester.go ✅
+- **Logic:** ParseCommitMessage (parse attestation fields from commit messages — hash, model, provider, spec, cost, author), ValidateAttestation (lookup by hash, lifecycle check, hash verify, PromptFoo), Attest (delegates to ValidateAttestation), GetCommitAttestation (git log + parse)
+- **Result:** 4 test functions (26 total subtests). Coverage: ParseCommitMessage 100%, ValidateAttestation 92.3%, Attest 100%, GetCommitAttestation 83.3%. Tests use temp RegistryDir override for ValidateAttestation isolation. All 7 packages pass. Commit: c3e9f4c
 
 ## [ ] Write Go tests for pkg/prompt/lifecycle.go
 - **Priority:** medium
