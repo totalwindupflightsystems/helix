@@ -83,12 +83,12 @@
 - **AC:** `go test ./pkg/estimate/... -count=1 -cover` passes with >90% coverage on budget.go ✅
 - **Result:** 100% coverage on all 4 functions (RemainingBudget, IsNewAgent, CheckBudget, ApprovalExitCode). 173 lines, 4 table-driven test functions. Commit: a441336
 
-## [ ] Write Go tests for pkg/negotiate (types.go + debate.go)
+## [x] Write Go tests for pkg/negotiate (types.go + debate.go) (completed 2026-06-21)
 - **Priority:** high
 - **Model:** MiniMax-M3
 - **Files:** pkg/negotiate/types_test.go (NEW), pkg/negotiate/debate_test.go (NEW)
-- **AC:** `go test ./pkg/negotiate/... -count=1 -cover` passes with >80% coverage on types.go and debate.go
-- **Pure logic:** Agent capability methods (CanComment, CanVeto, etc.), Debate state machine (PostArgument, CheckConcession, AdvanceRound, IsDeadlocked, Strike)
+- **AC:** `go test ./pkg/negotiate/... -count=1 -cover` passes with >80% coverage on types.go and debate.go ✅
+- **Result:** types.go 100% (5 methods), debate.go 100% (7 methods). 332 lines, 22 test functions, all pass. Commit: 4b80ba6
 
 ## [ ] Write Go tests for pkg/marketplace/ratings.go
 - **Priority:** medium
