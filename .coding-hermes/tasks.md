@@ -26,13 +26,14 @@
 - **AC:** `helix-identity sync --dry-run` shows real Forgejo calls (not stubs) ✅
 - **Result:** 290 lines added, doWithRetry helper, all 5 transport methods implemented. Commit: c973aec
 
-## [ ] Feature 2 stubs: Go CLI + packages for cost estimator
+## [x] Feature 2 stubs: Go CLI + packages for cost estimator (completed 2026-06-20)
 - **Priority:** medium
 - **Model:** glm-5.2
 - **Provider:** zai-glm
 - **Spec:** specs/cost-estimator.md (739 lines)
 - **Files:** cmd/helix-estimate/main.go, pkg/estimate/*.go
-- **AC:** `go build ./cmd/helix-estimate/` exits 0
+- **AC:** `go build ./cmd/helix-estimate/` exits 0 ✅
+- **Result:** 1,641 lines, 13 files (577 line main.go, 8 packages, 3 YAML/JSON fixtures). All smoke tests pass: estimate dry-run, budget check (auto-approve/blocked), cold-start agent, MiniMax no-cache. Commit: 1c51ed8
 
 ## [ ] Feature 3 stubs: Go CLI + packages for PR negotiation
 - **Priority:** medium
