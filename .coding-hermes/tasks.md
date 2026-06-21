@@ -134,4 +134,4 @@
 - **Files:** pkg/marketplace/index_test.go (NEW)
 - **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >80% coverage on index.go ✅
 - **Logic:** RebuildIndex (rebuilds from agents map, persists _index.yaml), IndexEntry (cached hit, cache miss→compute, agent not found), agentToIndexEntry (field projection with capability slice copy)
-- **Result:** RebuildIndex 88.9%, IndexEntry 100.0%, agentToIndexEntry 100.0%. 9 test functions, all pass. Marketplace coverage: 71.8% (from 64.5%). Direct-write (70-line source, spawn threshold not met). Commit: pending
+- **Result:** RebuildIndex 88.9%, IndexEntry 100.0%, agentToIndexEntry 100.0%. 9 test functions, all pass. Marketplace coverage: 71.8% (from 64.5%). Direct-write (70-line source, spawn threshold not met). Commit: 9d1b9b5
