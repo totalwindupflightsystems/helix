@@ -1,1 +1,6 @@
-{}
+agent-identity:
+  v1.0.0:
+    hash: sha256:initial-registration
+    status: active
+    model: deepseek-v4-pro
+    provider: deepseek
