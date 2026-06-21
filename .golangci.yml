@@ -1,0 +1,35 @@
+run:
+  timeout: 5m
+  go: "1.22"
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gofmt
+    - goimports
+
+linters-settings:
+  gofmt:
+    simplify: true
+  goimports:
+    local-prefixes: github.com/totalwindupflightsystems/helix
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on test files
+    - path: _test\.go
+      linters:
+        - errcheck
+        - unused
+    # Exclude known linter issues in generated code
+    - path: ".*\\.pb\\.go"
+      linters:
+        - all
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
