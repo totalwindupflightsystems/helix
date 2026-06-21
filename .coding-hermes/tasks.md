@@ -44,13 +44,14 @@
 - **AC:** `go build ./cmd/helix-negotiate/` exits 0 ✅
 - **Result:** 7 files, 967 lines Go. BUILD/VET OK. State machine (6 states), debate engine, Chimera arbiter client, trust deltas, audit logger, Cobra CLI. Commit: 9d16c02
 
-## [ ] Feature 4 stubs: Go CLI + packages for prompt registry
+## [x] Feature 4 stubs: Go CLI + packages for prompt registry (completed 2026-06-20)
 - **Priority:** medium
 - **Model:** glm-5.2
 - **Provider:** zai-glm
 - **Spec:** specs/prompt-registry.md (684 lines)
 - **Files:** cmd/helix-prompt/main.go, pkg/prompt/*.go
-- **AC:** `go build ./cmd/helix-prompt/` exits 0
+- **AC:** `go build ./cmd/helix-prompt/` exits 0 ✅
+- **Result:** 1,443 lines, 8 Go files (CLI 415 lines + 7 packages 1,028 lines), 3 config files (.promptfoo.yaml, .forgejo/workflows/promptfoo.yaml, prompts/_index.yaml). BUILD/VET OK. CLI functional: 4 subcommands (register, attest, verify, list). Commit: 9dcbf5a
 
 ## [ ] Feature 5 stubs: Go CLI + packages for agent marketplace
 - **Priority:** low
