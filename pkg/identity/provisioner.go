@@ -1,27 +1,32 @@
 package identity
 
-// This file defines the Forgejo HTTP client surface. Every method that would
-// touch the network is a stub returning ErrNotImplemented — the goal of v1
-// is to lock down the contract (URLs, request bodies, response types, auth
-// model, rate-limit shape, retry policy) so the real transport can be dropped
-// in without touching callers.
+// This file defines the Forgejo HTTP client surface. All five transport
+// methods — GetAccount, CreateUser, RegisterKey, CreateToken, RevokeToken —
+// are implemented with real HTTP calls over the Forgejo admin and user APIs.
+// Each method maps 1:1 to a documented Forgejo endpoint and enforces the auth
+// model, rate-limit shape, and retry policy described in specs/agent-identity.md
+// §8 and §13.
 //
 // What IS implemented here:
 //   - Provisioner configuration + validation
-//   - URL construction (proves the endpoint shapes compile and stringify)
-//   - DryRunMode decision logic
-//   - RateLimiter data structure (token bucket; stubbed Acquire is a no-op)
-//   - Retry policy constants
+//   - URL construction (all endpoint shapes compile and stringify)
+//   - DryRunMode decision logic (short-circuits before any network call)
+//   - RateLimiter (token bucket; Acquire blocks until a token is available)
+//   - Retry policy with exponential backoff (connection failures + 5xx)
+//   - doWithRetry: shared retry loop honoring Retry-After on 429
+//   - Real HTTP transport for all 5 endpoints
 //
-// What is NOT implemented (returns ErrNotImplemented):
-//   - CreateUser, GetAccount, RegisterKey, CreateToken, RevokeToken
-//
-// See specs/agent-identity.md §9.2 and §11 for the contract this stub models.
+// See specs/agent-identity.md §8 and §13 for the contracts this implements.
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -310,7 +315,120 @@ func (p *Provisioner) userTokenURL(name string, id int64) string {
 }
 
 // ---------------------------------------------------------------------------
-// Endpoint stubs — all return ErrNotImplemented in v1
+// Shared retry transport
+// ---------------------------------------------------------------------------
+
+// doWithRetry executes an HTTP request with retry semantics shared by all five
+// transport methods. It retries on network errors, HTTP 429 (honoring the
+// Retry-After header), and HTTP 5xx responses. Once it receives a
+// non-retryable response (1xx/2xx/3xx/4xx-excluding-429), it returns the
+// *http.Response so the caller can interpret the status code in a method-
+// specific way (e.g. GetAccount treats 404 as "not found, not an error").
+//
+// The request body is fully buffered before the first attempt so that retries
+// can re-send it without exhausting the reader.
+func (p *Provisioner) doWithRetry(method, urlStr string, body io.Reader, setAuth func(*http.Request)) (*http.Response, error) {
+	// Buffer the body once so each retry attempt can re-send it.
+	var bodyBytes []byte
+	if body != nil {
+		var readErr error
+		bodyBytes, readErr = io.ReadAll(body)
+		if readErr != nil {
+			return nil, NewInternalError(
+				fmt.Sprintf("%s %s: failed to buffer request body", method, urlStr), readErr)
+		}
+	}
+
+	var lastErr error
+	for attempt := 0; attempt < p.retry.MaxAttempts; attempt++ {
+		if attempt > 0 {
+			time.Sleep(p.retry.BackoffFor(attempt))
+		}
+
+		// Build a fresh request for each attempt (body reader is consumed by Do).
+		var bodyReader io.Reader
+		if bodyBytes != nil {
+			bodyReader = bytes.NewReader(bodyBytes)
+		}
+		req, reqErr := http.NewRequestWithContext(context.Background(), method, urlStr, bodyReader)
+		if reqErr != nil {
+			return nil, NewConfigError(
+				fmt.Sprintf("failed to build %s request to %s", method, urlStr), reqErr)
+		}
+		if setAuth != nil {
+			setAuth(req)
+		}
+
+		resp, doErr := p.http.Do(req)
+		if doErr != nil {
+			// Network-level failure (DNS, TLS, connection refused, timeout).
+			lastErr = NewNetworkError(
+				fmt.Sprintf("%s %s: request failed (attempt %d/%d)",
+					method, urlStr, attempt+1, p.retry.MaxAttempts), doErr)
+			continue
+		}
+
+		// 429: rate limited — honor Retry-After, then retry.
+		if resp.StatusCode == http.StatusTooManyRequests {
+			wait := parseRetryAfter(resp.Header.Get("Retry-After"))
+			resp.Body.Close()
+			lastErr = NewNetworkError(
+				fmt.Sprintf("%s %s: rate limited (429), retrying after %s",
+					method, urlStr, wait), nil)
+			time.Sleep(wait)
+			continue
+		}
+
+		// 5xx: server error — retry per policy.
+		if resp.StatusCode >= 500 {
+			resp.Body.Close()
+			lastErr = NewNetworkError(
+				fmt.Sprintf("%s %s: server error (HTTP %d, attempt %d/%d)",
+					method, urlStr, resp.StatusCode, attempt+1, p.retry.MaxAttempts), nil)
+			continue
+		}
+
+		// Non-retryable response — hand it to the caller.
+		return resp, nil
+	}
+
+	return nil, NewNetworkError(
+		fmt.Sprintf("%s %s: exhausted %d retries", method, urlStr, p.retry.MaxAttempts), lastErr)
+}
+
+// parseRetryAfter converts a Retry-After header value to a Duration. The
+// header can be either a non-negative integer (seconds) or an HTTP-date. If
+// the value is missing or unparseable, it falls back to 5 seconds.
+func parseRetryAfter(val string) time.Duration {
+	if val == "" {
+		return 5 * time.Second
+	}
+	// Numeric form: delay in seconds.
+	if secs, err := strconv.Atoi(val); err == nil && secs >= 0 {
+		return time.Duration(secs) * time.Second
+	}
+	// HTTP-date form: absolute timestamp.
+	if t, err := http.ParseTime(val); err == nil {
+		if d := time.Until(t); d > 0 {
+			return d
+		}
+	}
+	return 5 * time.Second
+}
+
+// readAndCloseBody reads the full response body and closes it. Used by
+// callers that need the body text for error messages.
+func readAndCloseBody(resp *http.Response) string {
+	defer resp.Body.Close()
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(b))
+}
+
+// ---------------------------------------------------------------------------
+// Endpoint implementations — real Forgejo HTTP transport
 // ---------------------------------------------------------------------------
 
 // GetAccount calls GET /api/v1/admin/users/{name}. Returns the account if it
@@ -319,11 +437,39 @@ func (p *Provisioner) userTokenURL(name string, id int64) string {
 //
 // Auth: admin token in Authorization header.
 func (p *Provisioner) GetAccount(name string) (*ForgejoAccount, error) {
-	_ = p.adminUsersURL(name) // prove the URL stringifies
 	if p.cfg.DryRun {
 		return nil, nil // dry-run: assume not-yet-provisioned
 	}
-	return nil, ErrNotImplemented
+	p.limiter.Acquire()
+
+	resp, err := p.doWithRetry(http.MethodGet, p.adminUsersURL(name), nil,
+		func(req *http.Request) {
+			req.Header.Set("Authorization", "token "+p.cfg.AdminToken)
+		})
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+		var acct ForgejoAccount
+		if decErr := json.NewDecoder(resp.Body).Decode(&acct); decErr != nil {
+			return nil, NewInternalError(
+				fmt.Sprintf("GetAccount(%s): failed to decode response", name), decErr)
+		}
+		return &acct, nil
+
+	case http.StatusNotFound:
+		// 404 is not an error — callers use this as an idempotency probe.
+		return nil, nil
+
+	default:
+		body := readAndCloseBody(resp)
+		return nil, NewAPIError(
+			fmt.Sprintf("GetAccount(%s): unexpected HTTP %d: %s",
+				name, resp.StatusCode, body), nil)
+	}
 }
 
 // CreateUser calls POST /api/v1/admin/users. On success returns the newly
@@ -332,7 +478,6 @@ func (p *Provisioner) GetAccount(name string) (*ForgejoAccount, error) {
 //
 // Auth: admin token in Authorization header.
 func (p *Provisioner) CreateUser(req *CreateUserRequest) (*ForgejoAccount, error) {
-	_ = p.adminUsersURL("") // POST target
 	if req == nil {
 		return nil, NewConfigError("CreateUser: nil request", nil)
 	}
@@ -341,7 +486,43 @@ func (p *Provisioner) CreateUser(req *CreateUserRequest) (*ForgejoAccount, error
 			Login: req.Username, Email: req.Email, FullName: req.FullName,
 		}, nil
 	}
-	return nil, ErrNotImplemented
+	p.limiter.Acquire()
+
+	bodyBytes, mErr := json.Marshal(req)
+	if mErr != nil {
+		return nil, NewInternalError("CreateUser: failed to marshal request", mErr)
+	}
+
+	resp, err := p.doWithRetry(http.MethodPost, p.adminUsersURL(""), bytes.NewReader(bodyBytes),
+		func(r *http.Request) {
+			r.Header.Set("Content-Type", "application/json")
+			r.Header.Set("Authorization", "token "+p.cfg.AdminToken)
+		})
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusCreated:
+		var acct ForgejoAccount
+		if decErr := json.NewDecoder(resp.Body).Decode(&acct); decErr != nil {
+			return nil, NewInternalError(
+				fmt.Sprintf("CreateUser(%s): failed to decode response", req.Username), decErr)
+		}
+		return &acct, nil
+
+	case http.StatusConflict:
+		body := readAndCloseBody(resp)
+		return nil, NewAPIError(
+			fmt.Sprintf("CreateUser(%s): conflict (409): %s", req.Username, body), nil)
+
+	default:
+		body := readAndCloseBody(resp)
+		return nil, NewAPIError(
+			fmt.Sprintf("CreateUser(%s): unexpected HTTP %d: %s",
+				req.Username, resp.StatusCode, body), nil)
+	}
 }
 
 // RegisterKey calls POST /api/v1/user/keys. The key is registered as the
@@ -351,7 +532,6 @@ func (p *Provisioner) CreateUser(req *CreateUserRequest) (*ForgejoAccount, error
 //
 // Auth: HTTP Basic Auth as the agent (username + tempPassword).
 func (p *Provisioner) RegisterKey(agentName, tempPassword, publicKey, title string) (*SSHKey, error) {
-	_ = p.userKeysURL()
 	if agentName == "" {
 		return nil, NewConfigError("RegisterKey: empty agent name", nil)
 	}
@@ -364,7 +544,42 @@ func (p *Provisioner) RegisterKey(agentName, tempPassword, publicKey, title stri
 		return nil, NewConfigError(
 			fmt.Sprintf("RegisterKey(%s): missing temp password", agentName), nil)
 	}
-	return nil, ErrNotImplemented
+	p.limiter.Acquire()
+
+	keyReq := map[string]string{
+		"key":   publicKey,
+		"title": title,
+	}
+	bodyBytes, mErr := json.Marshal(keyReq)
+	if mErr != nil {
+		return nil, NewInternalError("RegisterKey: failed to marshal request", mErr)
+	}
+
+	resp, err := p.doWithRetry(http.MethodPost, p.userKeysURL(), bytes.NewReader(bodyBytes),
+		func(r *http.Request) {
+			r.Header.Set("Content-Type", "application/json")
+			r.SetBasicAuth(agentName, tempPassword)
+		})
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusCreated:
+		var key SSHKey
+		if decErr := json.NewDecoder(resp.Body).Decode(&key); decErr != nil {
+			return nil, NewInternalError(
+				fmt.Sprintf("RegisterKey(%s): failed to decode response", agentName), decErr)
+		}
+		return &key, nil
+
+	default:
+		body := readAndCloseBody(resp)
+		return nil, NewAPIError(
+			fmt.Sprintf("RegisterKey(%s): unexpected HTTP %d: %s",
+				agentName, resp.StatusCode, body), nil)
+	}
 }
 
 // CreateToken calls POST /api/v1/users/{name}/tokens. Returns the new PAT;
@@ -376,7 +591,6 @@ func (p *Provisioner) RegisterKey(agentName, tempPassword, publicKey, title stri
 // credentials. The CLI surfaces both via env vars; the syncer holds the
 // admin password in memory only for the duration of the PAT creation call.
 func (p *Provisioner) CreateToken(agentName, adminUser, adminPassword string, req *CreateTokenRequest) (*AccessToken, error) {
-	_ = p.userTokensURL(agentName)
 	if agentName == "" {
 		return nil, NewConfigError("CreateToken: empty agent name", nil)
 	}
@@ -391,7 +605,40 @@ func (p *Provisioner) CreateToken(agentName, adminUser, adminPassword string, re
 		return nil, NewConfigError(
 			fmt.Sprintf("CreateToken(%s): missing admin BasicAuth credentials", agentName), nil)
 	}
-	return nil, ErrNotImplemented
+	p.limiter.Acquire()
+
+	bodyBytes, mErr := json.Marshal(req)
+	if mErr != nil {
+		return nil, NewInternalError("CreateToken: failed to marshal request", mErr)
+	}
+
+	resp, err := p.doWithRetry(http.MethodPost, p.userTokensURL(agentName), bytes.NewReader(bodyBytes),
+		func(r *http.Request) {
+			r.Header.Set("Content-Type", "application/json")
+			r.SetBasicAuth(adminUser, adminPassword)
+		})
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusCreated:
+		var tok AccessToken
+		if decErr := json.NewDecoder(resp.Body).Decode(&tok); decErr != nil {
+			return nil, NewInternalError(
+				fmt.Sprintf("CreateToken(%s): failed to decode response", agentName), decErr)
+		}
+		// .Token is only populated on this create response — already captured
+		// by Decode into tok.Token. Callers must read it immediately.
+		return &tok, nil
+
+	default:
+		body := readAndCloseBody(resp)
+		return nil, NewAPIError(
+			fmt.Sprintf("CreateToken(%s): unexpected HTTP %d: %s",
+				agentName, resp.StatusCode, body), nil)
+	}
 }
 
 // RevokeToken calls DELETE /api/v1/users/{name}/tokens/{id}. Returns nil on
@@ -400,7 +647,6 @@ func (p *Provisioner) CreateToken(agentName, adminUser, adminPassword string, re
 //
 // Auth: HTTP Basic Auth as the admin user.
 func (p *Provisioner) RevokeToken(agentName, adminUser, adminPassword string, tokenID int64) error {
-	_ = p.userTokenURL(agentName, tokenID)
 	if agentName == "" {
 		return NewConfigError("RevokeToken: empty agent name", nil)
 	}
@@ -412,9 +658,27 @@ func (p *Provisioner) RevokeToken(agentName, adminUser, adminPassword string, to
 	if p.cfg.DryRun {
 		return nil
 	}
-	_ = adminUser
-	_ = adminPassword
-	return ErrNotImplemented
+	p.limiter.Acquire()
+
+	resp, err := p.doWithRetry(http.MethodDelete, p.userTokenURL(agentName, tokenID), nil,
+		func(r *http.Request) {
+			r.SetBasicAuth(adminUser, adminPassword)
+		})
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusNoContent:
+		return nil
+
+	default:
+		body := readAndCloseBody(resp)
+		return NewAPIError(
+			fmt.Sprintf("RevokeToken(%s, %d): unexpected HTTP %d: %s",
+				agentName, tokenID, resp.StatusCode, body), nil)
+	}
 }
 
 // Close releases any resources held by the provisioner. In v1 it is a no-op
