@@ -62,8 +62,9 @@
 - **AC:** `go build ./cmd/helix-marketplace/` exits 0 ✅
 - **Result:** 1,529 lines, 8 files (562-line CLI, 7 packages: types/registry/scorer/discovery/ratings/lifecycle/index). BUILD/VET/TEST OK. All 4 subcommands wired (list/show/search/rate). Trust formula with 5 components. Commit: 3670372
 
-## [ ] Create prompts/ directory with initial prompt registrations
+## [x] Create prompts/ directory with initial prompt registrations (completed 2026-06-21)
 - **Priority:** low
 - **Model:** deepseek-v4-flash
 - **Files:** prompts/agent-identity/v1.0.0/prompt.md + metadata.yaml, prompts/_index.yaml
-- **AC:** `helix prompt list` shows registered prompts
+- **AC:** `helix prompt list` shows registered prompts ✅
+- **Result:** Created agent-identity v1.0.0 prompt (3,613 bytes, 5-section structured prompt), metadata.yaml (status=active, model=deepseek-v4-pro), and _index.yaml. Build/vet/test all pass. `helix prompt list` shows entry in table and JSON formats. Commit: 074c9ca
