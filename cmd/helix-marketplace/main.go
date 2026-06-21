@@ -20,8 +20,9 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/totalwindupflightsystems/helix/pkg/marketplace"
 	"gopkg.in/yaml.v3"
+
+	"github.com/totalwindupflightsystems/helix/pkg/marketplace"
 )
 
 func main() {

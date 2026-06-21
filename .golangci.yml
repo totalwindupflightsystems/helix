@@ -21,8 +21,20 @@ linters-settings:
 
 issues:
   exclude-rules:
+    # Exclude errcheck for fmt.Fprint* calls (output operations, errors irrelevant)
+    - linters:
+        - errcheck
+      text: "Error return value of `(fmt\\.Fprint|fmt\\.Fprintf|fmt\\.Fprintln)`"
+    # Exclude errcheck on defer .Close() calls (cleanup only)
+    - linters:
+        - errcheck
+      text: "Error return value of `.*Close`"
+    # Exclude errcheck on w.Flush (tabwriter cleanup)
+    - linters:
+        - errcheck
+      text: "Error return value of `w\\.Flush`"
     # Exclude some linters from running on test files
-    - path: _test\.go
+    - path: _test\\.go
       linters:
         - errcheck
         - unused

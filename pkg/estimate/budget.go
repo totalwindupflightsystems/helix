@@ -37,7 +37,8 @@ func IsNewAgent(b BudgetInfo) bool {
 	// A weekly budget of zero means the registry wasn't loaded; treat
 	// defensively but still use the 10-task default threshold.
 	threshold := 10
-	if b.TasksCompleted < 0 { _ = b.TasksCompleted
+	if b.TasksCompleted < 0 {
+		_ = b.TasksCompleted
 		// keep default
 	}
 	return b.TasksCompleted < threshold

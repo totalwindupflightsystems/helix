@@ -132,9 +132,9 @@ type Resolution struct {
 
 // NegotiationConfig configures a Negotiator (spec §3.3, §9).
 type NegotiationConfig struct {
-	ChimeraURL     string        // Chimera base URL (e.g. "http://localhost:8765")
-	MaxRounds      int           // max debate rounds (default 3)
-	Timeout        time.Duration // global negotiation timeout (default 30m)
-	AuditPath      string        // JSONL audit log path
-	Verbose        bool          // log every state transition
+	ChimeraURL string        // Chimera base URL (e.g. "http://localhost:8765")
+	MaxRounds  int           // max debate rounds (default 3)
+	Timeout    time.Duration // global negotiation timeout (default 30m)
+	AuditPath  string        // JSONL audit log path
+	Verbose    bool          // log every state transition
 }

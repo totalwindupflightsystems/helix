@@ -13,9 +13,9 @@ import (
 
 func TestTaskStatus_IsValid(t *testing.T) {
 	cases := []struct {
-		name  string
+		name   string
 		status TaskStatus
-		want  bool
+		want   bool
 	}{
 		{"pending", StatusPending, true},
 		{"assigned", StatusAssigned, true},
@@ -41,9 +41,9 @@ func TestTaskStatus_IsValid(t *testing.T) {
 
 func TestStepStatus_IsValid(t *testing.T) {
 	cases := []struct {
-		name  string
+		name   string
 		status StepStatus
-		want  bool
+		want   bool
 	}{
 		{"pending", StepPending, true},
 		{"in_progress", StepInProgress, true},

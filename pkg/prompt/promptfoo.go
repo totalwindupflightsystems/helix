@@ -14,9 +14,9 @@ import (
 
 // PromptFooYAML represents the .promptfoo.yaml configuration structure.
 type PromptFooYAML struct {
-	Prompts   []PromptFooPrompt `yaml:"prompts"`
+	Prompts   []PromptFooPrompt   `yaml:"prompts"`
 	Providers []PromptFooProvider `yaml:"providers"`
-	Tests     []PromptFooTest   `yaml:"tests"`
+	Tests     []PromptFooTest     `yaml:"tests"`
 }
 
 // PromptFooPrompt is a prompt entry in the PromptFoo config.
@@ -35,9 +35,9 @@ type PromptFooProvider struct {
 
 // PromptFooTest is a test case in the PromptFoo config.
 type PromptFooTest struct {
-	Description string              `yaml:"description"`
-	Vars        map[string]string   `yaml:"vars,omitempty"`
-	Assert      []PromptFooAssert   `yaml:"assert"`
+	Description string            `yaml:"description"`
+	Vars        map[string]string `yaml:"vars,omitempty"`
+	Assert      []PromptFooAssert `yaml:"assert"`
 }
 
 // PromptFooAssert is a single assertion in a PromptFoo test.
@@ -102,10 +102,10 @@ type promptFooRawResult struct {
 			Raw string `json:"raw"`
 			ID  string `json:"id"`
 		} `json:"prompt"`
-		Vars  map[string]interface{} `json:"vars"`
+		Vars   map[string]interface{} `json:"vars"`
 		Grader struct {
-			Pass   bool   `json:"pass"`
-			Reason string `json:"reason"`
+			Pass   bool    `json:"pass"`
+			Reason string  `json:"reason"`
 			Score  float64 `json:"score"`
 		} `json:"grader"`
 	} `json:"results"`

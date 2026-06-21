@@ -154,6 +154,43 @@ make docker-build
 make docker-up
 ```
 
+## Docker Compose
+
+The full platform stack (Forgejo + Chimera + Helix) can be started with Docker Compose:
+
+```bash
+# Start all services
+./scripts/up.sh
+
+# Check status
+docker exec -it helix-cli helix status
+
+# Stop all services
+./scripts/down.sh
+
+# Stop and remove all data
+./scripts/down.sh --clean
+```
+
+### Services
+
+| Service | Port | Description |
+|---------|------|-------------|
+| Forgejo | 3000 (web), 2222 (SSH) | Self-hosted Git server for agent accounts |
+| Chimera | 8765 | AI inference server (cost estimation, prompt attestation) |
+| Helix | — | CLI container (use `docker exec -it helix-cli helix <command>`) |
+
+### Configuration
+
+Copy `.env.example` to `.env` and adjust values:
+
+```bash
+cp .env.example .env
+# edit .env with your credentials
+```
+
+See `docker-compose.yml` for the full service definition and environment variables.
+
 ## License
 
 MIT

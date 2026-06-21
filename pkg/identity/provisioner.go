@@ -311,7 +311,6 @@ func (p *Provisioner) adminUsersURL(name string) string {
 	return base + "/api/v1/admin/users/" + url.PathEscape(name)
 }
 
-
 // adminUserKeysURL is POST /api/v1/admin/users/{name}/keys — the admin
 // endpoint for registering SSH keys on behalf of a user. Required because
 // Forgejo v1.21+ blocks POST /api/v1/user/keys for users who must change

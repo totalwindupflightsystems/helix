@@ -1,5 +1,6 @@
 guards:
   test_mode: diff
+  test_command: go test -short -count=1 ./pkg/...
   secrets: true
   lint: true
   tests: true

@@ -221,12 +221,12 @@ type ManifestIndexEntry struct {
 // AgentListing is a summary entry in search results (spec §8). It contains
 // the fields needed for discovery listings without loading the full manifest.
 type AgentListing struct {
-	Name            string       `json:"name"`
-	Description     string       `json:"description"`
-	Capabilities    []Capability `json:"capabilities"`
-	Reputation      float64      `json:"reputation"`
-	Reviews         int          `json:"reviews"`
-	ActiveProjects  int          `json:"active_projects"`
+	Name           string       `json:"name"`
+	Description    string       `json:"description"`
+	Capabilities   []Capability `json:"capabilities"`
+	Reputation     float64      `json:"reputation"`
+	Reviews        int          `json:"reviews"`
+	ActiveProjects int          `json:"active_projects"`
 }
 
 // AgentProfile is the full agent detail returned by GetAgent (spec §8.1).
@@ -245,9 +245,9 @@ type ReputationPoint struct {
 
 // ReviewSummary aggregates review data for the agent profile display.
 type ReviewSummary struct {
-	Average   float64 `json:"average"`
-	Count     int     `json:"count"`
-	Recent    []Review `json:"recent"`
+	Average float64  `json:"average"`
+	Count   int      `json:"count"`
+	Recent  []Review `json:"recent"`
 }
 
 // ---------------------------------------------------------------------------
