@@ -69,12 +69,12 @@
 - **AC:** `helix prompt list` shows registered prompts ✅
 - **Result:** Created agent-identity v1.0.0 prompt (3,613 bytes, 5-section structured prompt), metadata.yaml (status=active, model=deepseek-v4-pro), and _index.yaml. Build/vet/test all pass. `helix prompt list` shows entry in table and JSON formats. Commit: 074c9ca
 
-## [ ] Write Go tests for pkg/prompt/hasher.go
+## [x] Write Go tests for pkg/prompt/hasher.go (completed 2026-06-21)
 - **Priority:** high
 - **Model:** MiniMax-M3
 - **Files:** pkg/prompt/hasher_test.go (NEW)
-- **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with >90% coverage on hasher.go
-- **Pure functions:** Normalize, Hash, VerifyHash — no I/O, no deps beyond stdlib
+- **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with >90% coverage on hasher.go ✅
+- **Result:** 100% coverage on all 3 functions (Normalize, Hash, VerifyHash). 722-line table-driven test file. Commit: 21b1a60
 
 ## [ ] Write Go tests for pkg/estimate/budget.go
 - **Priority:** high
