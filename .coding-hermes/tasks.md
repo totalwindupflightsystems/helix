@@ -201,9 +201,10 @@
 - **Logic:** AllAgents (cached reload pattern), parseRetryAfter (string→duration), readAndCloseBody (read all + close)
 - **Result:** All 3 target functions at 100%. AllAgents: 5 subtests (empty, nil-skip, name-backfill, all-statuses-sorted, mutation-stability). parseRetryAfter: 11 cases (empty, numeric positive/zero/negative, unparseable, whitespace, float, HTTP-date future/past, invalid format). readAndCloseBody: 8 cases (normal, empty, whitespace-trim, error-read, body-consumed, large, real httptest). Coverage 64.3% → 68.0% (+3.7pp). Commit: 6e0152b
 
-## [ ] Write Go tests for pkg/marketplace/scorer.go uncovered functions
+## [x] Write Go tests for pkg/marketplace/scorer.go uncovered functions (completed 2026-06-22)
 - **Priority:** medium
 - **Model:** MiniMax-M3 (direct write — pure logic)
 - **Files:** pkg/marketplace/scorer_advanced_test.go (NEW)
-- **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >85% coverage on marketplace package
+- **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >85% coverage on marketplace package ✅ 91.3%
 - **Logic:** CalculateReputation, RecordReview, RecordMerge, applyDecay
+- **Result:** All 5 uncovered functions at 100% (NewScorer, CalculateReputation, RecordReview, RecordMerge, applyDecay). 413 lines. CalculateReputation: 7 subtests (no-history, merge-boost, penalties+capped, capped-acceptance, active-no-decay, inactive-decay-computation, decay-floor-at-30). RecordReview: 7 subtests (valid/invalid ratings, multiple accumulation). RecordMerge: 4 subtests (success/failure/create/accumulate). applyDecay: 9 subtests (no-activity, unparseable, recent, boundary, 1/2/many periods, floor, edge-case-61d). Coverage 78.6% → 91.3% (+12.7pp). Commit: 22f5d9f
