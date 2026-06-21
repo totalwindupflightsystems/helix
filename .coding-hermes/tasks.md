@@ -184,3 +184,25 @@
 - **AC:** `go test ./pkg/negotiate/... -count=1 -cover` passes with >55% coverage on negotiate package ✅
 - **Logic:** DetectConflict, IsVeto, NewNegotiator, NewNegotiatorFromConfig, Advance (13 transitions including Chimera tiebreak via httptest mock), Escalate, Resolve, setState, hasConcession, buildArbiterPrompt, buildChimeraPrompt, allPositionsAgree, collectPositionEvidence, extractWinningEvidence, Negotiate (full protocol with httptest), EscalateToChimera, TransitionTable, ChimeraVerdict field verification
 - **Result:** 1,113 lines, 22 test functions, EVERY test passes. Package coverage: 25.9% → 96.8% (+70.9pp). All 7 Helix packages pass. Commit: 8dbe954
+
+## [ ] Write Go tests for pkg/estimate/pricing.go + types.go
+- **Priority:** high
+- **Model:** MiniMax-M3 (direct write — pure logic, spawn threshold not met)
+- **Files:** pkg/estimate/pricing_test.go (NEW)
+- **AC:** `go test ./pkg/estimate/... -count=1 -cover` passes with >50% coverage on estimate package
+- **Logic:** ModelPrice: IsCacheSupported, GetCacheReadPrice, GetCacheWritePrice. PricingYAML: GetModelPrice, GetTaskDefaults. applyTaskDefaults, Validate, LoadPricing. TaskType.Valid.
+- **Note:** LoadPricing uses testdata/pricing.yaml fixture. Pure map lookups + validation — no network calls.
+
+## [ ] Write Go tests for pkg/identity/types.go AllAgents + provisioner.go helpers
+- **Priority:** medium
+- **Model:** MiniMax-M3 (direct write — single-file test)
+- **Files:** pkg/identity/allagents_test.go (NEW)
+- **AC:** `go test ./pkg/identity/... -count=1 -cover` passes with >75% coverage on identity package
+- **Logic:** AllAgents (cached reload pattern), parseRetryAfter (string→duration), readAndCloseBody (read all + close)
+
+## [ ] Write Go tests for pkg/marketplace/scorer.go uncovered functions
+- **Priority:** medium
+- **Model:** MiniMax-M3 (direct write — pure logic)
+- **Files:** pkg/marketplace/scorer_advanced_test.go (NEW)
+- **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >85% coverage on marketplace package
+- **Logic:** CalculateReputation, RecordReview, RecordMerge, applyDecay
