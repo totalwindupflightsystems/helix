@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "agents": {
+    "wojons": {
+      "display_name": "Wojons Tech",
+      "status": "active",
+      "tier": "pro",
+      "budget_usd_weekly": 10.00,
+      "budget_used_usd": 3.42,
+      "trust_level": 85,
+      "tasks_completed": 47
+    },
+    "llopez": {
+      "display_name": "Laura Lopez",
+      "status": "active",
+      "tier": "pro",
+      "budget_usd_weekly": 5.00,
+      "budget_used_usd": 4.97,
+      "trust_level": 72,
+      "tasks_completed": 33
+    },
+    "dtoole": {
+      "display_name": "Davy Toole",
+      "status": "active",
+      "tier": "flash",
+      "budget_usd_weekly": 5.00,
+      "budget_used_usd": 1.10,
+      "trust_level": 60,
+      "tasks_completed": 28
+    },
+    "rookie": {
+      "display_name": "New Agent",
+      "status": "active",
+      "tier": "pro",
+      "budget_usd_weekly": 10.00,
+      "budget_used_usd": 0.50,
+      "trust_level": 50,
+      "tasks_completed": 3
+    }
+  }
+}

@@ -1,0 +1,80 @@
+# Helix provider pricing — June 2026.
+# Source of truth for cost estimation. All prices are per 1K tokens.
+# Update this file to change pricing without touching code (spec §3.2, §4).
+version: 1
+updated: "2026-06-19"
+
+providers:
+  deepseek:
+    models:
+      deepseek-v4-pro:
+        input_per_1k: 0.00014
+        cache_read_per_1k: 0.000014
+        output_per_1k: 0.00028
+      deepseek-v4-flash:
+        input_per_1k: 0.00007
+        cache_read_per_1k: 0.000007
+        output_per_1k: 0.00014
+  zai-glm:
+    models:
+      glm-5.2:
+        input_per_1k: 0.00010
+        cache_read_per_1k: 0.000010
+        output_per_1k: 0.00020
+  minimax:
+    models:
+      MiniMax-M3:
+        input_per_1k: 0.00020
+        cache_read_per_1k: null   # No cache API — all input at full price.
+        output_per_1k: 0.00040
+  anthropic:
+    models:
+      claude-sonnet-4:
+        input_per_1k: 0.00300
+        cache_read_per_1k: 0.00030
+        cache_write_per_1k: 0.00375   # 1.25x input
+        output_per_1k: 0.01500
+  google:
+    models:
+      gemini-2.5-pro:
+        input_per_1k: 0.00125
+        cache_read_per_1k: 0.00031
+        output_per_1k: 0.01000
+  openrouter:
+    markup_percent: 5   # Pass-through; upstream model prices apply +5%.
+
+# Cache ratios drive the cache-aware estimation formula (spec §7.3, §12.3).
+cache:
+  pro_hit_ratio: 0.60       # Pro tier: 60% of input served from cache.
+  flash_hit_ratio: 0.80     # Flash tier: 80% (budget models use cache more).
+  pro_write_ratio: 0.50     # 50% of fresh input written to cache.
+  flash_write_ratio: 0.70   # 70% of fresh input written to cache.
+  new_repo_threshold: 10    # First 10 tasks = cold start.
+  new_repo_hit_ratio: 0.0   # Cold start: no cache history yet.
+  new_repo_write_ratio: 0.50
+
+# Task-type token profiles (spec §7.2). Adjustment factors default to:
+#   input_per_file:    +5000 tokens per file
+#   tokens_per_iter:   +10000 tokens per iteration past 10
+#   tokens_per_10_diff: +1 token per 10 diff lines
+tasks:
+  spec:
+    input_tokens: 80000
+    output_ratio: 2.0
+    max_iterations: 5
+  code:
+    input_tokens: 120000
+    output_ratio: 0.8
+    max_iterations: 20
+  review:
+    input_tokens: 40000
+    output_ratio: 0.3
+    max_iterations: 3
+  refactor:
+    input_tokens: 200000
+    output_ratio: 0.5
+    max_iterations: 15
+  test:
+    input_tokens: 30000
+    output_ratio: 1.0
+    max_iterations: 10
