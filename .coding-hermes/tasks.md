@@ -76,12 +76,12 @@
 - **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with >90% coverage on hasher.go ✅
 - **Result:** 100% coverage on all 3 functions (Normalize, Hash, VerifyHash). 722-line table-driven test file. Commit: 21b1a60
 
-## [ ] Write Go tests for pkg/estimate/budget.go
+## [x] Write Go tests for pkg/estimate/budget.go (completed 2026-06-21)
 - **Priority:** high
 - **Model:** MiniMax-M3
 - **Files:** pkg/estimate/budget_test.go (NEW)
-- **AC:** `go test ./pkg/estimate/... -count=1 -cover` passes with >90% coverage on budget.go
-- **Pure functions:** RemainingBudget, IsNewAgent, CheckBudget, ApprovalExitCode — struct input -> struct output
+- **AC:** `go test ./pkg/estimate/... -count=1 -cover` passes with >90% coverage on budget.go ✅
+- **Result:** 100% coverage on all 4 functions (RemainingBudget, IsNewAgent, CheckBudget, ApprovalExitCode). 173 lines, 4 table-driven test functions. Commit: a441336
 
 ## [ ] Write Go tests for pkg/negotiate (types.go + debate.go)
 - **Priority:** high
