@@ -932,6 +932,9 @@ func TestAccountID(t *testing.T) {
 // -----------------------------------------------------------------------------
 
 func TestSyncer_Sync_AllFail(t *testing.T) {
+	if testing.Short() {
+		t.Skip("makes real HTTP calls — use -count=1 without -short")
+	}
 	cfg := validRealConfig(t)
 	s, err := NewSyncer(cfg, nil)
 	if err != nil {
