@@ -1,0 +1,67 @@
+{
+  "task_id": "qc-build",
+  "task_title": "Helix project builds and passes static checks",
+  "task_criteria": [
+    "go build ./cmd/... exits 0 \u2014 all CLI binaries compile",
+    "go vet ./... exits 0 \u2014 no warnings or errors",
+    "go test -short -count=1 ./... exits 0 \u2014 all tests pass",
+    "Binary files produced: helix-identity, sandbox (and helix-estimate/negotiate/prompt/marketplace when implemented)"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 build: \n  \u2713 tests: \n  \u2713 secrets: \n  \u2713 lint: ",
+      "steps": [
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 go build ./cmd/... exits 0 \u2014 all CLI binaries compile: Ran `go build ./cmd/...` \u2014 exit code 0, no errors.\n  \u2713 go vet ./... exits 0 \u2014 no warnings or errors: Ran `go vet ./...` \u2014 exit code 0, no warnings or errors.\n  \u2713 go test -short -count=1 ./... exits 0 \u2014 all tests pass: Ran `go test -short -count=1 ./...` \u2014 exit code 0, all 7 packages reported 'ok' (pkg/estimate, pkg/identity, pkg/marketplace, pkg/negotiate, pkg/prompt, pkg/sandbox; cmd/* had no test files).\n  \u2713 Binary files produced: helix-identity, sandbox (and helix-estimate/negotiate/prompt/marketplace when implemented): All 6 binaries exist as ELF executables: helix-identity (7179612 bytes), sandbox (3086473 bytes), helix-estimate (4654379 bytes), helix-negotiate (9833021 bytes), helix-prompt (5212979 bytes), helix-marketplace (4795302 bytes).\nAll 4 criteria pass: Go build, vet, and test all exit 0 with no errors, and all 6 binary executables are produced.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 go build ./cmd/... exits 0 \u2014 all CLI binaries compile: Ran `go build ./cmd/...` \u2014 exit code 0, no errors.\n  \u2713 go vet ./... exits 0 \u2014 no warnings or errors: Ran `go vet ./...` \u2014 exit code 0, no warnings or errors.\n  \u2713 go test -short -count=1 ./... exits 0 \u2014 all tests pass: Ran `go test -short -count=1 ./...` \u2014 exit code 0, all 7 packages reported 'ok' (pkg/estimate, pkg/identity, pkg/marketplace, pkg/negotiate, pkg/prompt, pkg/sandbox; cmd/* had no test files).\n  \u2713 Binary files produ",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: qc-build\n\nStage tier1: PASS\n    \u2713 build: \n  \u2713 tests: \n  \u2713 secrets: \n  \u2713 lint: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 go build ./cmd/... exits 0 \u2014 all CLI binaries compile: Ran `go build ./cmd/...` \u2014 exit code 0, no errors.\n  \u2713 go vet ./... exits 0 \u2014 no warnings or errors: Ran `go vet ./...` \u2014 exit code 0, no warnings or errors.\n  \u2713 go test -short -count=1 ./... exits 0 \u2014 all tests pass: Ran `go test -short -count=1 ./...` \u2014 exit code 0, all 7 packages reported 'ok' (pkg/estimate, pkg/identity, pkg/marketplace, pkg/negotiate, pkg/prompt, pkg/sandbox; cmd/* had no test files).\n  \u2713 Binary files produced: helix-identity, sandbox (and helix-estimate/negotiate/prompt/marketplace when implemented): All 6 binaries exist as ELF executables: helix-identity (7179612 bytes), sandbox (3086473 bytes), helix-estimate (4654379 bytes), helix-negotiate (9833021 bytes), helix-prompt (5212979 bytes), helix-marketplace (4795302 bytes).\nAll 4 criteria pass: Go build, vet, and test all exit 0 with no errors, and all 6 binary executables are produced.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-06-21T12:43:38.041931"
+}
