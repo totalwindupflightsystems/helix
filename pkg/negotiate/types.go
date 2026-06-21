@@ -107,3 +107,34 @@ type ChimeraVerdict struct {
 	Cost       float64 `json:"cost"`
 	Trace      string  `json:"trace"`
 }
+
+// Position is an agent's stated position in a negotiation (spec §7.2).
+type Position struct {
+	Agent    string `json:"agent"`
+	Verdict  string `json:"verdict"`  // "APPROVED" or "REQUEST_CHANGES"
+	Evidence string `json:"evidence"` // free-text evidence summary
+}
+
+// PRContext carries the inputs for a single negotiation (spec §3).
+type PRContext struct {
+	PRNumber       int        `json:"pr_number"`
+	AgentPositions []Position `json:"agent_positions"`
+	SpecRef        string     `json:"spec_ref"`
+}
+
+// Resolution is the outcome of a negotiation (spec §7.1 terminal state).
+type Resolution struct {
+	Verdict         string   `json:"verdict"`
+	Reasoning       string   `json:"reasoning"`
+	WinningEvidence []string `json:"winning_evidence"`
+	TieBreaker      string   `json:"tie_breaker"` // empty if resolved without Chimera
+}
+
+// NegotiationConfig configures a Negotiator (spec §3.3, §9).
+type NegotiationConfig struct {
+	ChimeraURL     string        // Chimera base URL (e.g. "http://localhost:8765")
+	MaxRounds      int           // max debate rounds (default 3)
+	Timeout        time.Duration // global negotiation timeout (default 30m)
+	AuditPath      string        // JSONL audit log path
+	Verbose        bool          // log every state transition
+}

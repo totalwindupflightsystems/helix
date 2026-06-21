@@ -218,6 +218,38 @@ type ManifestIndexEntry struct {
 	UpdatedAt    string       `yaml:"updated_at"   json:"updated_at"`
 }
 
+// AgentListing is a summary entry in search results (spec §8). It contains
+// the fields needed for discovery listings without loading the full manifest.
+type AgentListing struct {
+	Name            string       `json:"name"`
+	Description     string       `json:"description"`
+	Capabilities    []Capability `json:"capabilities"`
+	Reputation      float64      `json:"reputation"`
+	Reviews         int          `json:"reviews"`
+	ActiveProjects  int          `json:"active_projects"`
+}
+
+// AgentProfile is the full agent detail returned by GetAgent (spec §8.1).
+// It extends the base Agent with reputation history and review summary.
+type AgentProfile struct {
+	Agent
+	ReputationHistory []ReputationPoint `json:"reputation_history"`
+	ReviewSummary     ReviewSummary     `json:"review_summary"`
+}
+
+// ReputationPoint is a single entry in an agent's reputation history.
+type ReputationPoint struct {
+	Date  string  `json:"date"`
+	Score float64 `json:"score"`
+}
+
+// ReviewSummary aggregates review data for the agent profile display.
+type ReviewSummary struct {
+	Average   float64 `json:"average"`
+	Count     int     `json:"count"`
+	Recent    []Review `json:"recent"`
+}
+
 // ---------------------------------------------------------------------------
 // Exit codes (spec §12)
 // ---------------------------------------------------------------------------

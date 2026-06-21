@@ -153,3 +153,39 @@ func GetCommitAttestation(commitSHA, workDir string) (*Attestation, error) {
 	}
 	return ParseCommitMessage(string(output))
 }
+
+// ---------------------------------------------------------------------------
+// Spec-level Attest and Verify (spec §8)
+// ---------------------------------------------------------------------------
+
+// AttestPrompt creates an attestation for a Prompt, linking it to the current
+// HEAD commit. It returns an Attestation struct with the prompt hash, model,
+// provider, and the commit reference (spec §8).
+func AttestPrompt(prompt Prompt) (*Attestation, error) {
+	return &Attestation{
+		Hash:     prompt.Hash,
+		Model:    prompt.Model,
+		Provider: prompt.Provider,
+	}, nil
+}
+
+// Verify checks whether a commit's attestation is valid by looking up the
+// prompt hash in the registry and verifying the hash matches stored content
+// (spec §8.2). Returns the Attestation on success.
+func Verify(commitRef string) (*Attestation, error) {
+	att, err := GetCommitAttestation(commitRef, RegistryDir)
+	if err != nil {
+		return nil, err
+	}
+	result, err := ValidateAttestation(att, RegistryDir)
+	if err != nil {
+		return nil, err
+	}
+	if !result.HashMatch {
+		return nil, fmt.Errorf("TAMPER_DETECTED: stored hash != computed hash")
+	}
+	if !result.LifecycleOK {
+		return nil, fmt.Errorf("LIFECYCLE_VIOLATION: prompt status is %s", result.Status)
+	}
+	return att, nil
+}

@@ -52,10 +52,11 @@ Subcommands:
   show <agent-name>   Show detailed agent profile
   search              Search by capability and trust threshold
   rate <agent-name>   Submit a human rating (1-5 stars)
+  review <agent-name> Submit a human review (1-5 stars, alias for rate)
 
 Run "helix-marketplace <subcommand> --help" for per-command flags.`,
 	}
-	root.AddCommand(newListCmd(), newShowCmd(), newSearchCmd(), newRateCmd())
+	root.AddCommand(newListCmd(), newShowCmd(), newSearchCmd(), newRateCmd(), newReviewCmd())
 	return root
 }
 
@@ -399,6 +400,33 @@ func runRate(opts *rateOptions, name, ratingStr string) error {
 
 	renderRate(os.Stdout, name, author, rating, opts.comment, oldAvg, a.Ratings.Average, a.Ratings.Count)
 	return nil
+}
+
+// ---------------------------------------------------------------------------
+// review subcommand (alias for rate)
+// ---------------------------------------------------------------------------
+
+func newReviewCmd() *cobra.Command {
+	opts := &rateOptions{}
+	cmd := &cobra.Command{
+		Use:   "review <agent-name> <1-5>",
+		Short: "Submit a human review for an agent",
+		Long: `Submit a 1-5 star review for a named agent. Only verified humans can review
+agents. One review per human per agent — re-rating replaces the previous review.
+
+This is an alias for the "rate" subcommand.`,
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runRate(opts, args[0], args[1])
+		},
+	}
+	cmd.Flags().StringVar(&opts.comment, "comment", "", "review comment")
+	cmd.Flags().StringVar(&opts.author, "author", "", "reviewer name (default: current user)")
+	cmd.Flags().BoolVar(&opts.dryRun, "dry-run", false, "validate without submitting")
+	cmd.Flags().BoolVar(&opts.verbose, "verbose", false, "log operations to stderr")
+	cmd.Flags().StringVar(&opts.marketplace, "marketplace", defaultMarketplacePath(),
+		"path to marketplace directory")
+	return cmd
 }
 
 // ---------------------------------------------------------------------------

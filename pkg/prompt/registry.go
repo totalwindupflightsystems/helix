@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -337,4 +339,181 @@ func entryToPromptVersion(component, version string, entry *PromptEntry) *Prompt
 		PromptPath:   filepath.Join(RegistryDir, component, version, "prompt.md"),
 		MetadataPath: filepath.Join(RegistryDir, component, version, "metadata.yaml"),
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Resolve — retrieve a full Prompt by component and version (spec §18)
+// ---------------------------------------------------------------------------
+
+// Resolve returns the full Prompt (content + metadata) for a given component
+// and version. It reads the prompt file from disk and assembles the Prompt
+// struct.
+func Resolve(component, version string) (*Prompt, error) {
+	pv, err := LookupByComponent(component, version)
+	if err != nil {
+		return nil, err
+	}
+	content, err := os.ReadFile(pv.PromptPath)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read prompt file: %w", err)
+	}
+	meta, err := readMetadata(pv.MetadataPath)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read metadata: %w", err)
+	}
+	return &Prompt{
+		Content:   string(content),
+		Hash:      pv.Hash,
+		Component: component,
+		Version:   version,
+		Model:     meta.Model,
+		Provider:  meta.Provider,
+	}, nil
+}
+
+// ---------------------------------------------------------------------------
+// ListVersions — list all versions of a component (spec §18)
+// ---------------------------------------------------------------------------
+
+// ListVersions returns all versions registered for a component, ordered by
+// version string (ascending). Returns an empty slice if the component has no
+// registered versions.
+func ListVersions(component string) ([]Version, error) {
+	idx, err := loadIndex()
+	if err != nil {
+		return nil, err
+	}
+	versions, ok := (*idx)[component]
+	if !ok || len(versions) == 0 {
+		return nil, nil
+	}
+	result := make([]Version, 0, len(versions))
+	for ver, entry := range versions {
+		metaPath := filepath.Join(RegistryDir, component, ver, "metadata.yaml")
+		meta, _ := readMetadata(metaPath)
+		v := Version{
+			Version:  ver,
+			Hash:     entry.Hash,
+			Status:   entry.Status,
+			Model:    entry.Model,
+			Provider: entry.Provider,
+		}
+		if meta != nil {
+			v.CreatedAt = meta.CreatedAt.Format(time.RFC3339)
+		}
+		result = append(result, v)
+	}
+	// Sort by version string for deterministic output
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Version < result[j].Version
+	})
+	return result, nil
+}
+
+// ---------------------------------------------------------------------------
+// Diff — compare two prompt versions (spec §18)
+// ---------------------------------------------------------------------------
+
+// Diff computes the content and metadata differences between two versions of
+// the same component. It returns a PromptDiff with unified-diff text for
+// content and a summary of metadata field changes.
+func Diff(component, v1, v2 string) (*PromptDiff, error) {
+	p1, err := Resolve(component, v1)
+	if err != nil {
+		return nil, fmt.Errorf("resolve %s/%s: %w", component, v1, err)
+	}
+	p2, err := Resolve(component, v2)
+	if err != nil {
+		return nil, fmt.Errorf("resolve %s/%s: %w", component, v2, err)
+	}
+
+	m1, err := readMetadata(filepath.Join(RegistryDir, component, v1, "metadata.yaml"))
+	if err != nil {
+		return nil, fmt.Errorf("read metadata %s/%s: %w", component, v1, err)
+	}
+	m2, err := readMetadata(filepath.Join(RegistryDir, component, v2, "metadata.yaml"))
+	if err != nil {
+		return nil, fmt.Errorf("read metadata %s/%s: %w", component, v2, err)
+	}
+
+	diff := &PromptDiff{
+		Component:   component,
+		FromVersion: v1,
+		ToVersion:   v2,
+		FromHash:    p1.Hash,
+		ToHash:      p2.Hash,
+	}
+
+	// Content diff (line-based unified diff)
+	diff.ContentDiff = computeLineDiff(p1.Content, p2.Content, v1, v2)
+
+	// Metadata diff (key-level comparison)
+	diff.MetadataDiff = computeMetaDiff(m1, m2)
+
+	return diff, nil
+}
+
+// computeLineDiff produces a simple unified-diff-style string.
+func computeLineDiff(a, b, labelA, labelB string) string {
+	linesA := strings.Split(a, "\n")
+	linesB := strings.Split(b, "\n")
+	var buf strings.Builder
+	buf.WriteString(fmt.Sprintf("--- %s\n", labelA))
+	buf.WriteString(fmt.Sprintf("+++ %s\n", labelB))
+	maxLen := len(linesA)
+	if len(linesB) > maxLen {
+		maxLen = len(linesB)
+	}
+	for i := 0; i < maxLen; i++ {
+		var la, lb string
+		if i < len(linesA) {
+			la = linesA[i]
+		}
+		if i < len(linesB) {
+			lb = linesB[i]
+		}
+		if la != lb {
+			if la != "" {
+				buf.WriteString(fmt.Sprintf("-%s\n", la))
+			}
+			if lb != "" {
+				buf.WriteString(fmt.Sprintf("+%s\n", lb))
+			}
+		}
+	}
+	return buf.String()
+}
+
+// computeMetaDiff compares two Metadata structs and returns a human-readable
+// summary of changed fields.
+func computeMetaDiff(a, b *Metadata) string {
+	var changes []string
+	if a.Model != b.Model {
+		changes = append(changes, fmt.Sprintf("model: %q → %q", a.Model, b.Model))
+	}
+	if a.Provider != b.Provider {
+		changes = append(changes, fmt.Sprintf("provider: %q → %q", a.Provider, b.Provider))
+	}
+	if a.Status != b.Status {
+		changes = append(changes, fmt.Sprintf("status: %q → %q", a.Status, b.Status))
+	}
+	if a.Author != b.Author {
+		changes = append(changes, fmt.Sprintf("author: %q → %q", a.Author, b.Author))
+	}
+	if a.SpecRef != b.SpecRef {
+		changes = append(changes, fmt.Sprintf("spec_ref: %q → %q", a.SpecRef, b.SpecRef))
+	}
+	if a.WorkItem != b.WorkItem {
+		changes = append(changes, fmt.Sprintf("work_item: %q → %q", a.WorkItem, b.WorkItem))
+	}
+	if a.PreviousVersion != b.PreviousVersion {
+		changes = append(changes, fmt.Sprintf("previous_version: %q → %q", a.PreviousVersion, b.PreviousVersion))
+	}
+	if a.Changes != b.Changes {
+		changes = append(changes, fmt.Sprintf("changes: %q → %q", a.Changes, b.Changes))
+	}
+	if len(changes) == 0 {
+		return "(no metadata changes)"
+	}
+	return strings.Join(changes, "\n")
 }

@@ -350,6 +350,16 @@ func needsQuoting(arg string) bool {
 // Unused but referenced for future implementation
 // ---------------------------------------------------------------------------
 
+// _unusedRefs suppresses "unused" lint warnings for functions that are
+// intentionally kept for the full Bubblewrap implementation (Phase 2+).
+var _ = []func(any) error{
+	func(x any) error { return _killProcessGroup(0) },
+}
+var _ = _findBwrapBinary
+var _ = func(p string) error { return _ensureBwrapAvailable(p) }
+var _ = func(ctx context.Context, n string, a ...string) error { return _execContext(ctx, n, a...) }
+var _ = func(e ...string) string { return _joinPath(e...) }
+
 // killProcessGroup sends SIGKILL to an entire process group. This is the
 // timeout-enforcement mechanism for the full implementation.
 func _killProcessGroup(pid int) error {
