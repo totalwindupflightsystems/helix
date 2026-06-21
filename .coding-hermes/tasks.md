@@ -135,3 +135,32 @@
 - **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >80% coverage on index.go ✅
 - **Logic:** RebuildIndex (rebuilds from agents map, persists _index.yaml), IndexEntry (cached hit, cache miss→compute, agent not found), agentToIndexEntry (field projection with capability slice copy)
 - **Result:** RebuildIndex 88.9%, IndexEntry 100.0%, agentToIndexEntry 100.0%. 9 test functions, all pass. Marketplace coverage: 71.8% (from 64.5%). Direct-write (70-line source, spawn threshold not met). Commit: 9d1b9b5
+
+## [ ] Write Go tests for pkg/marketplace/registry.go
+- **Priority:** high
+- **Model:** MiniMax-M3
+- **Files:** pkg/marketplace/registry_test.go (NEW)
+- **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >80% coverage on registry.go
+- **Logic:** NewRegistry (loads agents/ from disk, empty dir, missing dir), Register (nil agent, empty name, invalid capability, valid register, overwrite), Get (found, not found), Search (capability filter, trust filter, cost filter, combined, empty result), UpdateStatus (found, not found, valid transition)
+- **Note:** 191 lines, 5 functions. In-package tests can construct Registry directly (unexported fields). NewRegistry needs temp dirs with YAML fixtures.
+
+## [ ] Write Go tests for pkg/prompt/attester.go
+- **Priority:** medium
+- **Model:** MiniMax-M3
+- **Files:** pkg/prompt/attester_test.go (NEW)
+- **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with >80% coverage on attester.go
+- **Logic:** ParseCommitMessage, ValidateAttestation, Attest, GetCommitAttestation
+
+## [ ] Write Go tests for pkg/prompt/lifecycle.go
+- **Priority:** medium
+- **Model:** MiniMax-M3
+- **Files:** pkg/prompt/lifecycle_test.go (NEW)
+- **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with >80% coverage on lifecycle.go
+- **Logic:** AllowedForAttestation, ValidTransition, AllowedTransitions, DeprecationGrace, ValidateTransition
+
+## [ ] Write Go tests for pkg/prompt/registry.go
+- **Priority:** medium
+- **Model:** MiniMax-M3
+- **Files:** pkg/prompt/registry_test.go (NEW)
+- **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with >80% coverage on registry.go
+- **Logic:** Register, Lookup, LookupByComponent, List, UpdateStatus, TransitionStatus, loadIndex, saveIndex, writeMetadata, readMetadata, writePrompt, entryToPromptVersion
