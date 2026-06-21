@@ -68,3 +68,38 @@
 - **Files:** prompts/agent-identity/v1.0.0/prompt.md + metadata.yaml, prompts/_index.yaml
 - **AC:** `helix prompt list` shows registered prompts ✅
 - **Result:** Created agent-identity v1.0.0 prompt (3,613 bytes, 5-section structured prompt), metadata.yaml (status=active, model=deepseek-v4-pro), and _index.yaml. Build/vet/test all pass. `helix prompt list` shows entry in table and JSON formats. Commit: 074c9ca
+
+## [ ] Write Go tests for pkg/prompt/hasher.go
+- **Priority:** high
+- **Model:** MiniMax-M3
+- **Files:** pkg/prompt/hasher_test.go (NEW)
+- **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with >90% coverage on hasher.go
+- **Pure functions:** Normalize, Hash, VerifyHash — no I/O, no deps beyond stdlib
+
+## [ ] Write Go tests for pkg/estimate/budget.go
+- **Priority:** high
+- **Model:** MiniMax-M3
+- **Files:** pkg/estimate/budget_test.go (NEW)
+- **AC:** `go test ./pkg/estimate/... -count=1 -cover` passes with >90% coverage on budget.go
+- **Pure functions:** RemainingBudget, IsNewAgent, CheckBudget, ApprovalExitCode — struct input -> struct output
+
+## [ ] Write Go tests for pkg/negotiate (types.go + debate.go)
+- **Priority:** high
+- **Model:** MiniMax-M3
+- **Files:** pkg/negotiate/types_test.go (NEW), pkg/negotiate/debate_test.go (NEW)
+- **AC:** `go test ./pkg/negotiate/... -count=1 -cover` passes with >80% coverage on types.go and debate.go
+- **Pure logic:** Agent capability methods (CanComment, CanVeto, etc.), Debate state machine (PostArgument, CheckConcession, AdvanceRound, IsDeadlocked, Strike)
+
+## [ ] Write Go tests for pkg/marketplace/ratings.go
+- **Priority:** medium
+- **Model:** MiniMax-M3
+- **Files:** pkg/marketplace/ratings_test.go (NEW)
+- **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >80% coverage on ratings.go
+- **Logic:** Rate, GetRatings, VerifyHuman, recalcRatingAverage — map-based registry, pure logic
+
+## [ ] Write Go tests for pkg/marketplace/discovery.go
+- **Priority:** medium
+- **Model:** MiniMax-M3
+- **Files:** pkg/marketplace/discovery_test.go (NEW)
+- **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >80% coverage on discovery.go
+- **Logic:** FindAgents, LoadBalance, matchPercent, budgetUtilization
