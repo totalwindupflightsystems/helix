@@ -1,0 +1,16 @@
+version: v1.0.0
+component: agent-identity
+hash: sha256:initial-registration
+model: deepseek-v4-pro
+provider: deepseek
+author: totalwindupflightsystems
+author_trust: 95
+spec_ref: specs/agent-identity.md
+spec_version: "1.0"
+work_item: WI-001
+created_at: 2026-06-21T00:00:00Z
+status: active
+cost:
+  estimated_input_tokens: 1200
+  estimated_output_tokens: 800
+  estimated_cost_usd: 0.004
