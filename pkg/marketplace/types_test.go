@@ -32,8 +32,8 @@ func TestCapability_Valid(t *testing.T) {
 
 		// Invalid / unrecognized
 		{cap: "", want: false},
-		{cap: "Go", want: false},       // wrong case
-		{cap: "GO", want: false},       // wrong case
+		{cap: "Go", want: false}, // wrong case
+		{cap: "GO", want: false}, // wrong case
 		{cap: "rust", want: false},
 		{cap: "nonexistent", want: false},
 	}
@@ -250,7 +250,7 @@ func TestHasCapability(t *testing.T) {
 		{
 			name:  "string_literal_matches",
 			agent: &Agent{Capabilities: []Capability{CapGo}},
-			cap:   Capability("go"),    // same underlying value as CapGo
+			cap:   Capability("go"), // same underlying value as CapGo
 			want:  true,
 		},
 		{

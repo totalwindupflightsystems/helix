@@ -101,7 +101,7 @@ func (n *Negotiator) Advance() (State, error) {
 	case StateChimeraTiebreak:
 		verdict, err := n.callArbiter()
 		if err != nil {
-			n.Escalate(fmt.Sprintf("chimera_unavailable: %v", err))
+			_ = n.Escalate(fmt.Sprintf("chimera_unavailable: %v", err))
 			return StateEscalated, err
 		}
 		n.ChimeraResult = verdict

@@ -110,7 +110,7 @@ func DefaultConfig() SandboxConfig {
 		TimeLimit:   600,
 		MemoryLimit: 2048,
 		Network:     NetworkNone,
-	
+
 		DryRun:      false,
 		Verbose:     false,
 		Command:     nil,

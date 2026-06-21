@@ -25,7 +25,7 @@ func (r *Registry) RebuildIndex() error {
 	}
 
 	// Persist to disk (best-effort in stub mode).
- indexPath := filepath.Join(r.dir, "_index.yaml")
+	indexPath := filepath.Join(r.dir, "_index.yaml")
 	data, err := yaml.Marshal(r.index)
 	if err != nil {
 		return nil // in-memory index is valid; skip disk write on marshal error

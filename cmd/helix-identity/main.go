@@ -23,8 +23,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/totalwindupflightsystems/helix/pkg/identity"
 	"github.com/spf13/cobra"
+	"github.com/totalwindupflightsystems/helix/pkg/identity"
 )
 
 // envVar documentation: every flag below resolves from CLI > env > default.
@@ -83,9 +83,10 @@ All credentials are read from environment variables or flags — none are
 ever written to disk beyond the per-agent private keys under
 ~/.helix/keys/<agent>/ (mode 0600).
 
-This is a v1 stub: Forgejo transport methods return ErrNotImplemented.
-The CLI, flag parsing, key generation, state management, and dry-run logic
-are all live and exercisable without a Forgejo instance.`,
+Supports Forgejo v1.21+. Uses admin BasicAuth for user creation and key
+registration; uses admin-list for idempotency probes (handles
+visibility:limited users). Dry-run mode simulates the full flow without
+touching Forgejo.`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -365,6 +366,8 @@ func buildConfig() (identity.ProvisionerConfig, error) {
 	cfg := identity.DefaultProvisionerConfig()
 	cfg.ForgejoURL = rootFlags.forgejoURL
 	cfg.AdminToken = rootFlags.adminToken
+	cfg.AdminUser = rootFlags.adminUser
+	cfg.AdminPassword = rootFlags.adminPassword
 	cfg.KnownFriendsPath = rootFlags.knownFriends
 	cfg.SSHKeyDir = rootFlags.sshKeyDir
 	cfg.StatePath = rootFlags.statePath

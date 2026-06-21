@@ -28,7 +28,7 @@ func TestNewRegistry(t *testing.T) {
 		{
 			name: "empty_agents_dir_returns_empty_registry",
 			setup: func(dir string) {
-				os.MkdirAll(filepath.Join(dir, "agents"), 0o755)
+				_ = os.MkdirAll(filepath.Join(dir, "agents"), 0o755)
 			},
 			wantLen: 0,
 			wantErr: false,
@@ -37,15 +37,15 @@ func TestNewRegistry(t *testing.T) {
 			name: "loads_valid_agent_manifests",
 			setup: func(dir string) {
 				agentsDir := filepath.Join(dir, "agents")
-				os.MkdirAll(agentsDir, 0o755)
-				os.WriteFile(filepath.Join(agentsDir, "coder-1.yaml"), []byte(`name: coder-1
+				_ = os.MkdirAll(agentsDir, 0o755)
+				_ = os.WriteFile(filepath.Join(agentsDir, "coder-1.yaml"), []byte(`name: coder-1
 display_name: "Code Agent"
 status: active
 tier: pro
 trust_score: 85
 capabilities: [go, code-review]
 budget: {weekly_limit: 10.0, average_task_cost: 0.15, cost_profile: low}`), 0o644)
-				os.WriteFile(filepath.Join(agentsDir, "reviewer-2.yaml"), []byte(`name: reviewer-2
+				_ = os.WriteFile(filepath.Join(agentsDir, "reviewer-2.yaml"), []byte(`name: reviewer-2
 display_name: "Review Agent"
 status: deprecated
 tier: flash
@@ -60,9 +60,9 @@ budget: {weekly_limit: 5.0, average_task_cost: 0.05, cost_profile: low}`), 0o644
 			name: "skips_non_yaml_files",
 			setup: func(dir string) {
 				agentsDir := filepath.Join(dir, "agents")
-				os.MkdirAll(agentsDir, 0o755)
-				os.WriteFile(filepath.Join(agentsDir, "readme.txt"), []byte("instructions"), 0o644)
-				os.WriteFile(filepath.Join(agentsDir, "agent.yaml"), []byte(`name: agent
+				_ = os.MkdirAll(agentsDir, 0o755)
+				_ = os.WriteFile(filepath.Join(agentsDir, "readme.txt"), []byte("instructions"), 0o644)
+				_ = os.WriteFile(filepath.Join(agentsDir, "agent.yaml"), []byte(`name: agent
 status: active
 tier: flash
 capabilities: [go]
@@ -75,9 +75,9 @@ budget: {weekly_limit: 1.0, average_task_cost: 0.01, cost_profile: low}`), 0o644
 			name: "skips_malformed_yaml",
 			setup: func(dir string) {
 				agentsDir := filepath.Join(dir, "agents")
-				os.MkdirAll(agentsDir, 0o755)
-				os.WriteFile(filepath.Join(agentsDir, "bad.yaml"), []byte("{{{not valid yaml"), 0o644)
-				os.WriteFile(filepath.Join(agentsDir, "good.yaml"), []byte(`name: good
+				_ = os.MkdirAll(agentsDir, 0o755)
+				_ = os.WriteFile(filepath.Join(agentsDir, "bad.yaml"), []byte("{{{not valid yaml"), 0o644)
+				_ = os.WriteFile(filepath.Join(agentsDir, "good.yaml"), []byte(`name: good
 status: active
 tier: flash
 capabilities: [go]
@@ -90,8 +90,8 @@ budget: {weekly_limit: 1.0, average_task_cost: 0.01, cost_profile: low}`), 0o644
 			name: "skips_agent_with_empty_name",
 			setup: func(dir string) {
 				agentsDir := filepath.Join(dir, "agents")
-				os.MkdirAll(agentsDir, 0o755)
-				os.WriteFile(filepath.Join(agentsDir, "noname.yaml"), []byte(`name: ""
+				_ = os.MkdirAll(agentsDir, 0o755)
+				_ = os.WriteFile(filepath.Join(agentsDir, "noname.yaml"), []byte(`name: ""
 display_name: "No Name"
 status: active
 tier: flash
@@ -104,8 +104,8 @@ budget: {weekly_limit: 1.0, average_task_cost: 0.01, cost_profile: low}`), 0o644
 			name: "defaults_empty_status_to_active",
 			setup: func(dir string) {
 				agentsDir := filepath.Join(dir, "agents")
-				os.MkdirAll(agentsDir, 0o755)
-				os.WriteFile(filepath.Join(agentsDir, "nostatus.yaml"), []byte(`name: nostatus
+				_ = os.MkdirAll(agentsDir, 0o755)
+				_ = os.WriteFile(filepath.Join(agentsDir, "nostatus.yaml"), []byte(`name: nostatus
 display_name: "No Status"
 tier: flash
 capabilities: [go]
@@ -118,8 +118,8 @@ budget: {weekly_limit: 1.0, average_task_cost: 0.01, cost_profile: low}`), 0o644
 			name: "skips_subdirectories",
 			setup: func(dir string) {
 				agentsDir := filepath.Join(dir, "agents")
-				os.MkdirAll(filepath.Join(agentsDir, "subdir"), 0o755)
-				os.WriteFile(filepath.Join(agentsDir, "agent.yaml"), []byte(`name: agent
+				_ = os.MkdirAll(filepath.Join(agentsDir, "subdir"), 0o755)
+				_ = os.WriteFile(filepath.Join(agentsDir, "agent.yaml"), []byte(`name: agent
 status: active
 tier: flash
 capabilities: [go]
@@ -165,9 +165,9 @@ budget: {weekly_limit: 1.0, average_task_cost: 0.01, cost_profile: low}`), 0o644
 
 func TestRegistry_Register(t *testing.T) {
 	tests := []struct {
-		name    string
-		agent   *Agent
-		wantErr bool
+		name     string
+		agent    *Agent
+		wantErr  bool
 		wantCode int // exit code if error expected; 0 = no error
 	}{
 		{
@@ -539,18 +539,18 @@ func TestRegistry_Search(t *testing.T) {
 
 func TestRegistry_UpdateStatus(t *testing.T) {
 	tests := []struct {
-		name             string
-		existingAgent    *Agent // nil = don't register
-		updateName       string
-		newStatus        AgentStatus
-		wantErr          bool
-		wantCode         int
-		wantStatus       AgentStatus // expected status after update
-		wantDeprecatedSet bool       // whether DeprecatedAt should be set
-		wantDeprecatedCleared bool   // whether DeprecatedAt should be cleared
+		name                  string
+		existingAgent         *Agent // nil = don't register
+		updateName            string
+		newStatus             AgentStatus
+		wantErr               bool
+		wantCode              int
+		wantStatus            AgentStatus // expected status after update
+		wantDeprecatedSet     bool        // whether DeprecatedAt should be set
+		wantDeprecatedCleared bool        // whether DeprecatedAt should be cleared
 	}{
 		{
-			name:      "agent_not_found",
+			name:       "agent_not_found",
 			updateName: "nonexistent",
 			newStatus:  StatusDeprecated,
 			wantErr:    true,
@@ -585,9 +585,9 @@ func TestRegistry_UpdateStatus(t *testing.T) {
 				Status:       StatusDeprecated,
 				DeprecatedAt: "2026-01-01T00:00:00Z",
 			},
-			updateName:           "coder-1",
-			newStatus:            StatusActive,
-			wantStatus:           StatusActive,
+			updateName:            "coder-1",
+			newStatus:             StatusActive,
+			wantStatus:            StatusActive,
 			wantDeprecatedCleared: true,
 		},
 		{
@@ -617,9 +617,9 @@ func TestRegistry_UpdateStatus(t *testing.T) {
 				Name:   "coder-1",
 				Status: StatusActive,
 			},
-			updateName: "coder-1",
-			newStatus:  StatusDeprecated,
-			wantStatus: StatusDeprecated,
+			updateName:        "coder-1",
+			newStatus:         StatusDeprecated,
+			wantStatus:        StatusDeprecated,
 			wantDeprecatedSet: true,
 		},
 	}

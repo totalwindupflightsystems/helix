@@ -17,7 +17,7 @@ evaluator:
   max_output_tokens: 0.05M
   tool_call_weight: 0.1
 defaults:
-  model: deepseek-v4-flash
+  model: openrouter/owl-alpha
 pipeline:
   stages:
   - id: tier1

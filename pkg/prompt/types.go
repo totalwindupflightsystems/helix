@@ -106,8 +106,8 @@ type PromptVersion struct {
 
 // Transition describes a rule in the lifecycle state machine.
 type Transition struct {
-	From   LifecycleStatus
-	To     LifecycleStatus
+	From    LifecycleStatus
+	To      LifecycleStatus
 	Allowed bool
 	Reason  string
 }

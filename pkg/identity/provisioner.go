@@ -55,9 +55,21 @@ type ProvisionerConfig struct {
 	// "https://forgejo.example.com". No trailing slash.
 	ForgejoURL string
 
-	// AdminToken is the Forgejo admin PAT used for /admin/users endpoints.
-	// Sent as "Authorization: token <AdminToken>".
+	// AdminToken is the Forgejo admin PAT used for /admin/users endpoints
+	// that don't support BasicAuth. In Forgejo v1.21+, API-created tokens
+	// lack admin scope, so prefer AdminUser+AdminPassword (BasicAuth) when
+	// hitting POST /api/v1/admin/users. AdminToken is kept for backward
+	// compatibility with Forgejo instances that support admin-scoped PATs.
 	AdminToken string
+
+	// AdminUser is the Forgejo admin username for BasicAuth (e.g. "helio").
+	// Used as the fallback for POST /api/v1/admin/users when AdminToken is
+	// empty or when the endpoint requires admin-level privileges.
+	AdminUser string
+
+	// AdminPassword is the Forgejo admin password for BasicAuth.
+	// Paired with AdminUser; both must be set for BasicAuth to engage.
+	AdminPassword string
 
 	// KnownFriendsPath is the path to known-friends.json.
 	KnownFriendsPath string
@@ -117,9 +129,9 @@ func (c *ProvisionerConfig) Validate() error {
 	if _, err := url.Parse(c.ForgejoURL); err != nil {
 		return NewConfigError(fmt.Sprintf("invalid ForgejoURL %q: %v", c.ForgejoURL, err), nil)
 	}
-	if c.AdminToken == "" {
+	if c.AdminToken == "" && (c.AdminUser == "" || c.AdminPassword == "") {
 		return NewConfigError(
-			"FORGEJO_ADMIN_TOKEN not set (use --admin-token or FORGEJO_ADMIN_TOKEN env var)", nil)
+			"FORGEJO_ADMIN_TOKEN or FORGEJO_ADMIN_USER+FORGEJO_ADMIN_PASSWORD must be set", nil)
 	}
 	if c.KnownFriendsPath == "" {
 		return NewConfigError("known-friends path is empty", nil)
@@ -288,13 +300,25 @@ func (p *Provisioner) BaseURL() string { return p.redactedBase }
 // URL construction — proves the endpoint shapes stringify correctly
 // ---------------------------------------------------------------------------
 
-// adminUsersURL is POST/GET /api/v1/admin/users[/{name}].
+// adminUsersURL is POST /api/v1/admin/users (list or create). Forgejo v1.21+
+// does NOT support GET /api/v1/admin/users/{name} (returns 405), so per-user
+// lookups use the public userByUsernameURL instead.
 func (p *Provisioner) adminUsersURL(name string) string {
 	base := strings.TrimRight(p.cfg.ForgejoURL, "/")
 	if name == "" {
 		return base + "/api/v1/admin/users"
 	}
 	return base + "/api/v1/admin/users/" + url.PathEscape(name)
+}
+
+
+// adminUserKeysURL is POST /api/v1/admin/users/{name}/keys — the admin
+// endpoint for registering SSH keys on behalf of a user. Required because
+// Forgejo v1.21+ blocks POST /api/v1/user/keys for users who must change
+// their password after admin-created accounts.
+func (p *Provisioner) adminUserKeysURL(name string) string {
+	return strings.TrimRight(p.cfg.ForgejoURL, "/") + "/api/v1/admin/users/" +
+		url.PathEscape(name) + "/keys"
 }
 
 // userKeysURL is POST /api/v1/user/keys (authenticated as the agent).
@@ -396,6 +420,18 @@ func (p *Provisioner) doWithRetry(method, urlStr string, body io.Reader, setAuth
 		fmt.Sprintf("%s %s: exhausted %d retries", method, urlStr, p.retry.MaxAttempts), lastErr)
 }
 
+// setAdminAuth applies the appropriate admin authorization header to an HTTP
+// request. If AdminUser+AdminPassword are both set, it uses HTTP BasicAuth
+// (required by Forgejo v1.21+ for POST /api/v1/admin/users). Otherwise it
+// falls back to the AdminToken bearer token.
+func (p *Provisioner) setAdminAuth(r *http.Request) {
+	if p.cfg.AdminUser != "" && p.cfg.AdminPassword != "" {
+		r.SetBasicAuth(p.cfg.AdminUser, p.cfg.AdminPassword)
+		return
+	}
+	r.Header.Set("Authorization", "token "+p.cfg.AdminToken)
+}
+
 // parseRetryAfter converts a Retry-After header value to a Duration. The
 // header can be either a non-negative integer (seconds) or an HTTP-date. If
 // the value is missing or unparseable, it falls back to 5 seconds.
@@ -431,52 +467,52 @@ func readAndCloseBody(resp *http.Response) string {
 // Endpoint implementations — real Forgejo HTTP transport
 // ---------------------------------------------------------------------------
 
-// GetAccount calls GET /api/v1/admin/users/{name}. Returns the account if it
-// exists, or (nil, nil) if it does not (404 is treated as "not found", not
-// an error, so callers can use this as an idempotency probe).
-//
-// Auth: admin token in Authorization header.
+// GetAccount checks whether a Forgejo user exists. It uses GET
+// /api/v1/admin/users (list, with admin auth) and searches for the name,
+// because GET /api/v1/users/{name} returns 404 for users with
+// visibility:limited (the default for admin-created accounts in Forgejo
+// v1.21+). Returns the account if found, (nil, nil) if not.
 func (p *Provisioner) GetAccount(name string) (*ForgejoAccount, error) {
 	if p.cfg.DryRun {
 		return nil, nil // dry-run: assume not-yet-provisioned
 	}
 	p.limiter.Acquire()
 
-	resp, err := p.doWithRetry(http.MethodGet, p.adminUsersURL(name), nil,
-		func(req *http.Request) {
-			req.Header.Set("Authorization", "token "+p.cfg.AdminToken)
+	resp, err := p.doWithRetry(http.MethodGet, p.adminUsersURL(""), nil,
+		func(r *http.Request) {
+			p.setAdminAuth(r)
 		})
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	switch resp.StatusCode {
-	case http.StatusOK:
-		var acct ForgejoAccount
-		if decErr := json.NewDecoder(resp.Body).Decode(&acct); decErr != nil {
-			return nil, NewInternalError(
-				fmt.Sprintf("GetAccount(%s): failed to decode response", name), decErr)
-		}
-		return &acct, nil
-
-	case http.StatusNotFound:
-		// 404 is not an error — callers use this as an idempotency probe.
-		return nil, nil
-
-	default:
+	if resp.StatusCode != http.StatusOK {
 		body := readAndCloseBody(resp)
 		return nil, NewAPIError(
-			fmt.Sprintf("GetAccount(%s): unexpected HTTP %d: %s",
+			fmt.Sprintf("GetAccount(%s): admin list returned HTTP %d: %s",
 				name, resp.StatusCode, body), nil)
 	}
+
+	var users []ForgejoAccount
+	if decErr := json.NewDecoder(resp.Body).Decode(&users); decErr != nil {
+		return nil, NewInternalError(
+			fmt.Sprintf("GetAccount(%s): failed to decode admin list", name), decErr)
+	}
+
+	for i := range users {
+		if strings.EqualFold(users[i].Login, name) || strings.EqualFold(users[i].LoginName, name) {
+			return &users[i], nil
+		}
+	}
+	return nil, nil // not found
 }
 
 // CreateUser calls POST /api/v1/admin/users. On success returns the newly
 // created ForgejoAccount. A 409 Conflict is mapped to a TypedError of kind
 // API so the syncer can downgrade it to ActionUnchanged rather than failing.
 //
-// Auth: admin token in Authorization header.
+// Auth: admin BasicAuth (preferred in Forgejo v1.21+) or admin token.
 func (p *Provisioner) CreateUser(req *CreateUserRequest) (*ForgejoAccount, error) {
 	if req == nil {
 		return nil, NewConfigError("CreateUser: nil request", nil)
@@ -496,7 +532,7 @@ func (p *Provisioner) CreateUser(req *CreateUserRequest) (*ForgejoAccount, error
 	resp, err := p.doWithRetry(http.MethodPost, p.adminUsersURL(""), bytes.NewReader(bodyBytes),
 		func(r *http.Request) {
 			r.Header.Set("Content-Type", "application/json")
-			r.Header.Set("Authorization", "token "+p.cfg.AdminToken)
+			p.setAdminAuth(r)
 		})
 	if err != nil {
 		return nil, err
@@ -512,10 +548,13 @@ func (p *Provisioner) CreateUser(req *CreateUserRequest) (*ForgejoAccount, error
 		}
 		return &acct, nil
 
-	case http.StatusConflict:
+	case http.StatusConflict, http.StatusUnprocessableEntity:
+		// 409 = conflict (Gitea), 422 = unprocessable (Forgejo v1.21+
+		// returns 422 for "user already exists"). Both are non-fatal —
+		// the syncer maps them to ActionUnchanged.
 		body := readAndCloseBody(resp)
 		return nil, NewAPIError(
-			fmt.Sprintf("CreateUser(%s): conflict (409): %s", req.Username, body), nil)
+			fmt.Sprintf("CreateUser(%s): conflict (HTTP %d): %s", req.Username, resp.StatusCode, body), nil)
 
 	default:
 		body := readAndCloseBody(resp)
@@ -540,10 +579,9 @@ func (p *Provisioner) RegisterKey(agentName, tempPassword, publicKey, title stri
 	if p.cfg.DryRun {
 		return &SSHKey{Key: publicKey, Title: title}, nil
 	}
-	if tempPassword == "" {
-		return nil, NewConfigError(
-			fmt.Sprintf("RegisterKey(%s): missing temp password", agentName), nil)
-	}
+	// tempPassword is accepted for backward compatibility but no longer
+	// required: Forgejo v1.21+ blocks POST /api/v1/user/keys for users who
+	// must change their password, so we use the admin endpoint instead.
 	p.limiter.Acquire()
 
 	keyReq := map[string]string{
@@ -555,10 +593,10 @@ func (p *Provisioner) RegisterKey(agentName, tempPassword, publicKey, title stri
 		return nil, NewInternalError("RegisterKey: failed to marshal request", mErr)
 	}
 
-	resp, err := p.doWithRetry(http.MethodPost, p.userKeysURL(), bytes.NewReader(bodyBytes),
+	resp, err := p.doWithRetry(http.MethodPost, p.adminUserKeysURL(agentName), bytes.NewReader(bodyBytes),
 		func(r *http.Request) {
 			r.Header.Set("Content-Type", "application/json")
-			r.SetBasicAuth(agentName, tempPassword)
+			p.setAdminAuth(r)
 		})
 	if err != nil {
 		return nil, err

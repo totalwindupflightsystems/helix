@@ -27,11 +27,11 @@ type Attestation struct {
 // AttestationResult holds the outcome of validating an attestation against
 // the registry.
 type AttestationResult struct {
-	HashMatch    bool
-	LifecycleOK  bool
-	Status       LifecycleStatus
+	HashMatch     bool
+	LifecycleOK   bool
+	Status        LifecycleStatus
 	PromptfooPass bool
-	Errors       []string
+	Errors        []string
 }
 
 // ---------------------------------------------------------------------------

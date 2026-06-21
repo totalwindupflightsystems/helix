@@ -31,10 +31,10 @@ import (
 // Sentinel / typed errors and exit codes
 // ---------------------------------------------------------------------------
 
-// ErrNotImplemented is returned by every transport method in this v1 stub.
-// Real network calls land in a follow-up change after spec review; the stubs
-// exist to lock the interface shape and prove the build.
-var ErrNotImplemented = errors.New("identity: not implemented in v1 stub (network call pending review)")
+// ErrNotImplemented is a legacy sentinel; all transport methods are now
+// implemented with real HTTP calls in provisioner.go. This error is kept
+// for backward compatibility with stub-asserting tests.
+var ErrNotImplemented = errors.New("identity: transport method not implemented (legacy stub — real calls exist in provisioner.go)")
 
 // Exit codes are machine-readable so cron jobs can branch without parsing
 // stderr. See specs/agent-identity.md §15 for the full taxonomy.

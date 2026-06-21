@@ -112,7 +112,7 @@ helix identity sync
     → POST http://localhost:3030/api/v1/admin/users                 (create agent)
     → POST http://localhost:3030/api/v1/user/keys                  (register SSH key)
     → POST http://localhost:3030/api/v1/users/{name}/tokens        (create PAT)
-    → All calls use BasicAuth: helio:helio123 (admin) or agent:temp (for key registration)
+    → All calls use BasicAuth: helio:$FORGEJO_ADMIN_PASSWORD (admin) or agent:temp (for key registration)
 ```
 
 ### 4.2 helix-estimate → Chimera + OpenRouter
