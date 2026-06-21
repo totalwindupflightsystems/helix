@@ -153,12 +153,13 @@
 - **Logic:** ParseCommitMessage (parse attestation fields from commit messages — hash, model, provider, spec, cost, author), ValidateAttestation (lookup by hash, lifecycle check, hash verify, PromptFoo), Attest (delegates to ValidateAttestation), GetCommitAttestation (git log + parse)
 - **Result:** 4 test functions (26 total subtests). Coverage: ParseCommitMessage 100%, ValidateAttestation 92.3%, Attest 100%, GetCommitAttestation 83.3%. Tests use temp RegistryDir override for ValidateAttestation isolation. All 7 packages pass. Commit: c3e9f4c
 
-## [ ] Write Go tests for pkg/prompt/lifecycle.go
+## [x] Write Go tests for pkg/prompt/lifecycle.go (completed 2026-06-22)
 - **Priority:** medium
-- **Model:** MiniMax-M3
+- **Model:** MiniMax-M3 (direct write — pure state-machine, spawn threshold not met)
 - **Files:** pkg/prompt/lifecycle_test.go (NEW)
-- **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with >80% coverage on lifecycle.go
-- **Logic:** AllowedForAttestation, ValidTransition, AllowedTransitions, DeprecationGrace, ValidateTransition
+- **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with >80% coverage on lifecycle.go ✅
+- **Logic:** AllowedForAttestation (7 lifecycle states), ValidTransition (19 transition pairs including rollback), AllowedTransitions (7 states), DeprecationGrace (7 grace periods), ValidateTransition (15 cases including rollback WorkItem validation)
+- **Result:** 5 test functions, all at 100% coverage. Includes edge cases: nil metadata rollback, empty WorkItem rollback, retired terminal state. All 7 packages pass. Commit: 3a06888
 
 ## [ ] Write Go tests for pkg/prompt/registry.go
 - **Priority:** medium
