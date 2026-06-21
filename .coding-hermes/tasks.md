@@ -103,3 +103,24 @@
 - **Files:** pkg/marketplace/discovery_test.go (NEW)
 - **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >80% coverage on discovery.go ✅
 - **Result:** FindAgents 96.6%, LoadBalance 100%, matchPercent 100%, budgetUtilization 100%. 27 tests (442 lines), all pass. Commit: 657baa6
+
+## [ ] Write Go tests for pkg/marketplace/scorer.go
+- **Priority:** high
+- **Model:** MiniMax-M3
+- **Files:** pkg/marketplace/scorer_test.go (NEW)
+- **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >80% coverage on scorer.go
+- **Logic:** CalculateTrustScore (pure math — 6 params, capped bonuses/penalties, clamped to [0,100]), TrustLabel (5-range switch), clamp. DailyRecalculation is a no-op stub.
+
+## [ ] Write Go tests for pkg/marketplace/lifecycle.go
+- **Priority:** medium
+- **Model:** MiniMax-M3
+- **Files:** pkg/marketplace/lifecycle_test.go (NEW)
+- **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >80% coverage on lifecycle.go
+- **Logic:** AutoDeprecationRules (3 rules: trust<20, no tasks+trust<30, budget exhausted), Reactivate (deprecated→active, agent not found, wrong status)
+
+## [ ] Write Go tests for pkg/marketplace/types.go
+- **Priority:** medium
+- **Model:** MiniMax-M3
+- **Files:** pkg/marketplace/types_test.go (NEW)
+- **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >80% coverage on types.go
+- **Logic:** Capability.Valid (11 capabilities, invalid ones), ValidCapability, AgentStatus.Valid, CostProfile.Valid, Tier.Valid, capabilitiesString, ExitError.Error()
