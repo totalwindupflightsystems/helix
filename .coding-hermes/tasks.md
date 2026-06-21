@@ -16,14 +16,15 @@
 - **AC:** `go test ./pkg/sandbox/... -count=1` passes with >80% coverage on config.go and isolation.go ✅
 - **Result:** config.go 100% (10 functions), isolation.go 100% (6 functions). 608 lines, 13 table-driven test functions, all pass. Commit: cbd85c8
 
-## [ ] Feature 1 Phase 2: implement Forgejo HTTP transport in provisioner.go
+## [x] Feature 1 Phase 2: implement Forgejo HTTP transport in provisioner.go (completed 2026-06-20)
 - **Priority:** high
 - **Model:** glm-5.2
 - **Provider:** zai-glm
-- **Files:** pkg/identity/provisioner.go (replace 6 ErrNotImplemented stubs)
+- **Files:** pkg/identity/provisioner.go (replaced 6 ErrNotImplemented stubs)
 - **Spec:** specs/agent-identity.md §8
 - **Env:** FORGEJO_URL=http://localhost:3030, FORGEJO_ADMIN_USER=helio
-- **AC:** `helix-identity sync --dry-run` shows real Forgejo calls (not stubs)
+- **AC:** `helix-identity sync --dry-run` shows real Forgejo calls (not stubs) ✅
+- **Result:** 290 lines added, doWithRetry helper, all 5 transport methods implemented. Commit: c973aec
 
 ## [ ] Feature 2 stubs: Go CLI + packages for cost estimator
 - **Priority:** medium
