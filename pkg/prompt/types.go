@@ -126,3 +126,53 @@ const (
 	ExitMetadataInvalid    = 6
 	ExitDryRun             = 10
 )
+
+// ---------------------------------------------------------------------------
+// Prompt (spec §3.1) — the core prompt artifact
+// ---------------------------------------------------------------------------
+
+// Prompt is the full prompt artifact stored in the registry.
+type Prompt struct {
+	Content   string `json:"content" yaml:"content"`
+	Hash      string `json:"hash" yaml:"hash"`
+	Component string `json:"component" yaml:"component"`
+	Version   string `json:"version" yaml:"version"`
+	Model     string `json:"model" yaml:"model"`
+	Provider  string `json:"provider" yaml:"provider"`
+}
+
+// Version is a lightweight version identifier returned by ListVersions.
+type Version struct {
+	Version   string          `json:"version" yaml:"version"`
+	Hash      string          `json:"hash" yaml:"hash"`
+	Status    LifecycleStatus `json:"status" yaml:"status"`
+	Model     string          `json:"model" yaml:"model"`
+	Provider  string          `json:"provider" yaml:"provider"`
+	CreatedAt string          `json:"created_at" yaml:"created_at"`
+}
+
+// PromptDiff holds the result of comparing two prompt versions (spec §18).
+type PromptDiff struct {
+	Component    string `json:"component" yaml:"component"`
+	FromVersion  string `json:"from_version" yaml:"from_version"`
+	ToVersion    string `json:"to_version" yaml:"to_version"`
+	FromHash     string `json:"from_hash" yaml:"from_hash"`
+	ToHash       string `json:"to_hash" yaml:"to_hash"`
+	ContentDiff  string `json:"content_diff" yaml:"content_diff"`   // unified-diff text
+	MetadataDiff string `json:"metadata_diff" yaml:"metadata_diff"` // key-level changes
+}
+
+// EvalResults holds parsed PromptFoo evaluation results (spec §10).
+type EvalResults struct {
+	TotalTests  int                `json:"total_tests" yaml:"total_tests"`
+	PassedTests int                `json:"passed_tests" yaml:"passed_tests"`
+	FailedTests int                `json:"failed_tests" yaml:"failed_tests"`
+	Results     []EvalTestResult   `json:"results" yaml:"results"`
+}
+
+// EvalTestResult is a single PromptFoo test result.
+type EvalTestResult struct {
+	Description string `json:"description" yaml:"description"`
+	Passed      bool   `json:"passed" yaml:"passed"`
+	Error       string `json:"error,omitempty" yaml:"error,omitempty"`
+}
