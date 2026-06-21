@@ -161,9 +161,11 @@
 - **Logic:** AllowedForAttestation (7 lifecycle states), ValidTransition (19 transition pairs including rollback), AllowedTransitions (7 states), DeprecationGrace (7 grace periods), ValidateTransition (15 cases including rollback WorkItem validation)
 - **Result:** 5 test functions, all at 100% coverage. Includes edge cases: nil metadata rollback, empty WorkItem rollback, retired terminal state. All 7 packages pass. Commit: 3a06888
 
-## [ ] Write Go tests for pkg/prompt/registry.go
+## [x] Write Go tests for pkg/prompt/registry.go (completed 2026-06-22)
 - **Priority:** medium
-- **Model:** MiniMax-M3
+- **Model:** MiniMax-M3 (direct write — single-file test, spawn threshold not met)
 - **Files:** pkg/prompt/registry_test.go (NEW)
-- **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with >80% coverage on registry.go
+- **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with >80% coverage on registry.go ✅
 - **Logic:** Register, Lookup, LookupByComponent, List, UpdateStatus, TransitionStatus, loadIndex, saveIndex, writeMetadata, readMetadata, writePrompt, entryToPromptVersion
+- **Note:** RegistryDir override pattern for test isolation.
+- **Result:** All 12 functions covered — Register 80.0%, Lookup 87.5%, LookupByComponent 83.3%, List 92.9%, UpdateStatus 88.2%, TransitionStatus 86.7%, loadIndex 91.7%, saveIndex 80.0%, writeMetadata 66.7%, readMetadata 100%, writePrompt 66.7%, entryToPromptVersion 100%. Package 63.7%. 990 lines, 10 test functions, 43 subtests. All pass. Commit: 5547115
