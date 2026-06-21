@@ -136,13 +136,14 @@
 - **Logic:** RebuildIndex (rebuilds from agents map, persists _index.yaml), IndexEntry (cached hit, cache miss→compute, agent not found), agentToIndexEntry (field projection with capability slice copy)
 - **Result:** RebuildIndex 88.9%, IndexEntry 100.0%, agentToIndexEntry 100.0%. 9 test functions, all pass. Marketplace coverage: 71.8% (from 64.5%). Direct-write (70-line source, spawn threshold not met). Commit: 9d1b9b5
 
-## [ ] Write Go tests for pkg/marketplace/registry.go
+## [x] Write Go tests for pkg/marketplace/registry.go (completed 2026-06-22)
 - **Priority:** high
-- **Model:** MiniMax-M3
+- **Model:** MiniMax-M3 (direct write — single-file test, spawn threshold not met)
 - **Files:** pkg/marketplace/registry_test.go (NEW)
-- **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >80% coverage on registry.go
+- **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >80% coverage on registry.go ✅
 - **Logic:** NewRegistry (loads agents/ from disk, empty dir, missing dir), Register (nil agent, empty name, invalid capability, valid register, overwrite), Get (found, not found), Search (capability filter, trust filter, cost filter, combined, empty result), UpdateStatus (found, not found, valid transition)
 - **Note:** 191 lines, 5 functions. In-package tests can construct Registry directly (unexported fields). NewRegistry needs temp dirs with YAML fixtures.
+- **Result:** 5 test functions with 33 total subtests. Coverage: NewRegistry 91.3%, Register/Get/UpdateStatus 100%, Search 94.4%. Package 98.1% (from 71.8%). All 7 packages pass. Commit: 2691a86
 
 ## [ ] Write Go tests for pkg/prompt/attester.go
 - **Priority:** medium
