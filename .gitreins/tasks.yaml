@@ -1,0 +1,34 @@
+tasks:
+- id: qc-build
+  title: Helix project builds and passes static checks
+  criteria:
+  - "go build ./cmd/... exits 0 \u2014 all CLI binaries compile"
+  - "go vet ./... exits 0 \u2014 no warnings or errors"
+  - "go test -short -count=1 ./... exits 0 \u2014 all tests pass"
+  - 'Binary files produced: helix-identity, sandbox (and helix-estimate/negotiate/prompt/marketplace
+    when implemented)'
+  status: pending
+  created_at: '2026-06-21T12:05:19.682163+00:00'
+- id: feat-identity-cli
+  title: "Agent identity CLI \u2014 all 5 subcommands work"
+  criteria:
+  - helix-identity sync --dry-run exits 0 and prints agent provisioning plan
+  - helix-identity status prints table of provisioned agents with Forgejo IDs
+  - helix-identity keygen <name> generates ED25519 keypair and prints fingerprint
+  - helix-identity provision <name> --dry-run exits 0 (stub mode)
+  - helix-identity deprovision <name> --dry-run exits 0 (stub mode)
+  - All subcommands accept --forgejo-url and --admin-token flags
+  - Unknown subcommand prints usage to stderr and exits 1
+  status: pending
+  created_at: '2026-06-21T12:05:27.864868+00:00'
+- id: feat-sandbox-isolation
+  title: "Sandbox isolation \u2014 bubblewrap execution modes"
+  criteria:
+  - helix-sandbox run --dry-run --isolation none -- echo test exits 0
+  - helix-sandbox run --dry-run --isolation workspace -- echo test exits 0
+  - helix-sandbox run --dry-run --isolation full -- echo test exits 0
+  - Invalid isolation level (e.g., 'invalid') exits 1 with error message
+  - Missing command after -- exits 1 with usage
+  - helix-sandbox --help prints usage with all flags and exits 0
+  status: pending
+  created_at: '2026-06-21T12:05:27.961379+00:00'
