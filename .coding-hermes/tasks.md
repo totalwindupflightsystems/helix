@@ -35,13 +35,14 @@
 - **AC:** `go build ./cmd/helix-estimate/` exits 0 ✅
 - **Result:** 1,641 lines, 13 files (577 line main.go, 8 packages, 3 YAML/JSON fixtures). All smoke tests pass: estimate dry-run, budget check (auto-approve/blocked), cold-start agent, MiniMax no-cache. Commit: 1c51ed8
 
-## [ ] Feature 3 stubs: Go CLI + packages for PR negotiation
+## [x] Feature 3 stubs: Go CLI + packages for PR negotiation (completed 2026-06-20)
 - **Priority:** medium
 - **Model:** glm-5.2
 - **Provider:** zai-glm
 - **Spec:** specs/pr-negotiation.md (678 lines)
 - **Files:** cmd/helix-negotiate/main.go, pkg/negotiate/*.go
-- **AC:** `go build ./cmd/helix-negotiate/` exits 0
+- **AC:** `go build ./cmd/helix-negotiate/` exits 0 ✅
+- **Result:** 7 files, 967 lines Go. BUILD/VET OK. State machine (6 states), debate engine, Chimera arbiter client, trust deltas, audit logger, Cobra CLI. Commit: 9d16c02
 
 ## [ ] Feature 4 stubs: Go CLI + packages for prompt registry
 - **Priority:** medium
