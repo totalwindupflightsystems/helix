@@ -128,9 +128,10 @@
 - **Logic:** Capability.Valid (11 capabilities, invalid ones), ValidCapability, AgentStatus.Valid, CostProfile.Valid, Tier.Valid, capabilitiesString, ExitError.Error()
 - **Result:** types.go 100% (8/8 functions). 339 lines, 66 subtests. All pass. Marketplace coverage: 64.5%. Commit: 0ccc12a
 
-## [ ] Write Go tests for pkg/marketplace/index.go
+## [x] Write Go tests for pkg/marketplace/index.go (completed 2026-06-22)
 - **Priority:** high
 - **Model:** MiniMax-M3
 - **Files:** pkg/marketplace/index_test.go (NEW)
-- **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >80% coverage on index.go
+- **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >80% coverage on index.go ✅
 - **Logic:** RebuildIndex (rebuilds from agents map, persists _index.yaml), IndexEntry (cached hit, cache miss→compute, agent not found), agentToIndexEntry (field projection with capability slice copy)
+- **Result:** RebuildIndex 88.9%, IndexEntry 100.0%, agentToIndexEntry 100.0%. 9 test functions, all pass. Marketplace coverage: 71.8% (from 64.5%). Direct-write (70-line source, spawn threshold not met). Commit: pending
