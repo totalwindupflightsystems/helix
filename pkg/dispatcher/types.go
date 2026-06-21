@@ -67,20 +67,20 @@ func (s StepStatus) IsValid() bool {
 
 // Task is a single unit of work decomposed from a specification.
 type Task struct {
-	ID           string     `json:"id"`
-	SpecRef      string     `json:"spec_ref"`
-	Description  string     `json:"description"`
-	Priority     int        `json:"priority"`
-	AssignedAgent string    `json:"assigned_agent"`
-	Status       TaskStatus `json:"status"`
+	ID            string     `json:"id"`
+	SpecRef       string     `json:"spec_ref"`
+	Description   string     `json:"description"`
+	Priority      int        `json:"priority"`
+	AssignedAgent string     `json:"assigned_agent"`
+	Status        TaskStatus `json:"status"`
 }
 
 // AgentProfile describes an agent available for task assignment.
 type AgentProfile struct {
-	Name         string `json:"name"`
-	Capability   string `json:"capability"`
-	CurrentLoad  int    `json:"current_load"`
-	MaxLoad      int    `json:"max_load"`
+	Name        string `json:"name"`
+	Capability  string `json:"capability"`
+	CurrentLoad int    `json:"current_load"`
+	MaxLoad     int    `json:"max_load"`
 }
 
 // CanAcceptLoad reports whether the agent has capacity for one more task.
@@ -90,16 +90,16 @@ func (a AgentProfile) CanAcceptLoad() bool {
 
 // Step is a single actionable step within a work item.
 type Step struct {
-	Action          string     `json:"action"`
-	ExpectedOutput  string     `json:"expected_output"`
-	Status          StepStatus `json:"status"`
+	Action         string     `json:"action"`
+	ExpectedOutput string     `json:"expected_output"`
+	Status         StepStatus `json:"status"`
 }
 
 // WorkItem binds a task to an assigned agent and its execution steps.
 type WorkItem struct {
-	Task   Task         `json:"task"`
-	Agent  AgentProfile `json:"agent"`
-	Steps  []Step       `json:"steps"`
+	Task  Task         `json:"task"`
+	Agent AgentProfile `json:"agent"`
+	Steps []Step       `json:"steps"`
 }
 
 // DispatchResult is the outcome of dispatching a single task.

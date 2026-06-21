@@ -107,10 +107,10 @@ type Scorer struct {
 
 // MergeStats tracks merge outcomes for reputation calculation.
 type MergeStats struct {
-	MergedPRs   int
-	RejectedPRs int
-	Incidents   int
-	ForceMerges int
+	MergedPRs      int
+	RejectedPRs    int
+	Incidents      int
+	ForceMerges    int
 	BudgetOverruns int
 }
 
@@ -191,10 +191,10 @@ func (s *Scorer) RecordMerge(agent string, success bool) error {
 // The score never decays below the base score (30).
 func (s *Scorer) applyDecay(agent string, score float64) float64 {
 	const (
-		baseScore     = 30.0
-		decayRate     = 0.05  // 5% per 30-day period
-		decayWindow   = 30 * 24 * time.Hour // 30 days
-		gracePeriod   = 30 * 24 * time.Hour // first 30 days: no decay
+		baseScore   = 30.0
+		decayRate   = 0.05                // 5% per 30-day period
+		decayWindow = 30 * 24 * time.Hour // 30 days
+		gracePeriod = 30 * 24 * time.Hour // first 30 days: no decay
 	)
 
 	last, ok := s.lastActivity[agent]

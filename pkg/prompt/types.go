@@ -164,10 +164,10 @@ type PromptDiff struct {
 
 // EvalResults holds parsed PromptFoo evaluation results (spec §10).
 type EvalResults struct {
-	TotalTests  int                `json:"total_tests" yaml:"total_tests"`
-	PassedTests int                `json:"passed_tests" yaml:"passed_tests"`
-	FailedTests int                `json:"failed_tests" yaml:"failed_tests"`
-	Results     []EvalTestResult   `json:"results" yaml:"results"`
+	TotalTests  int              `json:"total_tests" yaml:"total_tests"`
+	PassedTests int              `json:"passed_tests" yaml:"passed_tests"`
+	FailedTests int              `json:"failed_tests" yaml:"failed_tests"`
+	Results     []EvalTestResult `json:"results" yaml:"results"`
 }
 
 // EvalTestResult is a single PromptFoo test result.

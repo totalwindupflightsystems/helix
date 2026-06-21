@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
 	"github.com/totalwindupflightsystems/helix/pkg/negotiate"
 )
 
@@ -196,11 +197,11 @@ func runDebate(opts *debateOptions, prURL string) error {
 
 type resolveOptions struct {
 	*globalOptions
-	forceChimera   bool
-	verdict        string
-	chimeraURL     string
-	pr             int    //nolint:unused
-	positionsFile  string //nolint:unused
+	forceChimera  bool
+	verdict       string
+	chimeraURL    string
+	pr            int    //nolint:unused
+	positionsFile string //nolint:unused
 }
 
 func newResolveCmd(gOpts *globalOptions) *cobra.Command {

@@ -6,11 +6,11 @@ import (
 
 func TestTrustDeltas(t *testing.T) {
 	tests := []struct {
-		name         string
-		eventType    string
-		wonTiebreak  bool
-		wantDelta    int
-		wantNil      bool
+		name        string
+		eventType   string
+		wonTiebreak bool
+		wantDelta   int
+		wantNil     bool
 	}{
 		{name: "concede_evidence", eventType: "concede_evidence", wantDelta: 1},
 		{name: "win_tiebreak", eventType: "win_tiebreak", wantDelta: 2},

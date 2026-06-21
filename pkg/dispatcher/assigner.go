@@ -7,9 +7,9 @@ import (
 
 // AssignAgent matches a task to the best-fit agent based on capability and
 // current load. The selection strategy:
-//   1. Filter agents whose Capability matches the task description.
-//   2. Among matches, pick the one with the lowest current load.
-//   3. If no capability match, pick the least-loaded agent overall.
+//  1. Filter agents whose Capability matches the task description.
+//  2. Among matches, pick the one with the lowest current load.
+//  3. If no capability match, pick the least-loaded agent overall.
 //
 // Returns a DispatchResult with the assigned WorkItem or an error.
 func AssignAgent(task Task, agents []AgentProfile) (*DispatchResult, error) {

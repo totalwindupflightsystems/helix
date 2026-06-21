@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
 	"github.com/totalwindupflightsystems/helix/pkg/identity"
 )
 

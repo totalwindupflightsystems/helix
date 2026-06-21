@@ -1,0 +1,94 @@
+# Helix Platform — Docker Compose
+#
+# This compose file defines the full local development stack:
+#
+#   forgejo   — Self-hosted Git server (Gitea fork) for agent accounts
+#   chimera   — AI inference server for cost estimation and prompt attestation
+#   helix     — The platform CLI itself (useful for debugging in-container)
+#
+# Usage:
+#
+#   cp .env.example .env
+#   # edit .env with your credentials
+#   ./scripts/up.sh
+#   # ... use the stack ...
+#   ./scripts/down.sh
+#
+# Ports:
+#
+#   Forgejo:  3000 (web UI), 2222 (SSH)
+#   Chimera:  8765 (API)
+#   Helix:    No exposed ports (CLI only)
+
+version: "3.8"
+
+services:
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:1.21
+    container_name: helix-forgejo
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "2222:22"
+    volumes:
+      - forgejo-data:/var/lib/forgejo
+      - forgejo-config:/etc/forgejo
+    environment:
+      - FORGEJO_ADMIN_USER=${FORGEJO_ADMIN_USER:-helio}
+      - FORGEJO_ADMIN_PASSWORD=${FORGEJO_ADMIN_PASSWORD:-changeme}
+      - FORGEJO_DB_TYPE=sqlite
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/v1/version"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  chimera:
+    build:
+      context: ../chimera-v2
+      dockerfile: Dockerfile
+    container_name: helix-chimera
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    environment:
+      - CHIMERA_PORT=8765
+      - OPENAI_API_KEY
+      - OPENROUTER_API_KEY
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8765/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  helix:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: helix-cli
+    depends_on:
+      forgejo:
+        condition: service_healthy
+      chimera:
+        condition: service_healthy
+    volumes:
+      - helix-config:/root/.helix
+      - helix-keys:/root/.helix/keys
+      - helix-state:/root/.helix/state
+    environment:
+      - FORGEJO_URL=http://forgejo:3000
+      - CHIMERA_URL=http://chimera:8765
+      - FORGEJO_ADMIN_USER=${FORGEJO_ADMIN_USER:-helio}
+      - FORGEJO_ADMIN_PASSWORD=${FORGEJO_ADMIN_PASSWORD:-changeme}
+      - HELIX_KNOWN_FRIENDS=/root/.helix/known-friends.json
+    # Helix is a CLI tool — no long-running process. Use `docker exec` to run commands.
+    entrypoint: ["tail", "-f", "/dev/null"]
+
+volumes:
+  forgejo-data:
+  forgejo-config:
+  helix-config:
+  helix-keys:
+  helix-state:

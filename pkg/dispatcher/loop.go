@@ -8,12 +8,12 @@ import (
 )
 
 // ExecuteLoop drives a single work item through the Ralph Loop pipeline:
-//   1. Acquire a lock file to prevent concurrent pipeline runs.
-//   2. Create a worktree / workspace directory for the work item.
-//   3. Execute each step in the work item.
-//   4. Commit the results.
-//   5. Open a PR (stub — prints the PR details).
-//   6. Release the lock.
+//  1. Acquire a lock file to prevent concurrent pipeline runs.
+//  2. Create a worktree / workspace directory for the work item.
+//  3. Execute each step in the work item.
+//  4. Commit the results.
+//  5. Open a PR (stub — prints the PR details).
+//  6. Release the lock.
 //
 // The lock file is placed at <workdir>/.helix/dispatch.lock. The worktree is
 // created at <workdir>/.helix/worktrees/<task-id>/.
