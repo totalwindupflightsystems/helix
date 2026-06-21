@@ -1291,12 +1291,12 @@ func TestProvisioner_Stubs(t *testing.T) {
 		}
 	})
 
-	t.Run("CreateUser_real_returns_not_implemented", func(t *testing.T) {
+	t.Run("CreateUser_real_returns_network_error", func(t *testing.T) {
 		p := newProv(t, false)
 		req := &CreateUserRequest{Username: "wojons"}
 		acc, err := p.CreateUser(req)
-		if !errors.Is(err, ErrNotImplemented) {
-			t.Errorf("err = %v, want ErrNotImplemented", err)
+		if err == nil {
+			t.Error("expected network error from real transport, got nil")
 		}
 		if acc != nil {
 			t.Errorf("acc = %v, want nil", acc)
@@ -1330,11 +1330,11 @@ func TestProvisioner_Stubs(t *testing.T) {
 		}
 	})
 
-	t.Run("RegisterKey_real_returns_not_implemented", func(t *testing.T) {
+	t.Run("RegisterKey_real_returns_network_error", func(t *testing.T) {
 		p := newProv(t, false)
 		key, err := p.RegisterKey("wojons", "pass", "key", "title")
-		if !errors.Is(err, ErrNotImplemented) {
-			t.Errorf("err = %v, want ErrNotImplemented", err)
+		if err == nil {
+			t.Error("expected network error from real transport, got nil")
 		}
 		if key != nil {
 			t.Errorf("key = %v, want nil", key)
@@ -1382,12 +1382,12 @@ func TestProvisioner_Stubs(t *testing.T) {
 		}
 	})
 
-	t.Run("CreateToken_real_returns_not_implemented", func(t *testing.T) {
+	t.Run("CreateToken_real_returns_network_error", func(t *testing.T) {
 		p := newProv(t, false)
 		req := &CreateTokenRequest{Name: PATName}
 		tok, err := p.CreateToken("wojons", "admin", "adminpass", req)
-		if !errors.Is(err, ErrNotImplemented) {
-			t.Errorf("err = %v, want ErrNotImplemented", err)
+		if err == nil {
+			t.Error("expected network error from real transport, got nil")
 		}
 		if tok != nil {
 			t.Errorf("tok = %v, want nil", tok)
@@ -1427,11 +1427,11 @@ func TestProvisioner_Stubs(t *testing.T) {
 		}
 	})
 
-	t.Run("RevokeToken_real_returns_not_implemented", func(t *testing.T) {
+	t.Run("RevokeToken_real_returns_network_error", func(t *testing.T) {
 		p := newProv(t, false)
 		err := p.RevokeToken("wojons", "admin", "adminpass", 42)
-		if !errors.Is(err, ErrNotImplemented) {
-			t.Errorf("err = %v, want ErrNotImplemented", err)
+		if err == nil {
+			t.Error("expected network error from real transport, got nil")
 		}
 	})
 
@@ -1446,11 +1446,11 @@ func TestProvisioner_Stubs(t *testing.T) {
 		}
 	})
 
-	t.Run("GetAccount_real_returns_not_implemented", func(t *testing.T) {
+	t.Run("GetAccount_real_returns_network_error", func(t *testing.T) {
 		p := newProv(t, false)
 		acc, err := p.GetAccount("wojons")
-		if !errors.Is(err, ErrNotImplemented) {
-			t.Errorf("err = %v, want ErrNotImplemented", err)
+		if err == nil {
+			t.Error("expected network error from real transport, got nil")
 		}
 		if acc != nil {
 			t.Errorf("acc = %v, want nil", acc)
