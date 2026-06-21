@@ -1,0 +1,21 @@
+# Forgejo Action: Prompt regression tests (spec §10.1)
+# Triggers on any change to prompts/ or .promptfoo.yaml
+name: Prompt Regression Tests
+on:
+  push:
+    paths:
+      - 'prompts/**'
+      - '.promptfoo.yaml'
+
+jobs:
+  promptfoo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run PromptFoo
+        run: npx promptfoo eval
+      - name: Store results
+        uses: actions/upload-artifact@v4
+        with:
+          name: promptfoo-results
+          path: promptfoo-results.json
