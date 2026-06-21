@@ -8,12 +8,13 @@
 // Two subcommands:
 //
 //	helix-negotiate debate <pr-url>   start or debug a negotiation
-//	helix-negotiate resolve <pr-url>  force Chimera tie-break resolution
+//	helix-negotiate resolve [pr-url]  force Chimera tie-break resolution
 //
-// Import constraint: stdlib + github.com/spf13/cobra + gopkg.in/yaml.v3 only.
+// Import constraint: stdlib + github.com/spf13/cobra only.
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -56,7 +57,7 @@ If they deadlock, Chimera's arbiter formation breaks the tie.
 
 Subcommands:
   debate <pr-url>   Start or debug a negotiation between two agents
-  resolve <pr-url>  Force Chimera tie-break resolution
+  resolve [pr-url]  Force Chimera tie-break resolution
 
 Run "helix-negotiate <subcommand> --help" for per-command flags.`,
 	}
@@ -195,47 +196,78 @@ func runDebate(opts *debateOptions, prURL string) error {
 
 type resolveOptions struct {
 	*globalOptions
-	forceChimera bool
-	verdict      string
-	chimeraURL   string
+	forceChimera  bool
+	verdict       string
+	chimeraURL    string
+	pr            int
+	positionsFile string
 }
 
 func newResolveCmd(gOpts *globalOptions) *cobra.Command {
 	opts := &resolveOptions{globalOptions: gOpts}
 	cmd := &cobra.Command{
-		Use:   "resolve <pr-url>",
+		Use:   "resolve [pr-url]",
 		Short: "Force Chimera tie-break resolution",
 		Long: `Force-resolve a negotiation by invoking Chimera's arbiter formation directly,
 bypassing the debate rounds.
 
+Use --pr to specify a PR number directly, or pass a Forgejo PR URL as a
+positional argument.
+
+Use --positions-file to provide agent positions as JSON (requires --pr).
+  Format: [{"agent":"alfa","verdict":"APPROVED","evidence":"..."}, ...]
+
 Use --verdict to pre-set a verdict for testing (no Chimera call is made).
 Use --force-chimera to explicitly skip debate and go straight to the tie-break.`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runResolve(opts, args[0])
+			if opts.pr == 0 && len(args) == 0 {
+				return fmt.Errorf("either --pr or a positional <pr-url> is required")
+			}
+			prURL := ""
+			if len(args) > 0 {
+				prURL = args[0]
+			}
+			return runResolve(opts, prURL)
 		},
 	}
 	cmd.Flags().BoolVar(&opts.forceChimera, "force-chimera", false,
 		"skip debate, go straight to Chimera tie-break")
 	cmd.Flags().StringVar(&opts.verdict, "verdict", "",
-		"pre-set verdict (APPROVE|REJECT) for testing — no Chimera call")
+		"pre-set verdict (APPROVE|REJECT) for testing -- no Chimera call")
 	cmd.Flags().StringVar(&opts.chimeraURL, "chimera-url", "http://localhost:8765",
 		"Chimera base URL")
+	cmd.Flags().IntVar(&opts.pr, "pr", 0,
+		"PR number (alternative to positional pr-url)")
+	cmd.Flags().StringVar(&opts.positionsFile, "positions-file", "",
+		"JSON file with agent positions (requires --pr)")
 	return cmd
 }
 
 func runResolve(opts *resolveOptions, prURL string) error {
-	prNumber, err := parsePRNumber(prURL)
-	if err != nil {
-		return err
+	var prNumber int
+	var err error
+
+	if opts.pr > 0 {
+		prNumber = opts.pr
+	} else {
+		prNumber, err = parsePRNumber(prURL)
+		if err != nil {
+			return err
+		}
 	}
 
-	// Pre-set verdict for testing — no Chimera call
+	// Pre-set verdict for testing -- no Chimera call
 	if opts.verdict != "" {
 		v := strings.ToUpper(opts.verdict)
 		fmt.Fprintf(os.Stdout, "FORCE VERDICT: PR #%d -> %s\n", prNumber, v)
 		fmt.Fprintf(os.Stdout, "  (pre-set via --verdict, no Chimera call)\n")
 		return nil
+	}
+
+	// If --positions-file is provided, use the Negotiate API
+	if opts.positionsFile != "" {
+		return runResolveWithPositions(opts, prNumber)
 	}
 
 	// Call Chimera directly
@@ -254,8 +286,93 @@ func runResolve(opts *resolveOptions, prURL string) error {
 	fmt.Fprintf(os.Stdout, "  Confidence:  %.2f\n", verdict.Confidence)
 	fmt.Fprintf(os.Stdout, "  Cost:        $%.4f\n", verdict.Cost)
 	aShare, bShare := negotiate.SplitCost(verdict.Cost)
-	fmt.Fprintf(os.Stdout, "  Split:       $%.4f / $%.4f (evenly per spec §9.3)\n", aShare, bShare)
+	fmt.Fprintf(os.Stdout, "  Split:       $%.4f / $%.4f (evenly per spec)\n", aShare, bShare)
 	fmt.Fprintf(os.Stdout, "  Reasoning:   %s\n", verdict.Trace)
+	return nil
+}
+
+// allPositionsAgree is a local helper (mirrors negotiate package internals).
+func allPositionsAgree(positions []negotiate.Position) bool {
+	if len(positions) == 0 {
+		return true
+	}
+	first := positions[0].Verdict
+	for _, p := range positions[1:] {
+		if p.Verdict != first {
+			return false
+		}
+	}
+	return true
+}
+
+// runResolveWithPositions reads agent positions from a JSON file and runs
+// the full negotiation protocol via the Negotiate API.
+func runResolveWithPositions(opts *resolveOptions, prNumber int) error {
+	data, err := os.ReadFile(opts.positionsFile)
+	if err != nil {
+		return fmt.Errorf("read positions file: %w", err)
+	}
+
+	var positions []negotiate.Position
+	if err := json.Unmarshal(data, &positions); err != nil {
+		return fmt.Errorf("parse positions JSON: %w", err)
+	}
+
+	if len(positions) < 2 {
+		return fmt.Errorf("positions file must contain at least 2 agent positions, got %d", len(positions))
+	}
+
+	prCtx := negotiate.PRContext{
+		PRNumber:       prNumber,
+		AgentPositions: positions,
+	}
+
+	fmt.Fprintf(os.Stdout, "Negotiating PR #%d with %d agent positions...\n", prNumber, len(positions))
+	for _, p := range positions {
+		fmt.Fprintf(os.Stdout, "  Agent %s: %s\n", p.Agent, p.Verdict)
+	}
+
+	// Fast path: all agents agree, no negotiation needed
+	if allPositionsAgree(positions) {
+		verdict := positions[0].Verdict
+		fmt.Fprintln(os.Stdout, "\nNEGOTIATION RESULT:")
+		fmt.Fprintf(os.Stdout, "  Verdict:    %s\n", verdict)
+		fmt.Fprintf(os.Stdout, "  Reasoning:  All %d agents agree: %s\n", len(positions), verdict)
+		fmt.Fprintln(os.Stdout, "  (no Chimera tie-break needed)")
+		return nil
+	}
+
+	cfg := negotiate.NegotiationConfig{
+		ChimeraURL: opts.chimeraURL,
+		MaxRounds:  3,
+		Timeout:    30 * time.Minute,
+		AuditPath:  auditLogPath(prNumber),
+		Verbose:    opts.verbose,
+	}
+
+	neg, err := negotiate.NewNegotiatorFromConfig(cfg, prCtx)
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	resolution, err := neg.Negotiate(ctx, prCtx)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintln(os.Stdout, "\nNEGOTIATION RESULT:")
+	fmt.Fprintf(os.Stdout, "  Verdict:    %s\n", resolution.Verdict)
+	fmt.Fprintf(os.Stdout, "  Reasoning:  %s\n", resolution.Reasoning)
+	if resolution.TieBreaker != "" {
+		fmt.Fprintf(os.Stdout, "  Tie-Breaker: %s\n", resolution.TieBreaker)
+	}
+	if len(resolution.WinningEvidence) > 0 {
+		fmt.Fprintln(os.Stdout, "  Winning Evidence:")
+		for _, e := range resolution.WinningEvidence {
+			fmt.Fprintf(os.Stdout, "    - %s\n", e)
+		}
+	}
 	return nil
 }
 
@@ -280,7 +397,7 @@ func defaultConfigPath() string {
 }
 
 // friendAgent is the negotiation-relevant slice of an agent entry in
-// known-friends.json (spec §3.1).
+// known-friends.json (spec section 3.1).
 type friendAgent struct {
 	Name        string `json:"name"`
 	TrustLevel  int    `json:"trust_level"`
@@ -352,7 +469,7 @@ func parsePRNumber(prURL string) (int, error) {
 	return 0, fmt.Errorf("could not extract PR number from URL: %s", prURL)
 }
 
-// auditLogPath returns the JSONL audit log path for a PR (spec §13).
+// auditLogPath returns the JSONL audit log path for a PR.
 func auditLogPath(prNumber int) string {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -364,7 +481,7 @@ func auditLogPath(prNumber int) string {
 
 // renderNegotiationResult prints the final negotiation outcome.
 func renderNegotiationResult(w *os.File, neg *negotiate.Negotiator, auditPath string) {
-	fmt.Fprintf(w, "\nRESULT: PR #%d — %s\n", neg.Neg.PRNumber, neg.Neg.State)
+	fmt.Fprintf(w, "\nRESULT: PR #%d -- %s\n", neg.Neg.PRNumber, neg.Neg.State)
 	if neg.ChimeraResult != nil {
 		cv := neg.ChimeraResult
 		fmt.Fprintf(w, "  Chimera verdict: %s (confidence %.2f, cost $%.4f)\n",

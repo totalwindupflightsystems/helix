@@ -1,5 +1,10 @@
 package marketplace
 
+import (
+	"fmt"
+	"time"
+)
+
 // Trust score calculation (spec §7).
 //
 // The trust score is computed from five components:
@@ -87,6 +92,143 @@ func DailyRecalculation(marketplaceDir string) error {
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+// Scorer computes and tracks agent reputation over time (spec §7, §9).
+// It wraps the trust formula with state for merge/review tracking and
+// applies time-based decay for inactive agents.
+type Scorer struct {
+	// mergeHistory tracks merge outcomes per agent.
+	mergeHistory map[string]*MergeStats
+	// reviewCount tracks the number of reviews per agent.
+	reviewCount map[string]int
+	// lastActivity tracks the last ISO timestamp an agent had activity.
+	lastActivity map[string]string
+}
+
+// MergeStats tracks merge outcomes for reputation calculation.
+type MergeStats struct {
+	MergedPRs   int
+	RejectedPRs int
+	Incidents   int
+	ForceMerges int
+	BudgetOverruns int
+}
+
+// NewScorer creates a fresh Scorer with empty tracking state.
+func NewScorer() *Scorer {
+	return &Scorer{
+		mergeHistory: make(map[string]*MergeStats),
+		reviewCount:  make(map[string]int),
+		lastActivity: make(map[string]string),
+	}
+}
+
+// CalculateReputation computes the reputation score for an agent using the
+// same formula as CalculateTrustScore but incorporating the Scorer's tracked
+// state (spec §7.1). Reputation decays over time if the agent is inactive
+// (spec §7.2: "Reputation decays over time if inactive").
+//
+// The decay formula: for each 30-day period of inactivity beyond the first
+// 30 days, the score is reduced by 5%, floored at the base score (30).
+func (s *Scorer) CalculateReputation(agent string) (float64, error) {
+	stats, ok := s.mergeHistory[agent]
+	if !ok {
+		stats = &MergeStats{}
+	}
+
+	// Get the agent's average rating from the review count.
+	// In a full implementation this would query the marketplace ratings.
+	// For the stub, we use a default of 0 (no bonus).
+	avgRating := 0.0
+
+	score := CalculateTrustScore(
+		stats.MergedPRs,
+		stats.RejectedPRs,
+		stats.Incidents,
+		stats.ForceMerges,
+		stats.BudgetOverruns,
+		avgRating,
+	)
+
+	// Apply decay for inactivity.
+	decayed := s.applyDecay(agent, float64(score))
+	return decayed, nil
+}
+
+// RecordReview records a human review for an agent (spec §9). Updates the
+// review count and last activity timestamp.
+func (s *Scorer) RecordReview(agent string, review Review) error {
+	if review.Rating < 1 || review.Rating > 5 {
+		return &ExitError{
+			Code:    ExitInvalidRating,
+			Message: fmt.Sprintf("INVALID_RATING: must be 1-5, got %d", review.Rating),
+		}
+	}
+	s.reviewCount[agent]++
+	s.lastActivity[agent] = nowISO()
+	return nil
+}
+
+// RecordMerge records a merge outcome for an agent (spec §7). Updates the
+// merge stats and last activity timestamp.
+func (s *Scorer) RecordMerge(agent string, success bool) error {
+	stats, ok := s.mergeHistory[agent]
+	if !ok {
+		stats = &MergeStats{}
+		s.mergeHistory[agent] = stats
+	}
+	if success {
+		stats.MergedPRs++
+	} else {
+		stats.RejectedPRs++
+	}
+	s.lastActivity[agent] = nowISO()
+	return nil
+}
+
+// applyDecay reduces the score based on inactivity periods.
+// For each 30-day window beyond the first 30 days, the score is reduced by 5%.
+// The score never decays below the base score (30).
+func (s *Scorer) applyDecay(agent string, score float64) float64 {
+	const (
+		baseScore     = 30.0
+		decayRate     = 0.05  // 5% per 30-day period
+		decayWindow   = 30 * 24 * time.Hour // 30 days
+		gracePeriod   = 30 * 24 * time.Hour // first 30 days: no decay
+	)
+
+	last, ok := s.lastActivity[agent]
+	if !ok {
+		// No activity recorded — apply maximum decay.
+		// Without data, return the score as-is (conservative).
+		return score
+	}
+
+	lastTime, err := time.Parse(time.RFC3339, last)
+	if err != nil {
+		return score // unparseable timestamp — skip decay
+	}
+
+	inactive := time.Since(lastTime)
+	if inactive <= gracePeriod {
+		return score // within grace period — no decay
+	}
+
+	// Number of 30-day periods beyond the grace window.
+	periods := int((inactive - gracePeriod) / decayWindow)
+	if periods <= 0 {
+		return score
+	}
+
+	decayed := score
+	for i := 0; i < periods; i++ {
+		decayed *= (1.0 - decayRate)
+	}
+	if decayed < baseScore {
+		decayed = baseScore
+	}
+	return decayed
+}
 
 func clamp(v, lo, hi int) int {
 	if v < lo {

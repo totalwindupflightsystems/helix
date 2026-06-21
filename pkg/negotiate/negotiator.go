@@ -1,14 +1,16 @@
 package negotiate
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
 )
 
 // Negotiator orchestrates the full negotiation lifecycle (spec §7.1).
-// It coordinates the debate manager, Chimera arbiter client, and audit logger
-// through the state machine: conflict_detected → round_1 → round_2 → round_3 →
+// It coordinates the debate manager, Chimera arbiter client, audit logger,
+// and the new context-based Negotiate API through the state machine:
+// conflict_detected → round_1 → round_2 → round_3 →
 // deadlock → chimera_tiebreak → resolved.
 type Negotiator struct {
 	Neg           *Negotiation
@@ -16,6 +18,7 @@ type Negotiator struct {
 	Arbiter       *ArbiterClient
 	Audit         *AuditLogger
 	ChimeraResult *ChimeraVerdict
+	config        NegotiationConfig
 }
 
 // NewNegotiator creates a Negotiator for two agents on a PR.
@@ -47,10 +50,171 @@ func NewNegotiator(prNumber int, agentA, agentB Agent, verdictA, verdictB Verdic
 		Debate:  NewDebate(neg),
 		Arbiter: NewArbiterClient(arbiterURL),
 		Audit:   audit,
+		config: NegotiationConfig{
+			ChimeraURL: arbiterURL,
+			MaxRounds:  3,
+			Timeout:    30 * time.Minute,
+			AuditPath:  auditPath,
+		},
 	}, nil
 }
 
-// DetectConflict returns true if the two verdicts differ (spec §7.1 trigger).
+// NewNegotiatorFromConfig creates a Negotiator from a NegotiationConfig and
+// PRContext (the context-based API from Phase 1).
+func NewNegotiatorFromConfig(cfg NegotiationConfig, pr PRContext) (*Negotiator, error) {
+	if len(pr.AgentPositions) < 2 {
+		return nil, fmt.Errorf("INVALID_STATE: need at least 2 agent positions, got %d", len(pr.AgentPositions))
+	}
+
+	posA := pr.AgentPositions[0]
+	posB := pr.AgentPositions[1]
+	verdictA := Verdict(posA.Verdict)
+	verdictB := Verdict(posB.Verdict)
+
+	if !DetectConflict(verdictA, verdictB) {
+		return nil, fmt.Errorf("INVALID_STATE: no conflict (both agents have verdict %s)", verdictA)
+	}
+
+	if cfg.MaxRounds <= 0 {
+		cfg.MaxRounds = 3
+	}
+	if cfg.Timeout <= 0 {
+		cfg.Timeout = 30 * time.Minute
+	}
+
+	agentA := Agent{Name: posA.Agent, TrustLevel: 50}
+	agentB := Agent{Name: posB.Agent, TrustLevel: 50}
+
+	neg := &Negotiation{
+		PRNumber:  pr.PRNumber,
+		AgentA:    agentA,
+		AgentB:    agentB,
+		VerdictA:  verdictA,
+		VerdictB:  verdictB,
+		State:     StateConflictDetected,
+		Round:     0,
+		StartedAt: time.Now(),
+	}
+
+	audit, err := NewAuditLogger(cfg.AuditPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Negotiator{
+		Neg:     neg,
+		Debate:  NewDebate(neg),
+		Arbiter: NewArbiterClient(cfg.ChimeraURL),
+		Audit:   audit,
+		config:  cfg,
+	}, nil
+}
+
+// Negotiate runs the full negotiation protocol for the given PR context (spec §7).
+//
+// Decision logic:
+//  1. If all positions agree → immediate resolution, no Chimera call
+//  2. If positions disagree → escalate to Chimera arbiter formation
+//  3. Resolution includes which evidence points won the argument
+func (n *Negotiator) Negotiate(ctx context.Context, pr PRContext) (*Resolution, error) {
+	if len(pr.AgentPositions) < 2 {
+		return nil, fmt.Errorf("INVALID_STATE: need at least 2 agent positions, got %d", len(pr.AgentPositions))
+	}
+
+	// Phase 1: Check for agreement
+	if allPositionsAgree(pr.AgentPositions) {
+		verdict := pr.AgentPositions[0].Verdict
+		evidence := collectPositionEvidence(pr.AgentPositions)
+		return &Resolution{
+			Verdict:         verdict,
+			Reasoning:       fmt.Sprintf("All %d agents agree: %s", len(pr.AgentPositions), verdict),
+			WinningEvidence: evidence,
+			TieBreaker:      "",
+		}, nil
+	}
+
+	// Phase 2: Agents disagree → escalate to Chimera
+	verdict, err := n.EscalateToChimera(ctx, pr.AgentPositions)
+	if err != nil {
+		return nil, err
+	}
+
+	// Phase 3: Build resolution from Chimera verdict
+	winningEvidence := extractWinningEvidence(pr.AgentPositions, verdict.Verdict)
+
+	// Also advance the state machine to resolved
+	n.ChimeraResult = verdict
+	_ = n.Resolve(Verdict(verdict.Verdict))
+
+	return &Resolution{
+		Verdict:         verdict.Verdict,
+		Reasoning:       verdict.Trace,
+		WinningEvidence: winningEvidence,
+		TieBreaker: fmt.Sprintf("Chimera arbiter (confidence %.2f, cost $%.4f)",
+			verdict.Confidence, verdict.Cost),
+	}, nil
+}
+
+// EscalateToChimera sends the conflicting positions to Chimera's arbiter
+// formation for tie-break resolution (spec §9).
+//
+// The prompt assembled for Chimera includes:
+//   - All agent positions (agent name, verdict, evidence)
+//   - The spec reference from PR context
+//   - A structured question asking for APPROVE or REJECT
+func (n *Negotiator) EscalateToChimera(ctx context.Context, positions []Position) (*ChimeraVerdict, error) {
+	prompt := buildChimeraPrompt(positions)
+	return n.Arbiter.Deliberate(prompt)
+}
+
+// buildChimeraPrompt assembles the deliberation context per spec §9.2.
+func buildChimeraPrompt(positions []Position) string {
+	var sb strings.Builder
+	sb.WriteString("=== AGENT POSITIONS ===\n")
+	for _, p := range positions {
+		sb.WriteString(fmt.Sprintf("Agent %s: %s\n  Evidence: %s\n\n", p.Agent, p.Verdict, p.Evidence))
+	}
+	sb.WriteString("=== QUESTION ===\n")
+	sb.WriteString("Resolve the conflict. Based on the evidence and debate, should this PR be APPROVED or REJECTED?\n")
+	return sb.String()
+}
+
+// allPositionsAgree returns true when every position has the same verdict.
+func allPositionsAgree(positions []Position) bool {
+	if len(positions) == 0 {
+		return true
+	}
+	first := positions[0].Verdict
+	for _, p := range positions[1:] {
+		if p.Verdict != first {
+			return false
+		}
+	}
+	return true
+}
+
+// collectPositionEvidence gathers all evidence strings from positions.
+func collectPositionEvidence(positions []Position) []string {
+	var evidence []string
+	for _, p := range positions {
+		if p.Evidence != "" {
+			evidence = append(evidence, p.Evidence)
+		}
+	}
+	return evidence
+}
+
+// extractWinningEvidence returns evidence from agents whose verdict matches
+// the final verdict — these are the points that "won the argument".
+func extractWinningEvidence(positions []Position, verdict string) []string {
+	var evidence []string
+	for _, p := range positions {
+		if p.Verdict == verdict && p.Evidence != "" {
+			evidence = append(evidence, p.Evidence)
+		}
+	}
+	return evidence
+}
 func DetectConflict(a, b Verdict) bool {
 	return a != b
 }
