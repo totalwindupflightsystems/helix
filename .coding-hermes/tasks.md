@@ -169,3 +169,18 @@
 - **Logic:** Register, Lookup, LookupByComponent, List, UpdateStatus, TransitionStatus, loadIndex, saveIndex, writeMetadata, readMetadata, writePrompt, entryToPromptVersion
 - **Note:** RegistryDir override pattern for test isolation.
 - **Result:** All 12 functions covered — Register 80.0%, Lookup 87.5%, LookupByComponent 83.3%, List 92.9%, UpdateStatus 88.2%, TransitionStatus 86.7%, loadIndex 91.7%, saveIndex 80.0%, writeMetadata 66.7%, readMetadata 100%, writePrompt 66.7%, entryToPromptVersion 100%. Package 63.7%. 990 lines, 10 test functions, 43 subtests. All pass. Commit: 5547115
+
+## [x] Write Go tests for pkg/negotiate (trust.go + audit.go) (completed 2026-06-22)
+- **Priority:** high
+- **Model:** MiniMax-M3 (direct write — pure logic, spawn threshold not met)
+- **Files:** pkg/negotiate/trust_test.go (NEW), pkg/negotiate/audit_test.go (NEW)
+- **AC:** `go test ./pkg/negotiate/... -count=1 -cover` passes with >35% coverage on negotiate package ✅
+- **Result:** Coverage 17.3% → 37.8% (+20.5pp). TrustDeltas 100%, ApplyTrust 100%, NewAuditLogger/LogEvent/Close tested. 288 lines, 12 test functions. All pass. Commit: e9d6730
+
+## [ ] Write Go tests for pkg/negotiate/negotiator.go
+- **Priority:** high
+- **Model:** MiniMax-M3 (direct write — single-file, pure state machine)
+- **Files:** pkg/negotiate/negotiator_test.go (NEW)
+- **AC:** `go test ./pkg/negotiate/... -count=1 -cover` passes with >55% coverage on negotiate package
+- **Logic:** DetectConflict (verdict equality), IsVeto (prefix + trust check), NewNegotiator (conflict detection, same verdict error), Advance state machine (11 transitions: idle→error, conflict→round1, round1→round2/resolved, round2→round3/resolved, round3→deadlock/resolved, deadlock→chimera, resolved/escalated→error), Escalate, Resolve
+- **Note:** ChimeraTiebreak→Resolved transition requires mock arbiter (skipped). State setup via direct field access (same package). TempDir for audit logger.
