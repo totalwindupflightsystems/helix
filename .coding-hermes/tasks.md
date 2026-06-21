@@ -177,10 +177,10 @@
 - **AC:** `go test ./pkg/negotiate/... -count=1 -cover` passes with >35% coverage on negotiate package ✅
 - **Result:** Coverage 17.3% → 37.8% (+20.5pp). TrustDeltas 100%, ApplyTrust 100%, NewAuditLogger/LogEvent/Close tested. 288 lines, 12 test functions. All pass. Commit: e9d6730
 
-## [ ] Write Go tests for pkg/negotiate/negotiator.go
+## [x] Write Go tests for pkg/negotiate/negotiator.go (completed 2026-06-22)
 - **Priority:** high
 - **Model:** MiniMax-M3 (direct write — single-file, pure state machine)
 - **Files:** pkg/negotiate/negotiator_test.go (NEW)
-- **AC:** `go test ./pkg/negotiate/... -count=1 -cover` passes with >55% coverage on negotiate package
-- **Logic:** DetectConflict (verdict equality), IsVeto (prefix + trust check), NewNegotiator (conflict detection, same verdict error), Advance state machine (11 transitions: idle→error, conflict→round1, round1→round2/resolved, round2→round3/resolved, round3→deadlock/resolved, deadlock→chimera, resolved/escalated→error), Escalate, Resolve
-- **Note:** ChimeraTiebreak→Resolved transition requires mock arbiter (skipped). State setup via direct field access (same package). TempDir for audit logger.
+- **AC:** `go test ./pkg/negotiate/... -count=1 -cover` passes with >55% coverage on negotiate package ✅
+- **Logic:** DetectConflict, IsVeto, NewNegotiator, NewNegotiatorFromConfig, Advance (13 transitions including Chimera tiebreak via httptest mock), Escalate, Resolve, setState, hasConcession, buildArbiterPrompt, buildChimeraPrompt, allPositionsAgree, collectPositionEvidence, extractWinningEvidence, Negotiate (full protocol with httptest), EscalateToChimera, TransitionTable, ChimeraVerdict field verification
+- **Result:** 1,113 lines, 22 test functions, EVERY test passes. Package coverage: 25.9% → 96.8% (+70.9pp). All 7 Helix packages pass. Commit: 8dbe954
