@@ -56,16 +56,16 @@ Co-authored-by: wojons <wojonstech@gmail.com>
 			},
 		},
 		{
-			name: "hex_hash_uppercase",
-			msg:  "Prompt: sha256:ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890",
+			name:    "hex_hash_uppercase",
+			msg:     "Prompt: sha256:ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890",
 			wantErr: false,
 			want: &Attestation{
 				Hash: "sha256:ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890",
 			},
 		},
 		{
-			name: "model_with_extra_whitespace",
-			msg:  "Prompt: sha256:abc\nModel:   deepseek-v4-pro   \n",
+			name:    "model_with_extra_whitespace",
+			msg:     "Prompt: sha256:abc\nModel:   deepseek-v4-pro   \n",
 			wantErr: false,
 			want: &Attestation{
 				Hash:  "sha256:abc",
@@ -73,8 +73,8 @@ Co-authored-by: wojons <wojonstech@gmail.com>
 			},
 		},
 		{
-			name: "cost_integer_dollars",
-			msg:  "Prompt: sha256:abc\nCost: $5",
+			name:    "cost_integer_dollars",
+			msg:     "Prompt: sha256:abc\nCost: $5",
 			wantErr: false,
 			want: &Attestation{
 				Hash:             "sha256:abc",
@@ -82,8 +82,8 @@ Co-authored-by: wojons <wojonstech@gmail.com>
 			},
 		},
 		{
-			name: "cost_with_cents",
-			msg:  "Prompt: sha256:abc\nCost: $0.015",
+			name:    "cost_with_cents",
+			msg:     "Prompt: sha256:abc\nCost: $0.015",
 			wantErr: false,
 			want: &Attestation{
 				Hash:             "sha256:abc",
@@ -91,8 +91,8 @@ Co-authored-by: wojons <wojonstech@gmail.com>
 			},
 		},
 		{
-			name: "cost_invalid_format_ignored",
-			msg:  "Prompt: sha256:abc\nCost: $not-a-number",
+			name:    "cost_invalid_format_ignored",
+			msg:     "Prompt: sha256:abc\nCost: $not-a-number",
 			wantErr: false,
 			want: &Attestation{
 				Hash:             "sha256:abc",
@@ -112,8 +112,8 @@ More text below`,
 			},
 		},
 		{
-			name: "provider_field_trimmed",
-			msg:  "Prompt: sha256:abc\nProvider:   ollama-cloud   \n",
+			name:    "provider_field_trimmed",
+			msg:     "Prompt: sha256:abc\nProvider:   ollama-cloud   \n",
 			wantErr: false,
 			want: &Attestation{
 				Hash:     "sha256:abc",
@@ -121,8 +121,8 @@ More text below`,
 			},
 		},
 		{
-			name: "spec_field_trimmed",
-			msg:  "Prompt: sha256:abc\nSpec:   specs/prompt-registry.md   \n",
+			name:    "spec_field_trimmed",
+			msg:     "Prompt: sha256:abc\nSpec:   specs/prompt-registry.md   \n",
 			wantErr: false,
 			want: &Attestation{
 				Hash:    "sha256:abc",
@@ -171,147 +171,147 @@ More text below`,
 
 func TestValidateAttestation(t *testing.T) {
 	tests := []struct {
-		name          string
-		setupRegistry bool // if true, create a registry entry for the test hash
-		status        LifecycleStatus
-		promptContent string
-		hashOverride  string // if set, register a different hash than the computed one
-		promptfooStatus string // if set, write metadata with this PromptFoo status
-		wantHashMatch    bool
-		wantLifecycleOK  bool
+		name              string
+		setupRegistry     bool // if true, create a registry entry for the test hash
+		status            LifecycleStatus
+		promptContent     string
+		hashOverride      string // if set, register a different hash than the computed one
+		promptfooStatus   string // if set, write metadata with this PromptFoo status
+		wantHashMatch     bool
+		wantLifecycleOK   bool
 		wantPromptfooPass bool
-		wantErrorsMin    int // minimum number of errors expected
-		wantErrorsMax    int // maximum number (for fuzzy matching)
+		wantErrorsMin     int // minimum number of errors expected
+		wantErrorsMax     int // maximum number (for fuzzy matching)
 	}{
 		{
-			name:           "prompt_not_found",
-			setupRegistry:  false,
-			wantErrorsMin:  1,
-			wantErrorsMax:  1,
+			name:          "prompt_not_found",
+			setupRegistry: false,
+			wantErrorsMin: 1,
+			wantErrorsMax: 1,
 		},
 		{
-			name:           "active_prompt_no_errors",
-			setupRegistry:  true,
-			status:         StatusActive,
-			promptContent:  "Be concise and accurate.",
-			wantHashMatch:  true,
-			wantLifecycleOK: true,
+			name:              "active_prompt_no_errors",
+			setupRegistry:     true,
+			status:            StatusActive,
+			promptContent:     "Be concise and accurate.",
+			wantHashMatch:     true,
+			wantLifecycleOK:   true,
 			wantPromptfooPass: true,
-			wantErrorsMin:  0,
-			wantErrorsMax:  0,
+			wantErrorsMin:     0,
+			wantErrorsMax:     0,
 		},
 		{
-			name:           "attested_prompt_no_errors",
-			setupRegistry:  true,
-			status:         StatusAttested,
-			promptContent:  "Be helpful.",
-			wantHashMatch:  true,
-			wantLifecycleOK: true,
+			name:              "attested_prompt_no_errors",
+			setupRegistry:     true,
+			status:            StatusAttested,
+			promptContent:     "Be helpful.",
+			wantHashMatch:     true,
+			wantLifecycleOK:   true,
 			wantPromptfooPass: true,
-			wantErrorsMin:  0,
-			wantErrorsMax:  0,
+			wantErrorsMin:     0,
+			wantErrorsMax:     0,
 		},
 		{
-			name:           "deprecated_prompt_allowed_with_warning",
-			setupRegistry:  true,
-			status:         StatusDeprecated,
-			promptContent:  "Old prompt.",
-			wantHashMatch:  true,
-			wantLifecycleOK: true,
+			name:              "deprecated_prompt_allowed_with_warning",
+			setupRegistry:     true,
+			status:            StatusDeprecated,
+			promptContent:     "Old prompt.",
+			wantHashMatch:     true,
+			wantLifecycleOK:   true,
 			wantPromptfooPass: true,
-			wantErrorsMin:  1, // LIFECYCLE_WARNING
-			wantErrorsMax:  1,
+			wantErrorsMin:     1, // LIFECYCLE_WARNING
+			wantErrorsMax:     1,
 		},
 		{
-			name:           "draft_prompt_lifecycle_violation",
-			setupRegistry:  true,
-			status:         StatusDraft,
-			promptContent:  "Draft prompt.",
-			wantHashMatch:  true,
-			wantLifecycleOK: false,
+			name:              "draft_prompt_lifecycle_violation",
+			setupRegistry:     true,
+			status:            StatusDraft,
+			promptContent:     "Draft prompt.",
+			wantHashMatch:     true,
+			wantLifecycleOK:   false,
 			wantPromptfooPass: true,
-			wantErrorsMin:  1,
-			wantErrorsMax:  1,
+			wantErrorsMin:     1,
+			wantErrorsMax:     1,
 		},
 		{
-			name:           "proposed_prompt_lifecycle_violation",
-			setupRegistry:  true,
-			status:         StatusProposed,
-			promptContent:  "Proposed prompt.",
-			wantHashMatch:  true,
-			wantLifecycleOK: false,
+			name:              "proposed_prompt_lifecycle_violation",
+			setupRegistry:     true,
+			status:            StatusProposed,
+			promptContent:     "Proposed prompt.",
+			wantHashMatch:     true,
+			wantLifecycleOK:   false,
 			wantPromptfooPass: true,
-			wantErrorsMin:  1,
-			wantErrorsMax:  1,
+			wantErrorsMin:     1,
+			wantErrorsMax:     1,
 		},
 		{
-			name:           "reviewed_prompt_lifecycle_violation",
-			setupRegistry:  true,
-			status:         StatusReviewed,
-			promptContent:  "Reviewed prompt.",
-			wantHashMatch:  true,
-			wantLifecycleOK: false,
+			name:              "reviewed_prompt_lifecycle_violation",
+			setupRegistry:     true,
+			status:            StatusReviewed,
+			promptContent:     "Reviewed prompt.",
+			wantHashMatch:     true,
+			wantLifecycleOK:   false,
 			wantPromptfooPass: true,
-			wantErrorsMin:  1,
-			wantErrorsMax:  1,
+			wantErrorsMin:     1,
+			wantErrorsMax:     1,
 		},
 		{
-			name:           "hash_mismatch_detected",
-			setupRegistry:  true,
-			status:         StatusActive,
-			promptContent:  "Original content.",
-			hashOverride:   "sha256:0000000000000000000000000000000000000000000000000000000000000000",
-			wantHashMatch:  false,
-			wantLifecycleOK: true,
+			name:              "hash_mismatch_detected",
+			setupRegistry:     true,
+			status:            StatusActive,
+			promptContent:     "Original content.",
+			hashOverride:      "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+			wantHashMatch:     false,
+			wantLifecycleOK:   true,
 			wantPromptfooPass: true,
-			wantErrorsMin:  1,
-			wantErrorsMax:  1,
+			wantErrorsMin:     1,
+			wantErrorsMax:     1,
 		},
 		{
-			name:           "promptfoo_pass",
-			setupRegistry:  true,
-			status:         StatusActive,
-			promptContent:  "Good prompt.",
-			promptfooStatus: "pass",
-			wantHashMatch:  true,
-			wantLifecycleOK: true,
+			name:              "promptfoo_pass",
+			setupRegistry:     true,
+			status:            StatusActive,
+			promptContent:     "Good prompt.",
+			promptfooStatus:   "pass",
+			wantHashMatch:     true,
+			wantLifecycleOK:   true,
 			wantPromptfooPass: true,
-			wantErrorsMin:  0,
-			wantErrorsMax:  0,
+			wantErrorsMin:     0,
+			wantErrorsMax:     0,
 		},
 		{
-			name:           "promptfoo_failed",
-			setupRegistry:  true,
-			status:         StatusActive,
-			promptContent:  "Bad prompt.",
-			promptfooStatus: "fail",
-			wantHashMatch:  true,
-			wantLifecycleOK: true,
+			name:              "promptfoo_failed",
+			setupRegistry:     true,
+			status:            StatusActive,
+			promptContent:     "Bad prompt.",
+			promptfooStatus:   "fail",
+			wantHashMatch:     true,
+			wantLifecycleOK:   true,
 			wantPromptfooPass: false,
-			wantErrorsMin:  1,
-			wantErrorsMax:  1,
+			wantErrorsMin:     1,
+			wantErrorsMax:     1,
 		},
 		{
-			name:           "no_promptfoo_results_defaults_to_pass",
-			setupRegistry:  true,
-			status:         StatusActive,
-			promptContent:  "No PromptFoo.",
-			wantHashMatch:  true,
-			wantLifecycleOK: true,
+			name:              "no_promptfoo_results_defaults_to_pass",
+			setupRegistry:     true,
+			status:            StatusActive,
+			promptContent:     "No PromptFoo.",
+			wantHashMatch:     true,
+			wantLifecycleOK:   true,
 			wantPromptfooPass: true,
-			wantErrorsMin:  0,
-			wantErrorsMax:  0,
+			wantErrorsMin:     0,
+			wantErrorsMax:     0,
 		},
 		{
-			name:           "retired_prompt_lifecycle_violation",
-			setupRegistry:  true,
-			status:         StatusRetired,
-			promptContent:  "Retired prompt.",
-			wantHashMatch:  true,
-			wantLifecycleOK: false,
+			name:              "retired_prompt_lifecycle_violation",
+			setupRegistry:     true,
+			status:            StatusRetired,
+			promptContent:     "Retired prompt.",
+			wantHashMatch:     true,
+			wantLifecycleOK:   false,
 			wantPromptfooPass: true,
-			wantErrorsMin:  1,
-			wantErrorsMax:  1,
+			wantErrorsMin:     1,
+			wantErrorsMax:     1,
 		},
 	}
 
@@ -426,13 +426,13 @@ func TestAttest(t *testing.T) {
 
 	// Set up active prompt
 	promptDir := filepath.Join(tmpDir, "test", "v1.0.0")
-	os.MkdirAll(promptDir, 0o755)
+	_ = os.MkdirAll(promptDir, 0o755)
 	promptContent := "Be concise.\n"
-	os.WriteFile(filepath.Join(promptDir, "prompt.md"), []byte(promptContent), 0o644)
+	_ = os.WriteFile(filepath.Join(promptDir, "prompt.md"), []byte(promptContent), 0o644)
 	hash := Hash(promptContent)
 
 	indexContent := "test:\n  v1.0.0:\n    hash: " + hash + "\n    status: active\n    model: test\n    provider: test\n"
-	os.WriteFile(filepath.Join(tmpDir, "_index.yaml"), []byte(indexContent), 0o644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "_index.yaml"), []byte(indexContent), 0o644)
 
 	att := &Attestation{Hash: hash}
 	result, err := Attest(att, "abc123", tmpDir)

@@ -10,32 +10,32 @@ import (
 
 func TestCalculateTrustScore(t *testing.T) {
 	tests := []struct {
-		name                                         string
+		name                                                           string
 		mergedPRs, rejectedPRs, incidents, forceMerges, budgetOverruns int
-		avgRating                                    float64
-		want                                         int
+		avgRating                                                      float64
+		want                                                           int
 	}{
 		// Base only (all zeros)
 		{name: "base_only", want: 30},
 
 		// Acceptance bonus (mergedPRs × 2, capped at 40)
-		{name: "acceptance_10_merged", mergedPRs: 10, want: 50},  // 30 + min(40, 20) = 50
-		{name: "acceptance_capped", mergedPRs: 50, want: 70},      // 30 + min(40, 100) = 70
+		{name: "acceptance_10_merged", mergedPRs: 10, want: 50}, // 30 + min(40, 20) = 50
+		{name: "acceptance_capped", mergedPRs: 50, want: 70},    // 30 + min(40, 100) = 70
 
 		// Rejection penalty (rejectedPRs × 3, capped at 20)
-		{name: "rejection_3", rejectedPRs: 3, want: 21},           // 30 - min(20, 9) = 21
-		{name: "rejection_capped", rejectedPRs: 20, want: 10},     // 30 - min(20, 60) = 10
+		{name: "rejection_3", rejectedPRs: 3, want: 21},       // 30 - min(20, 9) = 21
+		{name: "rejection_capped", rejectedPRs: 20, want: 10}, // 30 - min(20, 60) = 10
 
 		// Incident penalty (incidents×10 + forceMerges×5 + budgetOverruns×3, capped at 30)
-		{name: "incident_1", incidents: 1, want: 20},                                // 30 - min(30, 10) = 20
+		{name: "incident_1", incidents: 1, want: 20},                                        // 30 - min(30, 10) = 20
 		{name: "incident_combo", incidents: 1, forceMerges: 1, budgetOverruns: 1, want: 12}, // 30 - min(30, 10+5+3) = 12
-		{name: "incident_capped", incidents: 5, want: 0},                             // 30 - min(30, 50) = 0
+		{name: "incident_capped", incidents: 5, want: 0},                                    // 30 - min(30, 50) = 0
 
 		// Human rating bonus (avgRating×2, capped at 10, only if ≥3.0)
-		{name: "human_bonus", avgRating: 4.5, want: 39},              // 30 + min(10, 9) = 39
-		{name: "human_bonus_capped", avgRating: 5.0, want: 40},       // 30 + min(10, 10) = 40
+		{name: "human_bonus", avgRating: 4.5, want: 39},                 // 30 + min(10, 9) = 39
+		{name: "human_bonus_capped", avgRating: 5.0, want: 40},          // 30 + min(10, 10) = 40
 		{name: "human_no_bonus_below_cutoff", avgRating: 2.9, want: 30}, // 30 + 0 = 30
-		{name: "human_bonus_at_cutoff", avgRating: 3.0, want: 36},    // 30 + min(10, 6) = 36
+		{name: "human_bonus_at_cutoff", avgRating: 3.0, want: 36},       // 30 + min(10, 6) = 36
 
 		// Combined scenarios
 		{
@@ -59,8 +59,8 @@ func TestCalculateTrustScore(t *testing.T) {
 		{name: "deeply_negative", rejectedPRs: 20, incidents: 5, want: 0}, // 30 - 20 - 30 = -20 → 0
 
 		// Specific edge: exactly at labels
-		{name: "at_70", mergedPRs: 20, want: 70},     // 30 + min(40,40) = 70
-		{name: "at_50", mergedPRs: 10, want: 50},     // 30 + min(40,20) = 50
+		{name: "at_70", mergedPRs: 20, want: 70}, // 30 + min(40,40) = 70
+		{name: "at_50", mergedPRs: 10, want: 50}, // 30 + min(40,20) = 50
 	}
 
 	for _, tt := range tests {

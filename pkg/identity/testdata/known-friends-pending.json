@@ -1,1 +1,1 @@
-{"version":1,"updated_at":"2026-06-20T00:00:00Z","agents":{"new-agent":{"display_name":"New Agent","status":"pending","tier":"flash","openrouter_key":"sk-or-v1-test-key-new","coolify_service_uuid":"00000000-0000-0000-0000-000000000000"}}}
+{"version":1,"updated_at":"2026-06-20T00:00:00Z","agents":{"new-agent":{"display_name":"New Agent","status":"pending","tier":"flash","openrouter_key":"fake-or-key-00000000000000000000000000000000","coolify_service_uuid":"00000000-0000-0000-0000-000000000000"}}}

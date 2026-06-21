@@ -104,13 +104,13 @@ sleep 15
 
 # If fresh install (no app.ini): POST to install page
 # If installed: admin user already exists from prior session
-curl -s -u helio:helio123 http://localhost:3030/api/v1/version
+curl -s -u helio:$FORGEJO_ADMIN_PASSWORD http://localhost:3030/api/v1/version
 # Expected: {"version":"1.21.x"}
 ```
 
 ### 3.3 Verify
 ```bash
-curl -s -u helio:helio123 http://localhost:3030/api/v1/user | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['is_admin'], 'not admin'; print('OK')"
+curl -s -u helio:$FORGEJO_ADMIN_PASSWORD http://localhost:3030/api/v1/user | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['is_admin'], 'not admin'; print('OK')"
 ```
 
 ---

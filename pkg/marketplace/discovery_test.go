@@ -34,7 +34,7 @@ func TestFindAgents_NoFiltersReturnsAllActive(t *testing.T) {
 
 func TestFindAgents_ExcludesRetiredAndDeprecated(t *testing.T) {
 	r := &Registry{agents: map[string]*Agent{
-		"active": {Name: "active", Status: StatusActive, Capabilities: []Capability{CapGo}, Budget: Budget{}},
+		"active":  {Name: "active", Status: StatusActive, Capabilities: []Capability{CapGo}, Budget: Budget{}},
 		"retired": {Name: "retired", Status: StatusRetired, Capabilities: []Capability{CapGo}, Budget: Budget{}},
 		"depr":    {Name: "depr", Status: StatusDeprecated, Capabilities: []Capability{CapGo}, Budget: Budget{}},
 	}}
@@ -118,9 +118,9 @@ func TestFindAgents_MinTrust(t *testing.T) {
 
 func TestFindAgents_MaxCost(t *testing.T) {
 	r := &Registry{agents: map[string]*Agent{
-		"cheap":      {Name: "cheap", Status: StatusActive, Capabilities: []Capability{CapGo}, Budget: Budget{AverageTaskCost: 0.02}},
-		"moderate":   {Name: "moderate", Status: StatusActive, Capabilities: []Capability{CapGo}, Budget: Budget{AverageTaskCost: 0.15}},
-		"expensive":  {Name: "expensive", Status: StatusActive, Capabilities: []Capability{CapGo}, Budget: Budget{AverageTaskCost: 0.50}},
+		"cheap":     {Name: "cheap", Status: StatusActive, Capabilities: []Capability{CapGo}, Budget: Budget{AverageTaskCost: 0.02}},
+		"moderate":  {Name: "moderate", Status: StatusActive, Capabilities: []Capability{CapGo}, Budget: Budget{AverageTaskCost: 0.15}},
+		"expensive": {Name: "expensive", Status: StatusActive, Capabilities: []Capability{CapGo}, Budget: Budget{AverageTaskCost: 0.50}},
 	}}
 
 	agents, err := r.FindAgents(SearchRequirements{MaxCost: 0.15})
@@ -222,7 +222,7 @@ func TestFindAgents_RankingByTrustThenCost(t *testing.T) {
 func TestFindAgents_ZeroMinTrustIncludesAll(t *testing.T) {
 	r := &Registry{agents: map[string]*Agent{
 		"zero": {Name: "zero", Status: StatusActive, Capabilities: []Capability{CapGo}, Budget: Budget{}, TrustScore: 0},
-		"neg":   {Name: "neg", Status: StatusActive, Capabilities: []Capability{CapGo}, Budget: Budget{}, TrustScore: -5},
+		"neg":  {Name: "neg", Status: StatusActive, Capabilities: []Capability{CapGo}, Budget: Budget{}, TrustScore: -5},
 	}}
 
 	agents, err := r.FindAgents(SearchRequirements{MinTrust: 0})
@@ -236,8 +236,8 @@ func TestFindAgents_ZeroMinTrustIncludesAll(t *testing.T) {
 
 func TestFindAgents_ZeroMaxCostIncludesAll(t *testing.T) {
 	r := &Registry{agents: map[string]*Agent{
-		"free":     {Name: "free", Status: StatusActive, Capabilities: []Capability{CapGo}, Budget: Budget{AverageTaskCost: 0}},
-		"costly":   {Name: "costly", Status: StatusActive, Capabilities: []Capability{CapGo}, Budget: Budget{AverageTaskCost: 100.0}},
+		"free":   {Name: "free", Status: StatusActive, Capabilities: []Capability{CapGo}, Budget: Budget{AverageTaskCost: 0}},
+		"costly": {Name: "costly", Status: StatusActive, Capabilities: []Capability{CapGo}, Budget: Budget{AverageTaskCost: 100.0}},
 	}}
 
 	agents, err := r.FindAgents(SearchRequirements{MaxCost: 0})
@@ -289,8 +289,8 @@ func TestLoadBalance_FewerActiveTasksFirst(t *testing.T) {
 
 func TestLoadBalance_TiebreakerByBudgetUtilization(t *testing.T) {
 	agents := []*Agent{
-		{Name: "cheap-headroom", Budget: Budget{WeeklyLimit: 100, AverageTaskCost: 10}},  // util=0.1
-		{Name: "expensive", Budget: Budget{WeeklyLimit: 100, AverageTaskCost: 90}},        // util=0.9
+		{Name: "cheap-headroom", Budget: Budget{WeeklyLimit: 100, AverageTaskCost: 10}}, // util=0.1
+		{Name: "expensive", Budget: Budget{WeeklyLimit: 100, AverageTaskCost: 90}},      // util=0.9
 	}
 
 	counts := map[string]int{

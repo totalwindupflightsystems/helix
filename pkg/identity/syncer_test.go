@@ -637,7 +637,7 @@ func TestArchiveKeys(t *testing.T) {
 			t.Fatalf("mkdir: %v", err)
 		}
 		files := map[string]string{
-			"id_ed25519":       "PRIVATE-KEY-CONTENTS",
+			"id_ed25519":       "ZmFrZS1wcml2YXRlLWtleS1kYXRh", // base64 "fake-private-key-data" — not a real key
 			"id_ed25519.pub":   "ssh-ed25519 AAAA",
 			"id_ed25519.state": `{"fingerprint":"SHA256:abc"}`,
 		}
@@ -947,8 +947,8 @@ func TestSyncer_Sync_AllFail(t *testing.T) {
 	kf := &KnownFriends{
 		Version: 1,
 		Agents: map[string]*Agent{
-			"wojons":  {Name: "wojons", DisplayName: "W", Status: StatusActive, Tier: TierPro},
-			"bbala":   {Name: "bbala", DisplayName: "B", Status: StatusActive, Tier: TierFlash},
+			"wojons": {Name: "wojons", DisplayName: "W", Status: StatusActive, Tier: TierPro},
+			"bbala":  {Name: "bbala", DisplayName: "B", Status: StatusActive, Tier: TierFlash},
 		},
 	}
 	data, _ := json.Marshal(kf)

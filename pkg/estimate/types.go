@@ -75,11 +75,11 @@ type TaskDesc struct {
 // sum of fresh and cache-hit input; cache writes are a subset of fresh input
 // that gets written to cache for future discount (spec §7.1).
 type TokenEstimate struct {
-	TotalInput    int64   `json:"total_input"`    // FreshInput + CacheHits
-	FreshInput    int64   `json:"fresh_input"`    // input served at full price
-	CacheHits     int64   `json:"cache_hits"`     // input served from cache (10x cheaper)
-	CacheWrites   int64   `json:"cache_writes"`   // fresh input written to cache
-	Output        int64   `json:"output"`         // generated output tokens
+	TotalInput    int64   `json:"total_input"`     // FreshInput + CacheHits
+	FreshInput    int64   `json:"fresh_input"`     // input served at full price
+	CacheHits     int64   `json:"cache_hits"`      // input served from cache (10x cheaper)
+	CacheWrites   int64   `json:"cache_writes"`    // fresh input written to cache
+	Output        int64   `json:"output"`          // generated output tokens
 	CacheHitRatio float64 `json:"cache_hit_ratio"` // ratio actually applied (0..1)
 }
 
@@ -87,12 +87,12 @@ type TokenEstimate struct {
 // output components. All values are in USD. CostTotal is rounded UP to the
 // nearest cent per the operating contract (overestimate, never underestimate).
 type CostEstimate struct {
-	CostInput  float64 `json:"cost_input"`  // USD, all agents, unrounded
-	CostOutput float64 `json:"cost_output"` // USD, all agents, unrounded
-	CostTotal  float64 `json:"cost_total"`  // USD, rounded UP to nearest cent
+	CostInput  float64       `json:"cost_input"`  // USD, all agents, unrounded
+	CostOutput float64       `json:"cost_output"` // USD, all agents, unrounded
+	CostTotal  float64       `json:"cost_total"`  // USD, rounded UP to nearest cent
 	Tokens     TokenEstimate `json:"tokens"`
-	Model      string  `json:"model"`
-	Provider   string  `json:"provider"`
+	Model      string        `json:"model"`
+	Provider   string        `json:"provider"`
 }
 
 // ---------------------------------------------------------------------------
@@ -117,9 +117,9 @@ const (
 // ApprovalDecision is the result of CheckBudget: whether the task may proceed,
 // under which status, and why.
 type ApprovalDecision struct {
-	Approved bool            `json:"approved"`
-	Status   ApprovalStatus  `json:"status"`
-	Reason   string          `json:"reason"`
+	Approved bool           `json:"approved"`
+	Status   ApprovalStatus `json:"status"`
+	Reason   string         `json:"reason"`
 }
 
 // ---------------------------------------------------------------------------

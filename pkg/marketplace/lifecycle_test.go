@@ -16,8 +16,8 @@ func TestAutoDeprecationRules(t *testing.T) {
 		wantLen int      // override for len check when ordering varies
 	}{
 		{
-			name: "no_agents",
-			agents: map[string]*Agent{},
+			name:    "no_agents",
+			agents:  map[string]*Agent{},
 			wantLen: 0,
 		},
 		{
@@ -219,8 +219,8 @@ func TestReactivate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "agent_not_found",
-			agents: map[string]*Agent{},
+			name:    "agent_not_found",
+			agents:  map[string]*Agent{},
 			target:  "nobody",
 			wantErr: true,
 			errStr:  "AGENT_NOT_FOUND",

@@ -166,11 +166,11 @@ func TestDeprecationGrace(t *testing.T) {
 
 func TestValidateTransition(t *testing.T) {
 	tests := []struct {
-		name     string
-		from     LifecycleStatus
-		to       LifecycleStatus
-		metadata *Metadata
-		wantErr  bool
+		name        string
+		from        LifecycleStatus
+		to          LifecycleStatus
+		metadata    *Metadata
+		wantErr     bool
 		errContains string
 	}{
 		// Valid transitions without metadata
@@ -183,65 +183,65 @@ func TestValidateTransition(t *testing.T) {
 
 		// Invalid transitions
 		{
-			name:    "draft_to_active_invalid",
-			from:    StatusDraft,
-			to:      StatusActive,
-			wantErr: true,
+			name:        "draft_to_active_invalid",
+			from:        StatusDraft,
+			to:          StatusActive,
+			wantErr:     true,
 			errContains: "invalid transition",
 		},
 		{
-			name:    "active_to_proposed_invalid",
-			from:    StatusActive,
-			to:      StatusProposed,
-			wantErr: true,
+			name:        "active_to_proposed_invalid",
+			from:        StatusActive,
+			to:          StatusProposed,
+			wantErr:     true,
 			errContains: "invalid transition",
 		},
 
 		// Rollback: deprecated → active requires WorkItem
 		{
-			name:    "rollback_without_workitem_fails",
-			from:    StatusDeprecated,
-			to:      StatusActive,
-			wantErr: true,
+			name:        "rollback_without_workitem_fails",
+			from:        StatusDeprecated,
+			to:          StatusActive,
+			wantErr:     true,
 			errContains: "requires human approval",
 		},
 		{
-			name: "rollback_with_workitem_succeeds",
-			from: StatusDeprecated,
-			to:   StatusActive,
+			name:     "rollback_with_workitem_succeeds",
+			from:     StatusDeprecated,
+			to:       StatusActive,
 			metadata: &Metadata{WorkItem: "WI-042"},
 		},
 		{
-			name: "rollback_with_nil_metadata_fails",
-			from: StatusDeprecated,
-			to:   StatusActive,
-			metadata: nil,
-			wantErr: true,
+			name:        "rollback_with_nil_metadata_fails",
+			from:        StatusDeprecated,
+			to:          StatusActive,
+			metadata:    nil,
+			wantErr:     true,
 			errContains: "requires human approval",
 		},
 		{
-			name: "rollback_with_empty_workitem_fails",
-			from: StatusDeprecated,
-			to:   StatusActive,
-			metadata: &Metadata{WorkItem: ""},
-			wantErr: true,
+			name:        "rollback_with_empty_workitem_fails",
+			from:        StatusDeprecated,
+			to:          StatusActive,
+			metadata:    &Metadata{WorkItem: ""},
+			wantErr:     true,
 			errContains: "requires human approval",
 		},
 
 		// Non-rollback with metadata doesn't require it
 		{
-			name: "active_to_deprecated_with_workitem_still_valid",
-			from: StatusActive,
-			to:   StatusDeprecated,
+			name:     "active_to_deprecated_with_workitem_still_valid",
+			from:     StatusActive,
+			to:       StatusDeprecated,
 			metadata: &Metadata{WorkItem: "WI-043"},
 		},
 
 		// retired → anything
 		{
-			name:    "retired_to_active_invalid",
-			from:    StatusRetired,
-			to:      StatusActive,
-			wantErr: true,
+			name:        "retired_to_active_invalid",
+			from:        StatusRetired,
+			to:          StatusActive,
+			wantErr:     true,
 			errContains: "invalid transition",
 		},
 	}

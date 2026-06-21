@@ -78,40 +78,40 @@ func setupRegisteredPrompt(t *testing.T, dir, component, version, content string
 
 func TestRegister(t *testing.T) {
 	tests := []struct {
-		name          string
-		component     string
-		version       string
-		content       string
-		model         string
-		provider      string
-		specRef       string
-		dryRun        bool
-		promptFile    string // override prompt file path
-		wantErr       bool
-		errContains   string
-		wantStatus    LifecycleStatus
+		name        string
+		component   string
+		version     string
+		content     string
+		model       string
+		provider    string
+		specRef     string
+		dryRun      bool
+		promptFile  string // override prompt file path
+		wantErr     bool
+		errContains string
+		wantStatus  LifecycleStatus
 	}{
 		{
-			name:      "successful_register",
-			component: "test-comp",
-			version:   "v1.0.0",
-			content:   "You are a test assistant.",
-			model:     "deepseek-v4-pro",
-			provider:  "deepseek",
-			specRef:   "specs/test.md",
-			wantErr:   false,
+			name:       "successful_register",
+			component:  "test-comp",
+			version:    "v1.0.0",
+			content:    "You are a test assistant.",
+			model:      "deepseek-v4-pro",
+			provider:   "deepseek",
+			specRef:    "specs/test.md",
+			wantErr:    false,
 			wantStatus: StatusDraft,
 		},
 		{
-			name:      "dry_run_no_files_written",
-			component: "dry-comp",
-			version:   "v1.0.0",
-			content:   "You are a dry-run assistant.",
-			model:     "mini-max-m3",
-			provider:  "minimax",
-			specRef:   "specs/dry.md",
-			dryRun:    true,
-			wantErr:   false,
+			name:       "dry_run_no_files_written",
+			component:  "dry-comp",
+			version:    "v1.0.0",
+			content:    "You are a dry-run assistant.",
+			model:      "mini-max-m3",
+			provider:   "minimax",
+			specRef:    "specs/dry.md",
+			dryRun:     true,
+			wantErr:    false,
 			wantStatus: StatusDraft,
 		},
 		{
@@ -127,14 +127,14 @@ func TestRegister(t *testing.T) {
 			errContains: "cannot read prompt file",
 		},
 		{
-			name:      "register_with_author_and_workitem",
-			component: "auth-comp",
-			version:   "v2.0.0",
-			content:   "You are an authenticated prompt.",
-			model:     "glm-5.2",
-			provider:  "zai-glm",
-			specRef:   "specs/auth.md",
-			wantErr:   false,
+			name:       "register_with_author_and_workitem",
+			component:  "auth-comp",
+			version:    "v2.0.0",
+			content:    "You are an authenticated prompt.",
+			model:      "glm-5.2",
+			provider:   "zai-glm",
+			specRef:    "specs/auth.md",
+			wantErr:    false,
 			wantStatus: StatusDraft,
 		},
 	}
@@ -150,8 +150,8 @@ func TestRegister(t *testing.T) {
 			}
 
 			opts := &RegisterOptions{
-				DryRun: tt.dryRun,
-				Author: "test-author",
+				DryRun:   tt.dryRun,
+				Author:   "test-author",
 				WorkItem: "WI-001",
 			}
 
@@ -348,8 +348,8 @@ func TestList(t *testing.T) {
 		}
 		// Write metadata + index
 		metaDir1 := filepath.Join(tmpRegDir, "comp-a", "v1.0.0")
-		os.MkdirAll(metaDir1, 0755)
-		writeMetadata(filepath.Join(metaDir1, "metadata.yaml"), &Metadata{
+		_ = os.MkdirAll(metaDir1, 0755)
+		_ = writeMetadata(filepath.Join(metaDir1, "metadata.yaml"), &Metadata{
 			Version: "v1.0.0", Component: "comp-a", Hash: h1,
 			Model: "deepseek-v4-pro", Provider: "deepseek", Status: StatusActive, CreatedAt: time.Now().UTC(),
 		})
@@ -357,29 +357,29 @@ func TestList(t *testing.T) {
 
 	// Now use the main tmpDir for everything
 	setRegistryDir(t, tmpDir)
-	os.MkdirAll(filepath.Join(tmpDir, "comp-a", "v1.0.0"), 0755)
-	os.WriteFile(filepath.Join(tmpDir, "comp-a", "v1.0.0", "prompt.md"), []byte("Prompt A v1"), 0644)
+	_ = os.MkdirAll(filepath.Join(tmpDir, "comp-a", "v1.0.0"), 0755)
+	_ = os.WriteFile(filepath.Join(tmpDir, "comp-a", "v1.0.0", "prompt.md"), []byte("Prompt A v1"), 0644)
 	h1 := Hash("Prompt A v1")
-	writeMetadata(filepath.Join(tmpDir, "comp-a", "v1.0.0", "metadata.yaml"), &Metadata{
+	_ = writeMetadata(filepath.Join(tmpDir, "comp-a", "v1.0.0", "metadata.yaml"), &Metadata{
 		Version: "v1.0.0", Component: "comp-a", Hash: h1,
 		Model: "deepseek-v4-pro", Provider: "deepseek", Status: StatusActive, CreatedAt: time.Now().UTC(),
 	})
 
 	// Register comp-b v1.0.0
-	os.MkdirAll(filepath.Join(tmpDir, "comp-b", "v1.0.0"), 0755)
-	os.WriteFile(filepath.Join(tmpDir, "comp-b", "v1.0.0", "prompt.md"), []byte("Prompt B v1"), 0644)
+	_ = os.MkdirAll(filepath.Join(tmpDir, "comp-b", "v1.0.0"), 0755)
+	_ = os.WriteFile(filepath.Join(tmpDir, "comp-b", "v1.0.0", "prompt.md"), []byte("Prompt B v1"), 0644)
 	hB := Hash("Prompt B v1")
-	writeMetadata(filepath.Join(tmpDir, "comp-b", "v1.0.0", "metadata.yaml"), &Metadata{
+	_ = writeMetadata(filepath.Join(tmpDir, "comp-b", "v1.0.0", "metadata.yaml"), &Metadata{
 		Version: "v1.0.0", Component: "comp-b", Hash: hB,
 		Model: "deepseek-v4-pro", Provider: "deepseek", Status: StatusDraft, CreatedAt: time.Now().UTC(),
 	})
 
 	// Add comp-a v2.0.0
 	content2 := "Prompt A v2"
-	os.MkdirAll(filepath.Join(tmpDir, "comp-a", "v2.0.0"), 0755)
-	os.WriteFile(filepath.Join(tmpDir, "comp-a", "v2.0.0", "prompt.md"), []byte(content2), 0644)
+	_ = os.MkdirAll(filepath.Join(tmpDir, "comp-a", "v2.0.0"), 0755)
+	_ = os.WriteFile(filepath.Join(tmpDir, "comp-a", "v2.0.0", "prompt.md"), []byte(content2), 0644)
 	hash2 := Hash(content2)
-	writeMetadata(filepath.Join(tmpDir, "comp-a", "v2.0.0", "metadata.yaml"), &Metadata{
+	_ = writeMetadata(filepath.Join(tmpDir, "comp-a", "v2.0.0", "metadata.yaml"), &Metadata{
 		Version: "v2.0.0", Component: "comp-a", Hash: hash2,
 		Model: "glm-5.2", Provider: "zai-glm", Status: StatusDeprecated, CreatedAt: time.Now().UTC(),
 	})
@@ -394,7 +394,7 @@ func TestList(t *testing.T) {
 			"v1.0.0": {Hash: hB, Status: StatusDraft, Model: "deepseek-v4-pro", Provider: "deepseek"},
 		},
 	}
-	saveIndex(idx)
+	_ = saveIndex(idx)
 
 	tests := []struct {
 		name    string
@@ -473,12 +473,12 @@ func TestList(t *testing.T) {
 
 func TestUpdateStatus(t *testing.T) {
 	tests := []struct {
-		name        string
-		component   string
-		version     string
-		newStatus   LifecycleStatus
-		wantErr     bool
-		errContains string
+		name            string
+		component       string
+		version         string
+		newStatus       LifecycleStatus
+		wantErr         bool
+		errContains     string
 		checkAttestedAt bool // verify AttestedAt is set
 	}{
 		{
@@ -489,11 +489,11 @@ func TestUpdateStatus(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name:      "update_to_attested_sets_timestamp",
-			component: "update-comp",
-			version:   "v1.0.0",
-			newStatus: StatusAttested,
-			wantErr:   false,
+			name:            "update_to_attested_sets_timestamp",
+			component:       "update-comp",
+			version:         "v1.0.0",
+			newStatus:       StatusAttested,
+			wantErr:         false,
 			checkAttestedAt: true,
 		},
 		{
@@ -612,7 +612,7 @@ func TestTransitionStatus(t *testing.T) {
 					metaPath := filepath.Join(tmpDir, component, version, "metadata.yaml")
 					meta, _ := readMetadata(metaPath)
 					meta.WorkItem = tt.workItem
-					writeMetadata(metaPath, meta)
+					_ = writeMetadata(metaPath, meta)
 				}
 			}
 
@@ -674,7 +674,7 @@ func TestTransitionStatus_Rollback(t *testing.T) {
 			t.Fatalf("readMetadata: %v", err)
 		}
 		meta.WorkItem = "WI-ROLLBACK-001"
-		writeMetadata(metaPath, meta)
+		_ = writeMetadata(metaPath, meta)
 
 		err = TransitionStatus(component, version, StatusActive, "rollback-approved")
 		if err != nil {
@@ -694,10 +694,10 @@ func TestTransitionStatus_Rollback(t *testing.T) {
 
 func TestLoadIndex(t *testing.T) {
 	tests := []struct {
-		name     string
-		setup    func(dir string)
-		wantNil  bool // expect *Index to be nil
-		wantErr  bool
+		name    string
+		setup   func(dir string)
+		wantNil bool // expect *Index to be nil
+		wantErr bool
 	}{
 		{
 			name:    "no_file_returns_empty_index",
@@ -708,7 +708,7 @@ func TestLoadIndex(t *testing.T) {
 		{
 			name: "empty_file_returns_empty_index",
 			setup: func(dir string) {
-				os.WriteFile(filepath.Join(dir, "_index.yaml"), []byte(""), 0644)
+				_ = os.WriteFile(filepath.Join(dir, "_index.yaml"), []byte(""), 0644)
 			},
 			wantNil: false,
 			wantErr: false,
@@ -716,7 +716,7 @@ func TestLoadIndex(t *testing.T) {
 		{
 			name: "whitespace_only_returns_empty_index",
 			setup: func(dir string) {
-				os.WriteFile(filepath.Join(dir, "_index.yaml"), []byte("  \n  \n"), 0644)
+				_ = os.WriteFile(filepath.Join(dir, "_index.yaml"), []byte("  \n  \n"), 0644)
 			},
 			wantNil: false,
 			wantErr: false,
@@ -724,7 +724,7 @@ func TestLoadIndex(t *testing.T) {
 		{
 			name: "invalid_yaml_returns_error",
 			setup: func(dir string) {
-				os.WriteFile(filepath.Join(dir, "_index.yaml"), []byte(":invalid: yaml: {{"), 0644)
+				_ = os.WriteFile(filepath.Join(dir, "_index.yaml"), []byte(":invalid: yaml: {{"), 0644)
 			},
 			wantNil: true,
 			wantErr: true,
@@ -733,7 +733,7 @@ func TestLoadIndex(t *testing.T) {
 			name: "valid_yaml_loads",
 			setup: func(dir string) {
 				yaml := "comp-a:\n  v1.0.0:\n    hash: sha256:abc\n    status: active\n    model: deepseek-v4-pro\n    provider: deepseek\n"
-				os.WriteFile(filepath.Join(dir, "_index.yaml"), []byte(yaml), 0644)
+				_ = os.WriteFile(filepath.Join(dir, "_index.yaml"), []byte(yaml), 0644)
 			},
 			wantNil: false,
 			wantErr: false,
@@ -887,7 +887,7 @@ func TestReadMetadata_NotFound(t *testing.T) {
 func TestReadMetadata_InvalidYAML(t *testing.T) {
 	tmpDir := t.TempDir()
 	path := filepath.Join(tmpDir, "metadata.yaml")
-	os.WriteFile(path, []byte(":invalid: yaml: {{{"), 0644)
+	_ = os.WriteFile(path, []byte(":invalid: yaml: {{{"), 0644)
 
 	_, err := readMetadata(path)
 	if err == nil {

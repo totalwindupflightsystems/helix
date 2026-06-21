@@ -32,7 +32,7 @@ docker system prune -af --volumes
 ```
 
 ### FJ-002: Forgejo Admin Auth Failed
-**Symptom:** `curl -u helio:helio123` returns 401
+**Symptom:** `curl -u helio:$FORGEJO_ADMIN_PASSWORD` returns 401
 **Root causes:** Password changed, account locked, DB corruption
 **Recovery:**
 ```bash
@@ -40,7 +40,7 @@ docker system prune -af --volumes
 docker exec forgejo-helix forgejo admin user change-password --username helio --password newpassword123
 
 # 2. Verify new password works
-curl -s -u helio:newpassword123 http://localhost:3030/api/v1/version
+curl -s -u helio:$FORGEJO_ADMIN_NEW_PASSWORD http://localhost:3030/api/v1/version
 ```
 
 ### FJ-003: Agent Provisioning Failed Mid-Sync
@@ -181,10 +181,10 @@ rm ~/.helix/state.json
 **Recovery:**
 ```bash
 # 1. Check existing keys in Forgejo
-curl -s -u helio:helio123 http://localhost:3030/api/v1/user/keys
+curl -s -u helio:$FORGEJO_ADMIN_PASSWORD http://localhost:3030/api/v1/user/keys
 
 # 2. Delete stale key if needed
-curl -s -u helio:helio123 -X DELETE http://localhost:3030/api/v1/user/keys/{key_id}
+curl -s -u helio:$FORGEJO_ADMIN_PASSWORD -X DELETE http://localhost:3030/api/v1/user/keys/{key_id}
 
 # 3. Regenerate and re-register
 ./helix-identity keygen agent-name

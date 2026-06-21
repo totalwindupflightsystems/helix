@@ -352,13 +352,13 @@ func needsQuoting(arg string) bool {
 
 // killProcessGroup sends SIGKILL to an entire process group. This is the
 // timeout-enforcement mechanism for the full implementation.
-func killProcessGroup(pid int) error {
+func _killProcessGroup(pid int) error {
 	// Negative PID kills the entire process group.
 	return syscall.Kill(-pid, syscall.SIGKILL)
 }
 
 // findBwrapBinary searches for the bubblewrap binary at common locations.
-func findBwrapBinary() string {
+func _findBwrapBinary() string {
 	candidates := []string{
 		os.Getenv("HELIX_SANDBOX_BWRAP"),
 		BwrapBinary,
@@ -374,7 +374,7 @@ func findBwrapBinary() string {
 }
 
 // ensureBwrapAvailable checks that the bwrap binary exists and is executable.
-func ensureBwrapAvailable(path string) error {
+func _ensureBwrapAvailable(path string) error {
 	info, err := os.Stat(path)
 	if err != nil {
 		return fmt.Errorf("%w: %s (%v)", ErrBwrapNotFound, path, err)
@@ -390,7 +390,7 @@ func ensureBwrapAvailable(path string) error {
 
 // execContext is the real execution function (unexported, for future wiring).
 // It starts the command, waits with the context, and handles timeout.
-func execContext(ctx context.Context, name string, args ...string) error {
+func _execContext(ctx context.Context, name string, args ...string) error {
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -405,7 +405,7 @@ func execContext(ctx context.Context, name string, args ...string) error {
 
 	if err := cmd.Wait(); err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			_ = killProcessGroup(cmd.Process.Pid)
+			_ = _killProcessGroup(cmd.Process.Pid)
 			return ErrTimeoutExceeded
 		}
 		return fmt.Errorf("%w: %v", ErrExecutionFailed, err)
@@ -415,6 +415,6 @@ func execContext(ctx context.Context, name string, args ...string) error {
 }
 
 // joinPath is a convenience to avoid importing filepath in multiple files.
-func joinPath(elem ...string) string {
+func _joinPath(elem ...string) string {
 	return filepath.Join(elem...)
 }

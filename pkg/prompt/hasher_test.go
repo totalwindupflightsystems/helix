@@ -677,7 +677,7 @@ func mutateByte(s string, idx int) string {
 		return s
 	}
 	original := s[idx]
-	var replacement byte = 'X'
+	var replacement byte
 	if original != 'X' {
 		replacement = 'X'
 	} else {

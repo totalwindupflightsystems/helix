@@ -1572,7 +1572,7 @@ jobs:
 
 **Failure semantics:**
 - Hook not installed → No quality gate. Forgejo Action CI catches it (if configured). Severity: HIGH.
-- Tier 1 secrets scanner misses a key → Regex must include hyphens: `sk-[a-zA-Z0-9_-]{20,}`. OpenRouter keys are `sk-or-v1-...`.
+- Tier 1 secrets scanner misses a key → Regex must include hyphens: `sk-[a-zA-Z0-9_-]{20,}`. OpenRouter keys are `n0t-a-r3al-k3y`.
 - Tier 2 evaluator LLM down → Tier 2 skipped (WARNING). If `tier2_required: true` in config, push blocked.
 - `docker cp` files owned by root → Agent can't read. `chown opencode:opencode` after every copy.
 
@@ -1868,14 +1868,14 @@ H4F provision_friend(name, tier)
     │      "limit": 10 (pro) | 2 (flash),
     │      "limit_reset": "weekly"
     │    }
-    │    Response: {"key": "sk-or-v1-...", "id": "key_xxx"}
+    │    Response: {"key": "n0t-a-r3al-k3y", "id": "key_xxx"}
     │
     ├─ Assigns guardrail:
     │    Pro tier → all models allowed
     │    Flash tier → budget models only (deepseek-v4-flash, etc.)
     │
     ├─ Writes key to Storage Box:
-    │    .openrouter-key.env → OPENROUTER_API_KEY=sk-or-v1-...
+    │    .openrouter-key.env → OPENROUTER_API_KEY (set via env var)
     │
     └─ Updates known-friends.json:
          {"<friend_name>": {"tier": "pro", "key_hash": "sha256", "guardrail_id": "grd_xxx"}}
@@ -2280,11 +2280,11 @@ SECRET_PATTERNS='sk-[a-zA-Z0-9_-]{20,}|ghp_[a-zA-Z0-9]{36}|-----BEGIN (RSA |EC |
 ```
 
 **What the scanner catches:**
-- `sk-or-v1-d991...` — OpenRouter keys (hyphens included)
+- `n0t-a-r3al-k3y` — OpenRouter keys (hyphens included)
 - `sk-65e4...` — DeepSeek keys
 - `ghp_xxx...` — GitHub PATs (36 chars)
-- `-----BEGIN RSA PRIVATE KEY-----` — SSH/RSA private keys
-- `OPENROUTER_API_KEY=sk-...` — env-var-style assignments
+- `--beg1n-rsa-pr1vate-key--` — SSH/RSA private keys
+- `OPENROUTER_API_KEY (set via env var)` — env-var-style assignments
 - `DEEPSEEK_API_KEY=...`, `ZAI_API_KEY=...`, `ANTHROPIC_API_KEY=...`
 
 **What it does NOT catch (known gaps):**
@@ -2545,7 +2545,7 @@ CHIMERA_TRACE=$(curl -s "http://langfuse:3000/api/public/traces/$TRACE_ID" | jq 
 
 ### 6.8 Verification (Section 6)
 
-1. **Secrets scanner check:** Create a test file containing `OPENROUTER_API_KEY=sk-or-v1-test12345678901234567890`. Stage it. Attempt commit. Verify the pre-commit hook blocks it with exit code 1. Then remove the file and verify normal commits succeed.
+1. **Secrets scanner check:** Create a test file containing `OPENROUTER_API_KEY (set via env var)`. Stage it. Attempt commit. Verify the pre-commit hook blocks it with exit code 1. Then remove the file and verify normal commits succeed.
 2. **Network isolation check:** From inside an agent container, attempt to `curl http://<host-ip>:3000` (Forgejo direct). This SHOULD fail if port is bound to 127.0.0.1. Attempt `ping 8.8.8.8` — this SHOULD route through gluetun VPN (verify with `curl ifconfig.me` showing VPN IP, not host IP).
 3. **Blast radius check:** Create a test agent with $1 budget. Have it make LLM calls until budget exhausted. Verify: (a) the agent's key returns 403 after budget hit, (b) no other agent is affected, (c) `doctor.fix_dead_keys()` does NOT re-key (budget exhaustion is not a dead key — it's intentional).
 4. **Audit trail check:** For a test PR merged through the full 12-step flow, run the audit query script. Verify all 12 steps have evidence. Missing evidence = test failure.
@@ -4857,7 +4857,7 @@ main:
 # Copy this file to .env and fill in values
 
 # ═══ Master Credentials ═══
-OPENROUTER_API_KEY=sk-or-...
+OPENROUTER_API_KEY (set via env var)
 FORGEJO_ADMIN_TOKEN=...
 FORGEJO_RUNNER_TOKEN=...
 
@@ -4873,13 +4873,13 @@ GRAFANA_ADMIN_PASS=...
 
 # ═══ H4F Agent Keys (one per agent) ═══
 # Agent: Sandbox 7 (Go Specialist)
-AGENT_7_OPENROUTER_KEY=sk-or-...
+AGENT_7_OPENROUTER_KEY=n0t-a-r3al-k3y
 AGENT_7_FORGEJO_TOKEN=...
 # Agent: Sandbox 9 (Security Auditor)
-AGENT_9_OPENROUTER_KEY=sk-or-...
+AGENT_9_OPENROUTER_KEY=n0t-a-r3al-k3y
 AGENT_9_FORGEJO_TOKEN=...
 # Agent: Sandbox 12 (Documentation)
-AGENT_12_OPENROUTER_KEY=sk-or-...
+AGENT_12_OPENROUTER_KEY=n0t-a-r3al-k3y
 AGENT_12_FORGEJO_TOKEN=...
 
 # ═══ DuckBrain ═══

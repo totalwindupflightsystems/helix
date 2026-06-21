@@ -16,17 +16,17 @@ import "strings"
 type Capability string
 
 const (
-	CapGo            Capability = "go"
-	CapTypeScript    Capability = "typescript"
-	CapPython        Capability = "python"
-	CapCodeReview    Capability = "code-review"
-	CapSpecWriting   Capability = "spec-writing"
+	CapGo             Capability = "go"
+	CapTypeScript     Capability = "typescript"
+	CapPython         Capability = "python"
+	CapCodeReview     Capability = "code-review"
+	CapSpecWriting    Capability = "spec-writing"
 	CapSecurityReview Capability = "security-review"
-	CapTesting       Capability = "testing"
-	CapRefactoring   Capability = "refactoring"
-	CapDocs          Capability = "docs"
-	CapDevOps        Capability = "devops"
-	CapNegotiation   Capability = "negotiation"
+	CapTesting        Capability = "testing"
+	CapRefactoring    Capability = "refactoring"
+	CapDocs           Capability = "docs"
+	CapDevOps         Capability = "devops"
+	CapNegotiation    Capability = "negotiation"
 )
 
 // validCapabilities is the canonical set used by Valid and ValidCapability.
@@ -208,14 +208,14 @@ type SearchQuery struct {
 // provides fast lookup for capability/trust filtering without loading full
 // manifests.
 type ManifestIndexEntry struct {
-	Status       AgentStatus   `yaml:"status"       json:"status"`
-	TrustScore   int           `yaml:"trust_score"  json:"trust_score"`
-	Tier         Tier          `yaml:"tier"         json:"tier"`
-	Capabilities []Capability  `yaml:"capabilities" json:"capabilities"`
-	CostProfile  CostProfile   `yaml:"cost_profile" json:"cost_profile"`
-	AvgRating    float64       `yaml:"avg_rating"   json:"avg_rating"`
-	ActiveTasks  int           `yaml:"active_tasks" json:"active_tasks"`
-	UpdatedAt    string        `yaml:"updated_at"   json:"updated_at"`
+	Status       AgentStatus  `yaml:"status"       json:"status"`
+	TrustScore   int          `yaml:"trust_score"  json:"trust_score"`
+	Tier         Tier         `yaml:"tier"         json:"tier"`
+	Capabilities []Capability `yaml:"capabilities" json:"capabilities"`
+	CostProfile  CostProfile  `yaml:"cost_profile" json:"cost_profile"`
+	AvgRating    float64      `yaml:"avg_rating"   json:"avg_rating"`
+	ActiveTasks  int          `yaml:"active_tasks" json:"active_tasks"`
+	UpdatedAt    string       `yaml:"updated_at"   json:"updated_at"`
 }
 
 // ---------------------------------------------------------------------------

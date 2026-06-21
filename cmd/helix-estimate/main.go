@@ -447,8 +447,8 @@ func loadAgentBudget(path, name string) (estimate.BudgetInfo, error) {
 
 // estimateResult is the JSON shape for the estimate/check commands.
 type estimateResult struct {
-	Description string               `json:"description"`
-	Tier        string               `json:"tier"`
+	Description string                `json:"description"`
+	Tier        string                `json:"tier"`
 	Cost        estimate.CostEstimate `json:"cost"`
 }
 
@@ -484,10 +484,10 @@ func renderEstimateTable(w *os.File, desc, tier string, cost estimate.CostEstima
 
 // checkResult is the JSON shape for the check command.
 type checkResult struct {
-	Agent     string                  `json:"agent"`
-	Cost      estimate.CostEstimate   `json:"cost"`
-	Budget    estimate.BudgetInfo     `json:"budget"`
-	Decision  estimate.ApprovalDecision `json:"decision"`
+	Agent    string                    `json:"agent"`
+	Cost     estimate.CostEstimate     `json:"cost"`
+	Budget   estimate.BudgetInfo       `json:"budget"`
+	Decision estimate.ApprovalDecision `json:"decision"`
 }
 
 func renderCheck(w *os.File, agent string, budget estimate.BudgetInfo,
@@ -525,9 +525,9 @@ func statusEmoji(s estimate.ApprovalStatus) string {
 
 // reportResult is the JSON shape for the report command.
 type reportResult struct {
-	Agent   string                `json:"agent"`
-	Budget  estimate.BudgetInfo   `json:"budget"`
-	Period  string                `json:"period"`
+	Agent  string              `json:"agent"`
+	Budget estimate.BudgetInfo `json:"budget"`
+	Period string              `json:"period"`
 }
 
 func renderReport(w *os.File, name string, f friendBudget, period, format string) {

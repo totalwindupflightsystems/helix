@@ -242,7 +242,7 @@ func TestGetRatings_ReturnsCopy(t *testing.T) {
 
 	// Mutating the returned slice must not affect the registry's copy
 	reviews[0].Author = "hacker"
-	reviews = append(reviews, Review{Author: "injected", Rating: 1})
+	_ = append(reviews, Review{Author: "injected", Rating: 1})
 
 	if r.agents["gopher"].Reviews[0].Author != "alice" {
 		t.Errorf("registry copy was mutated: author = %q, want %q",

@@ -15,12 +15,12 @@ import (
 // cold-start (new repo) defaults. These drive the cache-aware estimation
 // formula in estimator.go (spec §7.3, §12.3).
 type CacheRatios struct {
-	ProHitRatio      float64 `yaml:"pro_hit_ratio"`
-	FlashHitRatio    float64 `yaml:"flash_hit_ratio"`
-	ProWriteRatio    float64 `yaml:"pro_write_ratio"`
-	FlashWriteRatio  float64 `yaml:"flash_write_ratio"`
-	NewRepoThreshold int     `yaml:"new_repo_threshold"`
-	NewRepoHitRatio  float64 `yaml:"new_repo_hit_ratio"`
+	ProHitRatio       float64 `yaml:"pro_hit_ratio"`
+	FlashHitRatio     float64 `yaml:"flash_hit_ratio"`
+	ProWriteRatio     float64 `yaml:"pro_write_ratio"`
+	FlashWriteRatio   float64 `yaml:"flash_write_ratio"`
+	NewRepoThreshold  int     `yaml:"new_repo_threshold"`
+	NewRepoHitRatio   float64 `yaml:"new_repo_hit_ratio"`
 	NewRepoWriteRatio float64 `yaml:"new_repo_write_ratio"`
 }
 
@@ -84,11 +84,11 @@ type TaskDefaults struct {
 
 // PricingYAML is the in-memory representation of ~/.helix/pricing.yaml.
 type PricingYAML struct {
-	Version   string                    `yaml:"version"`
-	Updated   string                    `yaml:"updated"`
+	Version   string                     `yaml:"version"`
+	Updated   string                     `yaml:"updated"`
 	Providers map[string]ProviderPricing `yaml:"providers"`
-	Cache     CacheRatios               `yaml:"cache"`
-	Tasks     map[string]TaskDefaults   `yaml:"tasks"`
+	Cache     CacheRatios                `yaml:"cache"`
+	Tasks     map[string]TaskDefaults    `yaml:"tasks"`
 }
 
 // GetModelPrice returns the ModelPrice for a given provider and model. It

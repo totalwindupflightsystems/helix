@@ -13,7 +13,7 @@ var validTransitions = map[LifecycleStatus][]LifecycleStatus{
 	StatusAttested:   {StatusActive},
 	StatusActive:     {StatusDeprecated},
 	StatusDeprecated: {StatusRetired, StatusActive}, // retired = time-based, active = rollback
-	StatusRetired:    {},                             // terminal
+	StatusRetired:    {},                            // terminal
 }
 
 // AllowedForAttestation reports whether a prompt in the given status may be

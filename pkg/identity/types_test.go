@@ -515,7 +515,7 @@ func TestGenerateKeyPair(t *testing.T) {
 	if !strings.Contains(kp.PrivateKeyPEM, "PRIVATE KEY") {
 		t.Errorf("PrivateKeyPEM missing PEM header, got %q", kp.PrivateKeyPEM)
 	}
-	if kp.PrivateKey == nil || len(kp.PrivateKey) == 0 {
+	if len(kp.PrivateKey) == 0 {
 		t.Error("PrivateKey is empty")
 	}
 	if !strings.HasPrefix(kp.Fingerprint, "SHA256:") {
