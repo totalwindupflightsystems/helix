@@ -53,13 +53,14 @@
 - **AC:** `go build ./cmd/helix-prompt/` exits 0 ✅
 - **Result:** 1,443 lines, 8 Go files (CLI 415 lines + 7 packages 1,028 lines), 3 config files (.promptfoo.yaml, .forgejo/workflows/promptfoo.yaml, prompts/_index.yaml). BUILD/VET OK. CLI functional: 4 subcommands (register, attest, verify, list). Commit: 9dcbf5a
 
-## [ ] Feature 5 stubs: Go CLI + packages for agent marketplace
+## [x] Feature 5 stubs: Go CLI + packages for agent marketplace (completed 2026-06-21)
 - **Priority:** low
 - **Model:** glm-5.2
 - **Provider:** zai-glm
 - **Spec:** specs/agent-marketplace.md (637 lines)
 - **Files:** cmd/helix-marketplace/main.go, pkg/marketplace/*.go
-- **AC:** `go build ./cmd/helix-marketplace/` exits 0
+- **AC:** `go build ./cmd/helix-marketplace/` exits 0 ✅
+- **Result:** 1,529 lines, 8 files (562-line CLI, 7 packages: types/registry/scorer/discovery/ratings/lifecycle/index). BUILD/VET/TEST OK. All 4 subcommands wired (list/show/search/rate). Trust formula with 5 components. Commit: 3670372
 
 ## [ ] Create prompts/ directory with initial prompt registrations
 - **Priority:** low
