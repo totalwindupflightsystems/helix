@@ -1,0 +1,39 @@
+# Helix global PromptFoo test configuration (spec §10.2)
+# Runs regression tests on every prompt change via Forgejo Action CI.
+
+prompts:
+  - file://prompts/agent-identity/v1.1.0/prompt.md
+  - file://prompts/cost-estimator/v1.0.0/prompt.md
+
+providers:
+  - id: deepseek:deepseek-v4-flash
+  - id: deepseek:deepseek-v4-pro
+  - id: zai-glm:glm-5.2
+
+tests:
+  - description: "Agent identity prompt produces valid Go"
+    vars:
+      spec_file: "specs/agent-identity.md"
+    assert:
+      - type: contains
+        value: "package identity"
+      - type: not-contains
+        value: "TODO"
+      - type: llm-rubric
+        value: "The output contains a valid Go struct definition with JSON tags"
+
+  - description: "Cost estimator prompt handles cache-aware pricing"
+    vars:
+      model: "deepseek-v4-pro"
+    assert:
+      - type: contains
+        value: "cache_hit_ratio"
+      - type: javascript
+        value: "output.includes('$0.014')"
+
+  - description: "Prompt does not hallucinate APIs"
+    assert:
+      - type: not-contains
+        value: "api.openai.com"
+      - type: not-contains
+        value: "TODO"
