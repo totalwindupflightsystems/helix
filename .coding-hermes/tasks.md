@@ -97,9 +97,9 @@
 - **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >80% coverage on ratings.go ✅
 - **Result:** Rate 100%, GetRatings 100%, VerifyHuman 100%, recalcRatingAverage 100%. 16 tests (417 lines), all pass. Commit: f2096e5
 
-## [ ] Write Go tests for pkg/marketplace/discovery.go
+## [x] Write Go tests for pkg/marketplace/discovery.go (completed 2026-06-22)
 - **Priority:** medium
 - **Model:** MiniMax-M3
 - **Files:** pkg/marketplace/discovery_test.go (NEW)
-- **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >80% coverage on discovery.go
-- **Logic:** FindAgents, LoadBalance, matchPercent, budgetUtilization
+- **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >80% coverage on discovery.go ✅
+- **Result:** FindAgents 96.6%, LoadBalance 100%, matchPercent 100%, budgetUtilization 100%. 27 tests (442 lines), all pass. Commit: 657baa6
