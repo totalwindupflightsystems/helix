@@ -90,12 +90,12 @@
 - **AC:** `go test ./pkg/negotiate/... -count=1 -cover` passes with >80% coverage on types.go and debate.go ✅
 - **Result:** types.go 100% (5 methods), debate.go 100% (7 methods). 332 lines, 22 test functions, all pass. Commit: 4b80ba6
 
-## [ ] Write Go tests for pkg/marketplace/ratings.go
+## [x] Write Go tests for pkg/marketplace/ratings.go (completed 2026-06-22)
 - **Priority:** medium
 - **Model:** MiniMax-M3
 - **Files:** pkg/marketplace/ratings_test.go (NEW)
-- **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >80% coverage on ratings.go
-- **Logic:** Rate, GetRatings, VerifyHuman, recalcRatingAverage — map-based registry, pure logic
+- **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >80% coverage on ratings.go ✅
+- **Result:** Rate 100%, GetRatings 100%, VerifyHuman 100%, recalcRatingAverage 100%. 16 tests (417 lines), all pass. Commit: f2096e5
 
 ## [ ] Write Go tests for pkg/marketplace/discovery.go
 - **Priority:** medium
