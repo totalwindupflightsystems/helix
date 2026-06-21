@@ -185,6 +185,71 @@ func (r *Registry) UpdateStatus(name string, status AgentStatus) error {
 	return nil
 }
 
+// ListByCapability returns all non-retired agents that have the given capability,
+// sorted by trust score descending (spec §8.1).
+func (r *Registry) ListByCapability(cap Capability) ([]AgentListing, error) {
+	matched, err := r.List(func(a *Agent) bool {
+		if a.Status == StatusRetired {
+			return false
+		}
+		return hasCapability(a, cap)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(matched, func(i, j int) bool {
+		return matched[i].TrustScore > matched[j].TrustScore
+	})
+
+	listings := make([]AgentListing, len(matched))
+	for i, a := range matched {
+		listings[i] = AgentListing{
+			Name:           a.Name,
+			Description:    a.DisplayName,
+			Capabilities:   a.Capabilities,
+			Reputation:     float64(a.TrustScore),
+			Reviews:        a.Ratings.Count,
+			ActiveProjects: 0, // stub: no active-task tracking in v1
+		}
+	}
+	return listings, nil
+}
+
+// GetAgent returns the full AgentProfile for a named agent, including
+// reputation history and review summary (spec §8.1). Returns ExitAgentNotFound
+// if the agent is not in the marketplace.
+func (r *Registry) GetAgent(name string) (*AgentProfile, error) {
+	a, err := r.Get(name)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build review summary (most recent first).
+	reviewsCopy := make([]Review, len(a.Reviews))
+	copy(reviewsCopy, a.Reviews)
+	sort.Slice(reviewsCopy, func(i, j int) bool {
+		return reviewsCopy[i].Date > reviewsCopy[j].Date
+	})
+
+	recentCount := 5
+	if len(reviewsCopy) < recentCount {
+		recentCount = len(reviewsCopy)
+	}
+
+	return &AgentProfile{
+		Agent: *a,
+		ReputationHistory: []ReputationPoint{
+			{Date: a.UpdatedAt, Score: float64(a.TrustScore)},
+		},
+		ReviewSummary: ReviewSummary{
+			Average: a.Ratings.Average,
+			Count:   a.Ratings.Count,
+			Recent:  reviewsCopy[:recentCount],
+		},
+	}, nil
+}
+
 // nowISO returns the current time in RFC 3339 UTC format.
 func nowISO() string {
 	return time.Now().UTC().Format(time.RFC3339)

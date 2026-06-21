@@ -14,6 +14,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -195,24 +196,39 @@ func runDebate(opts *debateOptions, prURL string) error {
 
 type resolveOptions struct {
 	*globalOptions
-	forceChimera bool
-	verdict      string
-	chimeraURL   string
+	forceChimera   bool
+	verdict        string
+	chimeraURL     string
+	pr             int    //nolint:unused
+	positionsFile  string //nolint:unused
 }
 
 func newResolveCmd(gOpts *globalOptions) *cobra.Command {
 	opts := &resolveOptions{globalOptions: gOpts}
 	cmd := &cobra.Command{
-		Use:   "resolve <pr-url>",
+		Use:   "resolve [pr-url]",
 		Short: "Force Chimera tie-break resolution",
 		Long: `Force-resolve a negotiation by invoking Chimera's arbiter formation directly,
 bypassing the debate rounds.
 
+Use --pr to specify a PR number directly, or pass a Forgejo PR URL as a
+positional argument.
+
+Use --positions-file to provide agent positions as JSON (requires --pr).
+  Format: [{"agent":"alfa","verdict":"APPROVED","evidence":"..."}, ...]
+
 Use --verdict to pre-set a verdict for testing (no Chimera call is made).
 Use --force-chimera to explicitly skip debate and go straight to the tie-break.`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runResolve(opts, args[0])
+			if opts.pr == 0 && len(args) == 0 {
+				return fmt.Errorf("either --pr or a positional <pr-url> is required")
+			}
+			prURL := ""
+			if len(args) > 0 {
+				prURL = args[0]
+			}
+			return runResolve(opts, prURL)
 		},
 	}
 	cmd.Flags().BoolVar(&opts.forceChimera, "force-chimera", false,
@@ -221,13 +237,24 @@ Use --force-chimera to explicitly skip debate and go straight to the tie-break.`
 		"pre-set verdict (APPROVE|REJECT) for testing — no Chimera call")
 	cmd.Flags().StringVar(&opts.chimeraURL, "chimera-url", "http://localhost:8765",
 		"Chimera base URL")
+	cmd.Flags().IntVar(&opts.pr, "pr", 0,
+		"PR number (alternative to positional pr-url)")
+	cmd.Flags().StringVar(&opts.positionsFile, "positions-file", "",
+		"JSON file with agent positions (requires --pr)")
 	return cmd
 }
 
 func runResolve(opts *resolveOptions, prURL string) error {
-	prNumber, err := parsePRNumber(prURL)
-	if err != nil {
-		return err
+	var prNumber int
+	var err error
+
+	if opts.pr > 0 {
+		prNumber = opts.pr
+	} else {
+		prNumber, err = parsePRNumber(prURL)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Pre-set verdict for testing — no Chimera call
@@ -236,6 +263,11 @@ func runResolve(opts *resolveOptions, prURL string) error {
 		fmt.Fprintf(os.Stdout, "FORCE VERDICT: PR #%d -> %s\n", prNumber, v)
 		fmt.Fprintf(os.Stdout, "  (pre-set via --verdict, no Chimera call)\n")
 		return nil
+	}
+
+	// If --positions-file is provided, use the Negotiate API
+	if opts.positionsFile != "" {
+		return runResolveWithPositions(opts, prNumber)
 	}
 
 	// Call Chimera directly
@@ -256,6 +288,67 @@ func runResolve(opts *resolveOptions, prURL string) error {
 	aShare, bShare := negotiate.SplitCost(verdict.Cost)
 	fmt.Fprintf(os.Stdout, "  Split:       $%.4f / $%.4f (evenly per spec §9.3)\n", aShare, bShare)
 	fmt.Fprintf(os.Stdout, "  Reasoning:   %s\n", verdict.Trace)
+	return nil
+}
+
+// runResolveWithPositions reads agent positions from a JSON file and runs
+// the full negotiation protocol via the Negotiate API.
+func runResolveWithPositions(opts *resolveOptions, prNumber int) error {
+	data, err := os.ReadFile(opts.positionsFile)
+	if err != nil {
+		return fmt.Errorf("read positions file: %w", err)
+	}
+
+	var positions []negotiate.Position
+	if err := json.Unmarshal(data, &positions); err != nil {
+		return fmt.Errorf("parse positions JSON: %w", err)
+	}
+
+	if len(positions) < 2 {
+		return fmt.Errorf("positions file must contain at least 2 agent positions, got %d", len(positions))
+	}
+
+	prCtx := negotiate.PRContext{
+		PRNumber:       prNumber,
+		AgentPositions: positions,
+	}
+
+	cfg := negotiate.NegotiationConfig{
+		ChimeraURL: opts.chimeraURL,
+		MaxRounds:  3,
+		Timeout:    30 * time.Minute,
+		AuditPath:  auditLogPath(prNumber),
+		Verbose:    opts.verbose,
+	}
+
+	neg, err := negotiate.NewNegotiatorFromConfig(cfg, prCtx)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(os.Stdout, "Negotiating PR #%d with %d agent positions...\n", prNumber, len(positions))
+	for _, p := range positions {
+		fmt.Fprintf(os.Stdout, "  Agent %s: %s\n", p.Agent, p.Verdict)
+	}
+
+	ctx := context.Background()
+	resolution, err := neg.Negotiate(ctx, prCtx)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintln(os.Stdout, "\nNEGOTIATION RESULT:")
+	fmt.Fprintf(os.Stdout, "  Verdict:    %s\n", resolution.Verdict)
+	fmt.Fprintf(os.Stdout, "  Reasoning:  %s\n", resolution.Reasoning)
+	if resolution.TieBreaker != "" {
+		fmt.Fprintf(os.Stdout, "  Tie-Breaker: %s\n", resolution.TieBreaker)
+	}
+	if len(resolution.WinningEvidence) > 0 {
+		fmt.Fprintln(os.Stdout, "  Winning Evidence:")
+		for _, e := range resolution.WinningEvidence {
+			fmt.Fprintf(os.Stdout, "    - %s\n", e)
+		}
+	}
 	return nil
 }
 
