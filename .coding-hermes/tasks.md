@@ -228,4 +228,4 @@
 - **Model:** direct write — pure logic + pricing fixture
 - **Files:** pkg/estimate/estimator_test.go (NEW)
 - **AC:** NewEstimator/hitRatio/writeRatio 100%; Estimate 86.7% ✅
-- **Result:** NewEstimator 100% (4 subtests), hitRatio 100%, writeRatio 100%, Estimate 86.7% (8 subtests: error paths + smoke with real pricing fixture — pro/flash/cold tiers, MiniMax no-cache, multi-agent, agent cap). Commit: TBD
+- **Result:** NewEstimator 100% (4 subtests), hitRatio 100%, writeRatio 100%, Estimate 86.7% (8 subtests: error paths + smoke with real pricing fixture — pro/flash/cold tiers, MiniMax no-cache, multi-agent, agent cap). Commit: 594a313
