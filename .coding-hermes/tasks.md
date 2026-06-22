@@ -265,26 +265,29 @@
 - **AC:** `go test ./pkg/sandbox/... -count=1 -cover` passes with >50% coverage on sandbox package (from 27.7%) ✅
 - **Result:** executor.go 61.7%, sandbox package 70.3% (+42.6pp from 27.7%). 28 test functions covering: NewExecutor (valid/invalid), SetOutput (override/nil), SetupSessionDir/CleanupSessionDir, BwrapArgs (IsolationNone/nil spec/workspace flags/full env/die-with-parent), BwrapCommand (IsolationNone/workspace), DryRun (stdout+structured summary), Run (ErrNotImplemented/dry-run), RunWithTimeout (with/without limit), shellEscape (9 cases), needsQuoting (safe/special/empty), mountToArgs (bind/ro-bind/proc/dev/tmpfs/unknown). All 8 Helix packages pass. Commit: b46d9fd
 
-## [ ] Write Go tests for pkg/sandbox/cgroups.go
+## [x] Write Go tests for pkg/sandbox/cgroups.go (completed 2026-06-22)
 - **Priority:** medium
 - **Model:** direct write — pure filesystem (mkdir, writeFile)
 - **Files:** pkg/sandbox/cgroups_test.go (NEW)
-- **AC:** `go test ./pkg/sandbox/... -count=1 -cover` passes with >75% coverage on sandbox package (from 70.3%)
+- **AC:** `go test ./pkg/sandbox/... -count=1 -cover` passes with >75% coverage on sandbox package (from 70.3%) ✅
 - **Logic:** CgroupPIDPath (path construction), mkdirIfNotExist (already exists, creates new, unwritable path), writeFile (creates file, overwrites existing), isWritable (writable dir, read-only dir, non-existent dir)
+- **Result:** Sandbox 78.9%. All 7 cgroups.go functions covered: NewCgroup/Setup/Cleanup/CgroupPIDPath/mkdirIfNotExist/writeFile/isWritable. 28 tests, all pass. Commit: 12c9742
 
-## [ ] Write Go tests for pkg/negotiate/arbiter.go SplitCost
+## [x] Write Go tests for pkg/negotiate/arbiter.go SplitCost (completed 2026-06-22)
 - **Priority:** low
 - **Model:** direct write — pure arithmetic
-- **Files:** pkg/negotiate/arbiter_test.go (NEW or extend existing)
-- **AC:** `go test ./pkg/negotiate/... -count=1 -cover` passes with >97% coverage on negotiate package (from 96.8%)
+- **Files:** pkg/negotiate/arbiter_test.go (NEW)
+- **AC:** `go test ./pkg/negotiate/... -count=1 -cover` passes with >97% coverage on negotiate package (from 96.8%) ✅
 - **Logic:** SplitCost (equal split, single-way, zero cost, uneven division rounding)
+- **Result:** Negotiate 97.8%. SplitCost 100%, estimateArbiterCost 100%, NewArbiterClient 100%. 13 tests, all pass. Commit: 12c9742
 
-## [ ] Write Go tests for pkg/marketplace/registry.go ListByCapability + GetAgent
+## [x] Write Go tests for pkg/marketplace/registry.go ListByCapability + GetAgent (completed 2026-06-22)
 - **Priority:** medium
 - **Model:** direct write — registry fixture setup
 - **Files:** pkg/marketplace/registry_extended_test.go (NEW)
-- **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >93% coverage on marketplace package (from 91.3%)
+- **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >93% coverage on marketplace package (from 91.3%) ✅
 - **Logic:** ListByCapability (matching capability, non-matching, empty registry, multiple matches), GetAgent (found, not found, nil agents map)
+- **Result:** Marketplace 98.1%. ListByCapability: 6 subtests (match/non-match/empty/sorted/retired/deprecated+listing-fields). GetAgent: 8 subtests (found/not-found/nil-map/empty-map/reviews-sorted/single/zero/truncated). 14 tests, all pass. Commit: 12c9742
 
 ## [ ] Write Go tests for pkg/prompt/attester.go AttestPrompt + Verify
 - **Priority:** medium
