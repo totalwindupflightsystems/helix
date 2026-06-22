@@ -289,9 +289,10 @@
 - **Logic:** ListByCapability (matching capability, non-matching, empty registry, multiple matches), GetAgent (found, not found, nil agents map)
 - **Result:** Marketplace 98.1%. ListByCapability: 6 subtests (match/non-match/empty/sorted/retired/deprecated+listing-fields). GetAgent: 8 subtests (found/not-found/nil-map/empty-map/reviews-sorted/single/zero/truncated). 14 tests, all pass. Commit: 12c9742
 
-## [ ] Write Go tests for pkg/prompt/attester.go AttestPrompt + Verify
+## [x] Write Go tests for pkg/prompt/attester.go AttestPrompt + Verify (completed 2026-06-22)
 - **Priority:** medium
-- **Model:** direct write — RegistryDir override + temp prompt files
+- **Model:** direct write — RegistryDir override + temp git repo (happy path)
 - **Files:** pkg/prompt/attester_extended_test.go (NEW)
-- **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with >92% coverage on prompt package (from 90.1%)
-- **Logic:** AttestPrompt (valid prompt, missing prompt, dry run), Verify (valid commit, missing commit, tampered commit)
+- **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with >92% coverage on prompt package (from 90.1%) ✅ **92.5%**
+- **Logic:** AttestPrompt (valid prompt, partial prompt, empty prompt, 5 subtests 100%), Verify (invalid ref, HEAD no attestation, happy path via temp git repo with attested commit, 3 subtests 72.7%), GetCommitAttestation (invalid ref, non-git dir, 100%)
+- **Result:** AttestPrompt 100%, Verify 72.7%, GetCommitAttestation 100%. Package 92.5%. Commit: c2c15e0
