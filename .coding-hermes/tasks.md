@@ -296,3 +296,24 @@
 - **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with >92% coverage on prompt package (from 90.1%) ✅ **92.5%**
 - **Logic:** AttestPrompt (valid prompt, partial prompt, empty prompt, 5 subtests 100%), Verify (invalid ref, HEAD no attestation, happy path via temp git repo with attested commit, 3 subtests 72.7%), GetCommitAttestation (invalid ref, non-git dir, 100%)
 - **Result:** AttestPrompt 100%, Verify 72.7%, GetCommitAttestation 100%. Package 92.5%. Commit: c2c15e0
+
+## [ ] Write Go tests for pkg/sandbox/executor.go uncovered private functions
+- **Priority:** medium
+- **Model:** direct write — pure helpers, no bwrap needed
+- **Files:** pkg/sandbox/executor_extended_test.go (NEW)
+- **AC:** `go test ./pkg/sandbox/... -count=1 -cover` passes with >84% coverage on sandbox package (from 78.9%)
+- **Logic:** _killProcessGroup, _findBwrapBinary, _ensureBwrapAvailable, _execContext, _joinPath (5 private functions at 0%)
+
+## [ ] Write Go tests for pkg/sandbox/executor.go SetupSessionDir + CleanupSessionDir
+- **Priority:** medium
+- **Model:** direct write — temp dirs, no bwrap needed
+- **Files:** pkg/sandbox/executor_extended_test.go (append to above)
+- **AC:** `go test ./pkg/sandbox/... -count=1 -cover` passes with >88% coverage on sandbox package
+- **Logic:** SetupSessionDir error paths (82%→100%), CleanupSessionDir error paths (67%→100%)
+
+## [ ] Write Go tests for pkg/sandbox/cgroups.go Setup uncovered paths
+- **Priority:** low
+- **Model:** direct write — temp filesystem + v2 detection
+- **Files:** pkg/sandbox/cgroups_extended_test.go (NEW)
+- **AC:** `go test ./pkg/sandbox/... -count=1 -cover` passes with >92% coverage on sandbox package
+- **Logic:** cgroups.go Setup() — cgroup v1 branch, v2 branch, /sys/fs/cgroup write failures
