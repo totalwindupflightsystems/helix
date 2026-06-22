@@ -208,3 +208,24 @@
 - **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >85% coverage on marketplace package ✅ 91.3%
 - **Logic:** CalculateReputation, RecordReview, RecordMerge, applyDecay
 - **Result:** All 5 uncovered functions at 100% (NewScorer, CalculateReputation, RecordReview, RecordMerge, applyDecay). 413 lines. CalculateReputation: 7 subtests (no-history, merge-boost, penalties+capped, capped-acceptance, active-no-decay, inactive-decay-computation, decay-floor-at-30). RecordReview: 7 subtests (valid/invalid ratings, multiple accumulation). RecordMerge: 4 subtests (success/failure/create/accumulate). applyDecay: 9 subtests (no-activity, unparseable, recent, boundary, 1/2/many periods, floor, edge-case-61d). Coverage 78.6% → 91.3% (+12.7pp). Commit: 22f5d9f
+
+## [x] Write Go tests for pkg/sandbox/types.go (completed 2026-06-22)
+- **Priority:** medium
+- **Model:** direct write — pure enums + error sentinels
+- **Files:** pkg/sandbox/types_test.go (NEW)
+- **AC:** 100% coverage on types.go functions ✅
+- **Result:** All 5 functions at 100% (ValidIsolationLevels, IsValid, HasNetwork, HasPIDNamespace, String) + error sentinels + exit code verification. 7 test functions. Sandbox coverage: 27.0% → 27.7%.
+
+## [x] Write Go tests for pkg/estimate/calibrator.go (completed 2026-06-22)
+- **Priority:** medium
+- **Model:** direct write — pure data-structure logic
+- **Files:** pkg/estimate/calibrator_test.go (NEW)
+- **AC:** 100% coverage on calibrator.go functions ✅
+- **Result:** NewCalibrator 100%, AddRecord 100%, NeedsRecalibration 100% (8 subtests incl. nil calibrator, <20 records, threshold, zero estimates, negative estimates), Recalibrate 94.4% (6 subtests). Estimate coverage: 31.6% → 78.6% (+47.0pp).
+
+## [x] Write Go tests for pkg/estimate/estimator.go — NewEstimator + hitRatio + writeRatio + Estimate smoke (completed 2026-06-22)
+- **Priority:** medium
+- **Model:** direct write — pure logic + pricing fixture
+- **Files:** pkg/estimate/estimator_test.go (NEW)
+- **AC:** NewEstimator/hitRatio/writeRatio 100%; Estimate 86.7% ✅
+- **Result:** NewEstimator 100% (4 subtests), hitRatio 100%, writeRatio 100%, Estimate 86.7% (8 subtests: error paths + smoke with real pricing fixture — pro/flash/cold tiers, MiniMax no-cache, multi-agent, agent cap). Commit: TBD
