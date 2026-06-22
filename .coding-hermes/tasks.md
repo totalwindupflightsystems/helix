@@ -264,3 +264,31 @@
 - **Files:** pkg/sandbox/executor_test.go (NEW)
 - **AC:** `go test ./pkg/sandbox/... -count=1 -cover` passes with >50% coverage on sandbox package (from 27.7%) ✅
 - **Result:** executor.go 61.7%, sandbox package 70.3% (+42.6pp from 27.7%). 28 test functions covering: NewExecutor (valid/invalid), SetOutput (override/nil), SetupSessionDir/CleanupSessionDir, BwrapArgs (IsolationNone/nil spec/workspace flags/full env/die-with-parent), BwrapCommand (IsolationNone/workspace), DryRun (stdout+structured summary), Run (ErrNotImplemented/dry-run), RunWithTimeout (with/without limit), shellEscape (9 cases), needsQuoting (safe/special/empty), mountToArgs (bind/ro-bind/proc/dev/tmpfs/unknown). All 8 Helix packages pass. Commit: b46d9fd
+
+## [ ] Write Go tests for pkg/sandbox/cgroups.go
+- **Priority:** medium
+- **Model:** direct write — pure filesystem (mkdir, writeFile)
+- **Files:** pkg/sandbox/cgroups_test.go (NEW)
+- **AC:** `go test ./pkg/sandbox/... -count=1 -cover` passes with >75% coverage on sandbox package (from 70.3%)
+- **Logic:** CgroupPIDPath (path construction), mkdirIfNotExist (already exists, creates new, unwritable path), writeFile (creates file, overwrites existing), isWritable (writable dir, read-only dir, non-existent dir)
+
+## [ ] Write Go tests for pkg/negotiate/arbiter.go SplitCost
+- **Priority:** low
+- **Model:** direct write — pure arithmetic
+- **Files:** pkg/negotiate/arbiter_test.go (NEW or extend existing)
+- **AC:** `go test ./pkg/negotiate/... -count=1 -cover` passes with >97% coverage on negotiate package (from 96.8%)
+- **Logic:** SplitCost (equal split, single-way, zero cost, uneven division rounding)
+
+## [ ] Write Go tests for pkg/marketplace/registry.go ListByCapability + GetAgent
+- **Priority:** medium
+- **Model:** direct write — registry fixture setup
+- **Files:** pkg/marketplace/registry_extended_test.go (NEW)
+- **AC:** `go test ./pkg/marketplace/... -count=1 -cover` passes with >93% coverage on marketplace package (from 91.3%)
+- **Logic:** ListByCapability (matching capability, non-matching, empty registry, multiple matches), GetAgent (found, not found, nil agents map)
+
+## [ ] Write Go tests for pkg/prompt/attester.go AttestPrompt + Verify
+- **Priority:** medium
+- **Model:** direct write — RegistryDir override + temp prompt files
+- **Files:** pkg/prompt/attester_extended_test.go (NEW)
+- **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with >92% coverage on prompt package (from 90.1%)
+- **Logic:** AttestPrompt (valid prompt, missing prompt, dry run), Verify (valid commit, missing commit, tampered commit)
