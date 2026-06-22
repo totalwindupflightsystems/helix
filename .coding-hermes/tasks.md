@@ -229,3 +229,38 @@
 - **Files:** pkg/estimate/estimator_test.go (NEW)
 - **AC:** NewEstimator/hitRatio/writeRatio 100%; Estimate 86.7% ✅
 - **Result:** NewEstimator 100% (4 subtests), hitRatio 100%, writeRatio 100%, Estimate 86.7% (8 subtests: error paths + smoke with real pricing fixture — pro/flash/cold tiers, MiniMax no-cache, multi-agent, agent cap). Commit: 594a313
+
+## [ ] Write Go tests for pkg/prompt/promptfoo.go
+- **Priority:** high
+- **Model:** direct write — pure YAML generation + JSON parsing + string helpers
+- **Files:** pkg/prompt/promptfoo_test.go (NEW)
+- **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with 100% coverage on promptfoo.go functions (GeneratePromptFooYAML, ParsePromptFooResults, errorFromGrader, truncate)
+- **Logic:** GeneratePromptFooYAML (marshal YAML from Prompt structs, verify output), ParsePromptFooResults (parse JSON results with pass/fail/empty), errorFromGrader (pass→empty, fail→reason, fail-no-reason→default), truncate (short/long/exact/boundary)
+
+## [ ] Write Go tests for pkg/prompt/hook.go
+- **Priority:** high
+- **Model:** direct write — RegistryDir override + temp files
+- **Files:** pkg/prompt/hook_test.go (NEW)
+- **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with 100% coverage on hook.go functions (RunCommitMsgHook, ParseCommitMsgFromFile, shortHash)
+- **Logic:** RunCommitMsgHook (missing attestation, hash not found, lifecycle violations, hash match, tamper detection, PromptFoo status), ParseCommitMsgFromFile (valid file, missing file), shortHash (with prefix, without prefix, short, long)
+
+## [ ] Write Go tests for pkg/prompt/provenance.go
+- **Priority:** medium
+- **Model:** direct write — RegistryDir override, pure logic
+- **Files:** pkg/prompt/provenance_test.go (NEW)
+- **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with 100% coverage on provenance.go functions (WalkProvenance, VerifyProvenance)
+- **Logic:** WalkProvenance (no attestation hash, hash not found, full chain with spec+workitem, missing spec, missing workitem, incomplete chain), VerifyProvenance (all OK, some failures, empty chain)
+
+## [ ] Write Go tests for pkg/prompt/registry.go uncovered functions
+- **Priority:** medium
+- **Model:** direct write — RegistryDir override
+- **Files:** pkg/prompt/registry_extended_test.go (NEW)
+- **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with 100% coverage on Diff, ListVersions, Resolve, computeLineDiff, computeMetaDiff
+- **Logic:** Diff (component not found, version not found, content diff, metadata diff, same content), ListVersions (empty registry, single version, multiple versions sorted), Resolve (found, not found, component not found), computeLineDiff (identical, different, added lines, removed lines), computeMetaDiff (same metadata, model changed, provider changed, status changed, all changed)
+
+## [ ] Write Go tests for pkg/sandbox/executor.go uncovered functions
+- **Priority:** medium
+- **Model:** direct write — pure command construction, no bwrap needed
+- **Files:** pkg/sandbox/executor_test.go (NEW)
+- **AC:** `go test ./pkg/sandbox/... -count=1 -cover` passes with >50% coverage on sandbox package (from 27.7%)
+- **Logic:** NewExecutor (valid config, invalid config), SetOutput, SetupSessionDir/CleanupSessionDir (temp dirs), BwrapArgs (IsolationNone=no args, nil spec=error, basic bind mount, unshare flags, env vars, die-with-parent), BwrapCommand (IsolationNone=raw command, full bwrap command), DryRun (prints to stderr/stdout), Run (stub ErrNotImplemented), RunWithTimeout (context creation), shellEscape (no quoting, whitespace, single quotes, special chars, empty string), needsQuoting (safe chars, every special char, empty string), mountToArgs (bind, ro-bind, proc, dev, tmpfs, unknown kind)
