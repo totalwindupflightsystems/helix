@@ -6,6 +6,10 @@ guards:
   tests: true
   build: true
   dead_code: false
+  lsp: true
+  lsp_tools:
+  - gopls
+  static_analysis: false
   go:
     lint: true
     tests: true
@@ -17,6 +21,8 @@ evaluator:
   max_input_tokens: 0.2M
   max_output_tokens: 0.05M
   tool_call_weight: 0.1
+  code_context_budget: 0.70
+  compaction_threshold: 0.90
 defaults:
   model: openrouter/owl-alpha
 pipeline:
@@ -31,6 +37,11 @@ pipeline:
       type: script
       run: python3 -c "from engine.guard_manager import GuardManager; gm = GuardManager('.');
         r = gm._check_secrets(); import sys; sys.exit(0 if r.passed else 1)"
+      on_fail: continue
+    - id: lsp
+      type: script
+      run: git diff --cached --name-only --diff-filter=ACM | grep '\.go$' | xargs
+        -r gopls check 2>&1 || true
       on_fail: continue
     - id: lint
       type: script
