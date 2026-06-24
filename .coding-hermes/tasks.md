@@ -328,3 +328,11 @@
 - **AC:** `go test ./pkg/dispatcher/... -count=1 -cover` passes with >85% coverage on dispatcher package ✅ **92.9%**
 - **Logic:** ExecuteLoop (happy path, lock-held blocks, step-failure marks Failed), RunPipeline (full dispatch+execute, no-agents error, task failure in result), executeStep (marker creation, multiple steps), commitWork (COMMIT_MSG content, zero steps), openPR (doesn't panic), acquireLock error paths (nested dir creation), releaseLock error paths (no-op on missing lock)
 - **Result:** All 5 previously-0% functions covered: ExecuteLoop 81.0%, RunPipeline 88.9%, executeStep 80.0%, commitWork 80.0%, openPR 100.0%. Dispatcher coverage: 72.9%→92.9% (+20.0pp). 19 subtests, all pass.
+
+## [x] Write Go tests for pkg/estimate/openrouter.go + reconciliation.go (completed 2026-06-24)
+- **Priority:** high
+- **Model:** direct write — pure constructors, stubs, and math
+- **Files:** pkg/estimate/reconciliation_test.go (NEW)
+- **AC:** `go test ./pkg/estimate/... -count=1 -cover` passes with >90% coverage on estimate package ✅ **94.0%**
+- **Logic:** NewOpenRouterClient (default URL, custom URL), GetKeyUsage/GetKeyLimit (ErrNotImplemented stubs), ReconcileDrift (positive/negative drifts, exact match, zero/zero, zero/non-zero→+Inf, large drift, float precision), ActualCost (nil pricing, unknown model, full computation, negative token clamping, zero usage, cache hit ratio)
+- **Result:** All 5 previously-0% functions covered: NewOpenRouterClient 100%, GetKeyUsage 100%, GetKeyLimit 100%, ActualCost 89.7%, ReconcileDrift 100%. Estimate coverage: 78.6%→94.0% (+15.4pp). 17 subtests, all pass.
