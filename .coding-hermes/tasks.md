@@ -297,23 +297,26 @@
 - **Logic:** AttestPrompt (valid prompt, partial prompt, empty prompt, 5 subtests 100%), Verify (invalid ref, HEAD no attestation, happy path via temp git repo with attested commit, 3 subtests 72.7%), GetCommitAttestation (invalid ref, non-git dir, 100%)
 - **Result:** AttestPrompt 100%, Verify 72.7%, GetCommitAttestation 100%. Package 92.5%. Commit: c2c15e0
 
-## [ ] Write Go tests for pkg/sandbox/executor.go uncovered private functions
+## [x] Write Go tests for pkg/sandbox/executor.go uncovered private functions (completed 2026-06-23)
 - **Priority:** medium
 - **Model:** direct write — pure helpers, no bwrap needed
 - **Files:** pkg/sandbox/executor_extended_test.go (NEW)
-- **AC:** `go test ./pkg/sandbox/... -count=1 -cover` passes with >84% coverage on sandbox package (from 78.9%)
+- **AC:** `go test ./pkg/sandbox/... -count=1 -cover` passes with >84% coverage on sandbox package (from 78.9%) ✅ **92.1%**
 - **Logic:** _killProcessGroup, _findBwrapBinary, _ensureBwrapAvailable, _execContext, _joinPath (5 private functions at 0%)
+- **Result:** All 5 functions covered: _killProcessGroup 100% (3 tests incl. real child-process kill+SIGKILL verification), _findBwrapBinary 80% (3 tests: env var, env var nonexistent, all empty), _ensureBwrapAvailable 100% (4 tests: existing, not-found, directory, not-executable), _execContext 84.6% (4 tests: success, command-failed, command-not-found, timeout-exceeded), _joinPath 100% (10 subtests). Replaced dangerous _killProcessGroup InvalidPID test (would have kill(0,SIGKILL)'d the test runner) with safe child-process kill test. Also: SetupSessionDir verbose (100%), SetupSessionDir error path/unwritable (100%), CleanupSessionDir verbose (100%), BwrapCommand error path. 19 test functions total. Sandbox 78.9%→92.1% (+13.2pp). Commit: <TBD>
 
-## [ ] Write Go tests for pkg/sandbox/executor.go SetupSessionDir + CleanupSessionDir
+## [x] Write Go tests for pkg/sandbox/executor.go SetupSessionDir + CleanupSessionDir (completed 2026-06-23)
 - **Priority:** medium
 - **Model:** direct write — temp dirs, no bwrap needed
 - **Files:** pkg/sandbox/executor_extended_test.go (append to above)
-- **AC:** `go test ./pkg/sandbox/... -count=1 -cover` passes with >88% coverage on sandbox package
+- **AC:** `go test ./pkg/sandbox/... -count=1 -cover` passes with >88% coverage on sandbox package ✅ **92.1%**
 - **Logic:** SetupSessionDir error paths (82%→100%), CleanupSessionDir error paths (67%→100%)
+- **Result:** SetupSessionDir 100% (tested verbose logging, unwritable path with ErrSetupFailed, verbose error path), CleanupSessionDir 100% (tested verbose logging, no-op on non-existent). Combined with private functions above. Commit: <TBD>
 
-## [ ] Write Go tests for pkg/sandbox/cgroups.go Setup uncovered paths
+## [x] Write Go tests for pkg/sandbox/cgroups.go Setup uncovered paths (completed 2026-06-23)
 - **Priority:** low
 - **Model:** direct write — temp filesystem + v2 detection
 - **Files:** pkg/sandbox/cgroups_extended_test.go (NEW)
-- **AC:** `go test ./pkg/sandbox/... -count=1 -cover` passes with >92% coverage on sandbox package
+- **AC:** `go test ./pkg/sandbox/... -count=1 -cover` passes with >92% coverage on sandbox package ✅ **92.1%**
 - **Logic:** cgroups.go Setup() — cgroup v1 branch, v2 branch, /sys/fs/cgroup write failures
+- **Result:** Setup 77.8%→83.3% (+5.5pp). Added 2 error-path tests: helix parent dir blocked by file (mkdirIfNotExist failure → ErrSetupFailed), session dir blocked by file (os.MkdirAll failure → ErrSetupFailed). Combined with existing 4 Setup tests. Sandbox 78.9%→92.1% (+13.2pp). Commit: <TBD>
