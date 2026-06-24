@@ -1,5 +1,12 @@
 # Helix Coding Tasks — Foreman Queue
 
+## [x] Implement fenced-code-block exemption + YAML frontmatter stripping in hasher.go (prompt-registry-v2 §8.2-8.3) (completed 2026-06-24)
+- **Priority:** medium
+- **Model:** direct write (single-file change, spawn threshold not met)
+- **Files:** pkg/prompt/hasher.go, pkg/prompt/hasher_test.go
+- **AC:** Normalize suppresses whitespace collapse inside ```/~~~ fenced blocks; YAML frontmatter (---...---) is stripped before hashing. `go test ./pkg/prompt/... -count=1` passes ✅
+- **Result:** Added isFenceLine(), collapseSpaces(), stripYAMLFrontmatter(). 10 new test cases (6 fenced block, 4 YAML frontmatter). All 7 packages pass. Prompt coverage: 92.0%.
+
 ## [x] Implement pkg/prompt/audit.go — append-only JSONL audit logger (completed 2026-06-24)
 - **Priority:** medium
 - **Model:** direct write (single-file, append-only logger, spawn threshold not met)

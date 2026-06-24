@@ -206,6 +206,64 @@ func TestNormalize(t *testing.T) {
 			input: "    \n",
 			want:  "",
 		},
+
+		// Fenced-code-block exemption (prompt-registry-v2 §8.3):
+		// Whitespace collapse is suppressed inside ``` and ~~~ blocks
+		// so code samples hash identically to their source.
+		{
+			name:  "fenced block — spaces preserved inside backtick fence",
+			input: "outside  spaces\n```\ninside  double  spaces\n```\nmore  outside",
+			want:  "outside spaces\n```\ninside  double  spaces\n```\nmore outside",
+		},
+		{
+			name:  "fenced block — spaces preserved inside tilde fence",
+			input: "before  collapse\n~~~\nkeep   these   spaces\n~~~\nafter  collapse",
+			want:  "before collapse\n~~~\nkeep   these   spaces\n~~~\nafter collapse",
+		},
+		{
+			name:  "fenced block — with language specifier",
+			input: "text  here\n```go\nfunc  foo()  {\n    x  :=  1\n}\n```\nmore  text",
+			want:  "text here\n```go\nfunc  foo()  {\n    x  :=  1\n}\n```\nmore text",
+		},
+		{
+			name:  "fenced block — trailing whitespace still stripped inside fence",
+			input: "```\nline with spaces   \n```",
+			want:  "```\nline with spaces\n```",
+		},
+		{
+			name:  "fenced block — unclosed fence treats rest as inside",
+			input: "before  collapse\n```\nafter  fence  never  closed",
+			want:  "before collapse\n```\nafter  fence  never  closed",
+		},
+		{
+			name:  "fenced block — multiple fence blocks preserve independently",
+			input: "```\nblock1  spaces\n```\noutside  spaces\n```\nblock2  spaces\n```",
+			want:  "```\nblock1  spaces\n```\noutside spaces\n```\nblock2  spaces\n```",
+		},
+
+		// YAML frontmatter stripping (prompt-registry-v2 §8.2):
+		// A leading --- … --- block is stripped so only the markdown
+		// body is content-addressed.
+		{
+			name:  "YAML frontmatter stripped",
+			input: "---\ntitle: Test\nmodel: deepseek-v4-pro\n---\n\n# Heading\n\nBody  text  here.",
+			want:  "# Heading\n\nBody text here.",
+		},
+		{
+			name:  "no YAML frontmatter passes through unchanged",
+			input: "# Just a heading\n\nSome  body  text.",
+			want:  "# Just a heading\n\nSome body text.",
+		},
+		{
+			name:  "--- in body but not frontmatter (no closing ---)",
+			input: "# Heading\n\n---\n\nBody  text.",
+			want:  "# Heading\n\n---\n\nBody text.",
+		},
+		{
+			name:  "YAML frontmatter with CRLF line endings",
+			input: "---\r\ntitle: Test\r\n---\r\n\r\nBody  text.",
+			want:  "Body text.",
+		},
 	}
 
 	for _, tc := range tests {
