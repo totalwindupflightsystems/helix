@@ -3,31 +3,105 @@ package prompt
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"regexp"
 	"strings"
 )
 
 // reMultiSpace matches runs of two or more space characters for collapsing.
 // Tabs are intentionally excluded — markdown indentation and code blocks
-// rely on tabs.
-var reMultiSpace = regexp.MustCompile(` {2,}`)
+// rely on tabs. Inside fenced code blocks, whitespace collapse is suppressed
+// entirely (prompt-registry-v2 spec §8.3).
+var reMultiSpace = strings.NewReplacer(
+	"  ", " ",
+	"   ", " ",
+	"    ", " ",
+	"     ", " ",
+	"      ", " ",
+	"       ", " ",
+	"        ", " ",
+)
 
-// Normalize applies the 5-step normalization pipeline from spec §9.1:
-//  1. Normalize line endings to \n (CRLF and bare CR → LF)
-//  2. Collapse whitespace: multiple spaces → single space
-//  3. Strip trailing whitespace from each line
-//  4. Strip trailing newline at end of file
-//  5. Keep leading whitespace (markdown indentation matters)
+// collapseSpaces collapses runs of spaces within a single line to a single
+// space. Uses iterative replacement (up to 8-wide runs in one pass, then
+// repeated until stable). Called for lines outside fenced code blocks.
+func collapseSpaces(s string) string {
+	for {
+		next := reMultiSpace.Replace(s)
+		if next == s {
+			return s
+		}
+		s = next
+	}
+}
+
+// isFenceLine returns true if line is a fenced-code-block delimiter.
+// Recognises ``` and ~~~ (with optional language specifier after).
+func isFenceLine(line string) bool {
+	trimmed := strings.TrimLeft(line, " ")
+	if strings.HasPrefix(trimmed, "```") {
+		return true
+	}
+	if strings.HasPrefix(trimmed, "~~~") {
+		return true
+	}
+	return false
+}
+
+// stripYAMLFrontmatter strips a leading YAML frontmatter block
+// (--- … ---) so only the markdown body is content-addressed.
+// prompt-registry-v2 spec §8.2.
+func stripYAMLFrontmatter(s string) string {
+	if !strings.HasPrefix(s, "---\n") && !strings.HasPrefix(s, "---\r\n") && !strings.HasPrefix(s, "---\r") {
+		return s
+	}
+	// Find the closing --- on a line by itself.
+	rest := s[3:] // skip leading "---"
+	// Normalize line endings first so we can search for \n---\n
+	rest = strings.ReplaceAll(rest, "\r\n", "\n")
+	rest = strings.ReplaceAll(rest, "\r", "\n")
+	idx := strings.Index(rest, "\n---\n")
+	if idx == -1 {
+		// Also check for --- at end (last line, no trailing newline).
+		if strings.HasSuffix(rest, "\n---") {
+			body := rest[:len(rest)-4]
+			return strings.TrimLeft(body, "\n")
+		}
+		return s // no closing delimiter, treat whole thing as body
+	}
+	body := rest[idx+4:] // skip "\n---\n"
+	body = strings.TrimLeft(body, "\n")
+	return body
+}
+
+// Normalize applies the normalization pipeline from prompt-registry-v2 §8.2:
+//  0. Strip YAML frontmatter (--- … ---) if present.
+//  1. Normalize line endings to \n (CRLF and bare CR → LF).
+//  2. Collapse whitespace: multiple spaces → single space OUTSIDE fenced code blocks.
+//     Inside fenced blocks (``` or ~~~), whitespace is preserved exactly.
+//  3. Strip trailing whitespace from each line.
+//  4. Strip trailing newline at end of file.
+//  5. Keep leading whitespace (markdown indentation matters).
 func Normalize(prompt string) string {
+	// Step 0: strip YAML frontmatter
+	s := stripYAMLFrontmatter(prompt)
+
 	// Step 1: normalize line endings
-	s := strings.ReplaceAll(prompt, "\r\n", "\n")
+	s = strings.ReplaceAll(s, "\r\n", "\n")
 	s = strings.ReplaceAll(s, "\r", "\n")
 
-	// Step 2: collapse multiple spaces to single space
-	s = reMultiSpace.ReplaceAllString(s, " ")
+	// Step 2: collapse multiple spaces to single space, suppressed inside fences
+	lines := strings.Split(s, "\n")
+	inFence := false
+	for i, line := range lines {
+		if isFenceLine(line) {
+			inFence = !inFence
+			continue
+		}
+		if !inFence {
+			lines[i] = collapseSpaces(line)
+		}
+	}
 
 	// Step 3: strip trailing whitespace from each line
-	lines := strings.Split(s, "\n")
 	for i, line := range lines {
 		lines[i] = strings.TrimRight(line, " \t")
 	}
