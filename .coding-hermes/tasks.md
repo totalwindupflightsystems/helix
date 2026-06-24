@@ -1,5 +1,13 @@
 # Helix Coding Tasks — Foreman Queue
 
+## [x] Implement pkg/prompt/audit.go — append-only JSONL audit logger (completed 2026-06-24)
+- **Priority:** medium
+- **Model:** direct write (single-file, append-only logger, spawn threshold not met)
+- **Files:** pkg/prompt/audit.go (NEW), pkg/prompt/audit_test.go (NEW)
+- **AC:** `go test ./pkg/prompt/... -count=1 -cover` passes with audit.go functions covered ✅
+- **Logic:** NewAuditLogger (valid path, empty path→nil, unwritable path error), Log (JSONL append, nil logger no-op), Close (valid, nil), AuditEntry JSON (full entry, minimal with omitempty, 4 operations)
+- **Result:** audit.go: NewAuditLogger 100%, Log 100%, Close 100%. 16 test functions, all pass. Full suite all pass. Prompt package 92.3%.
+
 ## [x] Write Go tests for pkg/identity (types_test.go, syncer_test.go) (completed 2026-06-20)
 - **Priority:** high
 - **Model:** MiniMax-M3
