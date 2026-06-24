@@ -320,3 +320,11 @@
 - **AC:** `go test ./pkg/sandbox/... -count=1 -cover` passes with >92% coverage on sandbox package ✅ **92.1%**
 - **Logic:** cgroups.go Setup() — cgroup v1 branch, v2 branch, /sys/fs/cgroup write failures
 - **Result:** Setup 77.8%→83.3% (+5.5pp). Added 2 error-path tests: helix parent dir blocked by file (mkdirIfNotExist failure → ErrSetupFailed), session dir blocked by file (os.MkdirAll failure → ErrSetupFailed). Combined with existing 4 Setup tests. Sandbox 78.9%→92.1% (+13.2pp). Commit: af83cd4
+
+## [x] Write Go tests for pkg/dispatcher/loop.go (completed 2026-06-24)
+- **Priority:** high
+- **Model:** direct write — pure filesystem stubs, spawn threshold not met
+- **Files:** pkg/dispatcher/loop_test.go (NEW)
+- **AC:** `go test ./pkg/dispatcher/... -count=1 -cover` passes with >85% coverage on dispatcher package ✅ **92.9%**
+- **Logic:** ExecuteLoop (happy path, lock-held blocks, step-failure marks Failed), RunPipeline (full dispatch+execute, no-agents error, task failure in result), executeStep (marker creation, multiple steps), commitWork (COMMIT_MSG content, zero steps), openPR (doesn't panic), acquireLock error paths (nested dir creation), releaseLock error paths (no-op on missing lock)
+- **Result:** All 5 previously-0% functions covered: ExecuteLoop 81.0%, RunPipeline 88.9%, executeStep 80.0%, commitWork 80.0%, openPR 100.0%. Dispatcher coverage: 72.9%→92.9% (+20.0pp). 19 subtests, all pass.
