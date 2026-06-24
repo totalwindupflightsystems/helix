@@ -336,3 +336,11 @@
 - **AC:** `go test ./pkg/estimate/... -count=1 -cover` passes with >90% coverage on estimate package ✅ **94.0%**
 - **Logic:** NewOpenRouterClient (default URL, custom URL), GetKeyUsage/GetKeyLimit (ErrNotImplemented stubs), ReconcileDrift (positive/negative drifts, exact match, zero/zero, zero/non-zero→+Inf, large drift, float precision), ActualCost (nil pricing, unknown model, full computation, negative token clamping, zero usage, cache hit ratio)
 - **Result:** All 5 previously-0% functions covered: NewOpenRouterClient 100%, GetKeyUsage 100%, GetKeyLimit 100%, ActualCost 89.7%, ReconcileDrift 100%. Estimate coverage: 78.6%→94.0% (+15.4pp). 17 subtests, all pass.
+
+## [x] Write Go tests for pkg/identity/provisioner.go URL helpers (completed 2026-06-24)
+- **Priority:** low
+- **Model:** direct write — pure string construction
+- **Files:** pkg/identity/provisioner_url_test.go (NEW)
+- **AC:** `go test ./pkg/identity/... -count=1 -cover` exercises URL helper functions ✅
+- **Logic:** adminUserKeysURL (normal name, special characters, trailing slash in ForgejoURL), userKeysURL, userTokensURL, userTokenURL
+- **Result:** All 4 previously-0% URL helpers at 100%: adminUserKeysURL, userKeysURL, userTokensURL, userTokenURL. 6 subtests, all pass. Identity coverage: 68.0%→68.1%.
