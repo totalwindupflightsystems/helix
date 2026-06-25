@@ -398,3 +398,10 @@
 - **AC:** `go test ./cmd/helix-identity/... -count=1 -cover` passes with >45% coverage on identity CLI ✅ **47.1%**
 - **Logic:** envOr (env-var, fallback, empty-string), buildConfig (defaults, honors all 9 flags), mustJSON (valid struct, empty, map), renderDryRun (no agents, active agent), renderResultsTable (empty, success, failure), renderSingleResult (success, failure, no SSH/PAT), renderStateTable (nil, empty, with agents), command tree (5 subcommands verified), sync (missing known-friends), provision/deprovision/keygen (missing args via cobra Execute)
 - **Result:** 22 test functions, all pass. Coverage: 0% → 47.1%. All rendering functions at 100%, envOr at 100%, buildConfig at 100%, mustJSON at 100%.
+
+## [x] Write Go tests for cmd/helix-marketplace/main.go — CLI test coverage (completed 2026-06-25)
+- **Priority:** high
+- **Model:** direct write — Cobra, stdout capture, pure helpers
+- **Files:** cmd/helix-marketplace/main_test.go (NEW)
+- **AC:** `go test ./cmd/helix-marketplace/... -count=1 -cover` passes with >45% coverage on marketplace CLI
+- **Logic:** newRootCmd (5 subcommands), newListCmd/newShowCmd/newSearchCmd/newRateCmd/newReviewCmd (flag defaults, help text), ratingStars (0-5 + boundary), parseCapabilities (valid/invalid/empty/mixed), agentHasCapability (match/mismatch), sortAgents (by-trust/by-name/by-tasks/default-lex), currentUser, capabilitiesString, renderList (table/json/empty), renderShow (table/json/full), renderSearch, renderRate
