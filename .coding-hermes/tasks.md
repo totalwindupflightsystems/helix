@@ -1,5 +1,12 @@
 # Helix Coding Tasks — Foreman Queue
 
+## [ ] Implement pkg/config — platform-wide configuration loader
+- **Priority:** medium
+- **Model:** direct write — new package, spawn threshold not met
+- **Files:** pkg/config/config.go (NEW), pkg/config/defaults.go (NEW), pkg/config/loader.go (NEW), pkg/config/config_test.go (NEW)
+- **Spec:** specs/helix-config.md
+- **AC:** `go build ./... && go test ./pkg/config/... -count=1 -cover` passes with >80% coverage
+
 ## [x] Write Go tests for pkg/identity/provisioner.go HTTP transport error paths (completed 2026-06-24)
 - **Priority:** medium
 - **Model:** direct write — httptest.Server, spawn threshold not met
