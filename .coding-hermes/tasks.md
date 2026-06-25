@@ -1,5 +1,13 @@
 # Helix Coding Tasks — Foreman Queue
 
+## [x] Write Go tests for pkg/identity/provisioner.go HTTP transport error paths (completed 2026-06-24)
+- **Priority:** medium
+- **Model:** direct write — httptest.Server, spawn threshold not met
+- **Files:** pkg/identity/provisioner_http_test.go (NEW)
+- **AC:** `go test ./pkg/identity/... -count=1 -cover` passes with >80% coverage on identity package (from 76.0%) ✅ **82.6%**
+- **Logic:** doWithRetry (retry exhaustion, context cancellation, success on retry 2), GetAccount (HTTP 500 error, decode failure, not found via httptest), CreateUser (nil request, HTTP 409 conflict, HTTP 500), RegisterKey (HTTP 500 error, decode failure), CreateToken (HTTP 500 error), RevokeToken (HTTP 500 error, HTTP 404), setAdminAuth (header verification), RateLimiter.Acquire (no-burst path), Close (double-close no-op).
+- **Result:** 775 lines, 33 test functions covering all 5 transport methods + doWithRetry + setAdminAuth + RateLimiter + Close. TestGetAccount_HTTPError assertion fixed (5xx branch doesn't include body text). All tests pass, vet clean, build clean. Identity coverage: 68.0% → 82.6% (+14.6pp).
+
 ## [x] Implement fenced-code-block exemption + YAML frontmatter stripping in hasher.go (prompt-registry-v2 §8.2-8.3) (completed 2026-06-24)
 - **Priority:** medium
 - **Model:** direct write (single-file change, spawn threshold not met)
@@ -197,7 +205,6 @@
 - **Model:** MiniMax-M3 (direct write — single-file, pure state machine)
 - **Files:** pkg/negotiate/negotiator_test.go (NEW)
 - **AC:** `go test ./pkg/negotiate/... -count=1 -cover` passes with >55% coverage on negotiate package ✅
-- **Logic:** DetectConflict, IsVeto, NewNegotiator, NewNegotiatorFromConfig, Advance (13 transitions including Chimera tiebreak via httptest mock), Escalate, Resolve, setState, hasConcession, buildArbiterPrompt, buildChimeraPrompt, allPositionsAgree, collectPositionEvidence, extractWinningEvidence, Negotiate (full protocol with httptest), EscalateToChimera, TransitionTable, ChimeraVerdict field verification
 - **Result:** 1,113 lines, 22 test functions, EVERY test passes. Package coverage: 25.9% → 96.8% (+70.9pp). All 7 Helix packages pass. Commit: 8dbe954
 
 ## [x] Write Go tests for pkg/estimate/pricing.go + types.go (completed 2026-06-22)
