@@ -403,5 +403,13 @@
 - **Priority:** high
 - **Model:** direct write — Cobra, stdout capture, pure helpers
 - **Files:** cmd/helix-marketplace/main_test.go (NEW)
-- **AC:** `go test ./cmd/helix-marketplace/... -count=1 -cover` passes with >45% coverage on marketplace CLI
-- **Logic:** newRootCmd (5 subcommands), newListCmd/newShowCmd/newSearchCmd/newRateCmd/newReviewCmd (flag defaults, help text), ratingStars (0-5 + boundary), parseCapabilities (valid/invalid/empty/mixed), agentHasCapability (match/mismatch), sortAgents (by-trust/by-name/by-tasks/default-lex), currentUser, capabilitiesString, renderList (table/json/empty), renderShow (table/json/full), renderSearch, renderRate
+- **AC:** `go test ./cmd/helix-marketplace/... -count=1 -cover` passes with >45% coverage on marketplace CLI ✅ **61.3%**
+- **Logic:** newRootCmd (5 subcommands), newListCmd/newShowCmd/newSearchCmd/newRateCmd/newReviewCmd (flag defaults, help text), ratingStars (0-5 + boundary), parseCapabilities (valid/invalid/empty/mixed), agentHasCapability (match/mismatch), sortAgents (by-trust/by-name/by-tasks/default-lex), currentUser, capabilitiesString, renderList (table/json/empty), renderShow (table/json/yaml/full), renderSearch, renderRate
+- **Result:** 25 test functions, all pass. Coverage: 0% → 61.3%. Build/vet/test all pass. Commit: def477b
+
+## [ ] Write Go tests for cmd/helix-negotiate/main.go — CLI test coverage
+- **Priority:** high
+- **Model:** direct write — Cobra, stdout capture, pure helpers
+- **Files:** cmd/helix-negotiate/main_test.go (NEW)
+- **AC:** `go test ./cmd/helix-negotiate/... -count=1 -cover` passes with >40% coverage on negotiate CLI
+- **Logic:** newRootCmd (2 subcommands: debate, resolve), newDebateCmd/newResolveCmd (flag defaults, required flags), verdictEmoji (all 3 verdicts + unknown), parsePRNumber (valid/invalid/empty/boundary), auditLogPath, renderNegotiationResult (table/json), defaultConfigPath, lookupAgent
