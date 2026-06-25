@@ -374,3 +374,27 @@
 - **AC:** `go test ./pkg/identity/... -count=1 -cover` exercises URL helper functions ✅
 - **Logic:** adminUserKeysURL (normal name, special characters, trailing slash in ForgejoURL), userKeysURL, userTokensURL, userTokenURL
 - **Result:** All 4 previously-0% URL helpers at 100%: adminUserKeysURL, userKeysURL, userTokensURL, userTokenURL. 6 subtests, all pass. Identity coverage: 68.0%→68.1%.
+
+## [x] Write Go tests for cmd/sandbox/main.go — CLI test coverage (completed 2026-06-25)
+- **Priority:** high
+- **Model:** direct write — stdlib flag.FlagSet, pure logic
+- **Files:** cmd/sandbox/main_test.go (NEW)
+- **AC:** `go test ./cmd/sandbox/... -count=1 -cover` passes with >70% coverage on sandbox CLI ✅ **89.2%**
+- **Logic:** run (help/version/unknown command/empty args), runCommand (dry-run, invalid isolation, missing command, valid config), handleError (all 7 error branches + unknown), generateSessionID (hex format + uniqueness), printUsage, printVersion, isDryRunOnly (match + no-match)
+- **Result:** 25 test functions, all pass. Coverage: 0% → 89.2%. Every non-os.Exit code path tested.
+
+## [x] Write Go tests for cmd/helix-prompt/main.go — CLI test coverage (completed 2026-06-25)
+- **Priority:** high
+- **Model:** direct write — Cobra, stdout capture via os.Pipe
+- **Files:** cmd/helix-prompt/main_test.go (NEW)
+- **AC:** `go test ./cmd/helix-prompt/... -count=1 -cover` passes with >45% coverage on prompt CLI ✅ **45.3%** (honest ceiling — runRegister/runAttest/runVerify need registry+git; runRegister also calls os.Exit on dry-run)
+- **Logic:** newRootCmd (4 subcommands, verbose flag), register (missing args, non-existent file, missing prompt file, all flag defaults), attest (missing args, --force not-found), verify (missing args, bad commit, --check-hash/lifecycle/promptfoo flags), list (table/json/filtered by status/component/model), shortHashDisplay (long truncation, short unchanged, exact boundary)
+- **Result:** 19 test functions, all pass. All 4 new*Cmd constructors at 100%, shortHashDisplay at 100%. Coverage: 0% → 45.3%.
+
+## [x] Write Go tests for cmd/helix-identity/main.go — CLI test coverage (completed 2026-06-25)
+- **Priority:** high
+- **Model:** direct write — Cobra, stdout/stderr capture
+- **Files:** cmd/helix-identity/main_test.go (NEW)
+- **AC:** `go test ./cmd/helix-identity/... -count=1 -cover` passes with >45% coverage on identity CLI ✅ **47.1%**
+- **Logic:** envOr (env-var, fallback, empty-string), buildConfig (defaults, honors all 9 flags), mustJSON (valid struct, empty, map), renderDryRun (no agents, active agent), renderResultsTable (empty, success, failure), renderSingleResult (success, failure, no SSH/PAT), renderStateTable (nil, empty, with agents), command tree (5 subcommands verified), sync (missing known-friends), provision/deprovision/keygen (missing args via cobra Execute)
+- **Result:** 22 test functions, all pass. Coverage: 0% → 47.1%. All rendering functions at 100%, envOr at 100%, buildConfig at 100%, mustJSON at 100%.
