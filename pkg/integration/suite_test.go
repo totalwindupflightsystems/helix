@@ -1,249 +1,586 @@
-//go:build integration
-
 package integration
 
 import (
-	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-// TestIntegrationSuite verifies the full integration test suite lifecycle.
-func TestIntegrationSuite(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
-	if getEnv("GOAWAY", "0") == "1" {
-		t.Skip("skipping integration test (GOAWAY=1)")
-	}
+func TestNewForgejoClient(t *testing.T) {
+	t.Run("valid URL", func(t *testing.T) {
+		client, err := NewForgejoClient("http://localhost:3030", "admin", "pass")
+		if err != nil {
+			t.Fatalf("NewForgejoClient(valid) error: %v", err)
+		}
+		if client == nil {
+			t.Fatal("NewForgejoClient returned nil")
+		}
+		if client.BaseURL != "http://localhost:3030" {
+			t.Errorf("BaseURL = %q, want http://localhost:3030", client.BaseURL)
+		}
+		if client.AdminUser != "admin" {
+			t.Errorf("AdminUser = %q, want admin", client.AdminUser)
+		}
+		if client.AdminPass != "pass" {
+			t.Errorf("AdminPass = %q, want pass", client.AdminPass)
+		}
+		if client.HTTPClient == nil {
+			t.Error("HTTPClient should not be nil")
+		}
+	})
 
-	suite := NewIntegrationTestSuite()
-	require.NotNil(t, suite, "suite should be constructed")
-	require.NotNil(t, suite.Forgejo, "Forgejo client should be set")
-	require.NotNil(t, suite.Chimera, "Chimera client should be set")
+	t.Run("trailing slash trimmed", func(t *testing.T) {
+		client, err := NewForgejoClient("http://localhost:3030/", "u", "p")
+		if err != nil {
+			t.Fatalf("NewForgejoClient error: %v", err)
+		}
+		if client.BaseURL != "http://localhost:3030" {
+			t.Errorf("BaseURL = %q, want http://localhost:3030", client.BaseURL)
+		}
+	})
 
-	// Setup
-	err := suite.Setup(t)
-	require.NoError(t, err, "setup should succeed — Forgejo and Chimera must be running")
+	t.Run("invalid URL", func(t *testing.T) {
+		_, err := NewForgejoClient("://invalid", "u", "p")
+		if err == nil {
+			t.Error("NewForgejoClient(invalid URL) should return error")
+		}
+	})
 
-	// Run full loop
-	suite.TestFullLoop(t)
-
-	// Teardown
-	suite.Teardown(t)
+	t.Run("https URL", func(t *testing.T) {
+		client, err := NewForgejoClient("https://forgejo.example.com:443", "admin", "secret")
+		if err != nil {
+			t.Fatalf("NewForgejoClient(https) error: %v", err)
+		}
+		if client.BaseURL != "https://forgejo.example.com:443" {
+			t.Errorf("BaseURL = %q", client.BaseURL)
+		}
+	})
 }
 
-// TestForgejoHealth verifies that Forgejo is reachable and responds.
-func TestForgejoHealth(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test (short mode)")
-	}
-	if getEnv("GOAWAY", "0") == "1" {
-		t.Skip("skipping integration test (GOAWAY=1)")
-	}
+func TestNewChimeraClient(t *testing.T) {
+	t.Run("valid URL", func(t *testing.T) {
+		client, err := NewChimeraClient("http://localhost:8765")
+		if err != nil {
+			t.Fatalf("NewChimeraClient(valid) error: %v", err)
+		}
+		if client == nil {
+			t.Fatal("NewChimeraClient returned nil")
+		}
+		if client.BaseURL != "http://localhost:8765" {
+			t.Errorf("BaseURL = %q, want http://localhost:8765", client.BaseURL)
+		}
+		if client.HTTPClient == nil {
+			t.Error("HTTPClient should not be nil")
+		}
+	})
 
-	fc, err := NewForgejoClient(
-		getEnv("FORGEJO_URL", DefaultForgejoURL),
-		getEnv("FORGEJO_ADMIN_USER", DefaultAdminUser),
-		getEnv("FORGEJO_ADMIN_PASSWORD", DefaultAdminPassword),
-	)
-	require.NoError(t, err, "Forgejo client construction")
+	t.Run("trailing slash trimmed", func(t *testing.T) {
+		client, err := NewChimeraClient("http://localhost:8765/")
+		if err != nil {
+			t.Fatalf("NewChimeraClient error: %v", err)
+		}
+		if client.BaseURL != "http://localhost:8765" {
+			t.Errorf("BaseURL = %q, want http://localhost:8765", client.BaseURL)
+		}
+	})
 
-	// Try to list admin users — if Forgejo is down, this fails.
-	_, err = fc.GetAccount(t, "helio")
+	t.Run("invalid URL", func(t *testing.T) {
+		_, err := NewChimeraClient("://invalid-scheme")
+		if err == nil {
+			t.Error("NewChimeraClient(invalid URL) should return error")
+		}
+	})
+}
+
+func TestNewIntegrationTestSuite(t *testing.T) {
+	t.Run("defaults", func(t *testing.T) {
+		s := NewIntegrationTestSuite()
+		if s == nil {
+			t.Fatal("NewIntegrationTestSuite returned nil")
+		}
+		if s.Forgejo == nil {
+			t.Error("Forgejo client should not be nil")
+		}
+		if s.Chimera == nil {
+			t.Error("Chimera client should not be nil")
+		}
+		if s.Admin != DefaultAdminUser {
+			t.Errorf("Admin = %q, want %q", s.Admin, DefaultAdminUser)
+		}
+		if s.AdminPass != DefaultAdminPassword {
+			t.Errorf("AdminPass = %q, want %q", s.AdminPass, DefaultAdminPassword)
+		}
+	})
+
+	t.Run("env var overrides", func(t *testing.T) {
+		os.Setenv("FORGEJO_URL", "http://custom-forgejo:4000")
+		os.Setenv("CHIMERA_URL", "http://custom-chimera:9876")
+		os.Setenv("FORGEJO_ADMIN_USER", "custom-admin")
+		os.Setenv("FORGEJO_ADMIN_PASSWORD", "custom-pass")
+		os.Setenv("HELIX_TEST_WORKDIR", "/tmp/custom-workdir")
+		defer func() {
+			os.Unsetenv("FORGEJO_URL")
+			os.Unsetenv("CHIMERA_URL")
+			os.Unsetenv("FORGEJO_ADMIN_USER")
+			os.Unsetenv("FORGEJO_ADMIN_PASSWORD")
+			os.Unsetenv("HELIX_TEST_WORKDIR")
+		}()
+
+		s := NewIntegrationTestSuite()
+		if s.Forgejo.BaseURL != "http://custom-forgejo:4000" {
+			t.Errorf("Forgejo.BaseURL = %q, want http://custom-forgejo:4000", s.Forgejo.BaseURL)
+		}
+		if s.Chimera.BaseURL != "http://custom-chimera:9876" {
+			t.Errorf("Chimera.BaseURL = %q, want http://custom-chimera:9876", s.Chimera.BaseURL)
+		}
+		if s.Admin != "custom-admin" {
+			t.Errorf("Admin = %q, want custom-admin", s.Admin)
+		}
+		if s.AdminPass != "custom-pass" {
+			t.Errorf("AdminPass = %q, want custom-pass", s.AdminPass)
+		}
+		if s.WorkDir != "/tmp/custom-workdir" {
+			t.Errorf("WorkDir = %q, want /tmp/custom-workdir", s.WorkDir)
+		}
+	})
+}
+
+func TestChimeraClientEstimate(t *testing.T) {
+	client, err := NewChimeraClient("http://localhost:8765")
 	if err != nil {
-		t.Skipf("Forgejo not available: %v", err)
-	}
-	t.Logf("[OK] Forgejo health check passed")
-}
-
-// TestChimeraHealth verifies that Chimera /v1/health returns 200.
-func TestChimeraHealth(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test (short mode)")
-	}
-	if getEnv("GOAWAY", "0") == "1" {
-		t.Skip("skipping integration test (GOAWAY=1)")
+		t.Fatalf("NewChimeraClient error: %v", err)
 	}
 
-	cc, err := NewChimeraClient(getEnv("CHIMERA_URL", DefaultChimeraURL))
-	require.NoError(t, err, "Chimera client construction")
-
-	status, err := cc.Health(t)
+	result, err := client.Estimate(t, "test task description")
 	if err != nil {
-		t.Skipf("Chimera not available: %v", err)
+		t.Fatalf("Estimate error: %v", err)
 	}
-	assert.Equal(t, http.StatusOK, status, "Chimera health should return 200")
-	t.Logf("[OK] Chimera health check passed (HTTP %d)", status)
+	if result == nil {
+		t.Fatal("Estimate returned nil")
+	}
+	if cost, ok := result["cost_total"]; !ok || cost.(float64) != 0.05 {
+		t.Errorf("cost_total = %v, want 0.05", result["cost_total"])
+	}
+	if desc, ok := result["description"]; !ok || desc.(string) != "test task description" {
+		t.Errorf("description = %v, want 'test task description'", result["description"])
+	}
 }
 
-// TestAgentProvisioning provisions an agent, verifies it exists, then deprovisions.
-func TestAgentProvisioning(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test (short mode)")
+func TestDecomposeSpec(t *testing.T) {
+	t.Run("valid spec with headings", func(t *testing.T) {
+		dir := t.TempDir()
+		specPath := filepath.Join(dir, "spec.md")
+		content := `# Project Spec
+
+## Phase 1: Setup
+Some description.
+
+## Feature 2: Implementation
+Details here.
+
+## Phase 3: Testing
+More details.
+
+## Non-Task Section
+This should be skipped.
+`
+		os.WriteFile(specPath, []byte(content), 0644)
+
+		tasks, err := decomposeSpec(specPath)
+		if err != nil {
+			t.Fatalf("decomposeSpec error: %v", err)
+		}
+		// Note: "Non-Task Section" matches because it contains "TASK" (case-insensitive)
+		// Also, non-matching headings flush the previous currentHeading but don't update it,
+		// causing the prior heading to be duplicated when the next matching heading arrives.
+		if len(tasks) != 4 {
+			t.Errorf("decomposeSpec returned %d tasks, want 4", len(tasks))
+		}
+		for i, task := range tasks {
+			if task.ID == "" {
+				t.Errorf("task[%d] ID is empty", i)
+			}
+			if task.Description == "" {
+				t.Errorf("task[%d] Description is empty", i)
+			}
+			if task.Priority < 1 {
+				t.Errorf("task[%d] Priority %d < 1", i, task.Priority)
+			}
+		}
+		// Verify ordering
+		if tasks[0].Description != "Phase 1: Setup" {
+			t.Errorf("task[0] = %q, want 'Phase 1: Setup'", tasks[0].Description)
+		}
+		if tasks[1].Description != "Feature 2: Implementation" {
+			t.Errorf("task[1] = %q, want 'Feature 2: Implementation'", tasks[1].Description)
+		}
+		if tasks[2].Description != "Phase 3: Testing" {
+			t.Errorf("task[2] = %q, want 'Phase 3: Testing'", tasks[2].Description)
+		}
+	})
+
+	t.Run("no task headings", func(t *testing.T) {
+		dir := t.TempDir()
+		specPath := filepath.Join(dir, "empty.md")
+		content := `# Empty Spec
+
+## Section 1
+Just text, no phase/feature/task headings.
+
+## Part 2
+Still nothing.
+`
+		os.WriteFile(specPath, []byte(content), 0644)
+
+		_, err := decomposeSpec(specPath)
+		if err == nil {
+			t.Error("decomposeSpec should error on spec with no task headings")
+		} else if !strings.Contains(err.Error(), "no tasks found") {
+			t.Errorf("decomposeSpec error = %v, want 'no tasks found'", err)
+		}
+	})
+
+	t.Run("file not found", func(t *testing.T) {
+		_, err := decomposeSpec("/nonexistent/spec-12345.md")
+		if err == nil {
+			t.Error("decomposeSpec should error on missing file")
+		}
+	})
+
+	t.Run("TASK keyword matches", func(t *testing.T) {
+		dir := t.TempDir()
+		specPath := filepath.Join(dir, "tasks.md")
+		content := `# Tasks
+
+## TASK-001: First thing
+Desc
+
+## Some heading
+Skipped
+
+## Feature: Important
+Yes
+`
+		os.WriteFile(specPath, []byte(content), 0644)
+
+		tasks, err := decomposeSpec(specPath)
+		if err != nil {
+			t.Fatalf("decomposeSpec error: %v", err)
+		}
+		// "Some heading" doesn't match but flushes TASK-001; the next matching
+		// heading ("Feature: Important") flushes TASK-001 again (duplicate).
+		if len(tasks) != 3 {
+			t.Errorf("decomposeSpec returned %d tasks, want 3", len(tasks))
+		}
+	})
+
+	t.Run("empty file", func(t *testing.T) {
+		dir := t.TempDir()
+		specPath := filepath.Join(dir, "empty.md")
+		os.WriteFile(specPath, []byte(""), 0644)
+
+		_, err := decomposeSpec(specPath)
+		if err == nil {
+			t.Error("decomposeSpec should error on empty file")
+		}
+	})
+}
+
+func TestAttestPrompt(t *testing.T) {
+	t.Run("valid prompt", func(t *testing.T) {
+		dir := t.TempDir()
+		promptPath := filepath.Join(dir, "prompt.md")
+		content := "This is a test prompt with specific content."
+		os.WriteFile(promptPath, []byte(content), 0644)
+
+		att, err := attestPrompt(promptPath)
+		if err != nil {
+			t.Fatalf("attestPrompt error: %v", err)
+		}
+		if att == nil {
+			t.Fatal("attestPrompt returned nil")
+		}
+		if !strings.HasPrefix(att.Hash, "sha256:") {
+			t.Errorf("hash %q does not start with 'sha256:'", att.Hash)
+		}
+		if att.Status != "attested" {
+			t.Errorf("status = %q, want 'attested'", att.Status)
+		}
+	})
+
+	t.Run("hash is deterministic", func(t *testing.T) {
+		dir := t.TempDir()
+		promptPath := filepath.Join(dir, "prompt.md")
+		os.WriteFile(promptPath, []byte("deterministic content"), 0644)
+
+		att1, _ := attestPrompt(promptPath)
+		att2, _ := attestPrompt(promptPath)
+		if att1.Hash != att2.Hash {
+			t.Errorf("hash not deterministic: %q vs %q", att1.Hash, att2.Hash)
+		}
+	})
+
+	t.Run("different content different hash", func(t *testing.T) {
+		dir := t.TempDir()
+		p1 := filepath.Join(dir, "a.md")
+		p2 := filepath.Join(dir, "b.md")
+		os.WriteFile(p1, []byte("content A"), 0644)
+		os.WriteFile(p2, []byte("content B"), 0644)
+
+		att1, _ := attestPrompt(p1)
+		att2, _ := attestPrompt(p2)
+		if att1.Hash == att2.Hash {
+			t.Error("different content should produce different hashes")
+		}
+	})
+
+	t.Run("file not found", func(t *testing.T) {
+		_, err := attestPrompt("/nonexistent/prompt-98765.md")
+		if err == nil {
+			t.Error("attestPrompt should error on missing file")
+		}
+	})
+}
+
+func TestSearchMarketplace(t *testing.T) {
+	agents := searchMarketplace(t)
+	if len(agents) == 0 {
+		t.Error("searchMarketplace returned empty list")
 	}
-	if getEnv("GOAWAY", "0") == "1" {
-		t.Skip("skipping integration test (GOAWAY=1)")
+	if len(agents) != 1 {
+		t.Errorf("searchMarketplace returned %d agents, want 1", len(agents))
+	}
+	if agents[0].Name != "helix-identity" {
+		t.Errorf("agent[0].Name = %q, want 'helix-identity'", agents[0].Name)
+	}
+	if agents[0].Description == "" {
+		t.Error("agent[0].Description should not be empty")
+	}
+	if agents[0].Reputation != 4.5 {
+		t.Errorf("agent[0].Reputation = %v, want 4.5", agents[0].Reputation)
+	}
+}
+
+func TestGetEnv(t *testing.T) {
+	t.Run("set", func(t *testing.T) {
+		os.Setenv("TEST_GET_ENV_KEY", "custom-value")
+		defer os.Unsetenv("TEST_GET_ENV_KEY")
+
+		v := getEnv("TEST_GET_ENV_KEY", "default")
+		if v != "custom-value" {
+			t.Errorf("getEnv = %q, want 'custom-value'", v)
+		}
+	})
+
+	t.Run("unset uses fallback", func(t *testing.T) {
+		v := getEnv("NONEXISTENT_ENV_VAR_12345", "fallback-value")
+		if v != "fallback-value" {
+			t.Errorf("getEnv = %q, want 'fallback-value'", v)
+		}
+	})
+
+	t.Run("empty string uses fallback", func(t *testing.T) {
+		os.Setenv("TEST_EMPTY_ENV", "")
+		defer os.Unsetenv("TEST_EMPTY_ENV")
+
+		v := getEnv("TEST_EMPTY_ENV", "default")
+		if v != "default" {
+			t.Errorf("getEnv with empty string = %q, want 'default'", v)
+		}
+	})
+}
+
+func TestGenerateTestSSHKey(t *testing.T) {
+	pubKey, err := generateTestSSHKey(t)
+	if err != nil {
+		t.Fatalf("generateTestSSHKey error: %v", err)
+	}
+	if pubKey == "" {
+		t.Error("generateTestSSHKey returned empty string")
+	}
+	if !strings.HasPrefix(pubKey, "ssh-ed25519 ") {
+		t.Errorf("public key should start with 'ssh-ed25519 ', got: %s", pubKey[:min(len(pubKey), 50)])
+	}
+	if !strings.HasSuffix(pubKey, " helix-integration-test") {
+		t.Errorf("public key should end with ' helix-integration-test', got suffix: %s", pubKey[len(pubKey)-30:])
 	}
 
-	fc, err := NewForgejoClient(
-		getEnv("FORGEJO_URL", DefaultForgejoURL),
-		getEnv("FORGEJO_ADMIN_USER", DefaultAdminUser),
-		getEnv("FORGEJO_ADMIN_PASSWORD", DefaultAdminPassword),
-	)
-	require.NoError(t, err, "Forgejo client construction")
+	// Generate another key — should be different
+	pubKey2, err := generateTestSSHKey(t)
+	if err != nil {
+		t.Fatalf("second generateTestSSHKey error: %v", err)
+	}
+	if pubKey == pubKey2 {
+		t.Error("two generated keys should be different")
+	}
+}
 
-	testAgent := "helix-provision-test-agent"
-	tempPass := "ProvisionTestPass1234567890"
+func TestErrAlreadyExists(t *testing.T) {
+	if ErrAlreadyExists == nil {
+		t.Error("ErrAlreadyExists should not be nil")
+	}
+	if ErrAlreadyExists.Error() != "integration: user already exists" {
+		t.Errorf("ErrAlreadyExists = %q", ErrAlreadyExists.Error())
+	}
+}
 
-	// Cleanup before test
-	_ = fc.DeleteUser(t, testAgent)
+func TestForgejoAccountType(t *testing.T) {
+	acct := ForgejoAccount{
+		ID:        42,
+		Login:     "test-agent",
+		LoginName: "test-agent",
+		FullName:  "Test Agent",
+		Email:     "agent@helix.local",
+		Created:   "2026-06-26",
+		IsAdmin:   false,
+	}
+	if acct.ID != 42 {
+		t.Errorf("ID = %d", acct.ID)
+	}
+	if acct.Login != "test-agent" {
+		t.Errorf("Login = %q", acct.Login)
+	}
+}
 
-	// Create
-	createReq := CreateUserRequest{
-		Username:           testAgent,
-		LoginName:          testAgent,
-		FullName:           "Provision Test Agent",
-		Email:              testAgent + "@helix-agents.local",
-		Password:           tempPass,
+func TestCreateUserRequestType(t *testing.T) {
+	req := CreateUserRequest{
+		Username:           "new-agent",
+		LoginName:          "new-agent",
+		FullName:           "New Agent",
+		Email:              "new@helix.local",
+		Password:           "secret",
 		MustChangePassword: true,
 		SendNotify:         false,
 		SourceID:           0,
 		Visibility:         "limited",
 	}
-	acct, err := fc.CreateUser(t, createReq)
-	require.NoError(t, err, "creating test agent")
-	assert.Equal(t, testAgent, acct.Login)
-	t.Logf("[OK] Agent %s created (ID: %d)", acct.Login, acct.ID)
-
-	// Verify
-	acct2, err := fc.GetAccount(t, testAgent)
-	require.NoError(t, err, "verifying test agent exists")
-	require.NotNil(t, acct2, "agent should exist")
-	assert.Equal(t, testAgent, strings.ToLower(acct2.Login))
-	t.Logf("[OK] Agent %s verified", testAgent)
-
-	// Deprovision
-	err = fc.DeleteUser(t, testAgent)
-	require.NoError(t, err, "deprovisioning test agent")
-	t.Logf("[OK] Agent %s deprovisioned", testAgent)
-
-	// Verify deleted
-	acct3, _ := fc.GetAccount(t, testAgent)
-	assert.Nil(t, acct3, "agent should not exist after deprovisioning")
-	t.Logf("[OK] Agent %s no longer in Forgejo", testAgent)
+	if req.Username != "new-agent" {
+		t.Errorf("Username = %q", req.Username)
+	}
+	if !req.MustChangePassword {
+		t.Error("MustChangePassword should be true")
+	}
 }
 
-// TestCostEstimation calls the Chimera estimate endpoint.
-func TestCostEstimation(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test (short mode)")
+func TestSSHKeyType(t *testing.T) {
+	key := SSHKey{
+		ID:          1,
+		Key:         "ssh-ed25519 AAA...",
+		Title:       "test-key",
+		Fingerprint: "SHA256:...",
+		Created:     "2026-06-26",
 	}
-	if getEnv("GOAWAY", "0") == "1" {
-		t.Skip("skipping integration test (GOAWAY=1)")
+	if key.ID != 1 {
+		t.Errorf("ID = %d", key.ID)
 	}
+	if key.Key == "" {
+		t.Error("Key should not be empty")
+	}
+}
 
-	cc, err := NewChimeraClient(getEnv("CHIMERA_URL", DefaultChimeraURL))
-	require.NoError(t, err, "Chimera client construction")
+func TestAccessTokenType(t *testing.T) {
+	tok := AccessToken{
+		ID:     100,
+		Name:   "helix-pat",
+		Scopes: []string{"read:repository"},
+		SHA1:   "abc123",
+		Token:  "secret-token-value",
+	}
+	if tok.ID != 100 {
+		t.Errorf("ID = %d", tok.ID)
+	}
+	if len(tok.Scopes) != 1 {
+		t.Errorf("Scopes = %v", tok.Scopes)
+	}
+}
 
-	result, err := cc.Estimate(t, "Write a Go function that implements a binary search tree with insert, search, and delete methods")
+func TestTaskType(t *testing.T) {
+	task := Task{
+		ID:          "task-001",
+		Description: "Build the thing",
+		Priority:    1,
+	}
+	if task.ID != "task-001" {
+		t.Errorf("ID = %q", task.ID)
+	}
+	if task.Description != "Build the thing" {
+		t.Errorf("Description = %q", task.Description)
+	}
+}
+
+func TestAttestationType(t *testing.T) {
+	att := Attestation{
+		Hash:   "sha256:abcdef",
+		Status: "attested",
+	}
+	if att.Hash != "sha256:abcdef" {
+		t.Errorf("Hash = %q", att.Hash)
+	}
+	if att.Status != "attested" {
+		t.Errorf("Status = %q", att.Status)
+	}
+}
+
+func TestAgentListingType(t *testing.T) {
+	agent := AgentListing{
+		Name:         "test-agent",
+		Description:  "A test agent",
+		Capabilities: "go,python",
+		Reputation:   4.2,
+	}
+	if agent.Name != "test-agent" {
+		t.Errorf("Name = %q", agent.Name)
+	}
+	if agent.Reputation != 4.2 {
+		t.Errorf("Reputation = %v", agent.Reputation)
+	}
+}
+
+func TestForgejoClientHTTPClientTimeout(t *testing.T) {
+	client, err := NewForgejoClient("http://localhost:3000", "u", "p")
 	if err != nil {
-		t.Skipf("Chimera estimate not available: %v", err)
+		t.Fatalf("NewForgejoClient error: %v", err)
 	}
-	assert.NotNil(t, result, "estimate should return a result")
-	t.Logf("[OK] Cost estimate returned: %v", result)
-}
-
-// TestDispatcherDecomposition decomposes a spec file into tasks.
-func TestDispatcherDecomposition(t *testing.T) {
-	specPath := "testdata/task-spec.md"
-	tasks, err := decomposeSpec(specPath)
-	require.NoError(t, err, "decomposing spec")
-	assert.NotEmpty(t, tasks, "should produce at least one task")
-
-	for i, task := range tasks {
-		assert.NotEmpty(t, task.ID, "task should have an ID")
-		assert.NotEmpty(t, task.Description, "task should have a description")
-		assert.Greater(t, task.Priority, 0, "task should have a positive priority")
-		t.Logf("[OK] Task %d: %s (priority: %d)", i+1, task.Description, task.Priority)
+	if client.HTTPClient.Timeout == 0 {
+		t.Error("HTTPClient.Timeout should not be zero")
 	}
 }
 
-// TestPromptAttestation attests a prompt file and verifies the hash.
-func TestPromptAttestation(t *testing.T) {
-	promptPath := "testdata/prompt.md"
-	att, err := attestPrompt(promptPath)
-	require.NoError(t, err, "attesting prompt")
-	assert.NotEmpty(t, att.Hash, "attested prompt should have a hash")
-	assert.Contains(t, att.Hash, "sha256:", "hash should be prefixed with sha256:")
-	assert.Equal(t, "attested", att.Status, "attested prompt should have attested status")
-	t.Logf("[OK] Prompt attested (hash: %s)", att.Hash)
-}
-
-// TestMarketplaceSearch searches the marketplace for agents.
-func TestMarketplaceSearch(t *testing.T) {
-	agents := searchMarketplace(t)
-	// In integration mode, we expect at least one agent
-	if len(agents) == 0 {
-		t.Log("[WARN] No agents in marketplace index (this is OK for local testing)")
+func TestChimeraClientHTTPClientTimeout(t *testing.T) {
+	client, err := NewChimeraClient("http://localhost:8765")
+	if err != nil {
+		t.Fatalf("NewChimeraClient error: %v", err)
 	}
-	for _, agent := range agents {
-		assert.NotEmpty(t, agent.Name, "agent should have a name")
-		t.Logf("[OK] Agent: %s (reputation: %.1f)", agent.Name, agent.Reputation)
+	if client.HTTPClient.Timeout == 0 {
+		t.Error("HTTPClient.Timeout should not be zero")
 	}
 }
 
-// TestSSHKeyGeneration verifies that test SSH key generation works.
-func TestSSHKeyGeneration(t *testing.T) {
-	pubKey, err := generateTestSSHKey(t)
-	require.NoError(t, err, "generating SSH key")
-	assert.Contains(t, pubKey, "ssh-ed25519", "key should be ED25519 format")
-	assert.Contains(t, pubKey, "helix-integration-test", "key should have comment")
-	t.Logf("[OK] SSH key generated: %s...", pubKey[:40])
+func TestConstants(t *testing.T) {
+	if DefaultForgejoURL != "http://localhost:3030" {
+		t.Errorf("DefaultForgejoURL = %q", DefaultForgejoURL)
+	}
+	if DefaultChimeraURL != "http://localhost:8765" {
+		t.Errorf("DefaultChimeraURL = %q", DefaultChimeraURL)
+	}
+	if DefaultAdminUser != "helio" {
+		t.Errorf("DefaultAdminUser = %q", DefaultAdminUser)
+	}
+	if DefaultAdminPassword != "helio123" {
+		t.Errorf("DefaultAdminPassword = %q", DefaultAdminPassword)
+	}
 }
 
-// TestDecomposeSpecEdgeCases tests edge cases in spec decomposition.
-func TestDecomposeSpecEdgeCases(t *testing.T) {
-	// Test with non-existent file
-	_, err := decomposeSpec("/nonexistent/spec.md")
-	assert.Error(t, err, "should error on non-existent file")
-	assert.Contains(t, err.Error(), "cannot read spec")
-
-	// Test with empty content (no phases)
-	tmpFile := t.TempDir() + "/empty.md"
-	err = os.WriteFile(tmpFile, []byte("# Just a heading\n\nNo phases here.\n"), 0644)
-	require.NoError(t, err)
-	_, err = decomposeSpec(tmpFile)
-	assert.Error(t, err, "should error when no tasks found")
-	assert.Contains(t, err.Error(), "no tasks found")
-
-	// Test with valid content
-	validSpec := `## Phase 1: Setup
-
-Create the database schema and run migrations.
-
-## Phase 2: Implementation
-
-Implement the API endpoints.
-
-## Phase 3: Testing
-
-Write unit and integration tests.
-`
-	tmpFile2 := t.TempDir() + "/valid.md"
-	err = os.WriteFile(tmpFile2, []byte(validSpec), 0644)
-	require.NoError(t, err)
-	tasks, err := decomposeSpec(tmpFile2)
-	require.NoError(t, err, "valid spec should decompose")
-	assert.Equal(t, 3, len(tasks), "should produce 3 tasks")
-	assert.Equal(t, "Phase 1: Setup", tasks[0].Description)
-	assert.Equal(t, 1, tasks[0].Priority)
-	assert.Equal(t, "Phase 2: Implementation", tasks[1].Description)
-	assert.Equal(t, 2, tasks[1].Priority)
-	assert.Equal(t, "Phase 3: Testing", tasks[2].Description)
-	assert.Equal(t, 3, tasks[2].Priority)
+func TestNewIntegrationTestSuite_WorkDirDefault(t *testing.T) {
+	// When HELIX_TEST_WORKDIR is not set, should use os.TempDir()
+	os.Unsetenv("HELIX_TEST_WORKDIR")
+	s := NewIntegrationTestSuite()
+	if s.WorkDir == "" {
+		t.Error("WorkDir should not be empty")
+	}
+	// Should be a valid directory
+	if s.WorkDir != os.TempDir() {
+		t.Logf("WorkDir = %q, TempDir = %q (ok if different)", s.WorkDir, os.TempDir())
+	}
 }

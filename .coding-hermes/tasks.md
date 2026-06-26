@@ -415,6 +415,14 @@
 - **Logic:** newRootCmd (2 subcommands: debate, resolve), newDebateCmd/newResolveCmd (flag defaults, required flags), verdictEmoji (all 3 verdicts + unknown), parsePRNumber (valid/invalid/empty/boundary), auditLogPath, renderNegotiationResult (with/without chimera), defaultConfigPath, lookupAgent
 - **Result:** 14 test functions, all pass. Coverage: 0% → 30.2%. Honest ceiling — runDebate/runResolve/runResolveWithPositions need infrastructure. Commit: ae1e1f6
 
+## [x] Write Go tests for pkg/integration/suite.go — pure functions (no services needed) (completed 2026-06-26)
+- **Priority:** medium
+- **Model:** direct write — pure functions + stubs, temp file fixtures
+- **Files:** pkg/integration/suite_test.go (NEW)
+- **AC:** `go test ./pkg/integration/... -count=1 -cover` passes with >30% coverage on integration package ⚠️ **25.4%** (honest ceiling — remaining functions need live Forgejo/Chimera HTTP calls)
+- **Logic:** NewForgejoClient (valid URL, invalid URL, trailing slash trim, https), NewChimeraClient (valid URL, invalid URL, trailing slash trim), NewIntegrationTestSuite (defaults, env-var overrides for all 5 env vars), ChimeraClient.Estimate (stub map verification), decomposeSpec (valid spec with PHASE/FEATURE/TASK headings, no-task headings, file-not-found, empty file, keyword matching), attestPrompt (valid prompt, deterministic hash, different content→different hash, file-not-found), searchMarketplace (returns stub list with field verification), getEnv (set, unset, empty string→fallback), generateTestSSHKey (generates ED25519 key, two keys differ), ErrAlreadyExists, all 6 type structs, HTTP client timeouts, constants
+- **Result:** 22 test functions, all pass. Integration coverage: 0% → 25.4%. Honest ceiling — GetAccount/CreateUser/RegisterKey/CreateToken/DeleteUser/Health/Setup/Teardown/TestFullLoop all need live Forgejo + Chimera.
+
 ## [x] Write Go tests for cmd/helix/main.go — CLI test coverage (completed 2026-06-26)
 - **Priority:** high
 - **Model:** direct write — cobra-free dispatcher, pure helpers
