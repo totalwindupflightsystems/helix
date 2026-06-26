@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -20,7 +19,7 @@ func captureStdout(f func()) string {
 	w.Close()
 	os.Stdout = old
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	return buf.String()
 }
 
@@ -33,7 +32,7 @@ func captureStderr(f func()) string {
 	w.Close()
 	os.Stderr = old
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	return buf.String()
 }
 
@@ -133,11 +132,11 @@ func TestLookPath(t *testing.T) {
 	t.Run("local file in cwd", func(t *testing.T) {
 		dir := t.TempDir()
 		fakeBin := filepath.Join(dir, "fake-cmd")
-		os.WriteFile(fakeBin, []byte("#!/bin/sh\necho ok"), 0755)
+		_ = os.WriteFile(fakeBin, []byte("#!/bin/sh\necho ok"), 0755)
 
 		oldDir, _ := os.Getwd()
-		os.Chdir(dir)
-		defer os.Chdir(oldDir)
+		_ = os.Chdir(dir)
+		defer func() { _ = os.Chdir(oldDir) }()
 
 		got, err := lookPath("fake-cmd")
 		if err != nil {
@@ -151,13 +150,13 @@ func TestLookPath(t *testing.T) {
 	t.Run("local file in cmd/<name>/<name>", func(t *testing.T) {
 		dir := t.TempDir()
 		cmdDir := filepath.Join(dir, "cmd", "fake-cmd")
-		os.MkdirAll(cmdDir, 0755)
+		_ = os.MkdirAll(cmdDir, 0755)
 		fakeBin := filepath.Join(cmdDir, "fake-cmd")
-		os.WriteFile(fakeBin, []byte("#!/bin/sh\necho ok"), 0755)
+		_ = os.WriteFile(fakeBin, []byte("#!/bin/sh\necho ok"), 0755)
 
 		oldDir, _ := os.Getwd()
-		os.Chdir(dir)
-		defer os.Chdir(oldDir)
+		_ = os.Chdir(dir)
+		defer func() { _ = os.Chdir(oldDir) }()
 
 		got, err := lookPath("fake-cmd")
 		if err != nil {
@@ -511,12 +510,12 @@ func TestLookPathCmdSubdirPattern(t *testing.T) {
 	// Test the cmd/<name>/<name> lookup pattern specifically
 	dir := t.TempDir()
 	cmdDir := filepath.Join(dir, "cmd", "helix-identity")
-	os.MkdirAll(cmdDir, 0755)
-	os.WriteFile(filepath.Join(cmdDir, "helix-identity"), []byte("fake"), 0755)
+	_ = os.MkdirAll(cmdDir, 0755)
+	_ = os.WriteFile(filepath.Join(cmdDir, "helix-identity"), []byte("fake"), 0755)
 
 	oldDir, _ := os.Getwd()
-	os.Chdir(dir)
-	defer os.Chdir(oldDir)
+	_ = os.Chdir(dir)
+	defer func() { _ = os.Chdir(oldDir) }()
 
 	got, err := lookPath("helix-identity")
 	if err != nil {
@@ -687,15 +686,15 @@ func TestDisaptcherConstruction(t *testing.T) {
 }
 
 func TestConstants_NonEmpty(t *testing.T) {
-	if fmt.Sprintf("%s", AppName) == "" {
+	if AppName == "" {
 		t.Error("AppName should not be empty")
 	}
 }
 
 func TestDispatchHelpVsHFlag(t *testing.T) {
 	d := rootCmd()
-	outHelp := captureStdout(func() { d.dispatch([]string{"--help"}) })
-	outH := captureStdout(func() { d.dispatch([]string{"-h"}) })
+	outHelp := captureStdout(func() { _ = d.dispatch([]string{"--help"}) })
+	outH := captureStdout(func() { _ = d.dispatch([]string{"-h"}) })
 	// Both should produce identical output
 	if outHelp != outH {
 		t.Errorf("--help and -h should produce identical output\n--help: %q\n-h:    %q", outHelp, outH)
