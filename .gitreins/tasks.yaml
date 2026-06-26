@@ -7,8 +7,9 @@ tasks:
   - "go test -short -count=1 ./... exits 0 \u2014 all tests pass"
   - 'Binary files produced: helix-identity, sandbox (and helix-estimate/negotiate/prompt/marketplace
     when implemented)'
-  status: pending
+  status: complete
   created_at: '2026-06-21T12:05:19.682163+00:00'
+  completed_at: '2026-06-26T06:14:11.443181+00:00'
 - id: feat-identity-cli
   title: "Agent identity CLI \u2014 all 5 subcommands work"
   criteria:
@@ -19,8 +20,9 @@ tasks:
   - helix-identity deprovision <name> --dry-run exits 0 (stub mode)
   - All subcommands accept --forgejo-url and --admin-token flags
   - Unknown subcommand prints usage to stderr and exits 1
-  status: pending
+  status: complete
   created_at: '2026-06-21T12:05:27.864868+00:00'
+  completed_at: '2026-06-26T06:20:05.237166+00:00'
 - id: feat-sandbox-isolation
   title: "Sandbox isolation \u2014 bubblewrap execution modes"
   criteria:
@@ -30,5 +32,6 @@ tasks:
   - Invalid isolation level (e.g., 'invalid') exits 1 with error message
   - Missing command after -- exits 1 with usage
   - helix-sandbox --help prints usage with all flags and exits 0
-  status: pending
+  status: complete
   created_at: '2026-06-21T12:05:27.961379+00:00'
+  completed_at: '2026-06-26T06:22:31.794519+00:00'

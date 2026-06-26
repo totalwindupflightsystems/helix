@@ -1,0 +1,76 @@
+{
+  "task_id": "feat-sandbox-isolation",
+  "task_title": "Sandbox isolation \u2014 bubblewrap execution modes",
+  "task_criteria": [
+    "helix-sandbox run --dry-run --isolation none -- echo test exits 0",
+    "helix-sandbox run --dry-run --isolation workspace -- echo test exits 0",
+    "helix-sandbox run --dry-run --isolation full -- echo test exits 0",
+    "Invalid isolation level (e.g., 'invalid') exits 1 with error message",
+    "Missing command after -- exits 1 with usage",
+    "helix-sandbox --help prints usage with all flags and exits 0"
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 lint: \n  \u2713 build: \n  \u2713 tests: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2713 helix-sandbox run --dry-run --isolation none -- echo test exits 0: Binary exits 0: /tmp/helix-sandbox run --dry-run --isolation none -- echo test exits with code 0, prints session info with 'Isolation: none'\n  \u2713 helix-sandbox run --dry-run --isolation workspace -- echo test exits 0: Binary exits 0: /tmp/helix-sandbox run --dry-run --isolation workspace -- echo test exits with code 0, prints session info with 'Isolation: workspace'\n  \u2713 helix-sandbox run --dry-run --isolation full -- echo test exits 0: Binary exits 0: /tmp/helix-sandbox run --dry-run --isolation full -- echo test exits with code 0, prints session info with 'Isolation: full'\n  \u2717 Invalid isolation level (e.g., 'invalid') exits 1 with error message: Binary exits with code 2 (not 1) for invalid isolation: 'error: sandbox: configuration is invalid: unknown isolation level \"invalid\"' \u2014 exit code is 2 instead of 1\n  \u2717 Missing command after -- exits 1 with usage: Binary exits with code 2 (not 1) when no command specified: 'error: no command specified after '--'' with usage text \u2014 exit code is 2 instead of 1\n  \u2713 helix-sandbox --help prints usage with all flags and exits 0: Binary exits 0: /tmp/helix-sandbox --help exits with code 0 and prints full usage with all flags (dry-run, isolation, memory-limit, network, session-id, time-limit, verbose, workdir) and subcommands (run, help, version)\n4 of 6 criteria pass; 2 fail because invalid isolation and missing command exit with code 2 instead of 1 as specified",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2713 helix-sandbox run --dry-run --isolation none -- echo test exits 0: Binary exits 0: /tmp/helix-sandbox run --dry-run --isolation none -- echo test exits with code 0, prints session info with 'Isolation: none'\n  \u2713 helix-sandbox run --dry-run --isolation workspace -- echo test exits 0: Binary exits 0: /tmp/helix-sandbox run --dry-run --isolation workspace -- echo test exits with code 0, prints session info with 'Isolation: workspace'\n  \u2713 helix-sandbox run --dry-run --isolation full -",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: feat-sandbox-isolation\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 lint: \n  \u2713 build: \n  \u2713 tests: \n  \u2713 secrets: \n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2713 helix-sandbox run --dry-run --isolation none -- echo test exits 0: Binary exits 0: /tmp/helix-sandbox run --dry-run --isolation none -- echo test exits with code 0, prints session info with 'Isolation: none'\n  \u2713 helix-sandbox run --dry-run --isolation workspace -- echo test exits 0: Binary exits 0: /tmp/helix-sandbox run --dry-run --isolation workspace -- echo test exits with code 0, prints session info with 'Isolation: workspace'\n  \u2713 helix-sandbox run --dry-run --isolation full -- echo test exits 0: Binary exits 0: /tmp/helix-sandbox run --dry-run --isolation full -- echo test exits with code 0, prints session info with 'Isolation: full'\n  \u2717 Invalid isolation level (e.g., 'invalid') exits 1 with error message: Binary exits with code 2 (not 1) for invalid isolation: 'error: sandbox: configuration is invalid: unknown isolation level \"invalid\"' \u2014 exit code is 2 instead of 1\n  \u2717 Missing command after -- exits 1 with usage: Binary exits with code 2 (not 1) when no command specified: 'error: no command specified after '--'' with usage text \u2014 exit code is 2 instead of 1\n  \u2713 helix-sandbox --help prints usage with all flags and exits 0: Binary exits 0: /tmp/helix-sandbox --help exits with code 0 and prints full usage with all flags (dry-run, isolation, memory-limit, network, session-id, time-limit, verbose, workdir) and subcommands (run, help, version)\n4 of 6 criteria pass; 2 fail because invalid isolation and missing command exit with code 2 instead of 1 as specified\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-06-26T06:23:11.976882"
+}
