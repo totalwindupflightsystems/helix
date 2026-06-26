@@ -114,17 +114,17 @@ func TestNewIntegrationTestSuite(t *testing.T) {
 	})
 
 	t.Run("env var overrides", func(t *testing.T) {
-		os.Setenv("FORGEJO_URL", "http://custom-forgejo:4000")
-		os.Setenv("CHIMERA_URL", "http://custom-chimera:9876")
-		os.Setenv("FORGEJO_ADMIN_USER", "custom-admin")
-		os.Setenv("FORGEJO_ADMIN_PASSWORD", "custom-pass")
-		os.Setenv("HELIX_TEST_WORKDIR", "/tmp/custom-workdir")
+		_ = os.Setenv("FORGEJO_URL", "http://custom-forgejo:4000")
+		_ = os.Setenv("CHIMERA_URL", "http://custom-chimera:9876")
+		_ = os.Setenv("FORGEJO_ADMIN_USER", "custom-admin")
+		_ = os.Setenv("FORGEJO_ADMIN_PASSWORD", "custom-pass")
+		_ = os.Setenv("HELIX_TEST_WORKDIR", "/tmp/custom-workdir")
 		defer func() {
-			os.Unsetenv("FORGEJO_URL")
-			os.Unsetenv("CHIMERA_URL")
-			os.Unsetenv("FORGEJO_ADMIN_USER")
-			os.Unsetenv("FORGEJO_ADMIN_PASSWORD")
-			os.Unsetenv("HELIX_TEST_WORKDIR")
+			_ = os.Unsetenv("FORGEJO_URL")
+			_ = os.Unsetenv("CHIMERA_URL")
+			_ = os.Unsetenv("FORGEJO_ADMIN_USER")
+			_ = os.Unsetenv("FORGEJO_ADMIN_PASSWORD")
+			_ = os.Unsetenv("HELIX_TEST_WORKDIR")
 		}()
 
 		s := NewIntegrationTestSuite()
@@ -185,7 +185,7 @@ More details.
 ## Non-Task Section
 This should be skipped.
 `
-		os.WriteFile(specPath, []byte(content), 0644)
+		_ = os.WriteFile(specPath, []byte(content), 0644)
 
 		tasks, err := decomposeSpec(specPath)
 		if err != nil {
@@ -231,7 +231,7 @@ Just text, no phase/feature/task headings.
 ## Part 2
 Still nothing.
 `
-		os.WriteFile(specPath, []byte(content), 0644)
+		_ = os.WriteFile(specPath, []byte(content), 0644)
 
 		_, err := decomposeSpec(specPath)
 		if err == nil {
@@ -262,7 +262,7 @@ Skipped
 ## Feature: Important
 Yes
 `
-		os.WriteFile(specPath, []byte(content), 0644)
+		_ = os.WriteFile(specPath, []byte(content), 0644)
 
 		tasks, err := decomposeSpec(specPath)
 		if err != nil {
@@ -278,7 +278,7 @@ Yes
 	t.Run("empty file", func(t *testing.T) {
 		dir := t.TempDir()
 		specPath := filepath.Join(dir, "empty.md")
-		os.WriteFile(specPath, []byte(""), 0644)
+		_ = os.WriteFile(specPath, []byte(""), 0644)
 
 		_, err := decomposeSpec(specPath)
 		if err == nil {
@@ -292,7 +292,7 @@ func TestAttestPrompt(t *testing.T) {
 		dir := t.TempDir()
 		promptPath := filepath.Join(dir, "prompt.md")
 		content := "This is a test prompt with specific content."
-		os.WriteFile(promptPath, []byte(content), 0644)
+		_ = os.WriteFile(promptPath, []byte(content), 0644)
 
 		att, err := attestPrompt(promptPath)
 		if err != nil {
@@ -312,7 +312,7 @@ func TestAttestPrompt(t *testing.T) {
 	t.Run("hash is deterministic", func(t *testing.T) {
 		dir := t.TempDir()
 		promptPath := filepath.Join(dir, "prompt.md")
-		os.WriteFile(promptPath, []byte("deterministic content"), 0644)
+		_ = os.WriteFile(promptPath, []byte("deterministic content"), 0644)
 
 		att1, _ := attestPrompt(promptPath)
 		att2, _ := attestPrompt(promptPath)
@@ -325,8 +325,8 @@ func TestAttestPrompt(t *testing.T) {
 		dir := t.TempDir()
 		p1 := filepath.Join(dir, "a.md")
 		p2 := filepath.Join(dir, "b.md")
-		os.WriteFile(p1, []byte("content A"), 0644)
-		os.WriteFile(p2, []byte("content B"), 0644)
+		_ = os.WriteFile(p1, []byte("content A"), 0644)
+		_ = os.WriteFile(p2, []byte("content B"), 0644)
 
 		att1, _ := attestPrompt(p1)
 		att2, _ := attestPrompt(p2)
@@ -364,8 +364,8 @@ func TestSearchMarketplace(t *testing.T) {
 
 func TestGetEnv(t *testing.T) {
 	t.Run("set", func(t *testing.T) {
-		os.Setenv("TEST_GET_ENV_KEY", "custom-value")
-		defer os.Unsetenv("TEST_GET_ENV_KEY")
+		_ = os.Setenv("TEST_GET_ENV_KEY", "custom-value")
+		defer func() { _ = os.Unsetenv("TEST_GET_ENV_KEY") }()
 
 		v := getEnv("TEST_GET_ENV_KEY", "default")
 		if v != "custom-value" {
@@ -381,8 +381,8 @@ func TestGetEnv(t *testing.T) {
 	})
 
 	t.Run("empty string uses fallback", func(t *testing.T) {
-		os.Setenv("TEST_EMPTY_ENV", "")
-		defer os.Unsetenv("TEST_EMPTY_ENV")
+		_ = os.Setenv("TEST_EMPTY_ENV", "")
+		defer func() { _ = os.Unsetenv("TEST_EMPTY_ENV") }()
 
 		v := getEnv("TEST_EMPTY_ENV", "default")
 		if v != "default" {
@@ -574,7 +574,7 @@ func TestConstants(t *testing.T) {
 
 func TestNewIntegrationTestSuite_WorkDirDefault(t *testing.T) {
 	// When HELIX_TEST_WORKDIR is not set, should use os.TempDir()
-	os.Unsetenv("HELIX_TEST_WORKDIR")
+	_ = os.Unsetenv("HELIX_TEST_WORKDIR")
 	s := NewIntegrationTestSuite()
 	if s.WorkDir == "" {
 		t.Error("WorkDir should not be empty")
