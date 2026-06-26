@@ -6,6 +6,8 @@
 /helios
 /helios-kb
 /sandbox
+/helix
+/helix-sandbox
 bin/
 .gitreins/config.yaml.bak
 .gitreins/config.yaml.v*-bak

@@ -1,0 +1,77 @@
+{
+  "task_id": "feat-identity-cli",
+  "task_title": "Agent identity CLI \u2014 all 5 subcommands work",
+  "task_criteria": [
+    "helix-identity sync --dry-run exits 0 and prints agent provisioning plan",
+    "helix-identity status prints table of provisioned agents with Forgejo IDs",
+    "helix-identity keygen <name> generates ED25519 keypair and prints fingerprint",
+    "helix-identity provision <name> --dry-run exits 0 (stub mode)",
+    "helix-identity deprovision <name> --dry-run exits 0 (stub mode)",
+    "All subcommands accept --forgejo-url and --admin-token flags",
+    "Unknown subcommand prints usage to stderr and exits 1"
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 build: \n  \u2713 lint: \n  \u2713 tests: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2713 helix-identity sync --dry-run exits 0 and prints agent provisioning plan: Binary exits 0 with valid known-friends.json, prints [DRY RUN] API calls, agent table with 'would create', and 'DRY RUN COMPLETE' message\n  \u2713 helix-identity status prints table of provisioned agents with Forgejo IDs: Binary prints table with AGENT, FORGEJO ID, SSH KEY, PAT, LAST SYNC columns showing agents with ForgejoAccountID 42 and 43\n  \u2713 helix-identity keygen <name> generates ED25519 keypair and prints fingerprint: Binary generates id_ed25519 and id_ed25519.pub under key dir, prints 'ssh fingerprint: SHA256:...'\n  \u2713 helix-identity provision <name> --dry-run exits 0 (stub mode): Binary exits 0, prints '\u2705 agent=test-agent action=created duration=1ms   ssh fingerprint: SHA256:...'\n  \u2713 helix-identity deprovision <name> --dry-run exits 0 (stub mode): Binary exits 0, prints '\u2705 agent=testagent action=skipped duration=0s'\n  \u2713 All subcommands accept --forgejo-url and --admin-token flags: TestBuildConfig_HonorsFlags in main_test.go verifies flag parsing; all binary invocations accept both flags as persistent flags on root command\n  \u2717 Unknown subcommand prints usage to stderr and exits 1: Binary exits with code 2 (ExitGeneral=2 from pkg/identity/types.go:44), not 1 as specified; also prints only 'ERROR: unknown command...' not full usage text\n6 of 7 criteria pass; criterion 7 fails because unknown subcommand exits with code 2 instead of 1",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2713 helix-identity sync --dry-run exits 0 and prints agent provisioning plan: Binary exits 0 with valid known-friends.json, prints [DRY RUN] API calls, agent table with 'would create', and 'DRY RUN COMPLETE' message\n  \u2713 helix-identity status prints table of provisioned agents with Forgejo IDs: Binary prints table with AGENT, FORGEJO ID, SSH KEY, PAT, LAST SYNC columns showing agents with ForgejoAccountID 42 and 43\n  \u2713 helix-identity keygen <name> generates ED25519 keypair and prints f",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: feat-identity-cli\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 build: \n  \u2713 lint: \n  \u2713 tests: \n  \u2713 secrets: \n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2713 helix-identity sync --dry-run exits 0 and prints agent provisioning plan: Binary exits 0 with valid known-friends.json, prints [DRY RUN] API calls, agent table with 'would create', and 'DRY RUN COMPLETE' message\n  \u2713 helix-identity status prints table of provisioned agents with Forgejo IDs: Binary prints table with AGENT, FORGEJO ID, SSH KEY, PAT, LAST SYNC columns showing agents with ForgejoAccountID 42 and 43\n  \u2713 helix-identity keygen <name> generates ED25519 keypair and prints fingerprint: Binary generates id_ed25519 and id_ed25519.pub under key dir, prints 'ssh fingerprint: SHA256:...'\n  \u2713 helix-identity provision <name> --dry-run exits 0 (stub mode): Binary exits 0, prints '\u2705 agent=test-agent action=created duration=1ms   ssh fingerprint: SHA256:...'\n  \u2713 helix-identity deprovision <name> --dry-run exits 0 (stub mode): Binary exits 0, prints '\u2705 agent=testagent action=skipped duration=0s'\n  \u2713 All subcommands accept --forgejo-url and --admin-token flags: TestBuildConfig_HonorsFlags in main_test.go verifies flag parsing; all binary invocations accept both flags as persistent flags on root command\n  \u2717 Unknown subcommand prints usage to stderr and exits 1: Binary exits with code 2 (ExitGeneral=2 from pkg/identity/types.go:44), not 1 as specified; also prints only 'ERROR: unknown command...' not full usage text\n6 of 7 criteria pass; criterion 7 fails because unknown subcommand exits with code 2 instead of 1\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-06-26T06:22:22.932152"
+}
