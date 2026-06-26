@@ -415,9 +415,9 @@
 - **Logic:** newRootCmd (2 subcommands: debate, resolve), newDebateCmd/newResolveCmd (flag defaults, required flags), verdictEmoji (all 3 verdicts + unknown), parsePRNumber (valid/invalid/empty/boundary), auditLogPath, renderNegotiationResult (with/without chimera), defaultConfigPath, lookupAgent
 - **Result:** 14 test functions, all pass. Coverage: 0% → 30.2%. Honest ceiling — runDebate/runResolve/runResolveWithPositions need infrastructure. Commit: ae1e1f6
 
-## [ ] Write Go tests for cmd/helix-estimate/main.go — CLI test coverage
+## [x] Write Go tests for cmd/helix-estimate/main.go — CLI test coverage (completed 2026-06-25)
 - **Priority:** high
 - **Model:** direct write — Cobra, stdout capture, pure helpers
 - **Files:** cmd/helix-estimate/main_test.go (NEW)
-- **AC:** `go test ./cmd/helix-estimate/... -count=1 -cover` passes with >35% coverage on estimate CLI
-- **Logic:** newRootCmd (3 subcommands: estimate, check, report), newEstimateCmd/newCheckCmd/newReportCmd (flag defaults), estimateTier, validateEstimateOpts, statusEmoji, periodLabel, coldStartNote, renderEstimate/EstimateTable/Check/Report, defaultPricingPath, defaultFriendsPath
+- **AC:** `go test ./cmd/helix-estimate/... -count=1 -cover` passes with >35% coverage on estimate CLI ✅ **63.6%**
+- **Result:** 39 test functions, all pass. Covered: newRootCmd (3 subcommands verified), newEstimateCmd (8 flag defaults), newCheckCmd (3 flag defaults), newReportCmd (2 flag defaults), estimateTier (6 subtests), statusEmoji (5 cases), periodLabel (4 cases), coldStartNote (4 subtests), toTaskDesc (all 8 fields), validateEstimateOpts (6 subtests), defaultPricingPath, defaultFriendsPath, friendBudget.toBudgetInfo (2 subtests), loadAllBudgets (4 subtests incl. wrapped/bare formats + error paths), loadAgentBudget (found+not found), renderEstimate (table/json/summary), renderEstimateTable, renderCheck (table/json/summary), renderReport (table/json/empty-display-name/zero-budget), command tree (7 subtests: help + missing args + unknown command). Coverage: 0% → 63.6%. Commit: <pending>
