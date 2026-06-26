@@ -415,6 +415,14 @@
 - **Logic:** newRootCmd (2 subcommands: debate, resolve), newDebateCmd/newResolveCmd (flag defaults, required flags), verdictEmoji (all 3 verdicts + unknown), parsePRNumber (valid/invalid/empty/boundary), auditLogPath, renderNegotiationResult (with/without chimera), defaultConfigPath, lookupAgent
 - **Result:** 14 test functions, all pass. Coverage: 0% → 30.2%. Honest ceiling — runDebate/runResolve/runResolveWithPositions need infrastructure. Commit: ae1e1f6
 
+## [x] Write Go tests for cmd/helix/main.go — CLI test coverage (completed 2026-06-26)
+- **Priority:** high
+- **Model:** direct write — cobra-free dispatcher, pure helpers
+- **Files:** cmd/helix/main.go (refactor), cmd/helix/main_test.go (NEW)
+- **AC:** `go test ./cmd/helix/... -count=1 -cover` passes with >60% coverage on helix CLI ✅ **92.0%**
+- **Logic:** urlToAddr (5 address formats + edge cases), sortedKeys (empty/normal/single), printVersion (stdout capture), printUsage (stdout capture), lookPath (local files, PATH fallback, perms), dispatch (--help/--version/--verbose/--config/--dry-run + unknown subcommand + valid subcommand routing), execSubcommand (missing binary, verbose, dry-run), runStatus (minimal — component listing, missing binary detection), checkEndpoint (TCP dial timeout — skipped, URL parsing tested via urlToAddr)
+- **Result:** Refactored Execute() → dispatch(args []string) for testability. 22 test functions covering all pure helpers + full dispatch logic (global flags, built-in commands, subcommand routing, error paths). Coverage: 0% → 92.0%. Build/vet/test all pass.
+
 ## [x] Write Go tests for cmd/helix-estimate/main.go — CLI test coverage (completed 2026-06-25)
 - **Priority:** high
 - **Model:** direct write — Cobra, stdout capture, pure helpers
