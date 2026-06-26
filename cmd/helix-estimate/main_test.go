@@ -21,7 +21,7 @@ func captureStdout(t *testing.T, fn func(w *os.File)) string {
 	fn(w)
 	w.Close()
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	return buf.String()
 }
 
@@ -438,7 +438,7 @@ func TestLoadAllBudgets(t *testing.T) {
 	t.Run("wrapped_format", func(t *testing.T) {
 		data := `{"version": 1, "agents": {"agent1": {"display_name": "Agent One", "tier": "pro", "budget_usd_weekly": 100}}}`
 		path := filepath.Join(t.TempDir(), "friends.json")
-		os.WriteFile(path, []byte(data), 0644)
+		_ = os.WriteFile(path, []byte(data), 0644)
 		budgets, err := loadAllBudgets(path)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -454,7 +454,7 @@ func TestLoadAllBudgets(t *testing.T) {
 	t.Run("bare_format", func(t *testing.T) {
 		data := `{"agent2": {"display_name": "Agent Two", "tier": "flash", "budget_usd_weekly": 50}}`
 		path := filepath.Join(t.TempDir(), "friends.json")
-		os.WriteFile(path, []byte(data), 0644)
+		_ = os.WriteFile(path, []byte(data), 0644)
 		budgets, err := loadAllBudgets(path)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -476,7 +476,7 @@ func TestLoadAllBudgets(t *testing.T) {
 
 	t.Run("invalid_json", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "bad.json")
-		os.WriteFile(path, []byte("{invalid json"), 0644)
+		_ = os.WriteFile(path, []byte("{invalid json"), 0644)
 		_, err := loadAllBudgets(path)
 		if err == nil {
 			t.Error("expected error for invalid JSON")
@@ -492,7 +492,7 @@ func TestLoadAgentBudget(t *testing.T) {
 	t.Run("found_agent", func(t *testing.T) {
 		data := `{"agent1": {"display_name": "Agent One", "tier": "pro", "budget_usd_weekly": 100}}`
 		path := filepath.Join(t.TempDir(), "friends.json")
-		os.WriteFile(path, []byte(data), 0644)
+		_ = os.WriteFile(path, []byte(data), 0644)
 		bi, err := loadAgentBudget(path, "agent1")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -505,7 +505,7 @@ func TestLoadAgentBudget(t *testing.T) {
 	t.Run("not_found", func(t *testing.T) {
 		data := `{"agent1": {"tier": "pro", "budget_usd_weekly": 100}}`
 		path := filepath.Join(t.TempDir(), "friends.json")
-		os.WriteFile(path, []byte(data), 0644)
+		_ = os.WriteFile(path, []byte(data), 0644)
 		_, err := loadAgentBudget(path, "noexist")
 		if err == nil {
 			t.Error("expected error")
@@ -519,10 +519,10 @@ func TestLoadAgentBudget(t *testing.T) {
 
 func makeCostEstimate(model string, total float64) estimate.CostEstimate {
 	return estimate.CostEstimate{
-		Provider:  "deepseek",
-		Model:     model,
-		CostTotal: total,
-		CostInput: total * 0.8,
+		Provider:   "deepseek",
+		Model:      model,
+		CostTotal:  total,
+		CostInput:  total * 0.8,
 		CostOutput: total * 0.2,
 		Tokens: estimate.TokenEstimate{
 			TotalInput:    5000,
