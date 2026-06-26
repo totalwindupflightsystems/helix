@@ -100,7 +100,12 @@ type dispatcher struct {
 
 // Execute parses os.Args and dispatches to the appropriate subcommand.
 func (d *dispatcher) Execute() error {
-	args := os.Args[1:]
+	return d.dispatch(os.Args[1:])
+}
+
+// dispatch parses the given args and dispatches to the appropriate subcommand.
+// Exported for testing — callers should use Execute() in production.
+func (d *dispatcher) dispatch(args []string) error {
 
 	// Parse global flags
 	filtered := make([]string, 0, len(args))
