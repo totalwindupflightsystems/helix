@@ -1,5 +1,13 @@
 # Helix Coding Tasks — Foreman Queue
 
+## [x] Test loadAgents() in cmd/helix-negotiate (completed 2026-06-27)
+- **Priority:** low
+- **Model:** direct write — pure JSON file reader, temp file fixtures
+- **Files:** cmd/helix-negotiate/main_test.go
+- **AC:** `go test ./cmd/helix-negotiate/... -count=1 -cover` passes with >34% coverage on negotiate CLI ✅ **35.7%**
+- **Logic:** 6 subtests: wrapped shape, bare shape, file not found, invalid JSON, empty wrapped falls to bare error, bare with no agents key
+- **Result:** +90 lines, 6 subtests, all pass. CLI coverage: 30.2% → 35.7% (+5.5pp). Commit: 70696e9
+
 ## [x] Complete Merge() coverage — 6 missing section-branch tests (completed 2026-06-27)
 - **Priority:** medium
 - **Model:** direct write — mechanical test additions, spawn threshold not met
