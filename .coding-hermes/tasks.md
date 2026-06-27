@@ -1,5 +1,12 @@
 # Helix Coding Tasks — Foreman Queue
 
+## [x] Complete Merge() coverage — 6 missing section-branch tests (completed 2026-06-27)
+- **Priority:** medium
+- **Model:** direct write — mechanical test additions, spawn threshold not met
+- **Files:** pkg/config/config_test.go
+- **AC:** `go test ./pkg/config/... -count=1 -cover` passes with 100% coverage on config package ✅ **100.0%**
+- **Result:** Added 6 test functions (LangFuse, GitReins, Identity, Estimator, Marketplace, Prompts merge sections). Package 87.8% → 100.0%. Commit: 507bb4d
+
 ## [x] Implement pkg/config — platform-wide configuration loader (completed 2026-06-25)
 - **Priority:** medium
 - **Model:** direct write — new package, spawn threshold not met
