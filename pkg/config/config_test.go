@@ -268,6 +268,84 @@ func TestMerge_OverridesNegotiation(t *testing.T) {
 	}
 }
 
+func TestMerge_OverridesLangFuseURL(t *testing.T) {
+	cfg := Defaults()
+	src := &Config{
+		LangFuse: LangFuseConfig{
+			URL: "http://custom-langfuse:3100",
+		},
+	}
+	cfg.Merge(src)
+	if cfg.LangFuse.URL != "http://custom-langfuse:3100" {
+		t.Errorf("expected langfuse URL override, got %s", cfg.LangFuse.URL)
+	}
+}
+
+func TestMerge_OverridesGitReinsModel(t *testing.T) {
+	cfg := Defaults()
+	src := &Config{
+		GitReins: GitReinsConfig{
+			Model: "custom-model",
+		},
+	}
+	cfg.Merge(src)
+	if cfg.GitReins.Model != "custom-model" {
+		t.Errorf("expected gitreins model override, got %s", cfg.GitReins.Model)
+	}
+}
+
+func TestMerge_OverridesIdentityKnownFriends(t *testing.T) {
+	cfg := Defaults()
+	src := &Config{
+		Identity: IdentityConfig{
+			KnownFriendsPath: "/custom/path/known-friends.json",
+		},
+	}
+	cfg.Merge(src)
+	if cfg.Identity.KnownFriendsPath != "/custom/path/known-friends.json" {
+		t.Errorf("expected identity known_friends_path override, got %s", cfg.Identity.KnownFriendsPath)
+	}
+}
+
+func TestMerge_OverridesEstimatorPricing(t *testing.T) {
+	cfg := Defaults()
+	src := &Config{
+		Estimator: EstimatorConfig{
+			PricingPath: "/custom/path/pricing.yaml",
+		},
+	}
+	cfg.Merge(src)
+	if cfg.Estimator.PricingPath != "/custom/path/pricing.yaml" {
+		t.Errorf("expected estimator pricing_path override, got %s", cfg.Estimator.PricingPath)
+	}
+}
+
+func TestMerge_OverridesMarketplaceRegistry(t *testing.T) {
+	cfg := Defaults()
+	src := &Config{
+		Marketplace: MarketplaceConfig{
+			RegistryPath: "/custom/path/registry",
+		},
+	}
+	cfg.Merge(src)
+	if cfg.Marketplace.RegistryPath != "/custom/path/registry" {
+		t.Errorf("expected marketplace registry_path override, got %s", cfg.Marketplace.RegistryPath)
+	}
+}
+
+func TestMerge_OverridesPromptsRegistry(t *testing.T) {
+	cfg := Defaults()
+	src := &Config{
+		Prompts: PromptsConfig{
+			RegistryPath: "/custom/path/prompts",
+		},
+	}
+	cfg.Merge(src)
+	if cfg.Prompts.RegistryPath != "/custom/path/prompts" {
+		t.Errorf("expected prompts registry_path override, got %s", cfg.Prompts.RegistryPath)
+	}
+}
+
 func TestMerge_DoesNotOverrideWithZeroValues(t *testing.T) {
 	cfg := Defaults()
 	src := &Config{} // all zero values
