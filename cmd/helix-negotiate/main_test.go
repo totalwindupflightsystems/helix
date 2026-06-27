@@ -338,3 +338,93 @@ func TestCommandTree(t *testing.T) {
 		}
 	})
 }
+
+// ---------------------------------------------------------------------------
+// loadAgents
+// ---------------------------------------------------------------------------
+
+func TestLoadAgents(t *testing.T) {
+	t.Run("wrapped_shape", func(t *testing.T) {
+		dir := t.TempDir()
+		path := dir + "/friends.json"
+		writeFile(t, path, `{"version": 1, "agents": {"alfa": {"forgejo_username": "alfa-user", "tier": "pro", "trust_level": 80}}}`)
+		agents, err := loadAgents(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(agents) != 1 {
+			t.Fatalf("expected 1 agent, got %d", len(agents))
+		}
+		if agents["alfa"].ForgejoUser != "alfa-user" {
+			t.Errorf("expected alfa-user, got %s", agents["alfa"].ForgejoUser)
+		}
+		if agents["alfa"].Tier != "pro" {
+			t.Errorf("expected pro tier, got %s", agents["alfa"].Tier)
+		}
+	})
+
+	t.Run("bare_shape", func(t *testing.T) {
+		dir := t.TempDir()
+		path := dir + "/friends.json"
+		writeFile(t, path, `{"bravo": {"forgejo_username": "bravo-user", "tier": "flash", "trust_level": 60}}`)
+		agents, err := loadAgents(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(agents) != 1 {
+			t.Fatalf("expected 1 agent, got %d", len(agents))
+		}
+		if agents["bravo"].ForgejoUser != "bravo-user" {
+			t.Errorf("expected bravo-user, got %s", agents["bravo"].ForgejoUser)
+		}
+	})
+
+	t.Run("file_not_found", func(t *testing.T) {
+		_, err := loadAgents("/nonexistent/known-friends.json")
+		if err == nil {
+			t.Fatal("expected error for missing file")
+		}
+	})
+
+	t.Run("invalid_json", func(t *testing.T) {
+		dir := t.TempDir()
+		path := dir + "/friends.json"
+		writeFile(t, path, `not json`)
+		_, err := loadAgents(path)
+		if err == nil {
+			t.Fatal("expected error for invalid JSON")
+		}
+	})
+
+	t.Run("wrapped_empty_agents_falls_through_to_bare_error", func(t *testing.T) {
+		dir := t.TempDir()
+		path := dir + "/friends.json"
+		// Wrapped shape with empty agents: len(Agents)==0, so falls through
+		// to bare unmarshal, which fails because "version" is not a friendAgent.
+		writeFile(t, path, `{"version": 1, "agents": {}}`)
+		_, err := loadAgents(path)
+		if err == nil {
+			t.Fatal("expected error: empty wrapped agents falls to bare parse which rejects 'version' key")
+		}
+	})
+
+	t.Run("wrapped_with_no_agents_key_falls_back_to_bare", func(t *testing.T) {
+		dir := t.TempDir()
+		path := dir + "/friends.json"
+		writeFile(t, path, `{"charlie": {"forgejo_username": "charlie-user", "tier": "pro"}}`)
+		agents, err := loadAgents(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if agents["charlie"].ForgejoUser != "charlie-user" {
+			t.Errorf("expected charlie-user, got %s", agents["charlie"].ForgejoUser)
+		}
+	})
+}
+
+func writeFile(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
