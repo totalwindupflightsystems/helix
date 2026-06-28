@@ -28,26 +28,26 @@ type LangFuseAdapter interface {
 
 // LangFuseTrace represents a single LLM interaction trace.
 type LangFuseTrace struct {
-	ID         string
-	Name       string
-	Project    string
-	Input      string  // Prompt text
-	Output     string  // Completion text
-	Model      string
-	Provider   string
-	Usage      LangFuseUsage
-	Cost       float64
-	Metadata   map[string]string
-	Timestamp  string
+	ID        string
+	Name      string
+	Project   string
+	Input     string // Prompt text
+	Output    string // Completion text
+	Model     string
+	Provider  string
+	Usage     LangFuseUsage
+	Cost      float64
+	Metadata  map[string]string
+	Timestamp string
 }
 
 // LangFuseUsage breaks down token usage for a trace.
 type LangFuseUsage struct {
-	InputTokens       int
-	OutputTokens      int
-	TotalTokens       int
-	CacheReadTokens   int
-	CacheWriteTokens  int
+	InputTokens      int
+	OutputTokens     int
+	TotalTokens      int
+	CacheReadTokens  int
+	CacheWriteTokens int
 }
 
 // TraceFilter limits trace queries by time range.
