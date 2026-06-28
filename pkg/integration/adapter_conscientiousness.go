@@ -19,14 +19,14 @@ type ConscientiousnessAdapter interface {
 
 // ConscientiousnessPR bundles the information needed for adversarial review.
 type ConscientiousnessPR struct {
-	RepoOwner       string
-	RepoName        string
-	PRNumber        int
-	Diff            string
-	ChimeraVerdict  *ChimeraVerdict      // Chimera's review (input to adversarial eval)
-	GitReinsEval    *EvalResult          // GitReins Tier 2 result
-	EvidenceBundle  string               // Path to verification.md
-	ACs             []AcceptanceCriterion
+	RepoOwner      string
+	RepoName       string
+	PRNumber       int
+	Diff           string
+	ChimeraVerdict *ChimeraVerdict // Chimera's review (input to adversarial eval)
+	GitReinsEval   *EvalResult     // GitReins Tier 2 result
+	EvidenceBundle string          // Path to verification.md
+	ACs            []AcceptanceCriterion
 }
 
 // AcceptanceCriterion represents a single acceptance criterion check.
@@ -38,7 +38,7 @@ type AcceptanceCriterion struct {
 
 // ConscientiousnessVerdict is the outcome of adversarial evaluation.
 type ConscientiousnessVerdict struct {
-	Status        string  // "DEFENSIBLE", "VULNERABLE", "INDEFENSIBLE"
+	Status        string // "DEFENSIBLE", "VULNERABLE", "INDEFENSIBLE"
 	Confidence    float64
 	AttackVectors []AttackVector
 	Mitigations   []Mitigation
@@ -47,8 +47,8 @@ type ConscientiousnessVerdict struct {
 
 // AttackVector describes a discovered attack surface.
 type AttackVector struct {
-	Description   string
-	Severity      string
+	Description    string
+	Severity       string
 	Exploitability string // "trivial", "moderate", "difficult", "theoretical"
 }
 

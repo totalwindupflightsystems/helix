@@ -25,9 +25,9 @@ type MusterAdapter interface {
 
 // GenerateOpts configures tool generation from OpenAPI specs.
 type GenerateOpts struct {
-	CacheEnabled       bool // Use multi-tier cache (default: true)
-	RateLimitRPS       int  // Max requests/second to source API (default: 10)
-	IncludeDeprecated  bool // Include deprecated endpoints (default: false)
+	CacheEnabled      bool // Use multi-tier cache (default: true)
+	RateLimitRPS      int  // Max requests/second to source API (default: 10)
+	IncludeDeprecated bool // Include deprecated endpoints (default: false)
 }
 
 // MCPTool represents a single MCP tool generated from an API endpoint.
