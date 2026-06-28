@@ -1,5 +1,12 @@
 # Helix Coding Tasks — Foreman Queue
 
+## [x] Fill coverage gaps — stripYAMLFrontmatter + mountToArgs verbose + Run error paths (completed 2026-06-28)
+- **Priority:** medium
+- **Model:** direct write — pure test additions
+- **Files:** pkg/prompt/hasher_test.go, pkg/sandbox/executor_test.go, pkg/sandbox/executor_extended_test.go
+- **AC:** `go test ./... -count=1 -short` all pass, stripYAMLFrontmatter 100%, mountToArgs 100%, Run 100% ✅
+- **Result:** stripYAMLFrontmatter 71.4%→100% (+2 edge cases: closing `---` at end, opening `---` without closing), mountToArgs 72.2%→100% (verbose branches for all 5 mount types), Run 68.8%→100% (BwrapPath not found, SetupSessionDir error, cgroup setup warning). pkg/prompt 92.0%→92.8%, pkg/sandbox 90.6%→94.5%. 6 new test functions, all pass.
+
 ## [x] Implement integration adapter interfaces — GitReins + Chimera + CircuitBreaker (completed 2026-06-27)
 - **Priority:** high
 - **Model:** direct write — pure Go interfaces/types, zero logic

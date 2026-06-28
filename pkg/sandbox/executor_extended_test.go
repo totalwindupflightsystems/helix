@@ -490,3 +490,109 @@ func TestBwrapCommand_ErrorPath(t *testing.T) {
 		t.Errorf("expected ErrConfigInvalid, got: %v", err)
 	}
 }
+
+// =============================================================================
+// Run error path tests — covering remaining branches in Run()
+// =============================================================================
+
+// TestRun_BwrapNotFound verifies that Run returns ErrBwrapNotFound when the
+// configured BwrapPath does not exist on the filesystem.
+func TestRun_BwrapNotFound(t *testing.T) {
+	cfg := SandboxConfig{
+		SessionID:   "test-bwrap-missing",
+		Isolation:   IsolationWorkspace,
+		Workdir:     "/workspace",
+		SessionRoot: t.TempDir(),
+		BwrapPath:   "/nonexistent/bwrap-99999",
+		Command:     []string{"true"},
+	}
+	exec, err := NewExecutor(cfg)
+	if err != nil {
+		t.Fatalf("new executor: %v", err)
+	}
+
+	err = exec.Run(nil)
+	if err == nil {
+		t.Fatal("expected error when BwrapPath is missing")
+	}
+	if !errors.Is(err, ErrBwrapNotFound) {
+		t.Errorf("expected ErrBwrapNotFound, got: %v", err)
+	}
+}
+
+// TestRun_SetupSessionDirError verifies that Run propagates setup errors
+// and cleans up the session directory before returning.
+func TestRun_SetupSessionDirError(t *testing.T) {
+	root := t.TempDir()
+	sessionID := "setup-fail-session"
+
+	// Create a FILE where the session directory should be.
+	sessionDir := filepath.Join(root, sessionID)
+	if err := os.WriteFile(sessionDir, []byte("block"), 0o600); err != nil {
+		t.Fatalf("create blocking file: %v", err)
+	}
+
+	cfg := SandboxConfig{
+		SessionID:   sessionID,
+		Isolation:   IsolationWorkspace,
+		Workdir:     "/workspace",
+		SessionRoot: root,
+		BwrapPath:   "/bin/true",
+		Command:     []string{"true"},
+	}
+	exec, err := NewExecutor(cfg)
+	if err != nil {
+		t.Fatalf("new executor: %v", err)
+	}
+
+	err = exec.Run(nil)
+	if err == nil {
+		t.Fatal("expected error when SetupSessionDir fails")
+	}
+	if !errors.Is(err, ErrSetupFailed) {
+		t.Errorf("expected ErrSetupFailed, got: %v", err)
+	}
+}
+
+// TestRun_CgroupSetupWarning verifies that Run logs a warning (non-fatal)
+// when cgroup setup fails, then continues to the bwrap path.
+func TestRun_CgroupSetupWarning(t *testing.T) {
+	var logBuf bytes.Buffer
+	fakeRoot := t.TempDir()
+
+	// Create a file where the cgroup helix dir should be.
+	// CgroupPath = <CgroupRoot>/helix/<SessionID>
+	helixDir := filepath.Join(fakeRoot, "helix")
+	if err := os.WriteFile(helixDir, []byte("block-cgroup"), 0o600); err != nil {
+		t.Fatalf("create blocking cgroup file: %v", err)
+	}
+
+	cfg := SandboxConfig{
+		SessionID:   "cg-warn-session",
+		Isolation:   IsolationWorkspace,
+		Workdir:     "/workspace",
+		SessionRoot: t.TempDir(),
+		CgroupRoot:  fakeRoot, // controlled cgroup root
+		BwrapPath:   "/bin/true",
+		Command:     []string{"true"},
+		Verbose:     true,
+	}
+	exec, err := NewExecutor(cfg)
+	if err != nil {
+		t.Fatalf("new executor: %v", err)
+	}
+	exec.logger = &logBuf
+
+	// Run should log a cgroup warning but still succeed up to ErrNotImplemented.
+	err = exec.Run(nil)
+	if err == nil {
+		t.Fatal("expected error from Run (stub)")
+	}
+	if !errors.Is(err, ErrNotImplemented) {
+		t.Errorf("expected ErrNotImplemented, got: %v", err)
+	}
+	logStr := logBuf.String()
+	if !strings.Contains(logStr, "cgroup setup warning") {
+		t.Errorf("expected cgroup setup warning in log, got: %q", logStr)
+	}
+}
