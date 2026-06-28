@@ -8,12 +8,13 @@
 - **AC:** `go build ./... && go vet ./... && go test ./... -count=1 -short` all pass ✅
 - **Result:** 3 new source files, 1 test file. CircuitBreaker (7 methods, 9 tests), GitReinsAdapter interface + 8 supporting types (GuardOpts, GuardResult, CheckResult, EvalOpts, EvalResult, Verdict, Evidence, LLMUsage, CostBreakdown), ChimeraAdapter interface + 11 supporting types (ChimeraPR, AgentReview, ReviewOpts, ChimeraVerdict, Finding, ChimeraTrace, StageResult, Formation, ChimeraModel, ChimeraHealth). ServiceEndpoint table + 3 error types (CircuitOpenError, BudgetExhaustedError, ServiceUnavailableError). 13 new tests, all pass. Integration coverage: 25.4% → 32.8% (+7.4pp). Remaining 7 adapters (Conscientiousness, Muster, Axiom, Hivemind, KobayashiMaru, LangFuse, PromptFoo) + OpenCode adapter queued below.
 
-## [ ] Implement remaining integration adapters — Conscientiousness + Muster + Axiom
+## [x] Implement remaining integration adapters — Conscientiousness + Muster + Axiom (completed 2026-06-27)
 - **Priority:** medium
 - **Model:** direct write — pure Go interfaces/types
 - **Files:** pkg/integration/adapter_conscientiousness.go (NEW), pkg/integration/adapter_muster.go (NEW), pkg/integration/adapter_axiom.go (NEW)
-- **Spec:** specs/integrations.md §3-5
-- **AC:** `go build ./... && go vet ./... && go test ./... -count=1 -short` all pass
+- **Spec:** specs/integrations.md §3-4, §6 (Conscientiousness + Muster + Axiom)
+- **AC:** `go build ./... && go vet ./... && go test ./... -count=1 -short` all pass ✅
+- **Result:** 3 new adapter files, 211 lines. ConscientiousnessAdapter (Evaluate, Health) + 7 supporting types (ConscientiousnessPR, AcceptanceCriterion, ConscientiousnessVerdict, AttackVector, Mitigation, ConscientiousnessHealth). MusterAdapter (GenerateTools, ExecuteTool, ListTools, Health) + 6 supporting types (GenerateOpts, MCPTool, ToolParam, AuthConfig, ToolResult, MusterHealth). AxiomAdapter (Run, Cmd, Status, ListWorkItems) + 5 supporting types (RunOpts, AxiomResult, CmdResult, AxiomStatus, WorkItem). Build/vet/test all 16 packages pass. Commit: 25040aa
 
 ## [ ] Implement integration adapters — Hivemind + KobayashiMaru + OpenCode
 - **Priority:** low
