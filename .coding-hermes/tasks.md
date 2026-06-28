@@ -1,5 +1,12 @@
 # Helix Coding Tasks — Foreman Queue
 
+## [x] Fill pkg/identity coverage gaps — saveState, loadStateFile, expandHome, writeKeyFiles, archiveKeys, ActiveAgents, OffboardedAgents edge cases (completed 2026-06-27)
+- **Priority:** medium
+- **Model:** direct write — pure filesystem + map operations, spawn threshold not met
+- **Files:** pkg/identity/syncer_extended_test.go (NEW)
+- **AC:** `go test ./pkg/identity/... -count=1 -cover` passes with >86% coverage on identity package ✅ **86.1%**
+- **Result:** `ActiveAgents` 80.0%→100.0%, `OffboardedAgents` 80.0%→90.0%, `expandHome` 83.3%→91.7%, `saveState` 63.6%→81.8%, `loadStateFile` 80.0%→86.7%, `writeKeyFiles` 75.0%→80.0%, `archiveKeys` 80.0%→85.0%. Package 84.6%→86.1% (+1.5pp). Remaining gaps: `provisionAgent` at 46.2% needs mock provisioner interface — bigger refactor for next tick.
+
 ## [x] Test loadAgents() in cmd/helix-negotiate (completed 2026-06-27)
 - **Priority:** low
 - **Model:** direct write — pure JSON file reader, temp file fixtures
