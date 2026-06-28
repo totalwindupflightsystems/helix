@@ -264,6 +264,16 @@ func TestNormalize(t *testing.T) {
 			input: "---\r\ntitle: Test\r\n---\r\n\r\nBody  text.",
 			want:  "Body text.",
 		},
+		{
+			name:  "YAML frontmatter closing --- at end without trailing newline",
+			input: "---\ntitle: Test\n---",
+			want:  "title: Test",
+		},
+		{
+			name:  "opening --- without closing --- treated as body",
+			input: "---\ntitle: Test\n\n# Body text.",
+			want:  "---\ntitle: Test\n\n# Body text.",
+		},
 	}
 
 	for _, tc := range tests {

@@ -856,6 +856,72 @@ func TestMountToArgs_UnknownKind(t *testing.T) {
 	}
 }
 
+// TestMountToArgs_Verbose verifies verbose logging for all five mount kinds.
+func TestMountToArgs_Verbose(t *testing.T) {
+	var buf bytes.Buffer
+	exec := &BwrapExecutor{
+		Config: SandboxConfig{
+			SessionRoot: t.TempDir(),
+			Verbose:     true,
+		},
+		logger: &buf,
+	}
+
+	tests := []struct {
+		name    string
+		m       MountPoint
+		wantArg string
+		wantLog string
+	}{
+		{
+			name:    "bind writable",
+			m:       MountPoint{Source: "/src", Target: "/dst", Kind: MountBind, ReadOnly: false},
+			wantArg: "--bind",
+			wantLog: "bind /src → /dst",
+		},
+		{
+			name:    "bind read-only",
+			m:       MountPoint{Source: "/src", Target: "/dst", Kind: MountBind, ReadOnly: true},
+			wantArg: "--ro-bind",
+			wantLog: "ro-bind /src → /dst",
+		},
+		{
+			name:    "proc",
+			m:       MountPoint{Target: "/proc", Kind: MountProc},
+			wantArg: "--proc",
+			wantLog: "proc → /proc",
+		},
+		{
+			name:    "dev",
+			m:       MountPoint{Target: "/dev", Kind: MountDev},
+			wantArg: "--dev",
+			wantLog: "dev → /dev",
+		},
+		{
+			name:    "tmpfs",
+			m:       MountPoint{Target: "/tmp", Kind: MountTmpfs},
+			wantArg: "--tmpfs",
+			wantLog: "tmpfs → /tmp",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			buf.Reset()
+			args, err := exec.mountToArgs(tc.m)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if args[0] != tc.wantArg {
+				t.Errorf("expected flag %q, got %q", tc.wantArg, args[0])
+			}
+			if !strings.Contains(buf.String(), tc.wantLog) {
+				t.Errorf("expected log %q in %q", tc.wantLog, buf.String())
+			}
+		})
+	}
+}
+
 // =============================================================================
 // Helper
 // =============================================================================
