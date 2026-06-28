@@ -37,10 +37,10 @@ type RunOpts struct {
 // AxiomResult captures the outcome of a full Axiom pipeline run.
 type AxiomResult struct {
 	WorkItemID string
-	Status     string  // "complete", "failed", "blocked"
+	Status     string // "complete", "failed", "blocked"
 	Confidence float64
-	Evidence   string  // Path to evidence bundle
-	PR         string  // PR URL
+	Evidence   string // Path to evidence bundle
+	PR         string // PR URL
 	Cost       float64
 	Duration   float64
 }
@@ -54,18 +54,18 @@ type CmdResult struct {
 
 // AxiomStatus reports current pipeline state.
 type AxiomStatus struct {
-	ActiveRuns    int
-	QueuedItems   int
-	CurrentPhase  string
-	BlockedItems  []string
+	ActiveRuns   int
+	QueuedItems  int
+	CurrentPhase string
+	BlockedItems []string
 }
 
 // WorkItem represents a single Axiom-managed task.
 type WorkItem struct {
 	ID         string
 	Title      string
-	Status     string  // "pending", "in_progress", "complete", "blocked"
+	Status     string // "pending", "in_progress", "complete", "blocked"
 	Priority   string
-	Assignee   string  // Agent name
+	Assignee   string // Agent name
 	Confidence float64
 }
