@@ -39,7 +39,7 @@ type ChimeraPR struct {
 // AgentReview represents a single agent's review on a PR.
 type AgentReview struct {
 	AgentName  string
-	Verdict    string   // "APPROVED", "REQUEST_CHANGES", "COMMENT"
+	Verdict    string // "APPROVED", "REQUEST_CHANGES", "COMMENT"
 	Body       string
 	Evidence   []string
 	TrustLevel int
@@ -75,7 +75,7 @@ type Finding struct {
 
 // ChimeraTrace records the deliberation execution path.
 type ChimeraTrace struct {
-	Source      string       // "full" (multi-model) or "fallback" (single-model)
+	Source      string // "full" (multi-model) or "fallback" (single-model)
 	Stages      []StageResult
 	Duration    float64
 	TotalTokens int

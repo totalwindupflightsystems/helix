@@ -36,13 +36,13 @@ type GuardOpts struct {
 type GuardResult struct {
 	Passed   bool
 	Checks   map[string]CheckResult // key: "secrets", "lint", "tests", "build"
-	Duration float64                 // seconds
+	Duration float64                // seconds
 }
 
 // CheckResult holds the result of a single guard check.
 type CheckResult struct {
 	Passed   bool
-	Output   string  // stdout/stderr summary
+	Output   string // stdout/stderr summary
 	Duration float64
 }
 
@@ -67,7 +67,7 @@ type EvalResult struct {
 
 // Verdict represents a single criterion evaluation.
 type Verdict struct {
-	Status string  // "PASS", "FAIL", "INCONCLUSIVE"
+	Status string // "PASS", "FAIL", "INCONCLUSIVE"
 	Reason string
 	Score  float64 // 0.0-1.0
 }

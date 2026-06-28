@@ -65,9 +65,9 @@ func TestCircuitBreaker_HalfOpenProbe(t *testing.T) {
 
 	// Wait for reset timeout
 	time.Sleep(15 * time.Millisecond)
-	assert.True(t, cb.Allow())       // transitions to half-open
+	assert.True(t, cb.Allow()) // transitions to half-open
 	assert.Equal(t, "half-open", cb.State())
-	assert.True(t, cb.Allow())       // still half-open (probe in progress)
+	assert.True(t, cb.Allow()) // still half-open (probe in progress)
 	assert.Equal(t, "half-open", cb.State())
 }
 
@@ -77,8 +77,8 @@ func TestCircuitBreaker_RecordSuccess(t *testing.T) {
 	assert.Equal(t, "open", cb.State())
 
 	time.Sleep(15 * time.Millisecond)
-	assert.True(t, cb.Allow())        // half-open
-	cb.RecordSuccess()                // should close
+	assert.True(t, cb.Allow()) // half-open
+	cb.RecordSuccess()         // should close
 	assert.Equal(t, "closed", cb.State())
 	assert.Equal(t, 0, cb.Failures())
 	assert.True(t, cb.Allow())
@@ -87,7 +87,7 @@ func TestCircuitBreaker_RecordSuccess(t *testing.T) {
 func TestCircuitBreaker_ResetTimeoutNotElapsed(t *testing.T) {
 	cb := NewCircuitBreaker(1, 1*time.Hour)
 	cb.RecordFailure()
-	assert.False(t, cb.Allow()) // still open, timeout hasn't elapsed
+	assert.False(t, cb.Allow())         // still open, timeout hasn't elapsed
 	assert.Equal(t, "open", cb.State()) // stays open
 }
 
