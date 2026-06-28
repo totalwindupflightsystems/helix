@@ -1,5 +1,34 @@
 # Helix Coding Tasks — Foreman Queue
 
+## [x] Implement integration adapter interfaces — GitReins + Chimera + CircuitBreaker (completed 2026-06-27)
+- **Priority:** high
+- **Model:** direct write — pure Go interfaces/types, zero logic
+- **Files:** pkg/integration/types.go (NEW), pkg/integration/adapter_gitreins.go (NEW), pkg/integration/adapter_chimera.go (NEW), pkg/integration/types_test.go (NEW)
+- **Spec:** specs/integrations.md §1-2, specs/cross-component-wiring.md §1, §7, §8
+- **AC:** `go build ./... && go vet ./... && go test ./... -count=1 -short` all pass ✅
+- **Result:** 3 new source files, 1 test file. CircuitBreaker (7 methods, 9 tests), GitReinsAdapter interface + 8 supporting types (GuardOpts, GuardResult, CheckResult, EvalOpts, EvalResult, Verdict, Evidence, LLMUsage, CostBreakdown), ChimeraAdapter interface + 11 supporting types (ChimeraPR, AgentReview, ReviewOpts, ChimeraVerdict, Finding, ChimeraTrace, StageResult, Formation, ChimeraModel, ChimeraHealth). ServiceEndpoint table + 3 error types (CircuitOpenError, BudgetExhaustedError, ServiceUnavailableError). 13 new tests, all pass. Integration coverage: 25.4% → 32.8% (+7.4pp). Remaining 7 adapters (Conscientiousness, Muster, Axiom, Hivemind, KobayashiMaru, LangFuse, PromptFoo) + OpenCode adapter queued below.
+
+## [ ] Implement remaining integration adapters — Conscientiousness + Muster + Axiom
+- **Priority:** medium
+- **Model:** direct write — pure Go interfaces/types
+- **Files:** pkg/integration/adapter_conscientiousness.go (NEW), pkg/integration/adapter_muster.go (NEW), pkg/integration/adapter_axiom.go (NEW)
+- **Spec:** specs/integrations.md §3-5
+- **AC:** `go build ./... && go vet ./... && go test ./... -count=1 -short` all pass
+
+## [ ] Implement integration adapters — Hivemind + KobayashiMaru + OpenCode
+- **Priority:** low
+- **Model:** direct write — pure Go interfaces/types
+- **Files:** pkg/integration/adapter_hivemind.go (NEW), pkg/integration/adapter_kobayashimaru.go (NEW), pkg/integration/adapter_opencode.go (NEW)
+- **Spec:** specs/integrations.md §6-8 (adapters to be defined)
+- **AC:** `go build ./... && go vet ./... && go test ./... -count=1 -short` all pass
+
+## [ ] Implement integration adapters — LangFuse + PromptFoo
+- **Priority:** low
+- **Model:** direct write — pure Go interfaces/types
+- **Files:** pkg/integration/adapter_langfuse.go (NEW), pkg/integration/adapter_promptfoo.go (NEW)
+- **Spec:** specs/integrations.md §9 + prompt-registry.md
+- **AC:** `go build ./... && go vet ./... && go test ./... -count=1 -short` all pass
+
 ## [x] Fill pkg/identity coverage gaps — saveState, loadStateFile, expandHome, writeKeyFiles, archiveKeys, ActiveAgents, OffboardedAgents edge cases (completed 2026-06-27)
 - **Priority:** medium
 - **Model:** direct write — pure filesystem + map operations, spawn threshold not met
