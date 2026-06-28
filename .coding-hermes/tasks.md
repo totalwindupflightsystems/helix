@@ -16,19 +16,21 @@
 - **AC:** `go build ./... && go vet ./... && go test ./... -count=1 -short` all pass ✅
 - **Result:** 3 new adapter files, 211 lines. ConscientiousnessAdapter (Evaluate, Health) + 7 supporting types (ConscientiousnessPR, AcceptanceCriterion, ConscientiousnessVerdict, AttackVector, Mitigation, ConscientiousnessHealth). MusterAdapter (GenerateTools, ExecuteTool, ListTools, Health) + 6 supporting types (GenerateOpts, MCPTool, ToolParam, AuthConfig, ToolResult, MusterHealth). AxiomAdapter (Run, Cmd, Status, ListWorkItems) + 5 supporting types (RunOpts, AxiomResult, CmdResult, AxiomStatus, WorkItem). Build/vet/test all 16 packages pass. Commit: 25040aa
 
-## [ ] Implement integration adapters — Hivemind + KobayashiMaru + OpenCode
+## [x] Implement integration adapters — Hivemind + KobayashiMaru + OpenCode (completed 2026-06-27)
 - **Priority:** low
 - **Model:** direct write — pure Go interfaces/types
 - **Files:** pkg/integration/adapter_hivemind.go (NEW), pkg/integration/adapter_kobayashimaru.go (NEW), pkg/integration/adapter_opencode.go (NEW)
-- **Spec:** specs/integrations.md §6-8 (adapters to be defined)
-- **AC:** `go build ./... && go vet ./... && go test ./... -count=1 -short` all pass
+- **Spec:** specs/integrations.md §5, §7 + specs/SPECIFICATION.md §3.14
+- **AC:** `go build ./... && go vet ./... && go test ./... -count=1 -short` all pass ✅
+- **Result:** 3 new adapter files, 222 lines. HivemindAdapter (6 methods: ScheduleTask, ClaimTask, CompleteTask, ReadMemory, WriteMemory, Health) + 5 supporting types. KobayashiMaruAdapter (3 methods: RunScenario, ListScenarios, Metrics) + 7 supporting types. OpenCodeAdapter (6 methods: CreateSession, SendPrompt, GetSession, ListSessions, CancelSession, Health) + 5 supporting types. Build/vet/test all 16 packages pass. Commit: 990c6ed
 
-## [ ] Implement integration adapters — LangFuse + PromptFoo
+## [x] Implement integration adapters — LangFuse + PromptFoo (completed 2026-06-27)
 - **Priority:** low
 - **Model:** direct write — pure Go interfaces/types
 - **Files:** pkg/integration/adapter_langfuse.go (NEW), pkg/integration/adapter_promptfoo.go (NEW)
-- **Spec:** specs/integrations.md §9 + prompt-registry.md
-- **AC:** `go build ./... && go vet ./... && go test ./... -count=1 -short` all pass
+- **Spec:** specs/integrations.md §9 + prompt-registry.md §10
+- **AC:** `go build ./... && go vet ./... && go test ./... -count=1 -short` all pass ✅
+- **Result:** 2 new adapter files, 135 lines. LangFuseAdapter (4 methods: IngestTrace, GetTrace, ListTraces, Health) + 6 supporting types (LangFuseTrace, LangFuseUsage, TraceFilter, LangFuseIngestResult, LangFuseHealth). PromptFooAdapter (4 methods: GenerateConfig, RunEval, GetResults, ValidateConfig) + 4 supporting types (PromptFooPromptDef, PromptFooRunOpts, PromptFooEvalResult, PromptFooTestResult). Build/vet/test all 16 packages pass. Commit: 76b0dd0
 
 ## [x] Fill pkg/identity coverage gaps — saveState, loadStateFile, expandHome, writeKeyFiles, archiveKeys, ActiveAgents, OffboardedAgents edge cases (completed 2026-06-27)
 - **Priority:** medium
