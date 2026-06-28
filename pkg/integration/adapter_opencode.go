@@ -35,10 +35,10 @@ type OpenCodeAdapter interface {
 
 // SessionOpts configures a new OpenCode session.
 type SessionOpts struct {
-	Model      string // LLM model for this session
-	WorkDir    string // Working directory inside the sandbox
-	Timeout    int    // Session timeout in seconds
-	MaxTurns   int    // Max reasoning turns before auto-cancel
+	Model    string // LLM model for this session
+	WorkDir  string // Working directory inside the sandbox
+	Timeout  int    // Session timeout in seconds
+	MaxTurns int    // Max reasoning turns before auto-cancel
 }
 
 // Session represents an active OpenCode coding session.
@@ -63,11 +63,11 @@ type SessionResult struct {
 
 // OpenCodeTokens breaks down token usage for a session result.
 type OpenCodeTokens struct {
-	InputTokens       int
-	OutputTokens      int
-	CacheReadTokens   int
-	CacheWriteTokens  int
-	TotalTokens       int
+	InputTokens      int
+	OutputTokens     int
+	CacheReadTokens  int
+	CacheWriteTokens int
+	TotalTokens      int
 }
 
 // OpenCodeHealth reports OpenCode's operational status.

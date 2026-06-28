@@ -39,19 +39,19 @@ type PromptFooPromptDef struct {
 
 // PromptFooRunOpts configures a PromptFoo eval run.
 type PromptFooRunOpts struct {
-	ConfigPath  string   // Path to .promptfoo.yaml
-	Prompts     []string // Filter specific prompts (empty = all)
-	MaxConcurrency int   // Max parallel eval workers
-	Repeat      int      // Repeat each test N times
+	ConfigPath     string   // Path to .promptfoo.yaml
+	Prompts        []string // Filter specific prompts (empty = all)
+	MaxConcurrency int      // Max parallel eval workers
+	Repeat         int      // Repeat each test N times
 }
 
 // PromptFooEvalResult captures the outcome of a PromptFoo eval run.
 type PromptFooEvalResult struct {
-	TotalTests   int
-	PassedTests  int
-	FailedTests  int
-	Results      []PromptFooTestResult
-	Duration     float64
+	TotalTests  int
+	PassedTests int
+	FailedTests int
+	Results     []PromptFooTestResult
+	Duration    float64
 }
 
 // PromptFooTestResult is a single test outcome.

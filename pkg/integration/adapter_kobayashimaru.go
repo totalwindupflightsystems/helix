@@ -32,20 +32,20 @@ type Scenario struct {
 
 // ScenarioOpts configures a scenario run.
 type ScenarioOpts struct {
-	Timeout      string            // "5m", "30m", "2h"
-	Params       map[string]string // Scenario-specific parameters
-	RecordVideo  bool              // Record terminal session
+	Timeout     string            // "5m", "30m", "2h"
+	Params      map[string]string // Scenario-specific parameters
+	RecordVideo bool              // Record terminal session
 }
 
 // ScenarioResult captures the outcome of a stress test.
 type ScenarioResult struct {
-	Passed          bool          // Did the target survive? (Almost always false for unwinnable)
-	Score           float64       // 0.0-1.0
-	Attempts        int
-	CheatsDetected  []CheatAttempt
-	Findings        []ScenarioFinding
-	Logs            string  // Loki query reference
-	Cost            float64
+	Passed         bool    // Did the target survive? (Almost always false for unwinnable)
+	Score          float64 // 0.0-1.0
+	Attempts       int
+	CheatsDetected []CheatAttempt
+	Findings       []ScenarioFinding
+	Logs           string // Loki query reference
+	Cost           float64
 }
 
 // CheatAttempt records a detected cheating attempt during a scenario.
