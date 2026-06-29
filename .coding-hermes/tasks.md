@@ -114,6 +114,38 @@
 - **Files:** pkg/dispatcher/forgejo_spawn.go, pkg/dispatcher/spawn_test.go
 - **AC:** `helix dispatch --spec specs/agent-identity.md --agent test-agent` creates a branch in Forgejo, provisions an agent, and returns a PR URL
 - **Logic:** Full Ralph Loop: acquire lock → create worktree → spawn agent → wait for completion → run GitReins guards → open PR → return URL. Requires Forgejo running on :3030.
+- **Note:** Blocked until Forgejo is running. Cannot test without live service.
+
+## [x] Implement merge gate validator — pkg/mergegate/
+- **Priority:** high
+- **Spec:** specs/adversarial-review.md §Integration Points + specs/production-verification.md §Integration Points
+- **Model:** direct write — Go package, composes existing components
+- **Files:** pkg/mergegate/gate.go, pkg/mergegate/gate_test.go
+- **AC:** `go build ./... && go test ./pkg/mergegate/... -count=1 -cover` passes with >85% coverage
+- **Logic:** MergeGate that validates all preconditions before allowing a merge:
+  1. Evidence bundle exists and signatures are valid (pkg/review.EvidenceBundle)
+  2. Behavior contract exists and assertions are well-formed (pkg/verify.BehaviorContract)
+  3. Trust tier meets minimum requirement for changed file categories (scripts/check-trust-tier.sh logic)
+  4. Consensus threshold was met (from review.ReviewOrchestrator)
+  5. Cost guard was approved (pkg/dispatcher.CostGuard)
+  Returns MergeDecision (ALLOWED/BLOCKED/ESCALATED) with per-check results and reason messages.
+- **Result:** [x] MergeGate composes 5 checks: evidence bundle, consensus, behavior contract, trust tier, cost guard. ALLOWED/BLOCKED/ESCALATED decisions. 55 tests, 95.7% coverage. Full suite 24/24 pass.
+
+## [ ] Implement PR negotiation cost reconciliation — pkg/negotiate/
+- **Priority:** medium
+- **Spec:** specs/pr-negotiation.md §9.3 (Cost Split)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/negotiate/cost_recon.go (NEW), pkg/negotiate/cost_recon_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
+- **Logic:** CostReconciler tracks debate costs across rounds, splits tie-break costs between disagreeing agents, checks against agent weekly budgets (pkg/estimate.BudgetTracker), and flags cost overruns. Report with per-agent cost breakdown.
+
+## [ ] Implement incident learning feedback loop — pkg/incident/
+- **Priority:** medium
+- **Spec:** specs/adversarial-review.md §Integration Points: "All incidents → learning database → future review training"
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/incident/learning.go (NEW), pkg/incident/learning_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/incident/... -count=1 -cover` passes with >85% coverage
+- **Logic:** LearningDatabase stores incident patterns, maps them to review criteria. When a similar code change is detected (by file category, change type), the system surfaces relevant past incidents as review context. Pattern similarity scoring (keyword overlap + severity match). FeedReviewContext returns past incidents relevant to a new PR.
 
 ## [x] Implement retry middleware with exponential backoff
 - **Priority:** medium
