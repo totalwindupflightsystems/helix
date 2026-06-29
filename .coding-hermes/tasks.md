@@ -164,3 +164,35 @@
 - **AC:** `go build ./... && go test ./pkg/incident/... -count=1 -cover` passes with >80% coverage
 - **Logic:** Trace causal chain from incident → changed code paths → merge commit → responsible agent. Attribution weights: author 70%, reviewers 20% (shared), approving human 10%. Feed attribution result into trust scoring engine (pkg/trust). Record evidence links in incident record. Multiple agents → shared responsibility distribution.
 - **Result:** [x] AttributionEngine with spec-compliant weights (author 70%, reviewers 20% shared, approver 10%). Multi-path normalization (sums to 1.0). TrustPenalty with severity multipliers (low 0.05, medium 0.10, high 0.20, critical 0.40). ApplyTrustPenalties callback for trust engine integration. FindResponsiblePaths filters by causal chain. MergeAttribution for multi-incident aggregation. 28 tests, **100% coverage** on entire pkg/incident.
+
+## [ ] Wire trust scoring to incident attribution — pkg/trust + pkg/incident
+- **Priority:** high
+- **Spec:** specs/trust-model.md §Integration Points + specs/production-verification.md §Production Incident Attribution
+- **Model:** direct write — Go packages, cross-package integration
+- **Files:** pkg/trust/integration.go (NEW), pkg/trust/integration_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/trust/... ./pkg/incident/... -count=1 -cover` passes with >80% coverage
+- **Logic:** Bridge incident.AttributionEngine to trust.Ledger: when an incident is attributed, create TrustEvents (type=incident_attribution, agent_id, severity, attribution_weight, evidence_links) and append to the JSONL ledger. Replay the ledger to verify the trust score reflects the incident penalty. Incident → TrustEvent mapping function. Batch processing: multiple incidents → multiple events. Verify trust score decreases after incident attribution.
+
+## [ ] Implement evidence verification layer (Tier 3) — pkg/review/
+- **Priority:** medium
+- **Spec:** specs/adversarial-review.md §Three-Layer Review Pipeline (Tier 3)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/review/verification.go (NEW), pkg/review/verification_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >80% coverage
+- **Logic:** EvidenceVerificationLayer that takes the consensus findings from ReviewOrchestrator and verifies them: (1) run tests from model suggestions, (2) verify edge cases actually fail as claimed, (3) confirm fixes resolve issues. VerificationResult with per-finding status (verified/false_positive/unverifiable). Integration point: after ReviewOrchestrator.Review() completes, EvidenceVerifier.VerifyFindings() runs the claims.
+
+## [ ] Implement adversarial agent dispatcher — pkg/review/
+- **Priority:** medium
+- **Spec:** specs/adversarial-review.md §Adversarial Agent Techniques
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/review/agents.go (NEW), pkg/review/agents_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >80% coverage
+- **Logic:** AdversarialAgentDispatcher that launches specialized agents (@assumption-buster, @redteam, @chaos-engineer, @cost-auditor) based on change category. Each agent is a ProsecutorAgent with a specific mission (find what's wrong, not what's right). AgentTrigger rules (behavioral→assumption-buster, auth/crypto→redteam, resilience→chaos-engineer, all→cost-auditor). AgentResult with exploit paths found, assumptions challenged, fault injection results.
+
+## [ ] Implement drift detection for production verification — pkg/verify/
+- **Priority:** medium
+- **Spec:** specs/production-verification.md §Shadow Verification + §Behavior Contracts
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/verify/drift.go (NEW), pkg/verify/drift_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/verify/... -count=1 -cover` passes with >80% coverage
+- **Logic:** DriftDetector compares shadow deployment metrics against baseline. Detect metric drift (success rate drop >2%, latency increase >10%, error type distribution shift). Configurable sensitivity thresholds per metric. Time-windowed comparison (rolling 5-min windows). DriftReport with per-metric delta, trend direction, and breach severity. Integration with existing ShadowDeployment and BehaviorContract.
