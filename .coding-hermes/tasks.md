@@ -426,10 +426,11 @@
 - **Logic:** RecoveryTracker monitors agents who have dropped tiers or received incident penalties. Tracks recovery progress: consecutive clean merges since last incident, days without incident, trust score trend. IsRecovering returns true if an agent has had incidents but is now on an upward trend. RecoveryProgress returns a percentage (0-100) of how close the agent is to recovering to their pre-incident trust level. Uses the existing trust ledger for event history.
 - **Result:** [x] 31 tests, 91.6% pkg/trust coverage. RecoverySnapshot with IsRecovering, RecoveryProgress (0-100), PreIncidentScore, ConsecutiveCleanMerges, DaysSinceLastIncident, EstimatedDaysToRecover. Post-incident-only trend computation (incident drop excluded). GetRecoveryBatch for multi-agent. Configurable RecoveryConfig. 6 health labels (healthy/recovered/recovering-strong/recovering/recovering-slow/recovering-early/at-risk). Full suite 24/24 pass.
 
-## [ ] Implement evidence bundle chain-of-custody — pkg/review/
+## [x] Implement evidence bundle chain-of-custody — pkg/review/
 - **Priority:** medium
 - **Spec:** specs/adversarial-review.md §Evidence Bundles (signatures + integrity)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/review/custody.go (NEW), pkg/review/custody_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >85% coverage
 - **Logic:** ChainOfCustody tracks the full lifecycle of an evidence bundle: creation timestamp, signing model IDs, verification history, mutation log. Any modification to the bundle after creation is tracked as a custody event. VerifyChain checks that no tampering occurred since the last valid signature. CustodyReport summarizes the chain for audit display. Integrates with existing EvidenceStore for persistence.
+- **Result:** [x] 27 tests, 92.9% pkg/review coverage. ChainOfCustody with 7 event types (created/signed/verified/modified/finding_added/consensus_set/re_signed). VerifyChain detects: unsigned modifications (tampering), verification failures, missing signatures. Re-signing after modification clears the tamper flag. CustodyReport with IsValid/ShouldBlockMerge/FormatReport. CustodyStore wraps EvidenceStore for init/track/verify. Full suite 24/24 pass.
