@@ -86,7 +86,7 @@
 - **Spec:** specs/helix-config.md
 - **Result:** [x] deploy/config.yaml.example (all 10 sections: forgejo, chimera, langfuse, gitreins, identity, estimator, marketplace, negotiation, prompts, budget) + deploy/pricing.yaml.example (6 providers, cache config, 5 task types). Committed.
 
-## [ ] Implement health checker for startup validation
+## [x] Implement health checker for startup validation
 - **Priority:** high
 - **Spec:** specs/cross-component-wiring.md §8 + specs/helix-config.md §7
 - **Model:** direct write — Go package
@@ -94,7 +94,7 @@
 - **AC:** `go build ./... && go test ./pkg/health/... -count=1 -cover` passes with >80% coverage
 - **Logic:** HealthChecker struct that probes all configured services at startup. Concurrency-safe parallel health checks. Returns aggregated HealthReport (pass/fail per service). Configurable timeouts per service. Used by all CLI tools to fail-fast on unreachable services.
 
-## [ ] Implement Forgejo API client wrapper
+## [x] Implement Forgejo API client wrapper
 - **Priority:** high
 - **Spec:** specs/cross-component-wiring.md §2, specs/agent-identity.md
 - **Model:** direct write — Go package
