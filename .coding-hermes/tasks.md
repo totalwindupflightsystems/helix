@@ -120,18 +120,44 @@
 - **Spec:** specs/cross-component-wiring.md §7
 - **Result:** [x] Generic WithBackoff[T] function with exponential backoff + jitter. IsRetryable detects network errors, 5xx, 429. DoHTTP convenience wrapper for http.Client. Context-aware cancellation. 30 tests, 95.0% coverage.
 
-## [ ] Implement cost estimation engine
+## [x] Implement cost estimation engine
 - **Priority:** high
 - **Spec:** specs/cost-estimator.md
 - **Model:** direct write — Go package
 - **Files:** pkg/estimate/calculator.go, pkg/estimate/calculator_test.go (NEW or extend existing)
 - **AC:** `go build ./... && go test ./pkg/estimate/... -count=1 -cover` passes with >80% coverage
 - **Logic:** Pre-flight token burn estimation: parse task type (spec/code/review/refactor/test), multiply by estimated token counts, apply cache hit ratios, compute dollar cost per provider, compare against agent weekly budget, return APPROVED/BLOCKED/ESCALATED. Use pricing.yaml data structure.
+- **Result:** [x] Already implemented — 12 files across pkg/estimate/ (types, pricing, estimator, budget, reconciliation, calibrator, openrouter stub, CLI) + cmd/helix-estimate/ (3 subcommands: estimate, check, report). 94.0% coverage. Build + vet clean.
 
-## [ ] Implement shadow deployment manager
+## [x] Implement shadow deployment manager
 - **Priority:** medium
 - **Spec:** specs/production-verification.md §Shadow Verification
 - **Model:** direct write — Go package
 - **Files:** pkg/verify/shadow.go, pkg/verify/shadow_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/verify/... -count=1 -cover` passes with >80% coverage
 - **Logic:** ShadowLaunch(agent, config): deploy agent to dark path, route 0% production traffic, collect behavior metrics, compare against baseline. PromoteToCanary(agent, tier): route 1% traffic by trust tier. AutoRollback(agent): revert on contract breach. Configurable observation window.
+- **Result:** [x] 38 new tests in shadow_test.go, 97.2% pkg/verify coverage (up from 96.9%). ShadowDeployment lifecycle: Idle→Shadowing→ShadowPassed/Failed→Canaried→Promoted/RolledBack. Full DifferentialReport with per-metric deltas (success rate, P99 latency, error types, memory growth). Auto-rollback on all 4 spec triggers. Tier-specific canary schedules (Provisional 96h, Observed 60h, Trusted 36h, Veteran 12h). Thread-safe with sync.RWMutex.
+
+## [ ] Implement multi-model adversarial review orchestrator — pkg/review/
+- **Priority:** high
+- **Spec:** specs/adversarial-review.md §Multi-Model Adversarial Review
+- **Model:** direct write — Go package
+- **Files:** pkg/review/orchestrator.go, pkg/review/orchestrator_test.go
+- **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >80% coverage
+- **Logic:** ReviewOrchestrator that dispatches a review to 3 models from different providers, collects independent findings, reconciles consensus (all 3 agree → PASS, 2/3 agree → WARN, 1/3 or divergence → FLAG), builds evidence bundle with model diversity score, integrates with existing BiasStripper (strip bias before each model sees the code). Provider diversity requirement: at least 2 different provider families in every review panel.
+
+## [ ] Implement prompt lifecycle state machine — pkg/prompt/
+- **Priority:** high
+- **Spec:** specs/prompt-registry-v2.md §Lifecycle State Machine
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/prompt/lifecycle.go (extend), pkg/prompt/lifecycle_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/prompt/... -count=1 -cover` passes with >80% coverage
+- **Logic:** State machine: draft → proposed → reviewed → attested → active → deprecated → retired. Transition validation (only valid transitions allowed), atomic state transitions, state persistence in metadata.yaml, age-based auto-deprecation (promotes active→deprecated after N days if no activity). Integrate with existing attester.go and registry.go.
+
+## [ ] Implement incident attribution engine — pkg/incident/
+- **Priority:** medium
+- **Spec:** specs/production-verification.md §Production Incident Attribution
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/incident/attribution.go, pkg/incident/attribution_test.go
+- **AC:** `go build ./... && go test ./pkg/incident/... -count=1 -cover` passes with >80% coverage
+- **Logic:** Trace causal chain from incident → changed code paths → merge commit → responsible agent. Attribution weights: author 70%, reviewers 20% (shared), approving human 10%. Feed attribution result into trust scoring engine (pkg/trust). Record evidence links in incident record. Multiple agents → shared responsibility distribution.
