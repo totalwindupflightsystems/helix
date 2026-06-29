@@ -140,13 +140,14 @@
 - **Logic:** CostReconciler tracks debate costs across rounds, splits tie-break costs between disagreeing agents, checks against agent weekly budgets (pkg/estimate.BudgetTracker), and flags cost overruns. Report with per-agent cost breakdown.
 - **Result:** [x] CostReconciler with round-by-round cost tracking, even tie-break split (spec §9.3), budget exhaustion detection (spec §14 exit 3), escalation flagging with BUDGET_EXHAUSTED reason. 28 tests, 97.9% pkg/negotiate coverage (up from 97.3%). Full suite 24/24 pass.
 
-## [ ] Implement incident learning feedback loop — pkg/incident/
+## [x] Implement incident learning feedback loop — pkg/incident/
 - **Priority:** medium
 - **Spec:** specs/adversarial-review.md §Integration Points: "All incidents → learning database → future review training"
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/incident/learning.go (NEW), pkg/incident/learning_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/incident/... -count=1 -cover` passes with >85% coverage
 - **Logic:** LearningDatabase stores incident patterns, maps them to review criteria. When a similar code change is detected (by file category, change type), the system surfaces relevant past incidents as review context. Pattern similarity scoring (keyword overlap + severity match). FeedReviewContext returns past incidents relevant to a new PR.
+- **Result:** [x] LearningDatabase with similarity-ranked retrieval. Jaccard category overlap (40%), keyword overlap (40%), change type match (10%), high-severity boost (10%). CategorizeFile for 12 categories. StoreFromIncident with keyword extraction. FeedReviewContext returns ranked items + accumulated review criteria. 40 tests, 98.4% pkg/incident coverage (up from 100% — now includes new code). Full suite 24/24 pass.
 
 ## [x] Implement retry middleware with exponential backoff
 - **Priority:** medium
