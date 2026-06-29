@@ -102,18 +102,39 @@
 - **AC:** `go build ./... && go test ./pkg/forgejo/... -count=1 -cover` passes with >80% coverage
 - **Logic:** ForgejoClient struct wrapping REST API calls: CreateUser, GetUser, CreateSSHKey, CreatePAT, ListPRs, GetPRReviews, CreatePRReview. BasicAuth support. Circuit breaker integration. Retry with backoff on 5xx. Test with httptest.NewServer mock.
 
-## [ ] Create `.forgejo/workflows` CI/CD pipeline files
+## [x] Create `.forgejo/workflows` CI/CD pipeline files
 - **Priority:** medium
 - **Spec:** specs/deployment.md §5
-- **Model:** direct write — YAML files
-- **Files:** .forgejo/workflows/gitreins.yaml, .forgejo/workflows/chimera-review.yaml, .forgejo/workflows/promptfoo.yaml (NEW)
-- **AC:** All 3 workflow YAML files are valid and reference correct service URLs/ports from deployment.md §3
-- **Logic:** GitReins quality gate on push, Chimera PR review on PR open/synchronize, PromptFoo regression tests on prompt file changes. Based on deployment.md §5.1-5.3.
+- **Result:** [x] 3 workflow files created: gitreins.yaml (Tier 1 on push, Tier 2 on PR), chimera-review.yaml (multi-model PR review with fallback), promptfoo.yaml (prompt regression tests on prompt changes). All reference correct service URLs from deployment.md §3.
 
-## [] Wire dispatcher to Forgejo — agent spawn pipeline
+## [ ] Wire dispatcher to Forgejo — agent spawn pipeline
 - **Priority:** critical
 - **Spec:** specs/dispatcher.md + specs/agent-identity.md
 - **Model:** deepseek-v4-pro — integration work, needs live services
 - **Files:** pkg/dispatcher/forgejo_spawn.go, pkg/dispatcher/spawn_test.go
 - **AC:** `helix dispatch --spec specs/agent-identity.md --agent test-agent` creates a branch in Forgejo, provisions an agent, and returns a PR URL
 - **Logic:** Full Ralph Loop: acquire lock → create worktree → spawn agent → wait for completion → run GitReins guards → open PR → return URL. Requires Forgejo running on :3030.
+
+## [ ] Implement retry middleware with exponential backoff
+- **Priority:** medium
+- **Spec:** specs/cross-component-wiring.md §7
+- **Model:** direct write — Go package
+- **Files:** pkg/retry/retry.go, pkg/retry/retry_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/retry/... -count=1 -cover` passes with >85% coverage
+- **Logic:** RetryWithBackoff(ctx, fn, maxAttempts, initialBackoff). Exponential backoff with jitter. Context-aware (returns ctx.Err() on cancellation). Configurable retryable error detection (retry on 5xx, timeout, connection refused — don't retry on 4xx). Used by Forgejo client and Chimera adapter.
+
+## [ ] Implement cost estimation engine
+- **Priority:** high
+- **Spec:** specs/cost-estimator.md
+- **Model:** direct write — Go package
+- **Files:** pkg/estimate/calculator.go, pkg/estimate/calculator_test.go (NEW or extend existing)
+- **AC:** `go build ./... && go test ./pkg/estimate/... -count=1 -cover` passes with >80% coverage
+- **Logic:** Pre-flight token burn estimation: parse task type (spec/code/review/refactor/test), multiply by estimated token counts, apply cache hit ratios, compute dollar cost per provider, compare against agent weekly budget, return APPROVED/BLOCKED/ESCALATED. Use pricing.yaml data structure.
+
+## [ ] Implement shadow deployment manager
+- **Priority:** medium
+- **Spec:** specs/production-verification.md §Shadow Verification
+- **Model:** direct write — Go package
+- **Files:** pkg/verify/shadow.go, pkg/verify/shadow_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/verify/... -count=1 -cover` passes with >80% coverage
+- **Logic:** ShadowLaunch(agent, config): deploy agent to dark path, route 0% production traffic, collect behavior metrics, compare against baseline. PromoteToCanary(agent, tier): route 1% traffic by trust tier. AutoRollback(agent): revert on contract breach. Configurable observation window.

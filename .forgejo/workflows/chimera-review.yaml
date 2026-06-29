@@ -1,0 +1,66 @@
+# .forgejo/workflows/chimera-review.yaml — Chimera Multi-Model PR Review
+# Based on specs/deployment.md §5.2 and specs/cross-component-wiring.md §2.1
+#
+# Triggered on PR open/synchronize.
+# Sends the PR diff to Chimera for multi-model deliberation.
+# Posts the verdict as a review comment on the PR.
+name: Chimera PR Review
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR diff
+        run: git diff origin/${{ github.event.pull_request.base.ref }} > /tmp/pr.diff
+
+      - name: Run Chimera review
+        env:
+          CHIMERA_URL: http://chimera-helix:8765
+        run: |
+          set -o pipefail
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_DIFF=$(cat /tmp/pr.diff | head -c 50000)
+
+          # Send to Chimera for deliberation
+          RESPONSE=$(curl -sf -X POST "${CHIMERA_URL}/v1/deliberate" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"prompt\": \"Review this PR diff for bugs, security issues, and spec violations.\n\nPR: ${PR_TITLE}\n\n---\n${PR_DIFF}\",
+              \"formation\": \"standard\"
+            }" 2>/dev/null || echo '{"status":"ERROR","summary":"Chimera unreachable"}')
+
+          echo "$RESPONSE" > /tmp/chimera-verdict.json
+
+          # Extract verdict
+          STATUS=$(echo "$RESPONSE" | jq -r '.status // "ERROR"')
+          SUMMARY=$(echo "$RESPONSE" | jq -r '.summary // "No summary available"')
+
+          echo "::notice::Chimera verdict: ${STATUS}"
+
+          # Post review comment to PR
+          BODY=$(jq -n \
+            --arg body "## Chimera Review: **${STATUS}**\n\n${SUMMARY}" \
+            '{body: $body, event: "COMMENT"}')
+
+          curl -sf -X POST \
+            "http://forgejo-helix:3000/api/v1/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews" \
+            -u "${{ secrets.FORGEJO_ADMIN_USER }}:${{ secrets.FORGEJO_ADMIN_PASSWORD }}" \
+            -H "Content-Type: application/json" \
+            -d "$BODY"
+
+      - name: Handle Chimera failure
+        if: failure()
+        run: |
+          # Post fallback comment if Chimera is unavailable
+          curl -sf -X POST \
+            "http://forgejo-helix:3000/api/v1/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews" \
+            -u "${{ secrets.FORGEJO_ADMIN_USER }}:${{ secrets.FORGEJO_ADMIN_PASSWORD }}" \
+            -H "Content-Type: application/json" \
+            -d '{"body": "## Chimera Review: **UNAVAILABLE**\n\nChimera service is unreachable. Manual review required.", "event": "COMMENT"}' || true
