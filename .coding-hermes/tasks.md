@@ -318,13 +318,14 @@
 - **Logic:** ValidateVeto checks all 4 spec §8.1 conditions (trust≥70, spec section cited, test command, AC reference). VetoTracker tracks frivolous vetoes with 90-day rolling window. 3 frivolous vetoes → trust capped at 69 (loses veto power). VetoWeight returns 1.5× for trust≥90 agents. Body parsers extract spec refs, test commands, and AC references from veto body text.
 - **Result:** [x] 30 tests, 97.3% pkg/negotiate coverage. Full suite 23/23 pass. Committed at `64ae24a`.
 
-## [ ] Implement escalation comment formatter — pkg/negotiate/
+## [x] Implement escalation comment formatter — pkg/negotiate/
 - **Priority:** medium
 - **Spec:** specs/pr-negotiation.md §12.2 (Escalation Format)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/negotiate/escalation.go (NEW), pkg/negotiate/escalation_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
 - **Logic:** FormatEscalationComment renders the spec §12.2 escalation PR comment template: reason (timeout|budget_exhausted|chimera_unavailable), agent names + trust levels, rounds completed, deadlock status, debate log path, agent positions with summaries, recommended action. EscalationData struct with all fields. EscalationReason constants. Integration with Negotiator.Escalate — when escalated, generate the comment body.
+- **Result:** [x] 18 tests, 100% coverage on escalation.go. FormatEscalationComment renders complete spec §12.2 markdown template. EscalationFromNegotiator extracts data from live Negotiator state. EscalationExitCode maps reasons to spec §14 codes. EscalationMessage formats exit messages. IsEscalatable validates state. 98.2% pkg/negotiate coverage (up from 97.3%). Full suite 24/24 pass.
 
 ## [ ] Implement evidence bundle file store — pkg/review/
 - **Priority:** medium
