@@ -1,6 +1,6 @@
 # Helix Coding Tasks — Foreman Queue
 
-## [] Implement trust scoring engine — pkg/trust/
+## [~] Implement trust scoring engine — pkg/trust/
 - **Priority:** high
 - **Spec:** specs/trust-model.md
 - **Model:** direct write — Go package, pure math + JSONL
