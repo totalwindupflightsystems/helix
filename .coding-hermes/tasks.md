@@ -408,13 +408,14 @@
 - **Logic:** DryRunSimulator runs the full negotiation protocol without making Forgejo or Chimera calls. Simulates all 3 debate rounds with stub agents, produces the same DebateEvent JSONL transcript as a real negotiation, returns a DryRunReport with rounds simulated, would-be-resolution, estimated cost, and exit code 10 (DRY_RUN). Used for previewing debate flow.
 - **Result:** [x] 22 tests, 98.3% pkg/negotiate coverage. Full suite pass. DryRunSimulator with Simulate (full 3-round conflict → deadlock → Chimera) and SimulateConcession (agent concedes in round N). Full lifecycle event ordering verified. FormatDryRunReport for CLI output. Exit code 10 (spec §14).
 
-## [ ] Implement negotiation error taxonomy — pkg/negotiate/
+## [x] Implement negotiation error taxonomy — pkg/negotiate/
 - **Priority:** medium
 - **Spec:** specs/pr-negotiation.md §14 (Error Taxonomy and Exit Codes)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/negotiate/errors.go (NEW), pkg/negotiate/errors_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
 - **Logic:** NegotiationError type with Code, Message, Detail. Map all 7 exit codes (0=resolved, 1=evidence_required, 2=chimera_unavailable, 3=budget_exhausted, 4=timeout, 5=invalid_state, 10=dry_run) to error constructors. ExitCodeFromError extracts the code from an error. FormatExitMessage renders the spec §14 message format. IsTerminalExit checks if the code means negotiation is done.
+- **Result:** [x] 25 tests, 98.2% pkg/negotiate coverage. All 7 spec §14 exit codes with exact values. 7 typed constructors matching spec §14 message formats. IsTerminal/IsRetryable for flow control. FormatExitMessage for CLI output. ExitCodeFromError for error-to-code extraction. errors.As compatible.
 
 ## [ ] Implement trust recovery tracking — pkg/trust/
 - **Priority:** medium
