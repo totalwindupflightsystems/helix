@@ -18,13 +18,14 @@
 - **Logic:** Strip evaluative language ("fixed", "correct", "ready", "passes"), remove confidence assertions ("tested locally", "works on my machine"), strip emoji and emotional framing, normalize formatting, preserve factual information (files changed, intent). Tested with 8 documented disaster commit messages.
 - **Result:** [x] 33 tests, 97.4% coverage, all passing. Build + vet clean. Committed at #NEXT.
 
-## [~] Implement production verification contracts — pkg/verify/
+## [x] Implement production verification contracts — pkg/verify/
 - **Priority:** medium
 - **Spec:** specs/production-verification.md §Behavior Contracts
 - **Model:** direct write — Go package, YAML contracts + metrics assertions
 - **Files:** pkg/verify/contract.go, pkg/verify/monitor.go, pkg/verify/contract_test.go
 - **AC:** `go build ./... && go test ./pkg/verify/... -count=1 -cover` passes with >80% coverage
-- **Logic:** Behavior contract YAML parsing, assertion types (success rate gte/lte, latency p50/p95/p99, error count eq), breach detection, auto-rollback trigger logic, agent notification on breach, canary ramp schedule by trust tier (Provisional: 96h, Observed: 60h, Trusted: 36h, Veteran: 12h).
+- **Logic:** Behavior contract YAML parsing, assertion types (success rate gte/lte, latency p50/p95/p99, error count eq), breach detection, auto-rollback trigger logic, agent notification on breach, canary ramp schedule by trust tier (Provisional: 96h, Observed: 60h, Trusted: 36h, Veteran: 12h), drift detection, shadow rollback triggers.
+- **Result:** [x] 51 tests, 96.9% coverage, all passing. Build + vet clean. Committed at #NEXT.
 
 ## [] Wire dispatcher to Forgejo — agent spawn pipeline
 - **Priority:** critical
