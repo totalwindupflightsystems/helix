@@ -212,13 +212,14 @@
 - **Logic:** DriftDetector compares shadow deployment metrics against baseline. Detect metric drift (success rate drop >2%, latency increase >10%, error type distribution shift). Configurable sensitivity thresholds per metric. Time-windowed comparison (rolling 5-min windows). DriftReport with per-metric delta, trend direction, and breach severity. Integration with existing ShadowDeployment and BehaviorContract.
 - **Result:** [x] DriftDetector with rolling time-windowed MetricsSnapshot samples. Per-metric sensitivity thresholds (success_rate 2%, p99_latency 10%, p50 15%, errors 50%, memory 10%, new_error_types 0). Trend direction (stable/improving/degrading) with higher/lower_is_better hint. Breach severity (none/warning/critical) based on overshoot ratio. AssessDeployment integrates with ShadowDeployment. 38 new tests, 97.3% pkg/verify coverage (up from 97.2%). Full suite 23/23 pass.
 
-## [ ] Bridge marketplace trust score to trust engine — pkg/marketplace + pkg/trust
+## [x] Bridge marketplace trust score to trust engine — pkg/marketplace + pkg/trust
 - **Priority:** high
 - **Spec:** specs/agent-marketplace.md §Trust Scoring + specs/trust-model.md §Integration Points
 - **Model:** direct write — Go packages, cross-package integration
 - **Files:** pkg/marketplace/trust_bridge.go (NEW), pkg/marketplace/trust_bridge_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/marketplace/... -count=1 -cover` passes with >80% coverage
 - **Logic:** Marketplace uses TrustScore int (0-100), trust engine uses TrustScore float64 (0.0-1.0). Build a TrustSync bridge that reads the JSONL trust ledger, computes the current score via ReplayToScore, converts to the 0-100 marketplace scale, and updates the agent profile. Periodic sync + on-demand query. Direction: trust engine is the source of truth, marketplace reads from it.
+- **Result:** [x] TrustSync bridge with interval-based sync caching. SyncAgent (single agent), SyncAll (full registry), GetLiveScore (read-only source-of-truth query). ScoreToMarketplace/MarketplaceToScore conversion with rounding + clamping. 16 tests, trust_bridge functions 75-100% coverage. 97.1% total pkg/marketplace coverage (up from 96.8%). Full suite 23/23 pass.
 
 ## [ ] Implement tier-gated permission expansion — pkg/identity + pkg/trust
 - **Priority:** high
