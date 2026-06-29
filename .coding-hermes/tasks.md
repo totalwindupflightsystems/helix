@@ -247,3 +247,12 @@
 - **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >80% coverage
 - **Logic:** TierReviewPolicy maps trust tiers to review formation requirements. Provisional: full 3-model adversarial + all prosecutor agents + 100% evidence verification. Observed: 2-model + prosecutor agents. Trusted: single-model + spot-check verification. Veteran: single-model review. The ReviewOrchestrator queries the agent's tier and adjusts the panel size, consensus threshold, and verification depth accordingly.
 - **Result:** [x] TierScaling with TierReviewPolicy per tier. AdjustFormation (min of category × tier), AdjustConsensusThreshold, ShouldVerifyEvidence, ShouldDispatchProsecutors (cosmetic always skips, trusted+ only for contract). 24 tests, tier_scaling functions 75-100% coverage. 94.2% pkg/review coverage. Full suite 23/23 pass.
+
+## [x] Implement veto protocol — 4-condition validation + frivolous veto tracker
+- **Priority:** high
+- **Spec:** specs/pr-negotiation.md §8 (Veto Protocol)
+- **Model:** direct write — Go package, pure logic
+- **Files:** pkg/negotiate/veto.go (NEW), pkg/negotiate/veto_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
+- **Logic:** ValidateVeto checks all 4 spec §8.1 conditions (trust≥70, spec section cited, test command, AC reference). VetoTracker tracks frivolous vetoes with 90-day rolling window. 3 frivolous vetoes → trust capped at 69 (loses veto power). VetoWeight returns 1.5× for trust≥90 agents. Body parsers extract spec refs, test commands, and AC references from veto body text.
+- **Result:** [x] 30 tests, 97.3% pkg/negotiate coverage. Full suite 23/23 pass. Committed at `64ae24a`.
