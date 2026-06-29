@@ -35,7 +35,7 @@
 - **AC:** `helix dispatch --spec specs/agent-identity.md --agent test-agent` creates a branch in Forgejo, provisions an agent, and returns a PR URL
 - **Logic:** Full Ralph Loop: acquire lock → create worktree → spawn agent → wait for completion → run GitReins guards → open PR → return URL. Requires Forgejo running on :3030.
 
-## [] Implement evidence bundle signing — pkg/review/
+## [~] Implement evidence bundle signing — pkg/review/
 - **Priority:** medium
 - **Spec:** specs/adversarial-review.md §Evidence Bundles
 - **Model:** direct write — Go package, ED25519 + JSON canonicalization
