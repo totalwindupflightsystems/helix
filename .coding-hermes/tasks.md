@@ -398,3 +398,35 @@
 - **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
 - **Logic:** TrustAdjustmentEngine computes trust deltas for all negotiation events per spec §10.2 table: concession with evidence (+1), wins tie-break (+2), loses with evidence (0), loses without evidence (-5), frivolous veto (-5), missed round (-2), 3 strikes (-10 + auto-concede). TrustDelta struct with Agent, Delta, Reason, Event type. ApplyTrustDelta clamps to 0-100 range (spec §10.3 floor/ceiling). AdjustForNegotiationOutcome computes all deltas for both agents after a negotiation completes. RecordTrustHistory stores the adjustment events for audit.
 - **Result:** [x] 38 tests, 98.2% pkg/negotiate coverage. Full suite 24/24 pass. All 7 spec §10.2 event types with exact deltas. AdjustForNegotiationOutcome computes all deltas from a NegotiationOutcome struct. ApplyAdjustments batch-applies with TrustHistoryEntry audit trail. ApplyTrustDelta clamps to [0,100] per spec §10.3. TrustAdjustmentSummary for human-readable output. EventDescription for each type.
+
+## [ ] Implement negotiation dry-run simulator — pkg/negotiate/
+- **Priority:** medium
+- **Spec:** specs/pr-negotiation.md §2 (Dry-run mode) + §14 (Exit code 10)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/negotiate/dry_run.go (NEW), pkg/negotiate/dry_run_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
+- **Logic:** DryRunSimulator runs the full negotiation protocol without making Forgejo or Chimera calls. Simulates all 3 debate rounds with stub agents, produces the same DebateEvent JSONL transcript as a real negotiation, returns a DryRunReport with rounds simulated, would-be-resolution, estimated cost, and exit code 10 (DRY_RUN). Used for previewing debate flow.
+
+## [ ] Implement negotiation error taxonomy — pkg/negotiate/
+- **Priority:** medium
+- **Spec:** specs/pr-negotiation.md §14 (Error Taxonomy and Exit Codes)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/negotiate/errors.go (NEW), pkg/negotiate/errors_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
+- **Logic:** NegotiationError type with Code, Message, Detail. Map all 7 exit codes (0=resolved, 1=evidence_required, 2=chimera_unavailable, 3=budget_exhausted, 4=timeout, 5=invalid_state, 10=dry_run) to error constructors. ExitCodeFromError extracts the code from an error. FormatExitMessage renders the spec §14 message format. IsTerminalExit checks if the code means negotiation is done.
+
+## [ ] Implement trust recovery tracking — pkg/trust/
+- **Priority:** medium
+- **Spec:** specs/trust-model.md §Anti-Patterns (trust must be earnable, not permanent)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/trust/recovery.go (NEW), pkg/trust/recovery_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/trust/... -count=1 -cover` passes with >85% coverage
+- **Logic:** RecoveryTracker monitors agents who have dropped tiers or received incident penalties. Tracks recovery progress: consecutive clean merges since last incident, days without incident, trust score trend. IsRecovering returns true if an agent has had incidents but is now on an upward trend. RecoveryProgress returns a percentage (0-100) of how close the agent is to recovering to their pre-incident trust level. Uses the existing trust ledger for event history.
+
+## [ ] Implement evidence bundle chain-of-custody — pkg/review/
+- **Priority:** medium
+- **Spec:** specs/adversarial-review.md §Evidence Bundles (signatures + integrity)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/review/custody.go (NEW), pkg/review/custody_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >85% coverage
+- **Logic:** ChainOfCustody tracks the full lifecycle of an evidence bundle: creation timestamp, signing model IDs, verification history, mutation log. Any modification to the bundle after creation is tracked as a custody event. VerifyChain checks that no tampering occurred since the last valid signature. CustodyReport summarizes the chain for audit display. Integrates with existing EvidenceStore for persistence.
