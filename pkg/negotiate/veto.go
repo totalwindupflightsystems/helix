@@ -13,22 +13,22 @@ import (
 
 // VetoValidation holds the result of validating a veto attempt.
 type VetoValidation struct {
-	Valid       bool     `json:"valid"`
-	Errors      []string `json:"errors,omitempty"`
-	SpecRef     string   `json:"spec_ref,omitempty"`
-	TestCmd     string   `json:"test_cmd,omitempty"`
-	ACEvidence  string   `json:"ac_evidence,omitempty"`
-	VetoBody    string   `json:"veto_body"`
-	AgentName   string   `json:"agent_name"`
+	Valid      bool     `json:"valid"`
+	Errors     []string `json:"errors,omitempty"`
+	SpecRef    string   `json:"spec_ref,omitempty"`
+	TestCmd    string   `json:"test_cmd,omitempty"`
+	ACEvidence string   `json:"ac_evidence,omitempty"`
+	VetoBody   string   `json:"veto_body"`
+	AgentName  string   `json:"agent_name"`
 }
 
 // VetoAttempt captures one veto occurrence for tracking purposes.
 type VetoAttempt struct {
-	AgentName  string    `json:"agent_name"`
-	PRNumber   int       `json:"pr_number"`
-	SpecRef    string    `json:"spec_ref"`
-	Frivolous  bool      `json:"frivolous"`
-	Timestamp  time.Time `json:"timestamp"`
+	AgentName string    `json:"agent_name"`
+	PRNumber  int       `json:"pr_number"`
+	SpecRef   string    `json:"spec_ref"`
+	Frivolous bool      `json:"frivolous"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // FrivolousVetoThreshold is the number of frivolous vetoes within the window
