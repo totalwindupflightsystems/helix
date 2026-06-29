@@ -25,7 +25,7 @@ type EvidenceBundle struct {
 	Findings         []Finding `json:"findings"`
 	Consensus        Consensus `json:"consensus"`
 	Signatures       `json:"signatures"`
-	PreviousBundleID string    `json:"previous_bundle_id,omitempty"`
+	PreviousBundleID string `json:"previous_bundle_id,omitempty"`
 }
 
 type Formation struct {
@@ -71,9 +71,9 @@ const (
 )
 
 const (
-	VerdictApproved          = "approved"
-	VerdictPassWithNotes     = "pass_with_notes"
-	VerdictBlock             = "block"
+	VerdictApproved           = "approved"
+	VerdictPassWithNotes      = "pass_with_notes"
+	VerdictBlock              = "block"
 	VerdictConfirmAdversarial = "confirm_adversarial"
 	VerdictOverrule           = "overrule"
 )
@@ -84,13 +84,13 @@ const (
 
 func NewEvidenceBundle(prURL, reviewID string, formation Formation, biasStrippedSHA, originalCommit string) *EvidenceBundle {
 	return &EvidenceBundle{
-		PRURL:            prURL,
-		ReviewID:         reviewID,
-		Timestamp:        time.Now().UTC(),
-		Formation:        formation,
-		BiasStrippedSHA:  biasStrippedSHA,
-		OriginalCommit:   originalCommit,
-		Findings:         []Finding{},
+		PRURL:           prURL,
+		ReviewID:        reviewID,
+		Timestamp:       time.Now().UTC(),
+		Formation:       formation,
+		BiasStrippedSHA: biasStrippedSHA,
+		OriginalCommit:  originalCommit,
+		Findings:        []Finding{},
 	}
 }
 
@@ -155,8 +155,8 @@ func isApproving(v string) bool {
 }
 
 // Consensus helpers
-func (c *Consensus) IsApproved() bool    { return c.Resolution == ResolutionApproved }
-func (c *Consensus) IsBlocked() bool     { return c.Resolution == ResolutionBlocked }
+func (c *Consensus) IsApproved() bool      { return c.Resolution == ResolutionApproved }
+func (c *Consensus) IsBlocked() bool       { return c.Resolution == ResolutionBlocked }
 func (c *Consensus) NeedsTieBreaker() bool { return c.Resolution == ResolutionTieBreak }
 
 // =============================================================================
@@ -280,9 +280,9 @@ func (b *EvidenceBundle) canonicalContent() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"pr_url":              b.PRURL,
-		"review_id":           b.ReviewID,
-		"timestamp":           b.Timestamp.UTC().Format(time.RFC3339Nano),
+		"pr_url":    b.PRURL,
+		"review_id": b.ReviewID,
+		"timestamp": b.Timestamp.UTC().Format(time.RFC3339Nano),
 		"formation": map[string]interface{}{
 			"primary": map[string]interface{}{
 				"model": b.Formation.Primary.Model, "provider": b.Formation.Primary.Provider,

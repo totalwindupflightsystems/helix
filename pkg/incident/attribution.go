@@ -41,21 +41,21 @@ func DefaultAttributionWeights() AttributionWeights {
 
 // ChangePath represents a changed code path involved in an incident.
 type ChangePath struct {
-	FilePath    string   `json:"file_path"`
-	MergeSHA    string   `json:"merge_sha"`
-	AuthorID    string   `json:"author_id"`
-	ReviewerIDs []string `json:"reviewer_ids"`
-	ApproverID  string   `json:"approver_id"`
+	FilePath    string    `json:"file_path"`
+	MergeSHA    string    `json:"merge_sha"`
+	AuthorID    string    `json:"author_id"`
+	ReviewerIDs []string  `json:"reviewer_ids"`
+	ApproverID  string    `json:"approver_id"`
 	CommitTime  time.Time `json:"commit_time"`
 }
 
 // AttributionResult holds the computed responsibility distribution.
 type AttributionResult struct {
-	IncidentID    string                 `json:"incident_id"`
-	Responsibility map[string]float64    `json:"responsibility"` // agentID → weight (0.0–1.0)
-	ChangePaths   []ChangePath           `json:"change_paths"`
-	EvidenceLinks []string               `json:"evidence_links"`
-	Timestamp     time.Time              `json:"timestamp"`
+	IncidentID     string             `json:"incident_id"`
+	Responsibility map[string]float64 `json:"responsibility"` // agentID → weight (0.0–1.0)
+	ChangePaths    []ChangePath       `json:"change_paths"`
+	EvidenceLinks  []string           `json:"evidence_links"`
+	Timestamp      time.Time          `json:"timestamp"`
 }
 
 // AttributionEngine computes incident responsibility distribution.
@@ -141,7 +141,8 @@ func (e *AttributionEngine) Attribute(incidentID string, paths []ChangePath, evi
 // attribution share and the incident severity.
 //
 // Severity multipliers:
-//   low=0.05, medium=0.10, high=0.20, critical=0.40
+//
+//	low=0.05, medium=0.10, high=0.20, critical=0.40
 //
 // The penalty = attributionShare × severityMultiplier.
 func TrustPenalty(attributionShare float64, severity string) float64 {
@@ -167,9 +168,9 @@ func severityMultiplier(severity string) float64 {
 
 // AttributionSummary is a human-readable summary of responsibility.
 type AttributionSummary struct {
-	AgentID      string  `json:"agent_id"`
+	AgentID        string  `json:"agent_id"`
 	Responsibility float64 `json:"responsibility"`
-	TrustPenalty float64 `json:"trust_penalty"`
+	TrustPenalty   float64 `json:"trust_penalty"`
 }
 
 // Summarize produces per-agent summaries from an attribution result.

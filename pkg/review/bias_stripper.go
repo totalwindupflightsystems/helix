@@ -172,7 +172,7 @@ func (bs *BiasStripper) Strip(msg string) string {
 }
 
 var (
-	emptyParensPattern       = regexp.MustCompile(`\(\s*\)`)
+	emptyParensPattern         = regexp.MustCompile(`\(\s*\)`)
 	collapsePunctuationPattern = regexp.MustCompile(`[.!?]{2,}`)
 )
 

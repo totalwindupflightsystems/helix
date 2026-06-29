@@ -96,16 +96,16 @@ func TestAttribute_MultiplePaths_NormalizedToOne(t *testing.T) {
 
 	paths := []ChangePath{
 		{
-			FilePath: "pkg/a.go",
-			AuthorID: "agent-1",
+			FilePath:    "pkg/a.go",
+			AuthorID:    "agent-1",
 			ReviewerIDs: []string{"agent-2"},
-			ApproverID: "human-1",
+			ApproverID:  "human-1",
 		},
 		{
-			FilePath: "pkg/b.go",
-			AuthorID: "agent-1",
+			FilePath:    "pkg/b.go",
+			AuthorID:    "agent-1",
 			ReviewerIDs: []string{"agent-3"},
-			ApproverID: "human-1",
+			ApproverID:  "human-1",
 		},
 	}
 
@@ -154,8 +154,8 @@ func TestAttribute_NoReviewers(t *testing.T) {
 	engine := NewAttributionEngine(store)
 
 	path := ChangePath{
-		FilePath: "pkg/a.go",
-		AuthorID: "agent-1",
+		FilePath:   "pkg/a.go",
+		AuthorID:   "agent-1",
 		ApproverID: "human-1",
 	}
 
@@ -238,9 +238,9 @@ func TestWithWeights(t *testing.T) {
 	})
 
 	path := ChangePath{
-		AuthorID: "agent-1",
+		AuthorID:    "agent-1",
 		ReviewerIDs: []string{"agent-2"},
-		ApproverID: "human-1",
+		ApproverID:  "human-1",
 	}
 
 	result, err := engine.Attribute("inc-1", []ChangePath{path}, nil)
@@ -263,11 +263,11 @@ func TestTrustPenalty_SeverityMultipliers(t *testing.T) {
 		share    float64
 		expected float64
 	}{
-		{SeverityLow, 0.70, 0.035},      // 0.70 * 0.05
-		{SeverityMedium, 0.70, 0.07},    // 0.70 * 0.10
-		{SeverityHigh, 0.70, 0.14},      // 0.70 * 0.20
-		{SeverityCritical, 0.70, 0.28},  // 0.70 * 0.40
-		{"unknown", 0.70, 0.07},          // default to medium
+		{SeverityLow, 0.70, 0.035},     // 0.70 * 0.05
+		{SeverityMedium, 0.70, 0.07},   // 0.70 * 0.10
+		{SeverityHigh, 0.70, 0.14},     // 0.70 * 0.20
+		{SeverityCritical, 0.70, 0.28}, // 0.70 * 0.40
+		{"unknown", 0.70, 0.07},        // default to medium
 	}
 	for _, tt := range tests {
 		t.Run(tt.severity, func(t *testing.T) {
@@ -296,9 +296,9 @@ func TestSummarize(t *testing.T) {
 	engine := NewAttributionEngine(store)
 
 	path := ChangePath{
-		AuthorID: "agent-1",
+		AuthorID:    "agent-1",
 		ReviewerIDs: []string{"agent-2"},
-		ApproverID: "human-1",
+		ApproverID:  "human-1",
 	}
 
 	result, _ := engine.Attribute("inc-1", []ChangePath{path}, nil)
@@ -331,9 +331,9 @@ func TestPrimaryResponsible(t *testing.T) {
 	engine := NewAttributionEngine(store)
 
 	path := ChangePath{
-		AuthorID: "agent-1",
+		AuthorID:    "agent-1",
 		ReviewerIDs: []string{"agent-2"},
-		ApproverID: "human-1",
+		ApproverID:  "human-1",
 	}
 
 	result, _ := engine.Attribute("inc-1", []ChangePath{path}, nil)
@@ -382,9 +382,9 @@ func TestApplyTrustPenalties(t *testing.T) {
 	engine := NewAttributionEngine(store)
 
 	path := ChangePath{
-		AuthorID: "agent-1",
+		AuthorID:    "agent-1",
 		ReviewerIDs: []string{"agent-2"},
-		ApproverID: "human-1",
+		ApproverID:  "human-1",
 	}
 	result, _ := engine.Attribute("inc-1", []ChangePath{path}, []string{"ev1"})
 
@@ -554,7 +554,9 @@ func TestIntegration_FullIncidentAttributionFlow(t *testing.T) {
 		Description: "Token refresh race condition caused 5% of requests to fail",
 		Evidence:    []string{"trace: goroutine leak in token_refresh", "metric: 5xx spike at 14:23"},
 	}
-	store.Add(inc)
+	if err := store.Add(inc); err != nil {
+		t.Fatalf("failed to add incident: %v", err)
+	}
 
 	// Change paths from the PR.
 	paths := []ChangePath{
@@ -575,10 +577,10 @@ func TestIntegration_FullIncidentAttributionFlow(t *testing.T) {
 			CommitTime:  time.Now().Add(-24 * time.Hour),
 		},
 		{
-			FilePath:    "pkg/util/helper.go",
-			MergeSHA:    "abc123",
-			AuthorID:    "agent-4", // unrelated path
-			CommitTime:  time.Now().Add(-24 * time.Hour),
+			FilePath:   "pkg/util/helper.go",
+			MergeSHA:   "abc123",
+			AuthorID:   "agent-4", // unrelated path
+			CommitTime: time.Now().Add(-24 * time.Hour),
 		},
 	}
 

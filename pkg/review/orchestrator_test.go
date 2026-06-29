@@ -14,12 +14,12 @@ import (
 // =============================================================================
 
 type mockModel struct {
-	info    ModelInfo
-	verdict string
+	info     ModelInfo
+	verdict  string
 	findings []Finding
-	err     error
-	delay   time.Duration
-	calls   int32 // atomic counter
+	err      error
+	delay    time.Duration
+	calls    int32 // atomic counter
 }
 
 func (m *mockModel) Review(ctx context.Context, req ReviewRequest) (*ModelReviewResult, error) {
@@ -648,11 +648,8 @@ func TestHashSHA256(t *testing.T) {
 func TestGenerateReviewID(t *testing.T) {
 	id1 := generateReviewID("https://example.com/pr/1")
 	id2 := generateReviewID("https://example.com/pr/1")
-	// IDs include a timestamp, so they should differ.
-	if id1 == id2 {
-		// Could theoretically be the same if called at exact same nanosecond.
-		// Just verify format.
-	}
+	// IDs include a timestamp, so they may differ — just verify format.
+	_ = id2
 	if len(id1) != 16 {
 		t.Errorf("expected 16-char review ID, got %d chars", len(id1))
 	}
