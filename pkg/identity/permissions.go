@@ -26,14 +26,14 @@ type PermissionSet struct {
 	HasAdminAccess    bool `json:"has_admin_access"`
 
 	// Code review permissions
-	CanReviewOthersPRs     bool `json:"can_review_others_prs"`      // advisory
-	CanBindingCertify      bool `json:"can_binding_certify"`        // binding, counts toward consensus
-	CanInitiateNegotiation bool `json:"can_initiate_negotiation"`   // PR negotiation with other agents
+	CanReviewOthersPRs     bool `json:"can_review_others_prs"`    // advisory
+	CanBindingCertify      bool `json:"can_binding_certify"`      // binding, counts toward consensus
+	CanInitiateNegotiation bool `json:"can_initiate_negotiation"` // PR negotiation with other agents
 
 	// Infrastructure permissions
-	CanModifyNonSecIaC     bool `json:"can_modify_non_sec_iac"`     // under review
-	CanModifySecIaC        bool `json:"can_modify_sec_iac"`         // under adversarial review
-	CanModifyCICD          bool `json:"can_modify_cicd"`
+	CanModifyNonSecIaC      bool `json:"can_modify_non_sec_iac"` // under review
+	CanModifySecIaC         bool `json:"can_modify_sec_iac"`     // under adversarial review
+	CanModifyCICD           bool `json:"can_modify_cicd"`
 	CanModifySecurityPolicy bool `json:"can_modify_security_policy"`
 
 	// Environment access
@@ -94,9 +94,9 @@ func provisionalPermissions() PermissionSet {
 func observedPermissions() PermissionSet {
 	p := provisionalPermissions()
 	p.Tier = trust.TierObserved
-	p.CanCreateBranches = true          // "can create and manage feature branches autonomously"
-	p.CanModifyNonSecIaC = true         // "can modify non-security IaC under review"
-	p.CanAccessIntegrationEnv = false   // not yet — that's Tier 2
+	p.CanCreateBranches = true        // "can create and manage feature branches autonomously"
+	p.CanModifyNonSecIaC = true       // "can modify non-security IaC under review"
+	p.CanAccessIntegrationEnv = false // not yet — that's Tier 2
 	p.CostCapPerJob = 25.0
 	p.SandboxLevel = "limited"
 	return p
@@ -109,7 +109,7 @@ func trustedPermissions() PermissionSet {
 	p := observedPermissions()
 	p.Tier = trust.TierTrusted
 	p.CanMergeOwnPRs = true
-	p.CanReviewOthersPRs = true       // advisory
+	p.CanReviewOthersPRs = true // advisory
 	p.CanInitiateNegotiation = true
 	p.CanAccessIntegrationEnv = true
 	p.CostCapPerJob = 100.0
@@ -140,10 +140,10 @@ func veteranPermissions() PermissionSet {
 // When an agent is promoted or demoted, their permissions must be updated
 // to match the new tier.
 type TierTransition struct {
-	AgentID  string          `json:"agent_id"`
-	OldTier  trust.TrustTier `json:"old_tier"`
-	NewTier  trust.TrustTier `json:"new_tier"`
-	Reason   string          `json:"reason"`
+	AgentID string          `json:"agent_id"`
+	OldTier trust.TrustTier `json:"old_tier"`
+	NewTier trust.TrustTier `json:"new_tier"`
+	Reason  string          `json:"reason"`
 }
 
 // IsPromotion returns true if the transition is a tier increase.
@@ -160,8 +160,8 @@ func (t TierTransition) IsDemotion() bool {
 // tier transition. Granted permissions are those newly enabled;
 // Revoked permissions are those newly disabled.
 type PermissionDelta struct {
-	Granted  []string `json:"granted"`
-	Revoked  []string `json:"revoked"`
+	Granted []string `json:"granted"`
+	Revoked []string `json:"revoked"`
 }
 
 // ComputeDelta returns the permission delta for a tier transition.

@@ -105,7 +105,7 @@ func TestFindBwrapBinary_EnvVarSetNonExistent(t *testing.T) {
 // no candidates match.
 func TestFindBwrapBinary_AllCandidatesEmpty(t *testing.T) {
 	// Unset HELIX_SANDBOX_BWRAP and rely on BwrapBinary + common paths.
-	os.Unsetenv("HELIX_SANDBOX_BWRAP")
+	_ = os.Unsetenv("HELIX_SANDBOX_BWRAP")
 	result := _findBwrapBinary()
 	// We don't know if bwrap is installed — just verify it doesn't panic.
 	// If bwrap IS installed at a common path, result will be that path.
@@ -200,7 +200,7 @@ func captureStdout(fn func()) string {
 	done := make(chan string, 1)
 	go func() {
 		var buf bytes.Buffer
-		buf.ReadFrom(r)
+		_, _ = buf.ReadFrom(r)
 		done <- buf.String()
 	}()
 
@@ -511,7 +511,7 @@ func TestRun_BwrapNotFound(t *testing.T) {
 		t.Fatalf("new executor: %v", err)
 	}
 
-	err = exec.Run(nil)
+	err = exec.Run(context.TODO())
 	if err == nil {
 		t.Fatal("expected error when BwrapPath is missing")
 	}
@@ -545,7 +545,7 @@ func TestRun_SetupSessionDirError(t *testing.T) {
 		t.Fatalf("new executor: %v", err)
 	}
 
-	err = exec.Run(nil)
+	err = exec.Run(context.TODO())
 	if err == nil {
 		t.Fatal("expected error when SetupSessionDir fails")
 	}
@@ -584,7 +584,7 @@ func TestRun_CgroupSetupWarning(t *testing.T) {
 	exec.logger = &logBuf
 
 	// Run should log a cgroup warning but still succeed up to ErrNotImplemented.
-	err = exec.Run(nil)
+	err = exec.Run(context.TODO())
 	if err == nil {
 		t.Fatal("expected error from Run (stub)")
 	}

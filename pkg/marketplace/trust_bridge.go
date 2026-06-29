@@ -15,11 +15,11 @@ import (
 // ledger, computes the live score, converts it to the 0-100 marketplace scale,
 // and updates the agent profile.
 type TrustSync struct {
-	mu          sync.RWMutex
-	registry    *Registry
-	ledgerPath  string
-	lastSync    map[string]time.Time // agentID → last sync time
-	syncInterval time.Duration       // minimum interval between syncs for the same agent
+	mu           sync.RWMutex
+	registry     *Registry
+	ledgerPath   string
+	lastSync     map[string]time.Time // agentID → last sync time
+	syncInterval time.Duration        // minimum interval between syncs for the same agent
 }
 
 // DefaultSyncInterval is the recommended interval between automatic syncs.
@@ -163,10 +163,10 @@ func MarketplaceToScore(marketplaceScore int) float64 {
 
 // SyncResult summarizes a SyncAll operation.
 type SyncResult struct {
-	SyncedAt time.Time    `json:"synced_at"`
-	Synced   int          `json:"synced"`
-	Updated  int          `json:"updated"`
-	Errors   []SyncError  `json:"errors,omitempty"`
+	SyncedAt time.Time   `json:"synced_at"`
+	Synced   int         `json:"synced"`
+	Updated  int         `json:"updated"`
+	Errors   []SyncError `json:"errors,omitempty"`
 }
 
 // SyncError captures a failure syncing one agent.

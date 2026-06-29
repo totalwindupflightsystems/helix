@@ -408,10 +408,10 @@ func TestCanPerformAction_UnknownAction(t *testing.T) {
 
 func TestPermissionSet_Can(t *testing.T) {
 	perms := PermissionSet{
-		CanReadRepos:       true,
-		CanCreateBranches:  false,
-		CanMergeOwnPRs:     true,
-		HasAdminAccess:     true,
+		CanReadRepos:      true,
+		CanCreateBranches: false,
+		CanMergeOwnPRs:    true,
+		HasAdminAccess:    true,
 	}
 
 	if !perms.Can("read_repos") {

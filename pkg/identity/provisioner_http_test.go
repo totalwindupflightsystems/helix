@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -30,22 +29,6 @@ func validForgejoUser(id int64, login, email string) ForgejoAccount {
 		Created:   "2026-06-01T00:00:00Z",
 		IsAdmin:   false,
 	}
-}
-
-// validSSHKey returns a realistic SSH key JSON.
-func validSSHKeyJSON(id int64) string {
-	return `{"id":` + itoa(id) + `,"key":"ssh-ed25519 AAAA...","title":"helix-key","fingerprint":"SHA256:abc123","created_at":"2026-06-01T00:00:00Z"}`
-}
-
-// validAccessTokenJSON returns a realistic PAT JSON.
-func validAccessTokenJSON(id int64, token string) string {
-	return `{"id":` + itoa(id) + `,"name":"helix-identity-pat","scopes":["read:repository","write:repository"],"sha1":"abc123","token":"` + token + `"}`
-}
-
-// itoa is a quick int64→string helper for JSON construction.
-func itoa(n int64) string {
-	return strings.TrimRight(strings.TrimRight(
-		string(json.RawMessage{'{'}), "{"), "}")
 }
 
 // newTestProvisioner creates a Provisioner pointed at an httptest server,
@@ -79,35 +62,6 @@ func newTestProvisioner(t *testing.T, srv *httptest.Server, maxAttempts int) *Pr
 // newTestServer starts an httptest server with the given handler.
 func newTestServer(handler http.HandlerFunc) *httptest.Server {
 	return httptest.NewServer(handler)
-}
-
-// ---------------------------------------------------------------------------
-// itoa implementation
-// ---------------------------------------------------------------------------
-
-func init() {
-	// Override the stub — we need a real itoa for JSON construction.
-	// We'll just use fmt.Sprintf in the helper instead.
-}
-
-// realItoa is a working int64→string helper.
-func realItoa(n int64) string {
-	buf := make([]byte, 0, 20)
-	if n == 0 {
-		return "0"
-	}
-	neg := n < 0
-	if neg {
-		n = -n
-	}
-	for n > 0 {
-		buf = append([]byte{byte('0' + n%10)}, buf...)
-		n /= 10
-	}
-	if neg {
-		buf = append([]byte{'-'}, buf...)
-	}
-	return string(buf)
 }
 
 // ---------------------------------------------------------------------------
@@ -236,7 +190,7 @@ func TestDoWithRetry_SuccessOnRetry(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ok"))
 	})
 	defer srv.Close()
 
@@ -276,7 +230,7 @@ func TestDoWithRetry_BodyBuffering(t *testing.T) {
 		body, _ := io.ReadAll(r.Body)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		w.Write(body)
+		_, _ = w.Write(body)
 	})
 	defer srv.Close()
 
@@ -311,7 +265,7 @@ func TestGetAccount_DryRun(t *testing.T) {
 func TestGetAccount_HTTPError(t *testing.T) {
 	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("internal error"))
+		_, _ = w.Write([]byte("internal error"))
 	})
 	defer srv.Close()
 
@@ -328,7 +282,7 @@ func TestGetAccount_DecodeFailure(t *testing.T) {
 	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`not-valid-json`))
+		_, _ = w.Write([]byte(`not-valid-json`))
 	})
 	defer srv.Close()
 
@@ -343,7 +297,7 @@ func TestGetAccount_NotFound(t *testing.T) {
 	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode([]ForgejoAccount{})
+		_ = json.NewEncoder(w).Encode([]ForgejoAccount{})
 	})
 	defer srv.Close()
 
@@ -358,7 +312,7 @@ func TestGetAccount_Found(t *testing.T) {
 	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode([]ForgejoAccount{expected})
+		_ = json.NewEncoder(w).Encode([]ForgejoAccount{expected})
 	})
 	defer srv.Close()
 
@@ -376,7 +330,7 @@ func TestGetAccount_FoundByLoginName(t *testing.T) {
 	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode([]ForgejoAccount{expected})
+		_ = json.NewEncoder(w).Encode([]ForgejoAccount{expected})
 	})
 	defer srv.Close()
 
@@ -427,7 +381,7 @@ func TestCreateUser_Success(t *testing.T) {
 	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(ForgejoAccount{
+		_ = json.NewEncoder(w).Encode(ForgejoAccount{
 			ID:        99,
 			Login:     "test-agent",
 			LoginName: "test-agent",
@@ -452,7 +406,7 @@ func TestCreateUser_Success(t *testing.T) {
 func TestCreateUser_Conflict(t *testing.T) {
 	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusConflict)
-		w.Write([]byte("user already exists"))
+		_, _ = w.Write([]byte("user already exists"))
 	})
 	defer srv.Close()
 
@@ -471,7 +425,7 @@ func TestCreateUser_Conflict(t *testing.T) {
 func TestCreateUser_UnprocessableEntity(t *testing.T) {
 	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		w.Write([]byte("validation failed"))
+		_, _ = w.Write([]byte("validation failed"))
 	})
 	defer srv.Close()
 
@@ -490,7 +444,7 @@ func TestCreateUser_UnprocessableEntity(t *testing.T) {
 func TestCreateUser_UnexpectedStatus(t *testing.T) {
 	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte("forbidden"))
+		_, _ = w.Write([]byte("forbidden"))
 	})
 	defer srv.Close()
 
@@ -542,7 +496,7 @@ func TestRegisterKey_Success(t *testing.T) {
 	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(`{"id":7,"key":"ssh-ed25519 AAAA...","title":"helix-key","fingerprint":"SHA256:abc","created_at":"2026-06-01T00:00:00Z"}`))
+		_, _ = w.Write([]byte(`{"id":7,"key":"ssh-ed25519 AAAA...","title":"helix-key","fingerprint":"SHA256:abc","created_at":"2026-06-01T00:00:00Z"}`))
 	})
 	defer srv.Close()
 
@@ -557,7 +511,7 @@ func TestRegisterKey_Success(t *testing.T) {
 func TestRegisterKey_HTTPError(t *testing.T) {
 	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("server error"))
+		_, _ = w.Write([]byte("server error"))
 	})
 	defer srv.Close()
 
@@ -571,7 +525,7 @@ func TestRegisterKey_DecodeFailure(t *testing.T) {
 	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(`not-json`))
+		_, _ = w.Write([]byte(`not-json`))
 	})
 	defer srv.Close()
 
@@ -585,7 +539,7 @@ func TestRegisterKey_DecodeFailure(t *testing.T) {
 func TestRegisterKey_UnexpectedStatus(t *testing.T) {
 	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte("forbidden"))
+		_, _ = w.Write([]byte("forbidden"))
 	})
 	defer srv.Close()
 
@@ -657,7 +611,7 @@ func TestCreateToken_Success(t *testing.T) {
 	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(`{"id":123,"name":"helix-identity-pat","scopes":["read:repository"],"sha1":"abc","token":"pat-abc123"}`))
+		_, _ = w.Write([]byte(`{"id":123,"name":"helix-identity-pat","scopes":["read:repository"],"sha1":"abc","token":"pat-abc123"}`))
 	})
 	defer srv.Close()
 
@@ -672,7 +626,7 @@ func TestCreateToken_Success(t *testing.T) {
 func TestCreateToken_HTTPError(t *testing.T) {
 	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("boom"))
+		_, _ = w.Write([]byte("boom"))
 	})
 	defer srv.Close()
 
@@ -740,7 +694,7 @@ func TestRevokeToken_Success(t *testing.T) {
 func TestRevokeToken_HTTPError(t *testing.T) {
 	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("boom"))
+		_, _ = w.Write([]byte("boom"))
 	})
 	defer srv.Close()
 
@@ -752,7 +706,7 @@ func TestRevokeToken_HTTPError(t *testing.T) {
 func TestRevokeToken_NotFound(t *testing.T) {
 	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("token not found"))
+		_, _ = w.Write([]byte("token not found"))
 	})
 	defer srv.Close()
 

@@ -167,8 +167,8 @@ func TestScorer_RecordReview(t *testing.T) {
 
 	t.Run("multiple reviews accumulate", func(t *testing.T) {
 		s := NewScorer()
-		s.RecordReview("bob", Review{Rating: 5})
-		s.RecordReview("bob", Review{Rating: 3})
+		_ = s.RecordReview("bob", Review{Rating: 5})
+		_ = s.RecordReview("bob", Review{Rating: 3})
 		if s.reviewCount["bob"] != 2 {
 			t.Errorf("reviewCount = %d, want 2", s.reviewCount["bob"])
 		}

@@ -65,8 +65,8 @@ func TestMarketplaceToScore(t *testing.T) {
 		{100, 1.0},
 		{50, 0.5},
 		{25, 0.25},
-		{-10, 0.0},  // clamped
-		{200, 1.0},  // clamped
+		{-10, 0.0}, // clamped
+		{200, 1.0}, // clamped
 	}
 	for _, tc := range tests {
 		got := MarketplaceToScore(tc.mp)
@@ -406,9 +406,9 @@ func TestScoreToMarketplace_Rounding(t *testing.T) {
 	}{
 		{0.495, 50},
 		{0.504, 50},
-		{0.505, 51},  // rounds up at .5
+		{0.505, 51}, // rounds up at .5
 		{0.334, 33},
-		{0.335, 34},  // rounds up
+		{0.335, 34}, // rounds up
 		{0.666, 67},
 	}
 	for _, tc := range tests {
@@ -503,7 +503,7 @@ func TestSyncAgent_LedgerReadPermission(t *testing.T) {
 	ledger.Close()
 
 	_ = os.Chmod(ledgerPath, 0o000)
-	defer os.Chmod(ledgerPath, 0o644) // restore for cleanup
+	defer func() { _ = os.Chmod(ledgerPath, 0o644) }()
 
 	reg, _ := NewRegistry(t.TempDir())
 	ts := NewTrustSync(reg, ledgerPath)

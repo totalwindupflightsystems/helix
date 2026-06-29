@@ -268,7 +268,7 @@ func TestReadAndCloseBody(t *testing.T) {
 	t.Run("real httptest response", func(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("real response body"))
+			_, _ = w.Write([]byte("real response body"))
 		}))
 		defer ts.Close()
 

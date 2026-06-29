@@ -26,10 +26,10 @@ func TestNewCostGuard_NilPermExp(t *testing.T) {
 func TestCheck_ProvisionalWithinCap(t *testing.T) {
 	cg := NewCostGuard(nil, nil) // no estimator → rough heuristic
 	task := estimate.TaskDesc{
-		Type:         estimate.TaskCode,
-		FilesChanged: 1,
+		Type:          estimate.TaskCode,
+		FilesChanged:  1,
 		MaxIterations: 5,
-		DiffLines:    50,
+		DiffLines:     50,
 	}
 
 	result, err := cg.Check("agent-a", trust.TierProvisional, task)

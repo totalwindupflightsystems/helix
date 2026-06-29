@@ -21,7 +21,7 @@ func captureOutput(f func()) string {
 	done := make(chan string)
 	go func() {
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		done <- buf.String()
 	}()
 	f()
@@ -30,30 +30,13 @@ func captureOutput(f func()) string {
 	return <-done
 }
 
-// captureStderr redirects os.Stderr during f().
-func captureStderr(f func()) string {
-	r, w, _ := os.Pipe()
-	old := os.Stderr
-	os.Stderr = w
-	done := make(chan string)
-	go func() {
-		var buf bytes.Buffer
-		io.Copy(&buf, r)
-		done <- buf.String()
-	}()
-	f()
-	w.Close()
-	os.Stderr = old
-	return <-done
-}
-
 // ---------------------------------------------------------------------------
 // envOr tests
 // ---------------------------------------------------------------------------
 
 func TestEnvOr_UsesEnv(t *testing.T) {
-	os.Setenv("HELIX_TEST_ENV", "from-env")
-	defer os.Unsetenv("HELIX_TEST_ENV")
+	_ = os.Setenv("HELIX_TEST_ENV", "from-env")
+	defer func() { _ = os.Unsetenv("HELIX_TEST_ENV") }()
 	result := envOr("HELIX_TEST_ENV", "fallback")
 	if result != "from-env" {
 		t.Errorf("expected 'from-env', got %q", result)
@@ -68,8 +51,8 @@ func TestEnvOr_UsesFallback(t *testing.T) {
 }
 
 func TestEnvOr_EmptyString(t *testing.T) {
-	os.Setenv("HELIX_TEST_EMPTY", "")
-	defer os.Unsetenv("HELIX_TEST_EMPTY")
+	_ = os.Setenv("HELIX_TEST_EMPTY", "")
+	defer func() { _ = os.Unsetenv("HELIX_TEST_EMPTY") }()
 	result := envOr("HELIX_TEST_EMPTY", "fallback")
 	if result != "fallback" {
 		t.Errorf("empty env should use fallback, got %q", result)
