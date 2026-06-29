@@ -417,13 +417,14 @@
 - **Logic:** NegotiationError type with Code, Message, Detail. Map all 7 exit codes (0=resolved, 1=evidence_required, 2=chimera_unavailable, 3=budget_exhausted, 4=timeout, 5=invalid_state, 10=dry_run) to error constructors. ExitCodeFromError extracts the code from an error. FormatExitMessage renders the spec §14 message format. IsTerminalExit checks if the code means negotiation is done.
 - **Result:** [x] 25 tests, 98.2% pkg/negotiate coverage. All 7 spec §14 exit codes with exact values. 7 typed constructors matching spec §14 message formats. IsTerminal/IsRetryable for flow control. FormatExitMessage for CLI output. ExitCodeFromError for error-to-code extraction. errors.As compatible.
 
-## [ ] Implement trust recovery tracking — pkg/trust/
+## [x] Implement trust recovery tracking — pkg/trust/
 - **Priority:** medium
 - **Spec:** specs/trust-model.md §Anti-Patterns (trust must be earnable, not permanent)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/trust/recovery.go (NEW), pkg/trust/recovery_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/trust/... -count=1 -cover` passes with >85% coverage
 - **Logic:** RecoveryTracker monitors agents who have dropped tiers or received incident penalties. Tracks recovery progress: consecutive clean merges since last incident, days without incident, trust score trend. IsRecovering returns true if an agent has had incidents but is now on an upward trend. RecoveryProgress returns a percentage (0-100) of how close the agent is to recovering to their pre-incident trust level. Uses the existing trust ledger for event history.
+- **Result:** [x] 31 tests, 91.6% pkg/trust coverage. RecoverySnapshot with IsRecovering, RecoveryProgress (0-100), PreIncidentScore, ConsecutiveCleanMerges, DaysSinceLastIncident, EstimatedDaysToRecover. Post-incident-only trend computation (incident drop excluded). GetRecoveryBatch for multi-agent. Configurable RecoveryConfig. 6 health labels (healthy/recovered/recovering-strong/recovering/recovering-slow/recovering-early/at-risk). Full suite 24/24 pass.
 
 ## [ ] Implement evidence bundle chain-of-custody — pkg/review/
 - **Priority:** medium
