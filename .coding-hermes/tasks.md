@@ -371,3 +371,27 @@
 - **AC:** `go build ./... && go test ./pkg/prompt/... -count=1 -cover` passes with >85% coverage
 - **Logic:** AttestationValidator verifies that every commit in a PR has a valid prompt attestation link. ValidateCommitMessage checks the `Prompt: prompts/<name>/v<N>.md` trailer format. VerifyPromptExists confirms the referenced prompt file exists in the registry. VerifyHashMatch confirms the prompt file's hash matches the attested hash. ValidatePR scans all commits in a PR and returns AttestationReport with per-commit status (VALID/MISSING/MALFORMED/HASH_MISMATCH/FILE_NOT_FOUND). Integrate with merge gate: no attestation → merge blocked.
 - **Result:** [x] 38 tests, 92.5% pkg/prompt coverage. Full suite 24/24 pass. AttestationValidator supports both path format (prompts/<name>/v<N>.md) and hash format (sha256:<hex>). Per-commit validation with 5 status types. AttestationReport with AllValid/HasInvalid/ShouldBlockMerge/Summary. Tamper detection integration test with registry Register+Lookup. Convenience functions (HasPromptTrailer, HasValidPromptTrailer, ExtractPromptRef, IsPathFormat, IsHashFormat).
+
+## [ ] Implement negotiation timeout watcher — pkg/negotiate/
+- **Priority:** high
+- **Spec:** specs/pr-negotiation.md §12.1 (Timeout Rules) + §7.4 (Deadlock Detection)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/negotiate/timeout.go (NEW), pkg/negotiate/timeout_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
+- **Logic:** TimeoutWatcher enforces the per-round (5 min) and global (30 min) timeouts from spec §12.1. StartRound begins a per-round timer; CheckRoundTimeout returns true when expired (→ agent who didn't post gets strike per §7.5). StartNegotiation begins the global timer; CheckGlobalTimeout returns true when the full negotiation exceeds 30 min (→ escalate to human). Context-aware: cancel via context.Context. OnGlobalTimeout returns a spec-compliant escalation event. OnRoundTimeout returns a strike event with agent + round number.
+
+## [ ] Implement Chimera arbiter input assembly — pkg/negotiate/
+- **Priority:** high
+- **Spec:** specs/pr-negotiation.md §9.2 (Input Assembly)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/negotiate/input_assembly.go (NEW), pkg/negotiate/input_assembly_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
+- **Logic:** AssembleArbiterInput builds the prompt sent to Chimera's arbiter formation per spec §9.2. Input sections: PR Context (title, description, diff truncated to 50K chars, spec files concatenated), Agent Reviews (both agent names, trust levels, verdicts, bodies), Debate Transcript (all rounds), Question (APPROVE or REJECT). TruncateDiff clips diffs to 50K chars with a truncation notice. ConcatSpecFiles merges referenced spec files. AssembleArbiterInput takes a Negotiation + debate rounds + PR context and returns the formatted prompt string.
+
+## [ ] Implement negotiation trust adjustment engine — pkg/negotiate/
+- **Priority:** medium
+- **Spec:** specs/pr-negotiation.md §10.2 (Trust Adjustments from Negotiation)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/negotiate/trust_adjustment.go (NEW), pkg/negotiate/trust_adjustment_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
+- **Logic:** TrustAdjustmentEngine computes trust deltas for all negotiation events per spec §10.2 table: concession with evidence (+1), wins tie-break (+2), loses with evidence (0), loses without evidence (-5), frivolous veto (-5), missed round (-2), 3 strikes (-10 + auto-concede). TrustDelta struct with Agent, Delta, Reason, Event type. ApplyTrustDelta clamps to 0-100 range (spec §10.3 floor/ceiling). AdjustForNegotiationOutcome computes all deltas for both agents after a negotiation completes. RecordTrustHistory stores the adjustment events for audit.
