@@ -372,13 +372,14 @@
 - **Logic:** AttestationValidator verifies that every commit in a PR has a valid prompt attestation link. ValidateCommitMessage checks the `Prompt: prompts/<name>/v<N>.md` trailer format. VerifyPromptExists confirms the referenced prompt file exists in the registry. VerifyHashMatch confirms the prompt file's hash matches the attested hash. ValidatePR scans all commits in a PR and returns AttestationReport with per-commit status (VALID/MISSING/MALFORMED/HASH_MISMATCH/FILE_NOT_FOUND). Integrate with merge gate: no attestation → merge blocked.
 - **Result:** [x] 38 tests, 92.5% pkg/prompt coverage. Full suite 24/24 pass. AttestationValidator supports both path format (prompts/<name>/v<N>.md) and hash format (sha256:<hex>). Per-commit validation with 5 status types. AttestationReport with AllValid/HasInvalid/ShouldBlockMerge/Summary. Tamper detection integration test with registry Register+Lookup. Convenience functions (HasPromptTrailer, HasValidPromptTrailer, ExtractPromptRef, IsPathFormat, IsHashFormat).
 
-## [ ] Implement negotiation timeout watcher — pkg/negotiate/
+## [x] Implement negotiation timeout watcher — pkg/negotiate/
 - **Priority:** high
 - **Spec:** specs/pr-negotiation.md §12.1 (Timeout Rules) + §7.4 (Deadlock Detection)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/negotiate/timeout.go (NEW), pkg/negotiate/timeout_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
 - **Logic:** TimeoutWatcher enforces the per-round (5 min) and global (30 min) timeouts from spec §12.1. StartRound begins a per-round timer; CheckRoundTimeout returns true when expired (→ agent who didn't post gets strike per §7.5). StartNegotiation begins the global timer; CheckGlobalTimeout returns true when the full negotiation exceeds 30 min (→ escalate to human). Context-aware: cancel via context.Context. OnGlobalTimeout returns a spec-compliant escalation event. OnRoundTimeout returns a strike event with agent + round number.
+- **Result:** [x] 52 tests, 98.0% pkg/negotiate coverage. Full suite 24/24 pass. TimeoutWatcher enforces all 3 spec §12.1 timeouts (round 5m, global 30m, Chimera 5m with 1 retry). OnRoundTimeout auto-records strikes for missing agents (integrates with StrikeTracker). OnChimeraTimeout handles retry-then-escalate flow. Status() snapshot for diagnostics. Context-aware cancellation. ValidateTimeoutConfig for config validation.
 
 ## [ ] Implement Chimera arbiter input assembly — pkg/negotiate/
 - **Priority:** high
