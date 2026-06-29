@@ -203,10 +203,11 @@
 - **Logic:** AdversarialAgentDispatcher that launches specialized agents (@assumption-buster, @redteam, @chaos-engineer, @cost-auditor) based on change category. Each agent is a ProsecutorAgent with a specific mission (find what's wrong, not what's right). AgentTrigger rules (behavioral→assumption-buster, auth/crypto→redteam, resilience→chaos-engineer, all→cost-auditor). AgentResult with exploit paths found, assumptions challenged, fault injection results.
 - **Result:** [x] AdversarialAgentDispatcher with trigger-based agent selection. ProsecutorAgent interface with Prosecute/Identity methods. 4 specialized agents (assumption-buster, redteam, chaos-engineer, cost-auditor) with DefaultTriggers mapping. Concurrent dispatch with DispatchReport aggregation (exploits, assumptions, fault results, cost estimates). StubAgent for testing. 38 new tests, 94.4% pkg/review coverage. Full suite 23/23 pass.
 
-## [ ] Implement drift detection for production verification — pkg/verify/
+## [x] Implement drift detection for production verification — pkg/verify/
 - **Priority:** medium
 - **Spec:** specs/production-verification.md §Shadow Verification + §Behavior Contracts
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/verify/drift.go (NEW), pkg/verify/drift_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/verify/... -count=1 -cover` passes with >80% coverage
 - **Logic:** DriftDetector compares shadow deployment metrics against baseline. Detect metric drift (success rate drop >2%, latency increase >10%, error type distribution shift). Configurable sensitivity thresholds per metric. Time-windowed comparison (rolling 5-min windows). DriftReport with per-metric delta, trend direction, and breach severity. Integration with existing ShadowDeployment and BehaviorContract.
+- **Result:** [x] DriftDetector with rolling time-windowed MetricsSnapshot samples. Per-metric sensitivity thresholds (success_rate 2%, p99_latency 10%, p50 15%, errors 50%, memory 10%, new_error_types 0). Trend direction (stable/improving/degrading) with higher/lower_is_better hint. Breach severity (none/warning/critical) based on overshoot ratio. AssessDeployment integrates with ShadowDeployment. 38 new tests, 97.3% pkg/verify coverage (up from 97.2%). Full suite 23/23 pass.
