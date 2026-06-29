@@ -239,10 +239,11 @@
 - **Logic:** CostGuard runs before dispatching a work item. It queries the agent's trust tier, looks up the tier-specific cost cap (Provisional: $5/day, Observed: $25/day, Trusted: $100/day, Veteran: $500/day), calls pkg/estimate to pre-flight the token cost, and blocks/escalates based on the result. Returns APPROVED/BLOCKED/ESCALATED. Integrates with existing dispatcher.ExecuteLoop as a pre-dispatch check.
 - **Result:** [x] CostGuard with Check (task desc → estimate → tier cap comparison) and CheckWithEstimate (pre-computed estimate). APPROVED/BLOCKED/ESCALATED decisions. 80% warn zone (approaching limit). Veteran unlimited cap. 18 tests, cost_guard functions 65-100% coverage. 91.2% pkg/dispatcher coverage. Full suite 23/23 pass.
 
-## [ ] Implement review depth scaling by trust tier — pkg/review + pkg/trust
+## [x] Implement review depth scaling by trust tier — pkg/review + pkg/trust
 - **Priority:** medium
 - **Spec:** specs/trust-model.md §Integration Points: "Review depth and model count scale inversely with trust tier" + specs/adversarial-review.md §Model Formation Strategy
 - **Model:** direct write — Go packages, cross-package integration
 - **Files:** pkg/review/tier_scaling.go (NEW), pkg/review/tier_scaling_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >80% coverage
 - **Logic:** TierReviewPolicy maps trust tiers to review formation requirements. Provisional: full 3-model adversarial + all prosecutor agents + 100% evidence verification. Observed: 2-model + prosecutor agents. Trusted: single-model + spot-check verification. Veteran: single-model review. The ReviewOrchestrator queries the agent's tier and adjusts the panel size, consensus threshold, and verification depth accordingly.
+- **Result:** [x] TierScaling with TierReviewPolicy per tier. AdjustFormation (min of category × tier), AdjustConsensusThreshold, ShouldVerifyEvidence, ShouldDispatchProsecutors (cosmetic always skips, trusted+ only for contract). 24 tests, tier_scaling functions 75-100% coverage. 94.2% pkg/review coverage. Full suite 23/23 pass.
