@@ -55,10 +55,13 @@ pipeline:
       on_fail: continue
     - id: build
       type: script
-      run: python3 -c "from engine.guard_manager import GuardManager; gm = GuardManager('.');
-        from engine.guards import check_go_build; r = check_go_build('.'); import
-        sys; sys.exit(0 if r.passed else 1)"
+      run: python3 -c "from engine.guard_manager import GuardManager; gm = GuardManager('.'); from engine.guards import check_go_build; r = check_go_build('.'); import sys; sys.exit(0 if r.passed else 1)"
       on_fail: continue
+    - id: trust_tier
+      type: script
+      run: bash scripts/check-trust-tier.sh --agent-id "${GIT_COMMITTER_NAME:-unknown}" --tier "${HELIX_AGENT_TIER:-provisional}" --files $(git diff --cached --name-only --diff-filter=ACM | tr '\n' ' ') || true
+      on_fail: continue
+
   - id: tier2
     type: ai_eval
     true:
