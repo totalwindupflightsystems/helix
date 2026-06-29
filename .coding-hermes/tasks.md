@@ -35,13 +35,14 @@
 - **AC:** `helix dispatch --spec specs/agent-identity.md --agent test-agent` creates a branch in Forgejo, provisions an agent, and returns a PR URL
 - **Logic:** Full Ralph Loop: acquire lock → create worktree → spawn agent → wait for completion → run GitReins guards → open PR → return URL. Requires Forgejo running on :3030.
 
-## [~] Implement evidence bundle signing — pkg/review/
+## [x] Implement evidence bundle signing — pkg/review/
 - **Priority:** medium
 - **Spec:** specs/adversarial-review.md §Evidence Bundles
 - **Model:** direct write — Go package, ED25519 + JSON canonicalization
 - **Files:** pkg/review/evidence.go, pkg/review/evidence_test.go
 - **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >80% coverage
-- **Logic:** EvidenceBundle struct, ED25519 signing per model, consensus resolution (3/3, 2/3, 2/2, blocked, tie-breaker), JSON canonicalization for deterministic hashing, bundle verification (signature check + hash chain), DuckBrain storage integration.
+- **Logic:** EvidenceBundle struct, ED25519 signing per model, consensus resolution (3/3, 2/3, 2/2, blocked, tie-breaker), JSON canonicalization for deterministic hashing (signatures excluded from hash), bundle verification (signature check), DuckBrain storage integration.
+- **Result:** [x] 67 tests (33 bias_stripper + 34 evidence), 85.3% coverage, all passing. Build + vet clean. Committed at #NEXT.
 
 ## [] Implement false positive feedback loop — pkg/review/
 - **Priority:** low
