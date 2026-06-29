@@ -327,13 +327,14 @@
 - **Logic:** FormatEscalationComment renders the spec §12.2 escalation PR comment template: reason (timeout|budget_exhausted|chimera_unavailable), agent names + trust levels, rounds completed, deadlock status, debate log path, agent positions with summaries, recommended action. EscalationData struct with all fields. EscalationReason constants. Integration with Negotiator.Escalate — when escalated, generate the comment body.
 - **Result:** [x] 18 tests, 100% coverage on escalation.go. FormatEscalationComment renders complete spec §12.2 markdown template. EscalationFromNegotiator extracts data from live Negotiator state. EscalationExitCode maps reasons to spec §14 codes. EscalationMessage formats exit messages. IsEscalatable validates state. 98.2% pkg/negotiate coverage (up from 97.3%). Full suite 24/24 pass.
 
-## [ ] Implement evidence bundle file store — pkg/review/
+## [x] Implement evidence bundle file store — pkg/review/
 - **Priority:** medium
 - **Spec:** specs/adversarial-review.md §Evidence Bundles — "stored in DuckBrain and linked from the merge commit"
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/review/store.go (NEW), pkg/review/store_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >85% coverage
 - **Logic:** EvidenceStore persists evidence bundles to disk as JSON files. Store(bundle) writes to ~/.helix/evidence/<review_id>.json. Load(reviewID) reads and verifies signatures. ListByAgent(agentID) returns all bundles for an agent. ListByPR(prURL) returns bundles for a PR. VerifyIntegrity re-checks all signatures on load. LinkFromMerge returns the path to embed in merge commit message.
+- **Result:** [x] 30 tests, 92.5% pkg/review coverage. EvidenceStore with Store/Load/LoadRaw/VerifyIntegrity/VerifyAllIntegrity/ListAll/ListByAgent/ListByPR/Search/Delete/Count/LinkFromMerge. StoreEntry wrapper with agent_id + stored_at metadata. Round-trip signature integrity verified. Full suite 24/24 pass.
 
 ## [ ] Implement trust snapshot query API — pkg/trust/
 - **Priority:** medium
