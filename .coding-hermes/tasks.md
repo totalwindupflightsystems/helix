@@ -399,13 +399,14 @@
 - **Logic:** TrustAdjustmentEngine computes trust deltas for all negotiation events per spec §10.2 table: concession with evidence (+1), wins tie-break (+2), loses with evidence (0), loses without evidence (-5), frivolous veto (-5), missed round (-2), 3 strikes (-10 + auto-concede). TrustDelta struct with Agent, Delta, Reason, Event type. ApplyTrustDelta clamps to 0-100 range (spec §10.3 floor/ceiling). AdjustForNegotiationOutcome computes all deltas for both agents after a negotiation completes. RecordTrustHistory stores the adjustment events for audit.
 - **Result:** [x] 38 tests, 98.2% pkg/negotiate coverage. Full suite 24/24 pass. All 7 spec §10.2 event types with exact deltas. AdjustForNegotiationOutcome computes all deltas from a NegotiationOutcome struct. ApplyAdjustments batch-applies with TrustHistoryEntry audit trail. ApplyTrustDelta clamps to [0,100] per spec §10.3. TrustAdjustmentSummary for human-readable output. EventDescription for each type.
 
-## [ ] Implement negotiation dry-run simulator — pkg/negotiate/
+## [x] Implement negotiation dry-run simulator — pkg/negotiate/
 - **Priority:** medium
 - **Spec:** specs/pr-negotiation.md §2 (Dry-run mode) + §14 (Exit code 10)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/negotiate/dry_run.go (NEW), pkg/negotiate/dry_run_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
 - **Logic:** DryRunSimulator runs the full negotiation protocol without making Forgejo or Chimera calls. Simulates all 3 debate rounds with stub agents, produces the same DebateEvent JSONL transcript as a real negotiation, returns a DryRunReport with rounds simulated, would-be-resolution, estimated cost, and exit code 10 (DRY_RUN). Used for previewing debate flow.
+- **Result:** [x] 22 tests, 98.3% pkg/negotiate coverage. Full suite pass. DryRunSimulator with Simulate (full 3-round conflict → deadlock → Chimera) and SimulateConcession (agent concedes in round N). Full lifecycle event ordering verified. FormatDryRunReport for CLI output. Exit code 10 (spec §14).
 
 ## [ ] Implement negotiation error taxonomy — pkg/negotiate/
 - **Priority:** medium
