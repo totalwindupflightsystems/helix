@@ -40,9 +40,9 @@ type CircuitBreaker interface {
 // NoopCircuitBreaker is a circuit breaker that always allows calls.
 type NoopCircuitBreaker struct{}
 
-func (NoopCircuitBreaker) Allow() bool      { return true }
-func (NoopCircuitBreaker) RecordSuccess()   {}
-func (NoopCircuitBreaker) RecordFailure()   {}
+func (NoopCircuitBreaker) Allow() bool    { return true }
+func (NoopCircuitBreaker) RecordSuccess() {}
+func (NoopCircuitBreaker) RecordFailure() {}
 
 // NewClient creates a Forgejo API client.
 func NewClient(baseURL, username, password string) *Client {
@@ -87,7 +87,7 @@ type CreateUserRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	FullName string `json:"full_name,omitempty"`
-	SourceID  int64 `json:"source_id,omitempty"`
+	SourceID int64  `json:"source_id,omitempty"`
 }
 
 // SSHKey represents a public SSH key registered with Forgejo.
@@ -108,10 +108,10 @@ type PAT struct {
 
 // PRReview represents a review on a pull request.
 type PRReview struct {
-	ID       int64  `json:"id"`
-	User     User   `json:"user"`
-	Body     string `json:"body"`
-	State    string `json:"state"` // "APPROVED", "REQUEST_CHANGES", "COMMENT"
+	ID    int64  `json:"id"`
+	User  User   `json:"user"`
+	Body  string `json:"body"`
+	State string `json:"state"` // "APPROVED", "REQUEST_CHANGES", "COMMENT"
 }
 
 // PullRequest represents a Forgejo pull request.
