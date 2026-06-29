@@ -336,10 +336,11 @@
 - **Logic:** EvidenceStore persists evidence bundles to disk as JSON files. Store(bundle) writes to ~/.helix/evidence/<review_id>.json. Load(reviewID) reads and verifies signatures. ListByAgent(agentID) returns all bundles for an agent. ListByPR(prURL) returns bundles for a PR. VerifyIntegrity re-checks all signatures on load. LinkFromMerge returns the path to embed in merge commit message.
 - **Result:** [x] 30 tests, 92.5% pkg/review coverage. EvidenceStore with Store/Load/LoadRaw/VerifyIntegrity/VerifyAllIntegrity/ListAll/ListByAgent/ListByPR/Search/Delete/Count/LinkFromMerge. StoreEntry wrapper with agent_id + stored_at metadata. Round-trip signature integrity verified. Full suite 24/24 pass.
 
-## [ ] Implement trust snapshot query API — pkg/trust/
+## [x] Implement trust snapshot query API — pkg/trust/
 - **Priority:** medium
 - **Spec:** specs/trust-model.md §The Trust Ledger — "replay the ledger to verify any agent's current score"
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/trust/snapshot.go (NEW), pkg/trust/snapshot_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/trust/... -count=1 -cover` passes with >85% coverage
 - **Logic:** TrustSnapshot captures a point-in-time view of an agent's trust state: current score, tier, score breakdown by dimension, recent events (last 30 days), tier history. GetSnapshot(agentID) replays the ledger and returns the full snapshot. GetScoreBreakdown returns per-dimension scores. GetTierHistory returns promotion/demotion events. ScoreTrend returns the score change over N days.
+- **Result:** [x] 25 tests, 91.6% pkg/trust coverage. GetSnapshot replays ledger → full TrustSnapshot (score, tier, breakdown, recent events, tier history, score trend). GetScoreBreakdown with 6 dimensions (weight × estimated score = contribution). GetTierHistory extracts promotion/demotion transitions. ScoreTrendOver with up/down/stable direction detection. GetRecentEvents for N-day window queries. Full suite 24/24 pass.
