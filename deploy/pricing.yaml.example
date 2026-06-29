@@ -1,0 +1,77 @@
+# deploy/pricing.yaml.example — Helix provider pricing template
+#
+# Copy to ~/.helix/pricing.yaml and update prices as needed.
+# Based on specs/helix-config.md §3.
+#
+# cp deploy/pricing.yaml.example ~/.helix/pricing.yaml
+
+version: 1
+updated: "2026-06-20"
+
+providers:
+  deepseek:
+    models:
+      deepseek-v4-pro:
+        input_per_1k: 0.00014
+        cache_read_per_1k: 0.000014
+        output_per_1k: 0.00028
+      deepseek-v4-flash:
+        input_per_1k: 0.00007
+        cache_read_per_1k: 0.000007
+        output_per_1k: 0.00014
+  zai-glm:
+    models:
+      glm-5.2:
+        input_per_1k: 0.00010
+        cache_read_per_1k: 0.000010
+        output_per_1k: 0.00020
+  minimax:
+    models:
+      MiniMax-M3:
+        input_per_1k: 0.00020
+        output_per_1k: 0.00040
+  anthropic:
+    models:
+      claude-sonnet-4:
+        input_per_1k: 0.00300
+        cache_read_per_1k: 0.00030
+        cache_write_per_1k: 0.00375
+        output_per_1k: 0.01500
+  google:
+    models:
+      gemini-2.5-pro:
+        input_per_1k: 0.00125
+        cache_read_per_1k: 0.00031
+        output_per_1k: 0.01000
+  openrouter:
+    markup_percent: 5
+
+cache:
+  pro_hit_ratio: 0.60
+  flash_hit_ratio: 0.80
+  pro_write_ratio: 0.50
+  flash_write_ratio: 0.70
+  new_repo_threshold: 10
+  new_repo_hit_ratio: 0.0
+
+tasks:
+  spec:
+    input_tokens: 80000
+    output_ratio: 2.0
+    max_iterations: 5
+  code:
+    input_tokens: 120000
+    output_ratio: 0.8
+    max_iterations: 20
+  review:
+    input_tokens: 40000
+    output_ratio: 0.3
+    max_iterations: 3
+  refactor:
+    input_tokens: 200000
+    output_ratio: 0.5
+    max_iterations: 15
+  test:
+    input_tokens: 30000
+    output_ratio: 1.0
+    max_iterations: 10

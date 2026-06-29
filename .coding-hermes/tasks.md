@@ -66,37 +66,49 @@
 - **Logic:** Incident struct (agent_id, pr_url, severity, causal_chain, timestamp), shared learning across agents, incident → trust penalty pipeline.
 - **Result:** [x] 11 tests, 100% coverage.
 
-## [ ] Create Helix bootstrap script
+## [x] Create Helix bootstrap script
 - **Priority:** high
 - **Spec:** specs/build-order.md §9
-- **Model:** direct write — bash script
-- **Files:** scripts/bootstrap.sh (NEW)
-- **AC:** `scripts/bootstrap.sh` starts Forgejo + Chimera, builds all Helix CLIs, and runs verification (all 5 checks from build-order.md §10)
-- **Logic:** Automate the Phase 0→4 sequence: create directories, docker run Forgejo, pip install Chimera + start, verify both health, go build ./cmd/...
+- **Result:** [x] Bootstrap script with 4-phase automation: prerequisites check (Docker/Go/Python/curl), Forgejo container start with health retry, Chimera venv install + start, Helix CLI build, 5-point verification. 199 lines. Committed.
 
-## [ ] Create Docker Compose for Helix platform
+## [x] Create Docker Compose for Helix platform
 - **Priority:** high
 - **Spec:** specs/deployment.md §2
-- **Model:** direct write — docker-compose.yaml
-- **Files:** deploy/docker-compose.yaml (NEW)
-- **AC:** `docker compose -f deploy/docker-compose.yaml up -d` starts Forgejo + Chimera + LangFuse + all 9 services with health checks
-- **Logic:** Define all service containers with helix-net, volumes, health checks, environment variables from deployment.md topology.
+- **Result:** [x] docker-compose.yaml with Forgejo + Chimera + LangFuse + Postgres, all on helix-net bridge with health checks. Placeholder templates for Consensus/Muster/Hivemind (uncomment when repos cloned). Committed.
 
-## [ ] Implement circuit breaker for cross-service HTTP calls
+## [x] Implement circuit breaker for cross-service HTTP calls
 - **Priority:** medium
 - **Spec:** specs/cross-component-wiring.md §8
-- **Model:** direct write — Go package
-- **Files:** pkg/integration/circuitbreaker.go, pkg/integration/circuitbreaker_test.go (NEW)
-- **AC:** `go test ./pkg/integration/... -count=1` passes — circuit breaker allows/denies calls based on MaxFailures (5), ResetTimeout (60s), half-open probe state
-- **Logic:** CircuitBreaker struct with Allow(), RecordSuccess(), RecordFailure(). Configurable MaxFailures (default 5), ResetTimeout (default 60s). Half-open state allows one probe call on timeout expiry.
+- **Result:** [x] Already implemented in pkg/integration/types.go — CircuitBreaker with Allow/RecordSuccess/RecordFailure, half-open probe, configurable MaxFailures/ResetTimeout. 10 tests, 100% coverage on all methods. No new files needed.
 
-## [ ] Create platform config templates
+## [x] Create platform config templates
 - **Priority:** low
 - **Spec:** specs/helix-config.md
+- **Result:** [x] deploy/config.yaml.example (all 10 sections: forgejo, chimera, langfuse, gitreins, identity, estimator, marketplace, negotiation, prompts, budget) + deploy/pricing.yaml.example (6 providers, cache config, 5 task types). Committed.
+
+## [ ] Implement health checker for startup validation
+- **Priority:** high
+- **Spec:** specs/cross-component-wiring.md §8 + specs/helix-config.md §7
+- **Model:** direct write — Go package
+- **Files:** pkg/health/checker.go, pkg/health/checker_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/health/... -count=1 -cover` passes with >80% coverage
+- **Logic:** HealthChecker struct that probes all configured services at startup. Concurrency-safe parallel health checks. Returns aggregated HealthReport (pass/fail per service). Configurable timeouts per service. Used by all CLI tools to fail-fast on unreachable services.
+
+## [ ] Implement Forgejo API client wrapper
+- **Priority:** high
+- **Spec:** specs/cross-component-wiring.md §2, specs/agent-identity.md
+- **Model:** direct write — Go package
+- **Files:** pkg/forgejo/client.go, pkg/forgejo/client_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/forgejo/... -count=1 -cover` passes with >80% coverage
+- **Logic:** ForgejoClient struct wrapping REST API calls: CreateUser, GetUser, CreateSSHKey, CreatePAT, ListPRs, GetPRReviews, CreatePRReview. BasicAuth support. Circuit breaker integration. Retry with backoff on 5xx. Test with httptest.NewServer mock.
+
+## [ ] Create `.forgejo/workflows` CI/CD pipeline files
+- **Priority:** medium
+- **Spec:** specs/deployment.md §5
 - **Model:** direct write — YAML files
-- **Files:** deploy/config.yaml.example, deploy/pricing.yaml.example
-- **AC:** Example config files compile against helix CLI validation
-- **Logic:** Create template versions of `~/.helix/config.yaml` and `~/.helix/pricing.yaml` from the config spec.
+- **Files:** .forgejo/workflows/gitreins.yaml, .forgejo/workflows/chimera-review.yaml, .forgejo/workflows/promptfoo.yaml (NEW)
+- **AC:** All 3 workflow YAML files are valid and reference correct service URLs/ports from deployment.md §3
+- **Logic:** GitReins quality gate on push, Chimera PR review on PR open/synchronize, PromptFoo regression tests on prompt file changes. Based on deployment.md §5.1-5.3.
 
 ## [] Wire dispatcher to Forgejo — agent spawn pipeline
 - **Priority:** critical

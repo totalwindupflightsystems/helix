@@ -1,0 +1,184 @@
+# deploy/docker-compose.yaml — Helix platform deployment
+#
+# Start:  docker compose -f deploy/docker-compose.yaml up -d
+# Stop:   docker compose -f deploy/docker-compose.yaml down
+# Status: docker compose -f deploy/docker-compose.yaml ps
+# Logs:   docker compose -f deploy/docker-compose.yaml logs -f <service>
+#
+# Based on specs/deployment.md §2
+
+networks:
+  helix-net:
+    name: helix-net
+    driver: bridge
+
+volumes:
+  forgejo-data:
+    name: forgejo-helix-data
+  langfuse-data:
+    name: langfuse-helix-data
+  langfuse-db-data:
+    name: langfuse-db-helix-data
+  hivemind-data:
+    name: hivemind-helix-data
+
+services:
+  # ── Git Forge ────────────────────────────────────────────
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:1.21
+    container_name: forgejo-helix
+    restart: unless-stopped
+    networks:
+      - helix-net
+    ports:
+      - "3030:3000"
+    environment:
+      FORGEJO__server__DOMAIN: "localhost"
+      FORGEJO__server__ROOT_URL: "http://localhost:3030"
+      FORGEJO__server__HTTP_PORT: "3000"
+      FORGEJO__server__START_SSH_SERVER: "false"
+    volumes:
+      - forgejo-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/api/v1/version"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # ── Quality & Review ─────────────────────────────────────
+  chimera:
+    build:
+      context: /home/kara/chimera
+      dockerfile: Dockerfile
+    container_name: chimera-helix
+    restart: unless-stopped
+    networks:
+      - helix-net
+    ports:
+      - "8765:8765"
+    environment:
+      CHIMERA_CONFIG: "/etc/chimera/chimera.yaml"
+      CHIMERA_PORT: "8765"
+      CHIMERA_HOST: "0.0.0.0"
+    volumes:
+      - /home/kara/chimera/chimera.yaml:/etc/chimera/chimera.yaml:ro
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8765/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    command: >
+      python3 -c "
+      from chimera.api.server import app
+      import uvicorn
+      uvicorn.run(app, host='0.0.0.0', port=8765)
+      "
+
+  # ── Observability ────────────────────────────────────────
+  langfuse:
+    image: ghcr.io/langfuse/langfuse:latest
+    container_name: langfuse-helix
+    restart: unless-stopped
+    networks:
+      - helix-net
+    ports:
+      - "3001:3000"
+    environment:
+      DATABASE_URL: "postgresql://langfuse:langfuse@langfuse-db:5432/langfuse"
+      NEXTAUTH_SECRET: "${LANGFUSE_SECRET:-helix-dev-secret-changeme}"
+      NEXTAUTH_URL: "http://localhost:3001"
+      SALT: "${LANGFUSE_SALT:-helix-dev-salt-changeme}"
+    volumes:
+      - langfuse-data:/app/data
+    depends_on:
+      langfuse-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/api/public/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  langfuse-db:
+    image: postgres:16-alpine
+    container_name: langfuse-db-helix
+    restart: unless-stopped
+    networks:
+      - helix-net
+    environment:
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: langfuse
+      POSTGRES_DB: langfuse
+    volumes:
+      - langfuse-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Placeholder Services (uncomment when repos are cloned) ──
+  #
+  # # Conscientiousness (adversarial evaluation)
+  # consensus:
+  #   build:
+  #     context: /home/kara/consensus
+  #     dockerfile: Dockerfile
+  #   container_name: consensus-helix
+  #   restart: unless-stopped
+  #   networks:
+  #     - helix-net
+  #   ports:
+  #     - "8080:8080"
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
+  #     interval: 15s
+  #     timeout: 5s
+  #     retries: 3
+  #
+  # # Muster (API glue)
+  # muster:
+  #   build:
+  #     context: /home/kara/muster
+  #     dockerfile: Dockerfile
+  #   container_name: muster-helix
+  #   restart: unless-stopped
+  #   networks:
+  #     - helix-net
+  #   ports:
+  #     - "9090:9090"
+  #   volumes:
+  #     - /home/kara/muster/config.yaml:/etc/muster/config.yaml:ro
+  #   depends_on:
+  #     forgejo:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-sf", "http://localhost:9090/health"]
+  #     interval: 15s
+  #     timeout: 5s
+  #     retries: 3
+  #
+  # # Hivemind (memory + scheduling)
+  # hivemind:
+  #   build:
+  #     context: /home/kara/hivemind
+  #     dockerfile: Dockerfile
+  #   container_name: hivemind-helix
+  #   restart: unless-stopped
+  #   networks:
+  #     - helix-net
+  #   ports:
+  #     - "8081:8081"
+  #   volumes:
+  #     - hivemind-data:/data
+  #   depends_on:
+  #     forgejo:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-sf", "http://localhost:8081/health"]
+  #     interval: 15s
+  #     timeout: 5s
+  #     retries: 3

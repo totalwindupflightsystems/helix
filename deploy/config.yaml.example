@@ -1,0 +1,91 @@
+# deploy/config.yaml.example — Helix platform configuration template
+#
+# Copy to ~/.helix/config.yaml and edit values for your environment.
+# Based on specs/helix-config.md §2.
+#
+# cp deploy/config.yaml.example ~/.helix/config.yaml
+
+version: 1
+
+# ── Forgejo ────────────────────────────────────────────────
+forgejo:
+  url: "http://localhost:3030"          # External URL (host)
+  internal_url: "http://forgejo-helix:3000"  # Docker network URL
+  admin_user: "helio"
+  # admin_password set via HELIX_FORGEJO_ADMIN_PASSWORD env var (never in config)
+
+# ── Chimera ────────────────────────────────────────────────
+chimera:
+  url: "http://localhost:8765"
+  internal_url: "http://chimera-helix:8765"
+  default_formation: "standard"
+  arbiter_formation: "arbiter"
+  budget_formation: "budget"
+  timeout: 120s
+
+# ── LangFuse ───────────────────────────────────────────────
+langfuse:
+  url: "http://localhost:3001"
+  internal_url: "http://langfuse-helix:3000"
+  enabled: true
+
+# ── GitReins ───────────────────────────────────────────────
+gitreins:
+  model: "deepseek-v4-flash"
+  provider: "deepseek"
+  max_iterations: 25
+  max_time: "5m"
+  test_mode: "diff"
+
+# ── Agent Identity (Feature 1) ─────────────────────────────
+identity:
+  known_friends_path: "/opt/hermes-demo/.hermes/h4f/known-friends.json"
+  ssh_key_dir: "~/.helix/keys"
+  state_path: "~/.helix/state.json"
+
+# ── Cost Estimator (Feature 2) ─────────────────────────────
+estimator:
+  pricing_path: "~/.helix/pricing.yaml"
+  cache_hit_ratio_pro: 0.60
+  cache_hit_ratio_flash: 0.80
+  budget_reset_day: "sunday"
+  budget_reset_time: "00:00 UTC"
+
+# ── Agent Marketplace (Feature 5) ──────────────────────────
+marketplace:
+  registry_path: "~/.helix/marketplace"
+  auto_deprecation_days: 30
+  trust_recalc_schedule: "0 2 * * *"  # Daily at 02:00 UTC
+
+# ── Negotiation (Feature 3) ────────────────────────────────
+negotiation:
+  max_rounds: 3
+  round_timeout: "5m"
+  global_timeout: "30m"
+  transcript_dir: "~/.helix/negotiations"
+
+# ── Prompt Registry (Feature 4) ────────────────────────────
+prompts:
+  registry_path: "prompts"              # Relative to repo root
+  deprecated_grace_days: 30
+  retired_after_days: 180
+
+# ── Services (health check targets) ────────────────────────
+services:
+  forgejo:
+    url: "http://forgejo-helix:3000"
+    health_endpoint: "/api/v1/version"
+  chimera:
+    url: "http://chimera-helix:8765"
+    health_endpoint: "/v1/health"
+  langfuse:
+    url: "http://langfuse-helix:3000"
+    health_endpoint: "/api/public/health"
+
+# ── Budget ─────────────────────────────────────────────────
+budget:
+  default_weekly_usd:
+    pro: 10.00
+    flash: 5.00
+  overage_policy: "block"               # "block" or "warn"
+  escalation_threshold: 1.5             # Auto-escalate if single task > 1.5x weekly cap
