@@ -9,13 +9,14 @@
 - **Logic:** TrustScore calculation (6 dimensions: merge success 0.25, incident attribution 0.30, review consensus 0.15, prompt integrity 0.10, human feedback 0.10, tenure 0.10), tier thresholds (Provisional/Observed/Trusted/Veteran), incident attribution with time-decay weight (100% at 0-7d, 50% at 8-30d, 10% at 31-90d, 0% after 90d), trust decay on inactivity (0.05/week), tier demotion logic, JSONL ledger append + replay verification.
 - **Result:** [x] 59 tests, 86.8% coverage, all passing. Build + vet clean. Committed at #NEXT.
 
-## [~] Implement bias-stripper for adversarial review — pkg/review/
+## [x] Implement bias-stripper for adversarial review — pkg/review/
 - **Priority:** high
 - **Spec:** specs/adversarial-review.md §Confirmation Bias Defense
 - **Model:** direct write — Go package, pure text processing
 - **Files:** pkg/review/bias_stripper.go, pkg/review/bias_stripper_test.go
 - **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >85% coverage
-- **Logic:** Strip evaluative language ("fixed", "correct", "ready", "passes"), remove confidence assertions ("tested locally", "works on my machine"), strip emoji and emotional framing, normalize formatting, preserve factual information (files changed, intent). Test with real commit messages from the 8 documented disasters.
+- **Logic:** Strip evaluative language ("fixed", "correct", "ready", "passes"), remove confidence assertions ("tested locally", "works on my machine"), strip emoji and emotional framing, normalize formatting, preserve factual information (files changed, intent). Tested with 8 documented disaster commit messages.
+- **Result:** [x] 33 tests, 97.4% coverage, all passing. Build + vet clean. Committed at #NEXT.
 
 ## [] Implement production verification contracts — pkg/verify/
 - **Priority:** medium
