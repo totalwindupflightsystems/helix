@@ -363,10 +363,11 @@
 - **Logic:** CanaryPromoter evaluates whether a shadow deployment is ready for canary promotion. EvaluatePromotion(shadowResult) checks: behavior contract passed all assertions, drift detector shows no degradation, success rate within threshold of baseline, no new error types introduced, minimum observation window elapsed. Returns PromotionDecision (READY/NOT_READY/NEEDS_MORE_DATA) with per-check results. ComputeCanaryPercentage decides traffic ramp: Provisional 1%, Observed 5%, Trusted 10%, Veteran 25%. AutoRampSchedule generates gradual ramp-up schedule with observation gaps between increments.
 - **Result:** [x] 45 tests, 97.7% pkg/verify coverage (up from 97.3%). Full suite 24/24 pass. CanaryPromoter with 5 readiness checks (contract, drift, success rate, new errors, observation window). READY/NOT_READY/NEEDS_MORE_DATA decision logic with nil-input skip semantics. ComputeCanaryPercentage with 4 trust tiers. AutoRampSchedule generates tier-specific ramp steps from CanarySchedule. DriftAssessment helpers (HasCriticalBreach, DriftCount).
 
-## [ ] Implement prompt attestation validator — pkg/prompt/
+## [x] Implement prompt attestation validator — pkg/prompt/
 - **Priority:** medium
 - **Spec:** specs/prompt-registry.md §Attestation
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/prompt/attestation_validator.go (NEW), pkg/prompt/attestation_validator_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/prompt/... -count=1 -cover` passes with >85% coverage
 - **Logic:** AttestationValidator verifies that every commit in a PR has a valid prompt attestation link. ValidateCommitMessage checks the `Prompt: prompts/<name>/v<N>.md` trailer format. VerifyPromptExists confirms the referenced prompt file exists in the registry. VerifyHashMatch confirms the prompt file's hash matches the attested hash. ValidatePR scans all commits in a PR and returns AttestationReport with per-commit status (VALID/MISSING/MALFORMED/HASH_MISMATCH/FILE_NOT_FOUND). Integrate with merge gate: no attestation → merge blocked.
+- **Result:** [x] 38 tests, 92.5% pkg/prompt coverage. Full suite 24/24 pass. AttestationValidator supports both path format (prompts/<name>/v<N>.md) and hash format (sha256:<hex>). Per-commit validation with 5 status types. AttestationReport with AllValid/HasInvalid/ShouldBlockMerge/Summary. Tamper detection integration test with registry Register+Lookup. Convenience functions (HasPromptTrailer, HasValidPromptTrailer, ExtractPromptRef, IsPathFormat, IsHashFormat).
