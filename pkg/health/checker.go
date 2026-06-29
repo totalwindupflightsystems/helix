@@ -15,9 +15,9 @@ import (
 
 // ServiceCheck defines a single service to health-check.
 type ServiceCheck struct {
-	Name    string // Human-readable service name (e.g., "forgejo")
-	URL     string // Full health-check URL (e.g., "http://localhost:3030/api/v1/version")
-	Timeout time.Duration
+	Name     string // Human-readable service name (e.g., "forgejo")
+	URL      string // Full health-check URL (e.g., "http://localhost:3030/api/v1/version")
+	Timeout  time.Duration
 	Required bool // If true, failure causes overall Check to fail. If false, failure is a warning.
 }
 
@@ -35,9 +35,9 @@ func (r *ServiceResult) IsRequired() bool { return r.Required }
 
 // HealthReport aggregates results from all checked services.
 type HealthReport struct {
-	Results  []ServiceResult
-	Healthy  bool // true if all required services are healthy
-	Took     time.Duration
+	Results []ServiceResult
+	Healthy bool // true if all required services are healthy
+	Took    time.Duration
 }
 
 // HasFailures returns true if any service failed (required or optional).

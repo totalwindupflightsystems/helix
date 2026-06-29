@@ -46,7 +46,7 @@ func (mf *mockForgejo) url() string { return mf.server.URL }
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	_ = json.NewEncoder(w).Encode(v)
 }
 
 // ---------------------------------------------------------------------------
@@ -350,9 +350,9 @@ type mockCircuitBreaker struct {
 	failures  int
 }
 
-func (m *mockCircuitBreaker) Allow() bool      { return m.allow }
-func (m *mockCircuitBreaker) RecordSuccess()   { m.successes++ }
-func (m *mockCircuitBreaker) RecordFailure()   { m.failures++ }
+func (m *mockCircuitBreaker) Allow() bool    { return m.allow }
+func (m *mockCircuitBreaker) RecordSuccess() { m.successes++ }
+func (m *mockCircuitBreaker) RecordFailure() { m.failures++ }
 
 func TestClient_CircuitBreakerOpen(t *testing.T) {
 	mf := newMockForgejo()
