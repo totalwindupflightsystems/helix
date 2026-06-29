@@ -381,13 +381,14 @@
 - **Logic:** TimeoutWatcher enforces the per-round (5 min) and global (30 min) timeouts from spec §12.1. StartRound begins a per-round timer; CheckRoundTimeout returns true when expired (→ agent who didn't post gets strike per §7.5). StartNegotiation begins the global timer; CheckGlobalTimeout returns true when the full negotiation exceeds 30 min (→ escalate to human). Context-aware: cancel via context.Context. OnGlobalTimeout returns a spec-compliant escalation event. OnRoundTimeout returns a strike event with agent + round number.
 - **Result:** [x] 52 tests, 98.0% pkg/negotiate coverage. Full suite 24/24 pass. TimeoutWatcher enforces all 3 spec §12.1 timeouts (round 5m, global 30m, Chimera 5m with 1 retry). OnRoundTimeout auto-records strikes for missing agents (integrates with StrikeTracker). OnChimeraTimeout handles retry-then-escalate flow. Status() snapshot for diagnostics. Context-aware cancellation. ValidateTimeoutConfig for config validation.
 
-## [ ] Implement Chimera arbiter input assembly — pkg/negotiate/
+## [x] Implement Chimera arbiter input assembly — pkg/negotiate/
 - **Priority:** high
 - **Spec:** specs/pr-negotiation.md §9.2 (Input Assembly)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/negotiate/input_assembly.go (NEW), pkg/negotiate/input_assembly_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
 - **Logic:** AssembleArbiterInput builds the prompt sent to Chimera's arbiter formation per spec §9.2. Input sections: PR Context (title, description, diff truncated to 50K chars, spec files concatenated), Agent Reviews (both agent names, trust levels, verdicts, bodies), Debate Transcript (all rounds), Question (APPROVE or REJECT). TruncateDiff clips diffs to 50K chars with a truncation notice. ConcatSpecFiles merges referenced spec files. AssembleArbiterInput takes a Negotiation + debate rounds + PR context and returns the formatted prompt string.
+- **Result:** [x] 26 tests, 98.1% pkg/negotiate coverage. Full suite 24/24 pass. AssembleArbiterInput builds spec §9.2 prompt with all 4 sections (PR Context, Agent Reviews, Debate Transcript, Question). TruncateDiff with percentage notice. ConcatSpecFiles with labeled file paths. AssembleFromNegotiator convenience wrapper. EstimatePromptSize for pre-flight budget checks.
 
 ## [ ] Implement negotiation trust adjustment engine — pkg/negotiate/
 - **Priority:** medium
