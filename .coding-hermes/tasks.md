@@ -165,13 +165,25 @@
 - **Logic:** Trace causal chain from incident → changed code paths → merge commit → responsible agent. Attribution weights: author 70%, reviewers 20% (shared), approving human 10%. Feed attribution result into trust scoring engine (pkg/trust). Record evidence links in incident record. Multiple agents → shared responsibility distribution.
 - **Result:** [x] AttributionEngine with spec-compliant weights (author 70%, reviewers 20% shared, approver 10%). Multi-path normalization (sums to 1.0). TrustPenalty with severity multipliers (low 0.05, medium 0.10, high 0.20, critical 0.40). ApplyTrustPenalties callback for trust engine integration. FindResponsiblePaths filters by causal chain. MergeAttribution for multi-incident aggregation. 28 tests, **100% coverage** on entire pkg/incident.
 
-## [ ] Wire trust scoring to incident attribution — pkg/trust + pkg/incident
+## [ ] Fix CI: Helix CI — golangci-lint failures (gofmt, errcheck, unused funcs, SA9003)
+- **Priority:** high
+- **Branch:** master
+- **CI Run:** https://github.com/totalwindupflightsystems/helix/actions/runs/28372979462
+- **Errors:**
+  1. `os.Chmod` unchecked in pkg/sandbox/cgroups_test.go (lines 221, 322)
+  2. `s.RecordMerge` unchecked in pkg/marketplace/scorer_advanced_test.go (lines 288, 289)
+  3. `func executeRoot` unused in cmd/helix-prompt/main_test.go
+  4. gofmt issues: pkg/verify/contract.go, monitor.go, shadow.go, contract_test.go
+  5. SA9003 empty branches: pkg/prompt/registry_extended_test.go:592, pkg/review/bias_stripper_test.go:200, pkg/verify/shadow_test.go:642
+
+## [x] Wire trust scoring to incident attribution — pkg/trust + pkg/incident
 - **Priority:** high
 - **Spec:** specs/trust-model.md §Integration Points + specs/production-verification.md §Production Incident Attribution
 - **Model:** direct write — Go packages, cross-package integration
 - **Files:** pkg/trust/integration.go (NEW), pkg/trust/integration_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/trust/... ./pkg/incident/... -count=1 -cover` passes with >80% coverage
 - **Logic:** Bridge incident.AttributionEngine to trust.Ledger: when an incident is attributed, create TrustEvents (type=incident_attribution, agent_id, severity, attribution_weight, evidence_links) and append to the JSONL ledger. Replay the ledger to verify the trust score reflects the incident penalty. Incident → TrustEvent mapping function. Batch processing: multiple incidents → multiple events. Verify trust score decreases after incident attribution.
+- **Result:** [x] IncidentBridge connecting AttributionEngine → JSONL ledger. ProcessResult writes dual events (attribution + penalty) per agent, updates in-memory score cache. ProcessIncident convenience method. ProcessBatch for multi-incident. Ledger replay verified deterministic. 37 new tests, 89.8% pkg/trust coverage (up from 86.8%). Full suite 23/23 packages pass.
 
 ## [ ] Implement evidence verification layer (Tier 3) — pkg/review/
 - **Priority:** medium
