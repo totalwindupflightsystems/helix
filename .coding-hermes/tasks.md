@@ -138,13 +138,14 @@
 - **Logic:** ShadowLaunch(agent, config): deploy agent to dark path, route 0% production traffic, collect behavior metrics, compare against baseline. PromoteToCanary(agent, tier): route 1% traffic by trust tier. AutoRollback(agent): revert on contract breach. Configurable observation window.
 - **Result:** [x] 38 new tests in shadow_test.go, 97.2% pkg/verify coverage (up from 96.9%). ShadowDeployment lifecycle: Idle→Shadowing→ShadowPassed/Failed→Canaried→Promoted/RolledBack. Full DifferentialReport with per-metric deltas (success rate, P99 latency, error types, memory growth). Auto-rollback on all 4 spec triggers. Tier-specific canary schedules (Provisional 96h, Observed 60h, Trusted 36h, Veteran 12h). Thread-safe with sync.RWMutex.
 
-## [ ] Implement multi-model adversarial review orchestrator — pkg/review/
+## [x] Implement multi-model adversarial review orchestrator — pkg/review/
 - **Priority:** high
 - **Spec:** specs/adversarial-review.md §Multi-Model Adversarial Review
 - **Model:** direct write — Go package
 - **Files:** pkg/review/orchestrator.go, pkg/review/orchestrator_test.go
 - **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >80% coverage
 - **Logic:** ReviewOrchestrator that dispatches a review to 3 models from different providers, collects independent findings, reconciles consensus (all 3 agree → PASS, 2/3 agree → WARN, 1/3 or divergence → FLAG), builds evidence bundle with model diversity score, integrates with existing BiasStripper (strip bias before each model sees the code). Provider diversity requirement: at least 2 different provider families in every review panel.
+- **Result:** [x] 31 tests, 100% coverage on all orchestrator functions, 93.4% total pkg/review. Full pipeline: bias strip → validate diversity → concurrent dispatch to N models → collect findings → reconcile consensus → build evidence bundle. ChangeCategory formation routing (Contract=3 models, Behavioral=2, Resilience/Cosmetic=1). FPTracker integration (removed models rejected). Context-aware with cancellation support.
 
 ## [ ] Implement prompt lifecycle state machine — pkg/prompt/
 - **Priority:** high
