@@ -156,10 +156,11 @@
 - **Logic:** State machine: draft → proposed → reviewed → attested → active → deprecated → retired. Transition validation (only valid transitions allowed), atomic state transitions, state persistence in metadata.yaml, age-based auto-deprecation (promotes active→deprecated after N days if no activity). Integrate with existing attester.go and registry.go.
 - **Result:** [x] Extended lifecycle.go with ApplyTransition (atomic state writes with audit trail + timestamp tracking), AutoDeprecationConfig (spec defaults: 90d inactivity deprecation, 90d in deprecated retire, 180d no-commits retire, 3+ newer commits auto-deprecate), ShouldDeprecate (dual trigger: inactivity + newer version commits), ShouldRetire (dual trigger: time in deprecated + no-commit inactivity). 23 new tests, 100% coverage on all new functions. 93.4% total pkg/prompt.
 
-## [ ] Implement incident attribution engine — pkg/incident/
+## [x] Implement incident attribution engine — pkg/incident/
 - **Priority:** medium
 - **Spec:** specs/production-verification.md §Production Incident Attribution
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/incident/attribution.go, pkg/incident/attribution_test.go
 - **AC:** `go build ./... && go test ./pkg/incident/... -count=1 -cover` passes with >80% coverage
 - **Logic:** Trace causal chain from incident → changed code paths → merge commit → responsible agent. Attribution weights: author 70%, reviewers 20% (shared), approving human 10%. Feed attribution result into trust scoring engine (pkg/trust). Record evidence links in incident record. Multiple agents → shared responsibility distribution.
+- **Result:** [x] AttributionEngine with spec-compliant weights (author 70%, reviewers 20% shared, approver 10%). Multi-path normalization (sums to 1.0). TrustPenalty with severity multipliers (low 0.05, medium 0.10, high 0.20, critical 0.40). ApplyTrustPenalties callback for trust engine integration. FindResponsiblePaths filters by causal chain. MergeAttribution for multi-incident aggregation. 28 tests, **100% coverage** on entire pkg/incident.
