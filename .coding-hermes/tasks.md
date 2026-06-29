@@ -163,13 +163,14 @@
 - **Logic:** TierPromotionEngine evaluates whether an agent qualifies for tier promotion. Checks ALL entry criteria from spec: trust score threshold (Provisional 0.0, Observed 0.40, Trusted 0.65, Veteran 0.85), minimum merge count (100/500/2000), maximum attributable incidents (0 for Observed/Trusted, 1 for Veteran in 180d), minimum days active (30/90/180), and for Veteran: minimum PR reviews (50). ShouldPromote returns bool + reason. PromoteTo returns the target tier. EvaluatePromotion checks all criteria and returns a PromotionResult with per-criterion pass/fail. Integrates with existing ShouldDemote/DemoteTo for a complete tier lifecycle.
 - **Result:** [x] EvaluatePromotion with per-criterion pass/fail (score, merges, incidents, days active, PR reviews for Veteran). ShouldPromote/PromoteTo for single-step promotion check. EvaluateFullTierCycle for complete lifecycle (promotion-first, demotion-aware). TierRank/IsPromotion/IsDemotion helpers. 38 tests, 91.3% pkg/trust coverage (up from 89.8%). Full suite 24/24 pass.
 
-## [ ] Implement cross-service error propagation — pkg/integration/
+## [x] Implement cross-service error propagation — pkg/integration/
 - **Priority:** medium
 - **Spec:** specs/cross-component-wiring.md §7 (Error Propagation)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/integration/errors.go (NEW), pkg/integration/errors_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/integration/... -count=1 -cover` passes with >85% coverage
 - **Logic:** Centralized error type mapping for all cross-service failures per spec §7 table. Each service pair has specific error format: Forgejo→Chimera unreachable → "Chimera unavailable — manual review required"; negotiate→Chimera budget exhausted → "BUDGET_EXHAUSTED: tie-break cost $X > remaining"; identity→Forgejo 503 → "CONNECTION_REFUSED: retry in Ns (attempt N/M)"; estimate→OpenRouter 401 → "AUTH_FAILED: agent key is dead — trigger key rotation"; Axiom→Forgejo 409 → "BRANCH_CONFLICT: feat/X exists — use --force-branch". ServiceError type with Code, Message, Retryable flag, RetryAfter duration. ClassifyError maps HTTP status codes to error types. IsRetryable for circuit breaker integration.
+- **Result:** [x] 49 tests, 100% coverage on errors.go. All 5 spec §7 error rows implemented as constructors (NewChimeraUnavailableError, NewBudgetExhaustedError, NewConnectionRefusedError, NewAuthFailedError, NewBranchConflictError). ClassifyError dispatches by caller/callee/status. ClassifyHTTP handles 401/403/404/409/429/500/502/503/504 + generic 4xx/5xx. IsRetryable/IsCode/GetRetryAfter helpers for circuit breaker integration. Full suite 24/24 pass.
 
 ## [ ] Implement agent notification dispatcher — pkg/verify/
 - **Priority:** medium
