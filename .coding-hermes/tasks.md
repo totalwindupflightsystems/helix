@@ -147,13 +147,14 @@
 - **Logic:** ReviewOrchestrator that dispatches a review to 3 models from different providers, collects independent findings, reconciles consensus (all 3 agree → PASS, 2/3 agree → WARN, 1/3 or divergence → FLAG), builds evidence bundle with model diversity score, integrates with existing BiasStripper (strip bias before each model sees the code). Provider diversity requirement: at least 2 different provider families in every review panel.
 - **Result:** [x] 31 tests, 100% coverage on all orchestrator functions, 93.4% total pkg/review. Full pipeline: bias strip → validate diversity → concurrent dispatch to N models → collect findings → reconcile consensus → build evidence bundle. ChangeCategory formation routing (Contract=3 models, Behavioral=2, Resilience/Cosmetic=1). FPTracker integration (removed models rejected). Context-aware with cancellation support.
 
-## [ ] Implement prompt lifecycle state machine — pkg/prompt/
+## [x] Implement prompt lifecycle state machine — pkg/prompt/
 - **Priority:** high
 - **Spec:** specs/prompt-registry-v2.md §Lifecycle State Machine
 - **Model:** direct write — Go package, extend existing
-- **Files:** pkg/prompt/lifecycle.go (extend), pkg/prompt/lifecycle_test.go (NEW)
+- **Files:** pkg/prompt/lifecycle.go (extend), pkg/prompt/lifecycle_extended_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/prompt/... -count=1 -cover` passes with >80% coverage
 - **Logic:** State machine: draft → proposed → reviewed → attested → active → deprecated → retired. Transition validation (only valid transitions allowed), atomic state transitions, state persistence in metadata.yaml, age-based auto-deprecation (promotes active→deprecated after N days if no activity). Integrate with existing attester.go and registry.go.
+- **Result:** [x] Extended lifecycle.go with ApplyTransition (atomic state writes with audit trail + timestamp tracking), AutoDeprecationConfig (spec defaults: 90d inactivity deprecation, 90d in deprecated retire, 180d no-commits retire, 3+ newer commits auto-deprecate), ShouldDeprecate (dual trigger: inactivity + newer version commits), ShouldRetire (dual trigger: time in deprecated + no-commit inactivity). 23 new tests, 100% coverage on all new functions. 93.4% total pkg/prompt.
 
 ## [ ] Implement incident attribution engine — pkg/incident/
 - **Priority:** medium
