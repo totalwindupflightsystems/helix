@@ -185,13 +185,14 @@
 - **Logic:** Bridge incident.AttributionEngine to trust.Ledger: when an incident is attributed, create TrustEvents (type=incident_attribution, agent_id, severity, attribution_weight, evidence_links) and append to the JSONL ledger. Replay the ledger to verify the trust score reflects the incident penalty. Incident → TrustEvent mapping function. Batch processing: multiple incidents → multiple events. Verify trust score decreases after incident attribution.
 - **Result:** [x] IncidentBridge connecting AttributionEngine → JSONL ledger. ProcessResult writes dual events (attribution + penalty) per agent, updates in-memory score cache. ProcessIncident convenience method. ProcessBatch for multi-incident. Ledger replay verified deterministic. 37 new tests, 89.8% pkg/trust coverage (up from 86.8%). Full suite 23/23 packages pass.
 
-## [ ] Implement evidence verification layer (Tier 3) — pkg/review/
+## [x] Implement evidence verification layer (Tier 3) — pkg/review/
 - **Priority:** medium
 - **Spec:** specs/adversarial-review.md §Three-Layer Review Pipeline (Tier 3)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/review/verification.go (NEW), pkg/review/verification_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >80% coverage
 - **Logic:** EvidenceVerificationLayer that takes the consensus findings from ReviewOrchestrator and verifies them: (1) run tests from model suggestions, (2) verify edge cases actually fail as claimed, (3) confirm fixes resolve issues. VerificationResult with per-finding status (verified/false_positive/unverifiable). Integration point: after ReviewOrchestrator.Review() completes, EvidenceVerifier.VerifyFindings() runs the claims.
+- **Result:** [x] EvidenceVerifier with TestRunner interface, concurrent finding verification. Finding classification: testable (has test_run_id) → run test, mitigation present → verify structure, no evidence → unverifiable. Test failure = finding verified; test pass = false positive (feeds FPTracker). 29 new tests, 94.8% pkg/review coverage. Full suite 23/23 pass.
 
 ## [ ] Implement adversarial agent dispatcher — pkg/review/
 - **Priority:** medium
