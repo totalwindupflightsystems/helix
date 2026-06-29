@@ -18,7 +18,7 @@
 - **Logic:** Strip evaluative language ("fixed", "correct", "ready", "passes"), remove confidence assertions ("tested locally", "works on my machine"), strip emoji and emotional framing, normalize formatting, preserve factual information (files changed, intent). Tested with 8 documented disaster commit messages.
 - **Result:** [x] 33 tests, 97.4% coverage, all passing. Build + vet clean. Committed at #NEXT.
 
-## [] Implement production verification contracts — pkg/verify/
+## [~] Implement production verification contracts — pkg/verify/
 - **Priority:** medium
 - **Spec:** specs/production-verification.md §Behavior Contracts
 - **Model:** direct write — Go package, YAML contracts + metrics assertions
