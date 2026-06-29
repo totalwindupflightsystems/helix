@@ -19,7 +19,7 @@ func captureStdout(t *testing.T, fn func(w *os.File)) string {
 	fn(w)
 	w.Close()
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	return buf.String()
 }
 
@@ -215,23 +215,23 @@ func TestSortAgents(t *testing.T) {
 
 func TestCurrentUser(t *testing.T) {
 	t.Run("returns_env_user", func(t *testing.T) {
-		os.Setenv("USER", "testuser")
-		defer os.Unsetenv("USER")
+		_ = os.Setenv("USER", "testuser")
+		defer func() { _ = os.Unsetenv("USER") }()
 		if got := currentUser(); got != "testuser" {
 			t.Errorf("got %q, want testuser", got)
 		}
 	})
 	t.Run("falls_back_to_username", func(t *testing.T) {
-		os.Setenv("USER", "")
-		os.Setenv("USERNAME", "winuser")
-		defer os.Unsetenv("USERNAME")
+		_ = os.Setenv("USER", "")
+		_ = os.Setenv("USERNAME", "winuser")
+		defer func() { _ = os.Unsetenv("USERNAME") }()
 		if got := currentUser(); got != "winuser" {
 			t.Errorf("got %q, want winuser", got)
 		}
 	})
 	t.Run("returns_unknown_when_neither", func(t *testing.T) {
-		os.Setenv("USER", "")
-		os.Setenv("USERNAME", "")
+		_ = os.Setenv("USER", "")
+		_ = os.Setenv("USERNAME", "")
 		if got := currentUser(); got != "unknown" {
 			t.Errorf("got %q, want unknown", got)
 		}
@@ -628,7 +628,7 @@ func TestCommandTree(t *testing.T) {
 func TestLoadRegistryDefaultPath(t *testing.T) {
 	// Create a temp dir with an agents subdir for NewRegistry to succeed
 	dir := t.TempDir()
-	os.MkdirAll(dir+"/agents", 0755)
+	_ = os.MkdirAll(dir+"/agents", 0755)
 	r := loadRegistry(dir)
 	if r == nil {
 		t.Error("expected non-nil registry from valid path")

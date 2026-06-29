@@ -572,7 +572,7 @@ func TestLedger_ReplayEmptyFile(t *testing.T) {
 	}
 
 	// File exists but empty
-	os.WriteFile(path, []byte{}, 0644)
+	_ = os.WriteFile(path, []byte{}, 0644)
 	events, err = Replay(path)
 	if err != nil {
 		t.Fatalf("Replay on empty file: %v", err)
@@ -589,12 +589,12 @@ func TestLedger_AppendReplayToScore(t *testing.T) {
 	ledger, _ := NewLedger(path)
 
 	// Simulate an agent's lifecycle: start at 0.5 → merge success (+0.02) → incident (-0.30)
-	ledger.Append(TrustEvent{
+	_ = ledger.Append(TrustEvent{
 		AgentID: "agent-A", EventType: EventMergeSuccess,
 		Timestamp: time.Now().UTC(),
 		Data:      EventData{ScoreBefore: 0.5, ScoreAfter: 0.52, Delta: 0.02},
 	})
-	ledger.Append(TrustEvent{
+	_ = ledger.Append(TrustEvent{
 		AgentID: "agent-A", EventType: EventIncidentPenalty,
 		Timestamp: time.Now().UTC(),
 		Data:      EventData{ScoreBefore: 0.52, ScoreAfter: 0.22, Delta: -0.30, AttributionWt: 1.0},
@@ -618,12 +618,12 @@ func TestLedger_ReplayToScoreIgnoresOtherAgents(t *testing.T) {
 	path := filepath.Join(dir, "multi-agent.jsonl")
 
 	ledger, _ := NewLedger(path)
-	ledger.Append(TrustEvent{
+	_ = ledger.Append(TrustEvent{
 		AgentID: "agent-B", EventType: EventMergeSuccess,
 		Timestamp: time.Now().UTC(),
 		Data:      EventData{ScoreBefore: 0.5, ScoreAfter: 0.9, Delta: 0.4},
 	})
-	ledger.Append(TrustEvent{
+	_ = ledger.Append(TrustEvent{
 		AgentID: "agent-C", EventType: EventMergeSuccess,
 		Timestamp: time.Now().UTC(),
 		Data:      EventData{ScoreBefore: 0.5, ScoreAfter: 0.6, Delta: 0.1},

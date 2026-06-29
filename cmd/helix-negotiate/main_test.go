@@ -19,7 +19,7 @@ func captureStdout2(t *testing.T, fn func(w *os.File)) string {
 	fn(w)
 	w.Close()
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	return buf.String()
 }
 

@@ -50,7 +50,7 @@ func TestAddAndGet(t *testing.T) {
 
 func TestAdd_DuplicateID(t *testing.T) {
 	s := NewStore()
-	s.Add(&Incident{ID: "inc-001", AgentID: "agent-a", Severity: SeverityLow, Timestamp: time.Now()})
+	_ = s.Add(&Incident{ID: "inc-001", AgentID: "agent-a", Severity: SeverityLow, Timestamp: time.Now()})
 	err := s.Add(&Incident{ID: "inc-001", AgentID: "agent-b", Severity: SeverityLow, Timestamp: time.Now()})
 	if err == nil {
 		t.Error("expected error for duplicate ID")
@@ -76,9 +76,9 @@ func TestListByAgent(t *testing.T) {
 	s := NewStore()
 	now := time.Now()
 
-	s.Add(&Incident{ID: "inc-001", AgentID: "agent-a", Severity: SeverityLow, Timestamp: now})
-	s.Add(&Incident{ID: "inc-002", AgentID: "agent-a", Severity: SeverityMedium, Timestamp: now})
-	s.Add(&Incident{ID: "inc-003", AgentID: "agent-b", Severity: SeverityHigh, Timestamp: now})
+	_ = s.Add(&Incident{ID: "inc-001", AgentID: "agent-a", Severity: SeverityLow, Timestamp: now})
+	_ = s.Add(&Incident{ID: "inc-002", AgentID: "agent-a", Severity: SeverityMedium, Timestamp: now})
+	_ = s.Add(&Incident{ID: "inc-003", AgentID: "agent-b", Severity: SeverityHigh, Timestamp: now})
 
 	incidents := s.ListByAgent("agent-a")
 	if len(incidents) != 2 {
@@ -100,10 +100,10 @@ func TestListBySeverity(t *testing.T) {
 	s := NewStore()
 	now := time.Now()
 
-	s.Add(&Incident{ID: "inc-001", AgentID: "agent-a", Severity: SeverityLow, Timestamp: now})
-	s.Add(&Incident{ID: "inc-002", AgentID: "agent-b", Severity: SeverityMedium, Timestamp: now})
-	s.Add(&Incident{ID: "inc-003", AgentID: "agent-c", Severity: SeverityHigh, Timestamp: now})
-	s.Add(&Incident{ID: "inc-004", AgentID: "agent-d", Severity: SeverityLow, Timestamp: now})
+	_ = s.Add(&Incident{ID: "inc-001", AgentID: "agent-a", Severity: SeverityLow, Timestamp: now})
+	_ = s.Add(&Incident{ID: "inc-002", AgentID: "agent-b", Severity: SeverityMedium, Timestamp: now})
+	_ = s.Add(&Incident{ID: "inc-003", AgentID: "agent-c", Severity: SeverityHigh, Timestamp: now})
+	_ = s.Add(&Incident{ID: "inc-004", AgentID: "agent-d", Severity: SeverityLow, Timestamp: now})
 
 	low := s.ListBySeverity(SeverityLow)
 	if len(low) != 2 {
@@ -125,8 +125,8 @@ func TestCountInWindow(t *testing.T) {
 	s := NewStore()
 	now := time.Now()
 
-	s.Add(&Incident{ID: "inc-old", AgentID: "agent-a", Severity: SeverityLow, Timestamp: now.Add(-48 * time.Hour)})
-	s.Add(&Incident{ID: "inc-new", AgentID: "agent-a", Severity: SeverityMedium, Timestamp: now.Add(-2 * time.Hour)})
+	_ = s.Add(&Incident{ID: "inc-old", AgentID: "agent-a", Severity: SeverityLow, Timestamp: now.Add(-48 * time.Hour)})
+	_ = s.Add(&Incident{ID: "inc-new", AgentID: "agent-a", Severity: SeverityMedium, Timestamp: now.Add(-2 * time.Hour)})
 
 	count := s.CountInWindow("agent-a", 24*time.Hour)
 	if count != 1 {
@@ -147,8 +147,8 @@ func TestCountInWindow(t *testing.T) {
 func TestAll(t *testing.T) {
 	s := NewStore()
 	now := time.Now()
-	s.Add(&Incident{ID: "inc-001", AgentID: "agent-a", Severity: SeverityLow, Timestamp: now})
-	s.Add(&Incident{ID: "inc-002", AgentID: "agent-b", Severity: SeverityMedium, Timestamp: now})
+	_ = s.Add(&Incident{ID: "inc-001", AgentID: "agent-a", Severity: SeverityLow, Timestamp: now})
+	_ = s.Add(&Incident{ID: "inc-002", AgentID: "agent-b", Severity: SeverityMedium, Timestamp: now})
 
 	all := s.All()
 	if len(all) != 2 {
@@ -159,9 +159,9 @@ func TestAll(t *testing.T) {
 func TestCount(t *testing.T) {
 	s := NewStore()
 	now := time.Now()
-	s.Add(&Incident{ID: "inc-001", AgentID: "agent-a", Severity: SeverityLow, Timestamp: now})
-	s.Add(&Incident{ID: "inc-002", AgentID: "agent-b", Severity: SeverityMedium, Timestamp: now})
-	s.Add(&Incident{ID: "inc-003", AgentID: "agent-c", Severity: SeverityHigh, Timestamp: now})
+	_ = s.Add(&Incident{ID: "inc-001", AgentID: "agent-a", Severity: SeverityLow, Timestamp: now})
+	_ = s.Add(&Incident{ID: "inc-002", AgentID: "agent-b", Severity: SeverityMedium, Timestamp: now})
+	_ = s.Add(&Incident{ID: "inc-003", AgentID: "agent-c", Severity: SeverityHigh, Timestamp: now})
 
 	if s.Count() != 3 {
 		t.Errorf("expected 3, got %d", s.Count())
@@ -180,7 +180,7 @@ func TestResolvedAt(t *testing.T) {
 		Timestamp:  now,
 		ResolvedAt: &resolved,
 	}
-	s.Add(inc)
+	_ = s.Add(inc)
 
 	got := s.Get("inc-resolved")
 	if got.ResolvedAt == nil {

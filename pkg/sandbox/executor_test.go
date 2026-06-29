@@ -2,6 +2,7 @@ package sandbox
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"os"
 	"strings"
@@ -505,7 +506,7 @@ func TestRun_ReturnsErrNotImplemented(t *testing.T) {
 		t.Fatalf("new executor: %v", err)
 	}
 
-	err = exec.Run(nil)
+	err = exec.Run(context.TODO())
 	if err == nil {
 		t.Fatal("expected error from Run (stub)")
 	}
@@ -533,7 +534,7 @@ func TestRun_DryRunMode(t *testing.T) {
 
 	// Use a real context for DryRun delegation
 	// The Run function checks DryRun first, before needing context
-	err = exec.Run(nil)
+	err = exec.Run(context.TODO())
 	if err != nil {
 		t.Fatalf("unexpected error in dry-run mode: %v", err)
 	}

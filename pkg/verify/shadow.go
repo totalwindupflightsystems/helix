@@ -91,12 +91,12 @@ type ShadowConfig struct {
 // DefaultShadowConfig returns spec-compliant thresholds.
 func DefaultShadowConfig() ShadowConfig {
 	return ShadowConfig{
-		ObservationWindow:      0, // 0 = use CanarySchedule tier default
-		MaxErrorRateDelta:      0.001,
-		MaxLatencyOverheadPct:  20.0,
-		MaxMemoryGrowthPct:     10.0,
-		MaxNewErrorTypes:       0,
-		CanaryTrafficStartPct:  1.0,
+		ObservationWindow:     0, // 0 = use CanarySchedule tier default
+		MaxErrorRateDelta:     0.001,
+		MaxLatencyOverheadPct: 20.0,
+		MaxMemoryGrowthPct:    10.0,
+		MaxNewErrorTypes:      0,
+		CanaryTrafficStartPct: 1.0,
 	}
 }
 
@@ -118,34 +118,34 @@ func (c ShadowConfig) effectiveObservationWindow(tier string) time.Duration {
 // behavior. All fields are raw measured values — thresholds are applied
 // during evaluation.
 type MetricsSnapshot struct {
-	SuccessRate     float64   `json:"success_rate"`       // 0..1
-	P99LatencyMs    float64   `json:"p99_latency_ms"`     // milliseconds
-	P50LatencyMs    float64   `json:"p50_latency_ms"`     // milliseconds
-	ErrorCount      int64     `json:"error_count"`        // raw count
-	NewErrorTypes   int       `json:"new_error_types"`    // categories not seen in baseline
-	MemoryGrowthPct float64   `json:"memory_growth_pct"`  // percentage
-	RequestCount    int64     `json:"request_count"`      // total requests observed
+	SuccessRate     float64   `json:"success_rate"`      // 0..1
+	P99LatencyMs    float64   `json:"p99_latency_ms"`    // milliseconds
+	P50LatencyMs    float64   `json:"p50_latency_ms"`    // milliseconds
+	ErrorCount      int64     `json:"error_count"`       // raw count
+	NewErrorTypes   int       `json:"new_error_types"`   // categories not seen in baseline
+	MemoryGrowthPct float64   `json:"memory_growth_pct"` // percentage
+	RequestCount    int64     `json:"request_count"`     // total requests observed
 	Timestamp       time.Time `json:"timestamp"`
 }
 
 // DifferentialReport compares production baseline vs shadow metrics and
 // reports per-metric deltas with pass/fail status.
 type DifferentialReport struct {
-	Production MetricsSnapshot     `json:"production"`
-	Shadow     MetricsSnapshot     `json:"shadow"`
-	Deltas     []MetricDelta       `json:"deltas"`
-	AllPassed  bool                `json:"all_passed"`
-	BlockReason string             `json:"block_reason,omitempty"`
+	Production  MetricsSnapshot `json:"production"`
+	Shadow      MetricsSnapshot `json:"shadow"`
+	Deltas      []MetricDelta   `json:"deltas"`
+	AllPassed   bool            `json:"all_passed"`
+	BlockReason string          `json:"block_reason,omitempty"`
 }
 
 // MetricDelta is a single metric comparison.
 type MetricDelta struct {
-	Metric   string  `json:"metric"`
-	Prod     float64 `json:"prod"`
-	Shadow   float64 `json:"shadow"`
-	Delta    float64 `json:"delta"`
-	Passed   bool    `json:"passed"`
-	Reason   string  `json:"reason,omitempty"`
+	Metric string  `json:"metric"`
+	Prod   float64 `json:"prod"`
+	Shadow float64 `json:"shadow"`
+	Delta  float64 `json:"delta"`
+	Passed bool    `json:"passed"`
+	Reason string  `json:"reason,omitempty"`
 }
 
 // =============================================================================
@@ -156,19 +156,19 @@ type MetricDelta struct {
 type ShadowDeployment struct {
 	mu sync.RWMutex
 
-	AgentID     string         `json:"agent_id"`
-	Tier        string         `json:"tier"` // trust tier: provisional|observed|trusted|veteran
-	State       ShadowState    `json:"state"`
-	Config      ShadowConfig   `json:"config"`
-	Baseline    MetricsSnapshot `json:"baseline"`
-	Shadow      MetricsSnapshot `json:"shadow_metrics"`
-	LaunchedAt  time.Time      `json:"launched_at"`
-	EvaluatedAt time.Time      `json:"evaluated_at,omitempty"`
-	PromotedAt  time.Time      `json:"promoted_at,omitempty"`
-	RolledBackAt time.Time     `json:"rolled_back_at,omitempty"`
-	RollbackReason string      `json:"rollback_reason,omitempty"`
-	CanaryStepIdx int          `json:"canary_step_idx,omitempty"` // 0-based index into schedule
-	Report      *DifferentialReport `json:"report,omitempty"`
+	AgentID        string              `json:"agent_id"`
+	Tier           string              `json:"tier"` // trust tier: provisional|observed|trusted|veteran
+	State          ShadowState         `json:"state"`
+	Config         ShadowConfig        `json:"config"`
+	Baseline       MetricsSnapshot     `json:"baseline"`
+	Shadow         MetricsSnapshot     `json:"shadow_metrics"`
+	LaunchedAt     time.Time           `json:"launched_at"`
+	EvaluatedAt    time.Time           `json:"evaluated_at,omitempty"`
+	PromotedAt     time.Time           `json:"promoted_at,omitempty"`
+	RolledBackAt   time.Time           `json:"rolled_back_at,omitempty"`
+	RollbackReason string              `json:"rollback_reason,omitempty"`
+	CanaryStepIdx  int                 `json:"canary_step_idx,omitempty"` // 0-based index into schedule
+	Report         *DifferentialReport `json:"report,omitempty"`
 }
 
 // State returns the current deployment state (thread-safe).
@@ -185,8 +185,8 @@ func (d *ShadowDeployment) GetState() ShadowState {
 // ShadowManager manages shadow deployments across multiple agents. It provides
 // the lifecycle API: launch → evaluate → promote/rollback.
 type ShadowManager struct {
-	mu           sync.RWMutex
-	deployments  map[string]*ShadowDeployment // agentID → deployment
+	mu          sync.RWMutex
+	deployments map[string]*ShadowDeployment // agentID → deployment
 }
 
 // NewShadowManager creates a manager with no active deployments.

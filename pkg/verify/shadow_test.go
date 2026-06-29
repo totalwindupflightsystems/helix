@@ -165,8 +165,8 @@ func TestGetDeployment_NotFound(t *testing.T) {
 
 func TestListDeployments(t *testing.T) {
 	m := NewShadowManager()
-	m.LaunchShadow("agent-a", "trusted", MetricsSnapshot{}, DefaultShadowConfig())
-	m.LaunchShadow("agent-b", "veteran", MetricsSnapshot{}, DefaultShadowConfig())
+	_, _ = m.LaunchShadow("agent-a", "trusted", MetricsSnapshot{}, DefaultShadowConfig())
+	_, _ = m.LaunchShadow("agent-b", "veteran", MetricsSnapshot{}, DefaultShadowConfig())
 
 	ids := m.ListDeployments()
 	if len(ids) != 2 {
@@ -187,7 +187,7 @@ func TestListDeployments(t *testing.T) {
 
 func TestRecordShadowMetrics_Success(t *testing.T) {
 	m := NewShadowManager()
-	m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{}, DefaultShadowConfig())
+	_, _ = m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{}, DefaultShadowConfig())
 	snap := MetricsSnapshot{SuccessRate: 0.999, P99LatencyMs: 90, RequestCount: 1000}
 	if err := m.RecordShadowMetrics("agent-1", snap); err != nil {
 		t.Fatalf("RecordShadowMetrics failed: %v", err)
@@ -217,7 +217,7 @@ func TestEvaluateShadow_AllPassed(t *testing.T) {
 		P99LatencyMs: 87,
 		Timestamp:    time.Now(),
 	}
-	m.LaunchShadow("agent-1", "trusted", baseline, DefaultShadowConfig())
+	_, _ = m.LaunchShadow("agent-1", "trusted", baseline, DefaultShadowConfig())
 
 	shadow := MetricsSnapshot{
 		SuccessRate:     0.9996, // -0.01% → within 0.1% threshold
@@ -227,7 +227,7 @@ func TestEvaluateShadow_AllPassed(t *testing.T) {
 		RequestCount:    5000,
 		Timestamp:       time.Now(),
 	}
-	m.RecordShadowMetrics("agent-1", shadow)
+	_ = m.RecordShadowMetrics("agent-1", shadow)
 
 	report, err := m.EvaluateShadow("agent-1")
 	if err != nil {
@@ -249,13 +249,13 @@ func TestEvaluateShadow_AllPassed(t *testing.T) {
 func TestEvaluateShadow_ErrorRateExceeded(t *testing.T) {
 	m := NewShadowManager()
 	baseline := MetricsSnapshot{SuccessRate: 0.9997, P99LatencyMs: 87}
-	m.LaunchShadow("agent-1", "trusted", baseline, DefaultShadowConfig())
+	_, _ = m.LaunchShadow("agent-1", "trusted", baseline, DefaultShadowConfig())
 
 	shadow := MetricsSnapshot{
 		SuccessRate:  0.9950, // -0.47% → exceeds 0.1% threshold
 		P99LatencyMs: 90,
 	}
-	m.RecordShadowMetrics("agent-1", shadow)
+	_ = m.RecordShadowMetrics("agent-1", shadow)
 
 	report, err := m.EvaluateShadow("agent-1")
 	if err != nil {
@@ -276,13 +276,13 @@ func TestEvaluateShadow_ErrorRateExceeded(t *testing.T) {
 func TestEvaluateShadow_LatencyExceeded(t *testing.T) {
 	m := NewShadowManager()
 	baseline := MetricsSnapshot{SuccessRate: 0.9999, P99LatencyMs: 100}
-	m.LaunchShadow("agent-1", "trusted", baseline, DefaultShadowConfig())
+	_, _ = m.LaunchShadow("agent-1", "trusted", baseline, DefaultShadowConfig())
 
 	shadow := MetricsSnapshot{
 		SuccessRate:  0.9998, // fine
 		P99LatencyMs: 150,    // +50% → exceeds 20%
 	}
-	m.RecordShadowMetrics("agent-1", shadow)
+	_ = m.RecordShadowMetrics("agent-1", shadow)
 
 	report, _ := m.EvaluateShadow("agent-1")
 	if report.AllPassed {
@@ -297,14 +297,14 @@ func TestEvaluateShadow_LatencyExceeded(t *testing.T) {
 func TestEvaluateShadow_NewErrorTypes(t *testing.T) {
 	m := NewShadowManager()
 	baseline := MetricsSnapshot{SuccessRate: 0.9999, P99LatencyMs: 50}
-	m.LaunchShadow("agent-1", "trusted", baseline, DefaultShadowConfig())
+	_, _ = m.LaunchShadow("agent-1", "trusted", baseline, DefaultShadowConfig())
 
 	shadow := MetricsSnapshot{
 		SuccessRate:   0.9998,
 		P99LatencyMs:  55,
 		NewErrorTypes: 1, // any new error type blocks
 	}
-	m.RecordShadowMetrics("agent-1", shadow)
+	_ = m.RecordShadowMetrics("agent-1", shadow)
 
 	report, _ := m.EvaluateShadow("agent-1")
 	if report.AllPassed {
@@ -315,14 +315,14 @@ func TestEvaluateShadow_NewErrorTypes(t *testing.T) {
 func TestEvaluateShadow_MemoryGrowth(t *testing.T) {
 	m := NewShadowManager()
 	baseline := MetricsSnapshot{SuccessRate: 0.9999, P99LatencyMs: 50}
-	m.LaunchShadow("agent-1", "trusted", baseline, DefaultShadowConfig())
+	_, _ = m.LaunchShadow("agent-1", "trusted", baseline, DefaultShadowConfig())
 
 	shadow := MetricsSnapshot{
 		SuccessRate:     0.9998,
 		P99LatencyMs:    55,
 		MemoryGrowthPct: 15.0, // exceeds 10%
 	}
-	m.RecordShadowMetrics("agent-1", shadow)
+	_ = m.RecordShadowMetrics("agent-1", shadow)
 
 	report, _ := m.EvaluateShadow("agent-1")
 	if report.AllPassed {
@@ -357,9 +357,9 @@ func TestEvaluateShadow_NoDeployment(t *testing.T) {
 
 func TestPromoteToCanary_Success(t *testing.T) {
 	m := NewShadowManager()
-	m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{SuccessRate: 0.9999, P99LatencyMs: 50}, DefaultShadowConfig())
-	m.RecordShadowMetrics("agent-1", MetricsSnapshot{SuccessRate: 0.9998, P99LatencyMs: 55})
-	m.EvaluateShadow("agent-1") // → ShadowPassed
+	_, _ = m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{SuccessRate: 0.9999, P99LatencyMs: 50}, DefaultShadowConfig())
+	_ = m.RecordShadowMetrics("agent-1", MetricsSnapshot{SuccessRate: 0.9998, P99LatencyMs: 55})
+	_, _ = m.EvaluateShadow("agent-1") // → ShadowPassed
 
 	d, err := m.PromoteToCanary("agent-1")
 	if err != nil {
@@ -375,7 +375,7 @@ func TestPromoteToCanary_Success(t *testing.T) {
 
 func TestPromoteToCanary_NotPassed(t *testing.T) {
 	m := NewShadowManager()
-	m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{}, DefaultShadowConfig())
+	_, _ = m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{}, DefaultShadowConfig())
 	// Still shadowing, not passed
 	_, err := m.PromoteToCanary("agent-1")
 	if err == nil {
@@ -397,10 +397,10 @@ func TestPromoteToCanary_NoDeployment(t *testing.T) {
 
 func TestAdvanceCanary_Trusted(t *testing.T) {
 	m := NewShadowManager()
-	m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{SuccessRate: 0.9999, P99LatencyMs: 50}, DefaultShadowConfig())
-	m.RecordShadowMetrics("agent-1", MetricsSnapshot{SuccessRate: 0.9998, P99LatencyMs: 55})
-	m.EvaluateShadow("agent-1")
-	m.PromoteToCanary("agent-1")
+	_, _ = m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{SuccessRate: 0.9999, P99LatencyMs: 50}, DefaultShadowConfig())
+	_ = m.RecordShadowMetrics("agent-1", MetricsSnapshot{SuccessRate: 0.9998, P99LatencyMs: 55})
+	_, _ = m.EvaluateShadow("agent-1")
+	_, _ = m.PromoteToCanary("agent-1")
 
 	// Trusted: 3 steps (1%, 10%, 100%)
 	_, steps := CanarySchedule("trusted")
@@ -432,10 +432,10 @@ func TestAdvanceCanary_Trusted(t *testing.T) {
 
 func TestAdvanceCanary_Veteran(t *testing.T) {
 	m := NewShadowManager()
-	m.LaunchShadow("agent-1", "veteran", MetricsSnapshot{SuccessRate: 0.9999, P99LatencyMs: 50}, DefaultShadowConfig())
-	m.RecordShadowMetrics("agent-1", MetricsSnapshot{SuccessRate: 0.9998, P99LatencyMs: 55})
-	m.EvaluateShadow("agent-1")
-	m.PromoteToCanary("agent-1")
+	_, _ = m.LaunchShadow("agent-1", "veteran", MetricsSnapshot{SuccessRate: 0.9999, P99LatencyMs: 50}, DefaultShadowConfig())
+	_ = m.RecordShadowMetrics("agent-1", MetricsSnapshot{SuccessRate: 0.9998, P99LatencyMs: 55})
+	_, _ = m.EvaluateShadow("agent-1")
+	_, _ = m.PromoteToCanary("agent-1")
 
 	// Veteran: 2 steps (10%, 100%)
 	_, steps := CanarySchedule("veteran")
@@ -456,7 +456,7 @@ func TestAdvanceCanary_Veteran(t *testing.T) {
 
 func TestAdvanceCanary_NotCanaried(t *testing.T) {
 	m := NewShadowManager()
-	m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{}, DefaultShadowConfig())
+	_, _ = m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{}, DefaultShadowConfig())
 	_, _, err := m.AdvanceCanary("agent-1")
 	if err == nil {
 		t.Error("expected error advancing non-canary deployment")
@@ -469,10 +469,10 @@ func TestAdvanceCanary_NotCanaried(t *testing.T) {
 
 func TestCurrentCanaryStep(t *testing.T) {
 	m := NewShadowManager()
-	m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{SuccessRate: 0.9999, P99LatencyMs: 50}, DefaultShadowConfig())
-	m.RecordShadowMetrics("agent-1", MetricsSnapshot{SuccessRate: 0.9998, P99LatencyMs: 55})
-	m.EvaluateShadow("agent-1")
-	m.PromoteToCanary("agent-1")
+	_, _ = m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{SuccessRate: 0.9999, P99LatencyMs: 50}, DefaultShadowConfig())
+	_ = m.RecordShadowMetrics("agent-1", MetricsSnapshot{SuccessRate: 0.9998, P99LatencyMs: 55})
+	_, _ = m.EvaluateShadow("agent-1")
+	_, _ = m.PromoteToCanary("agent-1")
 
 	step, err := m.CurrentCanaryStep("agent-1")
 	if err != nil {
@@ -486,7 +486,7 @@ func TestCurrentCanaryStep(t *testing.T) {
 
 func TestCurrentCanaryStep_NotCanary(t *testing.T) {
 	m := NewShadowManager()
-	m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{}, DefaultShadowConfig())
+	_, _ = m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{}, DefaultShadowConfig())
 	_, err := m.CurrentCanaryStep("agent-1")
 	if err == nil {
 		t.Error("expected error for non-canary deployment")
@@ -499,10 +499,10 @@ func TestCurrentCanaryStep_NotCanary(t *testing.T) {
 
 func TestAutoRollback_FromCanary(t *testing.T) {
 	m := NewShadowManager()
-	m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{SuccessRate: 0.9999, P99LatencyMs: 50}, DefaultShadowConfig())
-	m.RecordShadowMetrics("agent-1", MetricsSnapshot{SuccessRate: 0.9998, P99LatencyMs: 55})
-	m.EvaluateShadow("agent-1")
-	m.PromoteToCanary("agent-1")
+	_, _ = m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{SuccessRate: 0.9999, P99LatencyMs: 50}, DefaultShadowConfig())
+	_ = m.RecordShadowMetrics("agent-1", MetricsSnapshot{SuccessRate: 0.9998, P99LatencyMs: 55})
+	_, _ = m.EvaluateShadow("agent-1")
+	_, _ = m.PromoteToCanary("agent-1")
 
 	err := m.AutoRollback("agent-1", "canary breach: error rate spike at 5% traffic")
 	if err != nil {
@@ -519,7 +519,7 @@ func TestAutoRollback_FromCanary(t *testing.T) {
 
 func TestAutoRollback_FromShadowing(t *testing.T) {
 	m := NewShadowManager()
-	m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{}, DefaultShadowConfig())
+	_, _ = m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{}, DefaultShadowConfig())
 	err := m.AutoRollback("agent-1", "shadow crash")
 	if err != nil {
 		t.Fatalf("AutoRollback failed: %v", err)
@@ -532,8 +532,8 @@ func TestAutoRollback_FromShadowing(t *testing.T) {
 
 func TestAutoRollback_AlreadyTerminal(t *testing.T) {
 	m := NewShadowManager()
-	m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{}, DefaultShadowConfig())
-	m.AutoRollback("agent-1", "first rollback")
+	_, _ = m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{}, DefaultShadowConfig())
+	_ = m.AutoRollback("agent-1", "first rollback")
 
 	// Second rollback should fail
 	err := m.AutoRollback("agent-1", "second rollback")
@@ -559,7 +559,7 @@ func TestObservationWindowRemaining_Active(t *testing.T) {
 	cfg := DefaultShadowConfig()
 	cfg.ObservationWindow = 10 * time.Hour
 	baseline := MetricsSnapshot{SuccessRate: 0.99}
-	m.LaunchShadow("agent-1", "trusted", baseline, cfg)
+	_, _ = m.LaunchShadow("agent-1", "trusted", baseline, cfg)
 
 	remaining := m.ObservationWindowRemaining("agent-1")
 	if remaining <= 0 || remaining > 10*time.Hour {
@@ -569,7 +569,7 @@ func TestObservationWindowRemaining_Active(t *testing.T) {
 
 func TestObservationWindowRemaining_TierDefault(t *testing.T) {
 	m := NewShadowManager()
-	m.LaunchShadow("agent-1", "veteran", MetricsSnapshot{}, DefaultShadowConfig())
+	_, _ = m.LaunchShadow("agent-1", "veteran", MetricsSnapshot{}, DefaultShadowConfig())
 
 	remaining := m.ObservationWindowRemaining("agent-1")
 	// Veteran: 2h shadow
@@ -580,9 +580,9 @@ func TestObservationWindowRemaining_TierDefault(t *testing.T) {
 
 func TestObservationWindowRemaining_NotShadowing(t *testing.T) {
 	m := NewShadowManager()
-	m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{SuccessRate: 0.9999, P99LatencyMs: 50}, DefaultShadowConfig())
-	m.RecordShadowMetrics("agent-1", MetricsSnapshot{SuccessRate: 0.9998, P99LatencyMs: 55})
-	m.EvaluateShadow("agent-1")
+	_, _ = m.LaunchShadow("agent-1", "trusted", MetricsSnapshot{SuccessRate: 0.9999, P99LatencyMs: 50}, DefaultShadowConfig())
+	_ = m.RecordShadowMetrics("agent-1", MetricsSnapshot{SuccessRate: 0.9998, P99LatencyMs: 55})
+	_, _ = m.EvaluateShadow("agent-1")
 
 	remaining := m.ObservationWindowRemaining("agent-1")
 	if remaining != 0 {
@@ -671,7 +671,7 @@ func TestFullLifecycle_Trusted_PassAndPromote(t *testing.T) {
 	}
 
 	// 2. Record shadow metrics (within thresholds)
-	m.RecordShadowMetrics("agent-lifecycle", MetricsSnapshot{
+	_ = m.RecordShadowMetrics("agent-lifecycle", MetricsSnapshot{
 		SuccessRate:  0.9996,
 		P99LatencyMs: 90,
 	})
@@ -712,10 +712,10 @@ func TestFullLifecycle_Trusted_PassAndPromote(t *testing.T) {
 func TestFullLifecycle_RollbackDuringShadow(t *testing.T) {
 	m := NewShadowManager()
 	baseline := MetricsSnapshot{SuccessRate: 0.9999, P99LatencyMs: 50}
-	m.LaunchShadow("agent-rb", "provisional", baseline, DefaultShadowConfig())
+	_, _ = m.LaunchShadow("agent-rb", "provisional", baseline, DefaultShadowConfig())
 
 	// Shadow with bad metrics
-	m.RecordShadowMetrics("agent-rb", MetricsSnapshot{
+	_ = m.RecordShadowMetrics("agent-rb", MetricsSnapshot{
 		SuccessRate:  0.9800, // -1.99% → way over 0.1%
 		P99LatencyMs: 52,
 	})
@@ -743,10 +743,10 @@ func TestFullLifecycle_RollbackDuringShadow(t *testing.T) {
 func TestFullLifecycle_RollbackDuringCanary(t *testing.T) {
 	m := NewShadowManager()
 	baseline := MetricsSnapshot{SuccessRate: 0.9999, P99LatencyMs: 50}
-	m.LaunchShadow("agent-cr", "observed", baseline, DefaultShadowConfig())
-	m.RecordShadowMetrics("agent-cr", MetricsSnapshot{SuccessRate: 0.9998, P99LatencyMs: 55})
-	m.EvaluateShadow("agent-cr")
-	m.PromoteToCanary("agent-cr")
+	_, _ = m.LaunchShadow("agent-cr", "observed", baseline, DefaultShadowConfig())
+	_ = m.RecordShadowMetrics("agent-cr", MetricsSnapshot{SuccessRate: 0.9998, P99LatencyMs: 55})
+	_, _ = m.EvaluateShadow("agent-cr")
+	_, _ = m.PromoteToCanary("agent-cr")
 
 	// External monitoring detects breach during canary
 	err := m.AutoRollback("agent-cr", "canary: error rate spike at 10% traffic")

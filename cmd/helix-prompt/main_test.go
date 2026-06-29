@@ -18,7 +18,7 @@ func captureOutput(f func()) string {
 	done := make(chan string)
 	go func() {
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		done <- buf.String()
 	}()
 	f()
@@ -35,7 +35,7 @@ func captureStderr(f func()) string {
 	done := make(chan string)
 	go func() {
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		done <- buf.String()
 	}()
 	f()
@@ -43,8 +43,6 @@ func captureStderr(f func()) string {
 	os.Stderr = old
 	return <-done
 }
-
-
 
 // ---------------------------------------------------------------------------
 // Command tree structure
@@ -106,7 +104,7 @@ func TestRegister_NonExistentFile(t *testing.T) {
 
 	errOut := captureStderr(func() {
 		_ = captureOutput(func() {
-			root.Execute()
+			_ = root.Execute()
 		})
 	})
 	// Should contain an error about file not found
@@ -135,7 +133,7 @@ func TestAttest_ForceFlag(t *testing.T) {
 	out := captureOutput(func() {
 		_ = captureStderr(func() {
 			// LookupByComponent will fail (no registry), but --force bypasses
-			root.Execute()
+			_ = root.Execute()
 		})
 	})
 	// If registry lookup fails, it will error even with --force.
@@ -162,7 +160,7 @@ func TestVerify_InvalidCommit(t *testing.T) {
 
 	out := captureOutput(func() {
 		_ = captureStderr(func() {
-			root.Execute()
+			_ = root.Execute()
 		})
 	})
 	// GetCommitAttestation will fail on bogus SHA in a non-git context.
@@ -180,7 +178,7 @@ func TestList_TableFormat(t *testing.T) {
 
 	out := captureOutput(func() {
 		_ = captureStderr(func() {
-			root.Execute()
+			_ = root.Execute()
 		})
 	})
 	// Registry may be empty — output should be empty table or just headers
@@ -195,7 +193,7 @@ func TestList_JSONFormat(t *testing.T) {
 
 	out := captureOutput(func() {
 		_ = captureStderr(func() {
-			root.Execute()
+			_ = root.Execute()
 		})
 	})
 	// Empty registry should produce "[]" or "null"
@@ -210,7 +208,7 @@ func TestList_FilterByStatus(t *testing.T) {
 
 	out := captureOutput(func() {
 		_ = captureStderr(func() {
-			root.Execute()
+			_ = root.Execute()
 		})
 	})
 	// Empty filtered output is fine — verifies filter flag works
@@ -278,7 +276,7 @@ func TestRegister_MissingPromptFile(t *testing.T) {
 
 	errOut := captureStderr(func() {
 		_ = captureOutput(func() {
-			root.Execute()
+			_ = root.Execute()
 		})
 	})
 
@@ -301,7 +299,7 @@ func TestRegister_NoFlagDefaults(t *testing.T) {
 	// It will fail because prompt file doesn't exist, but shouldn't panic
 	_ = captureStderr(func() {
 		_ = captureOutput(func() {
-			root.Execute()
+			_ = root.Execute()
 		})
 	})
 }
@@ -316,7 +314,7 @@ func TestAttest_ForceFlag_NotFound(t *testing.T) {
 
 	errOut := captureStderr(func() {
 		_ = captureOutput(func() {
-			root.Execute()
+			_ = root.Execute()
 		})
 	})
 
@@ -339,7 +337,7 @@ func TestVerify_WithFlags(t *testing.T) {
 			root.SetArgs(flags)
 			_ = captureOutput(func() {
 				_ = captureStderr(func() {
-					root.Execute()
+					_ = root.Execute()
 				})
 			})
 		})
@@ -355,7 +353,7 @@ func TestList_ComponentFilter(t *testing.T) {
 
 	out := captureOutput(func() {
 		_ = captureStderr(func() {
-			root.Execute()
+			_ = root.Execute()
 		})
 	})
 	// Empty registry, filtered — should produce no rows
@@ -371,7 +369,7 @@ func TestList_ModelFilter(t *testing.T) {
 
 	_ = captureOutput(func() {
 		_ = captureStderr(func() {
-			root.Execute()
+			_ = root.Execute()
 		})
 	})
 }

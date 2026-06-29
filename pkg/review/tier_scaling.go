@@ -85,7 +85,7 @@ func observedReviewPolicy() TierReviewPolicy {
 	return TierReviewPolicy{
 		Tier:                     trust.TierObserved,
 		PanelSize:                2,
-		ConsensusThreshold:       2, // spec: "simple majority from review models"
+		ConsensusThreshold:       2,    // spec: "simple majority from review models"
 		RequireProsecutorAgents:  true, // still required for contract changes
 		EvidenceVerificationPct:  80,
 		RequireProviderDiversity: 2,

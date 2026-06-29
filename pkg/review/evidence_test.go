@@ -254,7 +254,7 @@ func TestVerifySignature_WrongKey(t *testing.T) {
 	_, priv1, _ := GenerateKeyPair()
 	pub2, _, _ := GenerateKeyPair()
 
-	b.SignBundle("primary", priv1)
+	_, _ = b.SignBundle("primary", priv1)
 	valid, _ := b.VerifySignature("primary", pub2)
 	if valid {
 		t.Error("expected verification to fail with wrong key")
@@ -473,7 +473,7 @@ func TestSignBundle_StoresInCorrectField(t *testing.T) {
 	b := NewEvidenceBundle("pr-url", "rid", Formation{}, "", "")
 	_, priv, _ := GenerateKeyPair()
 
-	b.SignBundle("primary", priv)
+	_, _ = b.SignBundle("primary", priv)
 	if b.Signatures.Primary == "" {
 		t.Error("expected primary signature")
 	}
@@ -492,8 +492,8 @@ func TestSignBundle_StoresInCorrectField(t *testing.T) {
 func TestVerifyAllSignatures_PartialKeys(t *testing.T) {
 	b := NewEvidenceBundle("pr-url", "rid", Formation{}, "", "")
 	_, priv, _ := GenerateKeyPair()
-	b.SignBundle("primary", priv)
-	b.SignBundle("adversarial", priv) // same key (unusual but valid for test)
+	_, _ = b.SignBundle("primary", priv)
+	_, _ = b.SignBundle("adversarial", priv) // same key (unusual but valid for test)
 
 	pub, _, _ := GenerateKeyPair()
 	// Only provide one key — adversarial will fail
