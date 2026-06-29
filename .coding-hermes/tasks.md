@@ -211,3 +211,35 @@
 - **AC:** `go build ./... && go test ./pkg/verify/... -count=1 -cover` passes with >80% coverage
 - **Logic:** DriftDetector compares shadow deployment metrics against baseline. Detect metric drift (success rate drop >2%, latency increase >10%, error type distribution shift). Configurable sensitivity thresholds per metric. Time-windowed comparison (rolling 5-min windows). DriftReport with per-metric delta, trend direction, and breach severity. Integration with existing ShadowDeployment and BehaviorContract.
 - **Result:** [x] DriftDetector with rolling time-windowed MetricsSnapshot samples. Per-metric sensitivity thresholds (success_rate 2%, p99_latency 10%, p50 15%, errors 50%, memory 10%, new_error_types 0). Trend direction (stable/improving/degrading) with higher/lower_is_better hint. Breach severity (none/warning/critical) based on overshoot ratio. AssessDeployment integrates with ShadowDeployment. 38 new tests, 97.3% pkg/verify coverage (up from 97.2%). Full suite 23/23 pass.
+
+## [ ] Bridge marketplace trust score to trust engine — pkg/marketplace + pkg/trust
+- **Priority:** high
+- **Spec:** specs/agent-marketplace.md §Trust Scoring + specs/trust-model.md §Integration Points
+- **Model:** direct write — Go packages, cross-package integration
+- **Files:** pkg/marketplace/trust_bridge.go (NEW), pkg/marketplace/trust_bridge_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/marketplace/... -count=1 -cover` passes with >80% coverage
+- **Logic:** Marketplace uses TrustScore int (0-100), trust engine uses TrustScore float64 (0.0-1.0). Build a TrustSync bridge that reads the JSONL trust ledger, computes the current score via ReplayToScore, converts to the 0-100 marketplace scale, and updates the agent profile. Periodic sync + on-demand query. Direction: trust engine is the source of truth, marketplace reads from it.
+
+## [ ] Implement tier-gated permission expansion — pkg/identity + pkg/trust
+- **Priority:** high
+- **Spec:** specs/trust-model.md §Integration Points: "Forgejo permissions expand with trust tier"
+- **Model:** direct write — Go packages, cross-package integration
+- **Files:** pkg/identity/permissions.go (NEW), pkg/identity/permissions_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/identity/... -count=1 -cover` passes with >80% coverage
+- **Logic:** PermissionExpansion maps trust tiers to Forgejo permission sets. Provisional: read-only + own branches. Observed: create branches + PRs. Trusted: merge own PRs + create repos. Veteran: admin + delete repos. When an agent's tier changes (via trust ledger replay), the identity system updates their Forgejo permissions accordingly. TierTransition event handler.
+
+## [ ] Implement cost-tier enforcement at dispatch — pkg/dispatcher + pkg/estimate + pkg/trust
+- **Priority:** medium
+- **Spec:** specs/trust-model.md §Integration Points: "Cost caps enforced at job dispatch based on current tier" + specs/cost-estimator.md
+- **Model:** direct write — Go packages, cross-package integration
+- **Files:** pkg/dispatcher/cost_guard.go (NEW), pkg/dispatcher/cost_guard_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/dispatcher/... -count=1 -cover` passes with >80% coverage
+- **Logic:** CostGuard runs before dispatching a work item. It queries the agent's trust tier, looks up the tier-specific cost cap (Provisional: $5/day, Observed: $25/day, Trusted: $100/day, Veteran: $500/day), calls pkg/estimate to pre-flight the token cost, and blocks/escalates based on the result. Returns APPROVED/BLOCKED/ESCALATED. Integrates with existing dispatcher.ExecuteLoop as a pre-dispatch check.
+
+## [ ] Implement review depth scaling by trust tier — pkg/review + pkg/trust
+- **Priority:** medium
+- **Spec:** specs/trust-model.md §Integration Points: "Review depth and model count scale inversely with trust tier" + specs/adversarial-review.md §Model Formation Strategy
+- **Model:** direct write — Go packages, cross-package integration
+- **Files:** pkg/review/tier_scaling.go (NEW), pkg/review/tier_scaling_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >80% coverage
+- **Logic:** TierReviewPolicy maps trust tiers to review formation requirements. Provisional: full 3-model adversarial + all prosecutor agents + 100% evidence verification. Observed: 2-model + prosecutor agents. Trusted: single-model + spot-check verification. Veteran: single-model review. The ReviewOrchestrator queries the agent's tier and adjusts the panel size, consensus threshold, and verification depth accordingly.
