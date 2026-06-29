@@ -1,0 +1,43 @@
+# .forgejo/workflows/gitreins.yaml — GitReins Quality Gate
+# Based on specs/deployment.md §5.3
+#
+# Runs Tier 1 (secrets/lint/tests/build) on every push.
+# Runs Tier 2 (LLM evaluator) on PRs only.
+name: GitReins Quality Gate
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install GitReins
+        run: pip install gitreins
+
+      - name: Run GitReins Tier 1 (secrets + lint + build + tests)
+        run: gitreins guard
+
+      - name: Run GitReins Tier 2 (PR only)
+        if: github.event_name == 'pull_request'
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          git diff origin/${{ github.event.pull_request.base.ref }} > /tmp/pr.diff
+          gitreins evaluate --diff /tmp/pr.diff
