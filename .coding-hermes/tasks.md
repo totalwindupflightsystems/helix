@@ -39,7 +39,7 @@
 ## [x] Upgrade deps: helix — 5 outdated Go packages
 - **Priority:** medium
 - **Updates:** cpuguy83/go-md2man/v2 v2.0.6→v2.0.7, spf13/pflag v1.0.9→v1.0.10, stretchr/testify v1.10.0→v1.11.1, stretchr/objx v0.5.2→v0.5.3, gopkg.in/check.v1→v1.0.0-20201130134442
-- **Result:** [x] All 5 upgraded via `go mod edit -require` + `go mod tidy`. Build OK, full suite 20/20 packages pass, lint guard PASS. Committed at.
+- **Result:** [x] All 5 upgraded via `go mod edit -require` + `go mod tidy`. Build OK, full suite 20/20 packages pass, lint guard PASS. Committed at `bec8a7a`.
 
 ## [x] Add trust tier enforcement to GitReins pre-commit hook
 - **Priority:** high
@@ -65,6 +65,38 @@
 - **AC:** `go build ./...` passes
 - **Logic:** Incident struct (agent_id, pr_url, severity, causal_chain, timestamp), shared learning across agents, incident → trust penalty pipeline.
 - **Result:** [x] 11 tests, 100% coverage.
+
+## [ ] Create Helix bootstrap script
+- **Priority:** high
+- **Spec:** specs/build-order.md §9
+- **Model:** direct write — bash script
+- **Files:** scripts/bootstrap.sh (NEW)
+- **AC:** `scripts/bootstrap.sh` starts Forgejo + Chimera, builds all Helix CLIs, and runs verification (all 5 checks from build-order.md §10)
+- **Logic:** Automate the Phase 0→4 sequence: create directories, docker run Forgejo, pip install Chimera + start, verify both health, go build ./cmd/...
+
+## [ ] Create Docker Compose for Helix platform
+- **Priority:** high
+- **Spec:** specs/deployment.md §2
+- **Model:** direct write — docker-compose.yaml
+- **Files:** deploy/docker-compose.yaml (NEW)
+- **AC:** `docker compose -f deploy/docker-compose.yaml up -d` starts Forgejo + Chimera + LangFuse + all 9 services with health checks
+- **Logic:** Define all service containers with helix-net, volumes, health checks, environment variables from deployment.md topology.
+
+## [ ] Implement circuit breaker for cross-service HTTP calls
+- **Priority:** medium
+- **Spec:** specs/cross-component-wiring.md §8
+- **Model:** direct write — Go package
+- **Files:** pkg/integration/circuitbreaker.go, pkg/integration/circuitbreaker_test.go (NEW)
+- **AC:** `go test ./pkg/integration/... -count=1` passes — circuit breaker allows/denies calls based on MaxFailures (5), ResetTimeout (60s), half-open probe state
+- **Logic:** CircuitBreaker struct with Allow(), RecordSuccess(), RecordFailure(). Configurable MaxFailures (default 5), ResetTimeout (default 60s). Half-open state allows one probe call on timeout expiry.
+
+## [ ] Create platform config templates
+- **Priority:** low
+- **Spec:** specs/helix-config.md
+- **Model:** direct write — YAML files
+- **Files:** deploy/config.yaml.example, deploy/pricing.yaml.example
+- **AC:** Example config files compile against helix CLI validation
+- **Logic:** Create template versions of `~/.helix/config.yaml` and `~/.helix/pricing.yaml` from the config spec.
 
 ## [] Wire dispatcher to Forgejo — agent spawn pipeline
 - **Priority:** critical
