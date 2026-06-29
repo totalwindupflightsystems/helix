@@ -345,13 +345,14 @@
 - **Logic:** TrustSnapshot captures a point-in-time view of an agent's trust state: current score, tier, score breakdown by dimension, recent events (last 30 days), tier history. GetSnapshot(agentID) replays the ledger and returns the full snapshot. GetScoreBreakdown returns per-dimension scores. GetTierHistory returns promotion/demotion events. ScoreTrend returns the score change over N days.
 - **Result:** [x] 25 tests, 91.6% pkg/trust coverage. GetSnapshot replays ledger → full TrustSnapshot (score, tier, breakdown, recent events, tier history, score trend). GetScoreBreakdown with 6 dimensions (weight × estimated score = contribution). GetTierHistory extracts promotion/demotion transitions. ScoreTrendOver with up/down/stable direction detection. GetRecentEvents for N-day window queries. Full suite 24/24 pass.
 
-## [ ] Implement debate round validator — pkg/negotiate/
+## [x] Implement debate round validator — pkg/negotiate/
 - **Priority:** high
 - **Spec:** specs/pr-negotiation.md §7.2 (Debate Round Format) + §7.5 (Strike System)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/negotiate/debate_validator.go (NEW), pkg/negotiate/debate_validator_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
 - **Logic:** DebateValidator validates structured debate comments per spec §7.2. ValidateEvidence checks: minimum 2 evidence items per comment, at least 1 cites a spec file or test output, at least 1 references the other agent's argument. "I disagree" without evidence → comment rejected, agent gets strike. StrikeTracker accumulates strikes per agent: posting without evidence → 1 strike, missing a round → 1 strike + auto-concede on 2nd miss, 3 strikes → auto-concede. ParseRoundComment extracts position, evidence items, counter-argument, concession conditions from a structured comment body.
+- **Result:** [x] 45 tests, 98.3% pkg/negotiate coverage (up from 97.3%). Full suite 24/24 pass. ParseRoundComment parses §7.2 markdown format (round number, agent name, trust level, position, evidence items by type, counter-argument with @mention extraction, concession conditions). ValidateEvidence enforces all 3 §7.2 requirements (min 2 items, ≥1 spec/test, ≥1 counter-arg ref). StrikeTracker with auto-concede on 3 strikes or 2 round misses, thread-safe with sync.Mutex, full strike audit log.
 
 ## [ ] Implement canary promotion decision engine — pkg/verify/
 - **Priority:** medium
