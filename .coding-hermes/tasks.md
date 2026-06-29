@@ -172,13 +172,14 @@
 - **Logic:** Centralized error type mapping for all cross-service failures per spec §7 table. Each service pair has specific error format: Forgejo→Chimera unreachable → "Chimera unavailable — manual review required"; negotiate→Chimera budget exhausted → "BUDGET_EXHAUSTED: tie-break cost $X > remaining"; identity→Forgejo 503 → "CONNECTION_REFUSED: retry in Ns (attempt N/M)"; estimate→OpenRouter 401 → "AUTH_FAILED: agent key is dead — trigger key rotation"; Axiom→Forgejo 409 → "BRANCH_CONFLICT: feat/X exists — use --force-branch". ServiceError type with Code, Message, Retryable flag, RetryAfter duration. ClassifyError maps HTTP status codes to error types. IsRetryable for circuit breaker integration.
 - **Result:** [x] 49 tests, 100% coverage on errors.go. All 5 spec §7 error rows implemented as constructors (NewChimeraUnavailableError, NewBudgetExhaustedError, NewConnectionRefusedError, NewAuthFailedError, NewBranchConflictError). ClassifyError dispatches by caller/callee/status. ClassifyHTTP handles 401/403/404/409/429/500/502/503/504 + generic 4xx/5xx. IsRetryable/IsCode/GetRetryAfter helpers for circuit breaker integration. Full suite 24/24 pass.
 
-## [ ] Implement agent notification dispatcher — pkg/verify/
+## [x] Implement agent notification dispatcher — pkg/verify/
 - **Priority:** medium
 - **Spec:** specs/production-verification.md §Behavior Contracts + §Integration Points
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/verify/notify.go (NEW), pkg/verify/notify_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/verify/... -count=1 -cover` passes with >85% coverage
 - **Logic:** NotificationDispatcher sends breach alerts to responsible agents when behavior contracts are violated. Per spec: on breach → (1) immediate agent notification with evidence, (2) auto-rollback if configured, (3) trust penalty, (4) incident record. Notifier interface with Notify(agentID, breach, evidence) method. Channels: Forgejo PR comment (structured markdown with breach details), trust ledger event, incident store entry. BreachNotification with contract name, failed checks, metrics snapshot, evidence links, recommended action. NotificationResult tracking delivery status per channel. Debounce: don't spam the same agent for the same breach within 5 minutes.
+- **Result:** [x] 44 tests, 100% coverage on notify.go. Three channels: ForgejoPRNotifier (markdown comment), TrustLedgerNotifier (penalty callback), IncidentStoreNotifier (incident record). 5-minute debounce per (agent, contract) pair. NotifyFromBreach converts Monitor Breach → notification. Full pipeline test: Monitor.Evaluate → breach → dispatcher → all channels. 97.7% pkg/verify coverage (up from 97.3%). Full suite 24/24 pass.
 
 ## [x] Implement cost estimation engine
 - **Priority:** high
