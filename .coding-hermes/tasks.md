@@ -194,13 +194,14 @@
 - **Logic:** EvidenceVerificationLayer that takes the consensus findings from ReviewOrchestrator and verifies them: (1) run tests from model suggestions, (2) verify edge cases actually fail as claimed, (3) confirm fixes resolve issues. VerificationResult with per-finding status (verified/false_positive/unverifiable). Integration point: after ReviewOrchestrator.Review() completes, EvidenceVerifier.VerifyFindings() runs the claims.
 - **Result:** [x] EvidenceVerifier with TestRunner interface, concurrent finding verification. Finding classification: testable (has test_run_id) → run test, mitigation present → verify structure, no evidence → unverifiable. Test failure = finding verified; test pass = false positive (feeds FPTracker). 29 new tests, 94.8% pkg/review coverage. Full suite 23/23 pass.
 
-## [ ] Implement adversarial agent dispatcher — pkg/review/
+## [x] Implement adversarial agent dispatcher — pkg/review/
 - **Priority:** medium
 - **Spec:** specs/adversarial-review.md §Adversarial Agent Techniques
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/review/agents.go (NEW), pkg/review/agents_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >80% coverage
 - **Logic:** AdversarialAgentDispatcher that launches specialized agents (@assumption-buster, @redteam, @chaos-engineer, @cost-auditor) based on change category. Each agent is a ProsecutorAgent with a specific mission (find what's wrong, not what's right). AgentTrigger rules (behavioral→assumption-buster, auth/crypto→redteam, resilience→chaos-engineer, all→cost-auditor). AgentResult with exploit paths found, assumptions challenged, fault injection results.
+- **Result:** [x] AdversarialAgentDispatcher with trigger-based agent selection. ProsecutorAgent interface with Prosecute/Identity methods. 4 specialized agents (assumption-buster, redteam, chaos-engineer, cost-auditor) with DefaultTriggers mapping. Concurrent dispatch with DispatchReport aggregation (exploits, assumptions, fault results, cost estimates). StubAgent for testing. 38 new tests, 94.4% pkg/review coverage. Full suite 23/23 pass.
 
 ## [ ] Implement drift detection for production verification — pkg/verify/
 - **Priority:** medium
