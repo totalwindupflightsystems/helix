@@ -205,7 +205,7 @@ func TestEvaluatePromotion_MultipleCriteriaFail(t *testing.T) {
 	metrics := AgentMetrics{
 		TrustScore:    0.50,
 		TotalMerges:   100,
-		Incidents180d: 2, // too many for Trusted (requires 0)
+		Incidents180d: 2,  // too many for Trusted (requires 0)
 		DaysActive:    50, // too few for Trusted (requires 90)
 	}
 	result := EvaluatePromotion(metrics, TierTrusted)
@@ -248,7 +248,7 @@ func TestEvaluatePromotion_ReasonString(t *testing.T) {
 
 func TestEvaluatePromotion_BlockingReasonString(t *testing.T) {
 	metrics := AgentMetrics{
-		TrustScore: 0.30,
+		TrustScore:  0.30,
 		TotalMerges: 200,
 		DaysActive:  35,
 	}
@@ -357,9 +357,9 @@ func TestPromoteTo_NotQualified(t *testing.T) {
 
 func TestPromoteTo_VeteranStays(t *testing.T) {
 	metrics := AgentMetrics{
-		TrustScore:    0.99,
-		TotalMerges:   10000,
-		CurrentTier:   TierVeteran,
+		TrustScore:  0.99,
+		TotalMerges: 10000,
+		CurrentTier: TierVeteran,
 	}
 	if PromoteTo(metrics) != TierVeteran {
 		t.Error("Veteran should stay Veteran")
@@ -405,9 +405,9 @@ func TestEvaluateFullTierCycle_Promotion(t *testing.T) {
 
 func TestEvaluateFullTierCycle_NoChange(t *testing.T) {
 	metrics := AgentMetrics{
-		TrustScore:    0.35,
-		TotalMerges:   50,
-		CurrentTier:   TierProvisional,
+		TrustScore:  0.35,
+		TotalMerges: 50,
+		CurrentTier: TierProvisional,
 	}
 	tier, _, changed := EvaluateFullTierCycle(metrics)
 	if changed {
@@ -420,9 +420,9 @@ func TestEvaluateFullTierCycle_NoChange(t *testing.T) {
 
 func TestEvaluateFullTierCycle_VeteranNoPromotion(t *testing.T) {
 	metrics := AgentMetrics{
-		TrustScore:    0.99,
-		TotalMerges:   5000,
-		CurrentTier:   TierVeteran,
+		TrustScore:  0.99,
+		TotalMerges: 5000,
+		CurrentTier: TierVeteran,
 	}
 	_, _, changed := EvaluateFullTierCycle(metrics)
 	if changed {
@@ -479,9 +479,9 @@ func TestIsDemotion(t *testing.T) {
 func TestFullLifecycle_ProvisionalToVeteran(t *testing.T) {
 	// Start at Provisional
 	metrics := AgentMetrics{
-		TrustScore:    0.0,
-		TotalMerges:   0,
-		CurrentTier:   TierProvisional,
+		TrustScore:  0.0,
+		TotalMerges: 0,
+		CurrentTier: TierProvisional,
 	}
 
 	// After 100 merges and 30 days, should promote to Observed

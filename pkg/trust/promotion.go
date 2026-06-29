@@ -23,12 +23,12 @@ import (
 
 // AgentMetrics captures the observable signals used for tier evaluation.
 type AgentMetrics struct {
-	TrustScore         float64 `json:"trust_score"`
-	TotalMerges        int     `json:"total_merges"`
-	Incidents180d      int     `json:"incidents_180d"`
-	DaysActive         int     `json:"days_active"`
-	PRsReviewed        int     `json:"prs_reviewed"`        // Veteran requirement
-	CurrentTier        TrustTier `json:"current_tier"`
+	TrustScore    float64   `json:"trust_score"`
+	TotalMerges   int       `json:"total_merges"`
+	Incidents180d int       `json:"incidents_180d"`
+	DaysActive    int       `json:"days_active"`
+	PRsReviewed   int       `json:"prs_reviewed"` // Veteran requirement
+	CurrentTier   TrustTier `json:"current_tier"`
 }
 
 // CriterionResult is the pass/fail status of a single promotion criterion.
@@ -51,11 +51,11 @@ type PromotionResult struct {
 
 // tierEntryRequirements defines ALL entry requirements per spec §Trust Tiers.
 type tierEntryRequirements struct {
-	MinScore    float64
-	MinMerges   int
+	MinScore     float64
+	MinMerges    int
 	MaxIncidents int
-	MinDays     int
-	MinReviews  int // only Veteran requires this (>0); others are 0
+	MinDays      int
+	MinReviews   int // only Veteran requires this (>0); others are 0
 }
 
 // entryRequirementsFor returns the full entry requirements for a tier.
