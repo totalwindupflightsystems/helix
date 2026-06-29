@@ -390,10 +390,11 @@
 - **Logic:** AssembleArbiterInput builds the prompt sent to Chimera's arbiter formation per spec §9.2. Input sections: PR Context (title, description, diff truncated to 50K chars, spec files concatenated), Agent Reviews (both agent names, trust levels, verdicts, bodies), Debate Transcript (all rounds), Question (APPROVE or REJECT). TruncateDiff clips diffs to 50K chars with a truncation notice. ConcatSpecFiles merges referenced spec files. AssembleArbiterInput takes a Negotiation + debate rounds + PR context and returns the formatted prompt string.
 - **Result:** [x] 26 tests, 98.1% pkg/negotiate coverage. Full suite 24/24 pass. AssembleArbiterInput builds spec §9.2 prompt with all 4 sections (PR Context, Agent Reviews, Debate Transcript, Question). TruncateDiff with percentage notice. ConcatSpecFiles with labeled file paths. AssembleFromNegotiator convenience wrapper. EstimatePromptSize for pre-flight budget checks.
 
-## [ ] Implement negotiation trust adjustment engine — pkg/negotiate/
+## [x] Implement negotiation trust adjustment engine — pkg/negotiate/
 - **Priority:** medium
 - **Spec:** specs/pr-negotiation.md §10.2 (Trust Adjustments from Negotiation)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/negotiate/trust_adjustment.go (NEW), pkg/negotiate/trust_adjustment_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
 - **Logic:** TrustAdjustmentEngine computes trust deltas for all negotiation events per spec §10.2 table: concession with evidence (+1), wins tie-break (+2), loses with evidence (0), loses without evidence (-5), frivolous veto (-5), missed round (-2), 3 strikes (-10 + auto-concede). TrustDelta struct with Agent, Delta, Reason, Event type. ApplyTrustDelta clamps to 0-100 range (spec §10.3 floor/ceiling). AdjustForNegotiationOutcome computes all deltas for both agents after a negotiation completes. RecordTrustHistory stores the adjustment events for audit.
+- **Result:** [x] 38 tests, 98.2% pkg/negotiate coverage. Full suite 24/24 pass. All 7 spec §10.2 event types with exact deltas. AdjustForNegotiationOutcome computes all deltas from a NegotiationOutcome struct. ApplyAdjustments batch-applies with TrustHistoryEntry audit trail. ApplyTrustDelta clamps to [0,100] per spec §10.3. TrustAdjustmentSummary for human-readable output. EventDescription for each type.
