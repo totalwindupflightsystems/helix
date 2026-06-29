@@ -230,13 +230,14 @@
 - **Logic:** PermissionExpansion maps trust tiers to Forgejo permission sets. Provisional: read-only + own branches. Observed: create branches + PRs. Trusted: merge own PRs + create repos. Veteran: admin + delete repos. When an agent's tier changes (via trust ledger replay), the identity system updates their Forgejo permissions accordingly. TierTransition event handler.
 - **Result:** [x] PermissionExpansion with monotonic tier→permission mapping. PermissionSet (16 capability flags + cost cap + sandbox level). TierTransition with IsPromotion/IsDemotion. ComputeDelta/HandleTransition for tier change events. CanPerformAction action checker with shorthand aliases. 28 tests, 87.5% pkg/identity coverage. Full suite 23/23 pass.
 
-## [ ] Implement cost-tier enforcement at dispatch — pkg/dispatcher + pkg/estimate + pkg/trust
+## [x] Implement cost-tier enforcement at dispatch — pkg/dispatcher + pkg/estimate + pkg/trust
 - **Priority:** medium
 - **Spec:** specs/trust-model.md §Integration Points: "Cost caps enforced at job dispatch based on current tier" + specs/cost-estimator.md
 - **Model:** direct write — Go packages, cross-package integration
 - **Files:** pkg/dispatcher/cost_guard.go (NEW), pkg/dispatcher/cost_guard_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/dispatcher/... -count=1 -cover` passes with >80% coverage
 - **Logic:** CostGuard runs before dispatching a work item. It queries the agent's trust tier, looks up the tier-specific cost cap (Provisional: $5/day, Observed: $25/day, Trusted: $100/day, Veteran: $500/day), calls pkg/estimate to pre-flight the token cost, and blocks/escalates based on the result. Returns APPROVED/BLOCKED/ESCALATED. Integrates with existing dispatcher.ExecuteLoop as a pre-dispatch check.
+- **Result:** [x] CostGuard with Check (task desc → estimate → tier cap comparison) and CheckWithEstimate (pre-computed estimate). APPROVED/BLOCKED/ESCALATED decisions. 80% warn zone (approaching limit). Veteran unlimited cap. 18 tests, cost_guard functions 65-100% coverage. 91.2% pkg/dispatcher coverage. Full suite 23/23 pass.
 
 ## [ ] Implement review depth scaling by trust tier — pkg/review + pkg/trust
 - **Priority:** medium
