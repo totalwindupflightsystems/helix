@@ -52,7 +52,7 @@
 - **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >85% coverage
 - **Logic:** False positive tracking (human_dismissed counter per model), threshold (10 dismissals → flag), model re-evaluation trigger (curated test suite of known-true + known-false findings), model rotation (remove models with >15% FP rate).
 
-## [] Add trust tier enforcement to GitReins pre-commit hook
+## [~] Add trust tier enforcement to GitReins pre-commit hook
 - **Priority:** high
 - **Spec:** specs/trust-model.md §Integration Points
 - **Files:** .gitreins/config.yaml (update), scripts/check-trust-tier.sh (NEW)
