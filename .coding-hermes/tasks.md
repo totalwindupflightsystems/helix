@@ -221,13 +221,14 @@
 - **Logic:** Marketplace uses TrustScore int (0-100), trust engine uses TrustScore float64 (0.0-1.0). Build a TrustSync bridge that reads the JSONL trust ledger, computes the current score via ReplayToScore, converts to the 0-100 marketplace scale, and updates the agent profile. Periodic sync + on-demand query. Direction: trust engine is the source of truth, marketplace reads from it.
 - **Result:** [x] TrustSync bridge with interval-based sync caching. SyncAgent (single agent), SyncAll (full registry), GetLiveScore (read-only source-of-truth query). ScoreToMarketplace/MarketplaceToScore conversion with rounding + clamping. 16 tests, trust_bridge functions 75-100% coverage. 97.1% total pkg/marketplace coverage (up from 96.8%). Full suite 23/23 pass.
 
-## [ ] Implement tier-gated permission expansion — pkg/identity + pkg/trust
+## [x] Implement tier-gated permission expansion — pkg/identity + pkg/trust
 - **Priority:** high
 - **Spec:** specs/trust-model.md §Integration Points: "Forgejo permissions expand with trust tier"
 - **Model:** direct write — Go packages, cross-package integration
 - **Files:** pkg/identity/permissions.go (NEW), pkg/identity/permissions_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/identity/... -count=1 -cover` passes with >80% coverage
 - **Logic:** PermissionExpansion maps trust tiers to Forgejo permission sets. Provisional: read-only + own branches. Observed: create branches + PRs. Trusted: merge own PRs + create repos. Veteran: admin + delete repos. When an agent's tier changes (via trust ledger replay), the identity system updates their Forgejo permissions accordingly. TierTransition event handler.
+- **Result:** [x] PermissionExpansion with monotonic tier→permission mapping. PermissionSet (16 capability flags + cost cap + sandbox level). TierTransition with IsPromotion/IsDemotion. ComputeDelta/HandleTransition for tier change events. CanPerformAction action checker with shorthand aliases. 28 tests, 87.5% pkg/identity coverage. Full suite 23/23 pass.
 
 ## [ ] Implement cost-tier enforcement at dispatch — pkg/dispatcher + pkg/estimate + pkg/trust
 - **Priority:** medium
