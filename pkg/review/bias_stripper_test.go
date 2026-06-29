@@ -197,9 +197,9 @@ func TestBiasStripper_Disaster_AnthropicRegression(t *testing.T) {
 	msg := "Refactored the response formatting module. All existing tests pass, verified locally. Clean and proper implementation."
 	got := bs.Strip(msg)
 	// Should strip "all existing tests pass", "verified locally", "clean", "proper"
-	if strings.Contains(got, "tests pass") || strings.Contains(got, "tests") {
-		// "tests" might appear in factual context like "response formatting" doesn't have it
-		// Let's check more specifically
+	// "tests" keyword should not survive stripping — but "response formatting" is factual
+	if strings.Contains(got, "tests pass") {
+		t.Errorf("should remove 'tests pass': %q", got)
 	}
 	if strings.Contains(got, "verified locally") {
 		t.Errorf("should remove 'verified locally': %q", got)

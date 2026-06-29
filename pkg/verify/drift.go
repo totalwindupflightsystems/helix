@@ -25,12 +25,12 @@ import (
 // DriftSensitivity defines per-metric drift thresholds.
 // Each value is the maximum allowed percentage change before drift is flagged.
 type DriftSensitivity struct {
-	SuccessRateDropPct  float64 // default 2.0 — success rate drops are critical
-	P99LatencyIncPct    float64 // default 10.0
-	P50LatencyIncPct    float64 // default 15.0
-	ErrorCountIncPct    float64 // default 50.0 — some error fluctuation is normal
-	MemoryGrowthPct     float64 // default 10.0 — memory leaks are insidious
-	NewErrorTypesMax    int     // default 0 — any new error type is a red flag
+	SuccessRateDropPct float64 // default 2.0 — success rate drops are critical
+	P99LatencyIncPct   float64 // default 10.0
+	P50LatencyIncPct   float64 // default 15.0
+	ErrorCountIncPct   float64 // default 50.0 — some error fluctuation is normal
+	MemoryGrowthPct    float64 // default 10.0 — memory leaks are insidious
+	NewErrorTypesMax   int     // default 0 — any new error type is a red flag
 }
 
 // DefaultSensitivity returns spec-compliant drift thresholds.
@@ -49,7 +49,7 @@ func DefaultSensitivity() DriftSensitivity {
 type TrendDirection string
 
 const (
-	TrendStable   TrendDirection = "stable"
+	TrendStable    TrendDirection = "stable"
 	TrendImproving TrendDirection = "improving"
 	TrendDegrading TrendDirection = "degrading"
 )
@@ -58,8 +58,8 @@ const (
 type BreachSeverity string
 
 const (
-	SeverityNone    BreachSeverity = "none"
-	SeverityWarning BreachSeverity = "warning"
+	SeverityNone     BreachSeverity = "none"
+	SeverityWarning  BreachSeverity = "warning"
 	SeverityCritical BreachSeverity = "critical"
 )
 
@@ -78,13 +78,13 @@ type MetricDriftReport struct {
 
 // DriftAssessment aggregates per-metric drift reports for a single comparison.
 type DriftAssessment struct {
-	Timestamp    time.Time           `json:"timestamp"`
-	WindowStart  time.Time           `json:"window_start"`
-	WindowEnd    time.Time           `json:"window_end"`
+	Timestamp     time.Time           `json:"timestamp"`
+	WindowStart   time.Time           `json:"window_start"`
+	WindowEnd     time.Time           `json:"window_end"`
 	MetricReports []MetricDriftReport `json:"metric_reports"`
-	AnyBreach    bool                `json:"any_breach"`
-	CriticalCount int                `json:"critical_count"`
-	WarningCount  int                `json:"warning_count"`
+	AnyBreach     bool                `json:"any_breach"`
+	CriticalCount int                 `json:"critical_count"`
+	WarningCount  int                 `json:"warning_count"`
 }
 
 // Summary returns a one-line assessment summary.
@@ -118,8 +118,8 @@ func (a *DriftAssessment) ShouldRollback() bool {
 // against a baseline. It's designed to be called periodically (e.g., every
 // 5 minutes) with fresh MetricsSnapshots from the shadow deployment.
 type DriftDetector struct {
-	mu         sync.RWMutex
-	baseline   MetricsSnapshot
+	mu          sync.RWMutex
+	baseline    MetricsSnapshot
 	sensitivity DriftSensitivity
 	windowSize  time.Duration
 	samples     []timestampedSample
@@ -153,7 +153,7 @@ func WithMaxSamples(n int) DriftDetectorOption {
 // NewDriftDetector creates a detector with the given baseline and defaults.
 func NewDriftDetector(baseline MetricsSnapshot, opts ...DriftDetectorOption) *DriftDetector {
 	d := &DriftDetector{
-		baseline:   baseline,
+		baseline:    baseline,
 		sensitivity: DefaultSensitivity(),
 		windowSize:  5 * time.Minute,
 		samples:     make([]timestampedSample, 0, 60),
@@ -375,15 +375,15 @@ func (d *DriftDetector) assessAgainstLocked(current MetricsSnapshot) *DriftAsses
 	newTypesExceeds := newTypes > s.NewErrorTypesMax
 	if newTypes > 0 {
 		report := MetricDriftReport{
-			Metric:    "new_error_types",
-			Baseline:  0,
-			Current:   float64(newTypes),
-			Delta:     float64(newTypes),
-			DriftPct:  100.0, // any new type = 100% drift
+			Metric:       "new_error_types",
+			Baseline:     0,
+			Current:      float64(newTypes),
+			Delta:        float64(newTypes),
+			DriftPct:     100.0, // any new type = 100% drift
 			ThresholdPct: float64(s.NewErrorTypesMax),
-			Exceeds:   newTypesExceeds,
-			Direction: TrendDegrading,
-			Severity:  SeverityWarning,
+			Exceeds:      newTypesExceeds,
+			Direction:    TrendDegrading,
+			Severity:     SeverityWarning,
 		}
 		if newTypes >= 3 {
 			report.Severity = SeverityCritical

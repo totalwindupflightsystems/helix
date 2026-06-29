@@ -343,8 +343,8 @@ func TestAllFindings(t *testing.T) {
 
 func TestDispatchReport_Summary(t *testing.T) {
 	report := &DispatchReport{
-		AgentsRun:  3,
-		CleanBill:  false,
+		AgentsRun: 3,
+		CleanBill: false,
 		Results: []AgentResult{
 			{ExploitPaths: []ExploitPath{{}}, AssumptionsFound: []Assumption{{}, {}}},
 		},

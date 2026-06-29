@@ -16,13 +16,13 @@ import (
 // IsolationWorkspace config.
 func TestNewExecutor_ValidConfig(t *testing.T) {
 	cfg := SandboxConfig{
-		SessionID:    "test-session",
-		Isolation:    IsolationWorkspace,
-		Workdir:      "/workspace",
-		SessionRoot:  t.TempDir(),
-		BwrapPath:    "/usr/bin/bwrap",
-		CgroupRoot:   "/sys/fs/cgroup",
-		Command:      []string{"echo", "hello"},
+		SessionID:   "test-session",
+		Isolation:   IsolationWorkspace,
+		Workdir:     "/workspace",
+		SessionRoot: t.TempDir(),
+		BwrapPath:   "/usr/bin/bwrap",
+		CgroupRoot:  "/sys/fs/cgroup",
+		Command:     []string{"echo", "hello"},
 	}
 
 	exec, err := NewExecutor(cfg)
@@ -725,7 +725,7 @@ func TestNeedsQuoting_SpecialChars(t *testing.T) {
 		"%",
 	}
 	for _, s := range special {
-		if !needsQuoting("a"+s+"b") {
+		if !needsQuoting("a" + s + "b") {
 			t.Errorf("%q should need quoting", s)
 		}
 	}

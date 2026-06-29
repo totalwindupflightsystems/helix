@@ -218,7 +218,7 @@ func TestIsWritable_ReadOnlyDir(t *testing.T) {
 	if err := os.Chmod(dir, 0o555); err != nil {
 		t.Fatalf("chmod: %v", err)
 	}
-	defer os.Chmod(dir, 0o755) // restore for cleanup
+	defer func() { _ = os.Chmod(dir, 0o755) }() // restore for cleanup
 	if isWritable(dir) {
 		t.Error("isWritable returned true for read-only dir")
 	}
@@ -319,7 +319,7 @@ func TestSetup_RootNotWritable_ReturnsNil(t *testing.T) {
 	if err := os.Chmod(root, 0o555); err != nil {
 		t.Fatalf("chmod: %v", err)
 	}
-	defer os.Chmod(root, 0o755)
+	defer func() { _ = os.Chmod(root, 0o755) }()
 
 	cfg := SandboxConfig{
 		SessionID:  "test-session",

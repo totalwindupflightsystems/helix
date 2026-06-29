@@ -589,8 +589,9 @@ func TestDiff_SameContentDifferentMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	// Content should be essentially identical (headers only, no diff lines)
 	if len(strings.TrimSpace(diff.ContentDiff)) > 0 && !strings.Contains(diff.ContentDiff, "-") && !strings.Contains(diff.ContentDiff, "+") {
-		// Content should be essentially identical (headers only, no diff lines)
+		t.Errorf("unexpected content diff: %s", diff.ContentDiff)
 	}
 	if !strings.Contains(diff.MetadataDiff, "status") {
 		t.Errorf("expected status change in metadata: %q", diff.MetadataDiff)

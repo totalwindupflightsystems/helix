@@ -9,18 +9,18 @@ import "fmt"
 // Config is the top-level Helix platform configuration. It maps directly to
 // ~/.helix/config.yaml.
 type Config struct {
-	Version      int          `yaml:"version"`
-	Forgejo      ForgejoConfig `yaml:"forgejo"`
-	Chimera      ChimeraConfig `yaml:"chimera"`
-	LangFuse     LangFuseConfig `yaml:"langfuse"`
-	GitReins     GitReinsConfig `yaml:"gitreins"`
-	Identity     IdentityConfig `yaml:"identity"`
-	Estimator    EstimatorConfig `yaml:"estimator"`
-	Marketplace  MarketplaceConfig `yaml:"marketplace"`
-	Negotiation  NegotiationConfig `yaml:"negotiation"`
-	Prompts      PromptsConfig `yaml:"prompts"`
-	Services     ServicesConfig `yaml:"services"`
-	Budget       BudgetConfig `yaml:"budget"`
+	Version     int               `yaml:"version"`
+	Forgejo     ForgejoConfig     `yaml:"forgejo"`
+	Chimera     ChimeraConfig     `yaml:"chimera"`
+	LangFuse    LangFuseConfig    `yaml:"langfuse"`
+	GitReins    GitReinsConfig    `yaml:"gitreins"`
+	Identity    IdentityConfig    `yaml:"identity"`
+	Estimator   EstimatorConfig   `yaml:"estimator"`
+	Marketplace MarketplaceConfig `yaml:"marketplace"`
+	Negotiation NegotiationConfig `yaml:"negotiation"`
+	Prompts     PromptsConfig     `yaml:"prompts"`
+	Services    ServicesConfig    `yaml:"services"`
+	Budget      BudgetConfig      `yaml:"budget"`
 }
 
 // ForgejoConfig holds the Forgejo forge connection parameters.
@@ -32,12 +32,12 @@ type ForgejoConfig struct {
 
 // ChimeraConfig holds the Chimera multi-model review service parameters.
 type ChimeraConfig struct {
-	URL               string `yaml:"url"`
-	InternalURL       string `yaml:"internal_url"`
-	DefaultFormation  string `yaml:"default_formation"`
-	ArbiterFormation  string `yaml:"arbiter_formation"`
-	BudgetFormation   string `yaml:"budget_formation"`
-	Timeout           string `yaml:"timeout"`
+	URL              string `yaml:"url"`
+	InternalURL      string `yaml:"internal_url"`
+	DefaultFormation string `yaml:"default_formation"`
+	ArbiterFormation string `yaml:"arbiter_formation"`
+	BudgetFormation  string `yaml:"budget_formation"`
+	Timeout          string `yaml:"timeout"`
 }
 
 // LangFuseConfig holds the LangFuse observability service parameters.
@@ -59,17 +59,17 @@ type GitReinsConfig struct {
 // IdentityConfig holds the Agent Identity (Feature 1) parameters.
 type IdentityConfig struct {
 	KnownFriendsPath string `yaml:"known_friends_path"`
-	SSHKeyDir       string `yaml:"ssh_key_dir"`
-	StatePath       string `yaml:"state_path"`
+	SSHKeyDir        string `yaml:"ssh_key_dir"`
+	StatePath        string `yaml:"state_path"`
 }
 
 // EstimatorConfig holds the Cost Estimator (Feature 2) parameters.
 type EstimatorConfig struct {
-	PricingPath       string  `yaml:"pricing_path"`
-	CacheHitRatioPro  float64 `yaml:"cache_hit_ratio_pro"`
+	PricingPath        string  `yaml:"pricing_path"`
+	CacheHitRatioPro   float64 `yaml:"cache_hit_ratio_pro"`
 	CacheHitRatioFlash float64 `yaml:"cache_hit_ratio_flash"`
-	BudgetResetDay    string  `yaml:"budget_reset_day"`
-	BudgetResetTime   string  `yaml:"budget_reset_time"`
+	BudgetResetDay     string  `yaml:"budget_reset_day"`
+	BudgetResetTime    string  `yaml:"budget_reset_time"`
 }
 
 // MarketplaceConfig holds the Agent Marketplace (Feature 5) parameters.
@@ -81,23 +81,23 @@ type MarketplaceConfig struct {
 
 // NegotiationConfig holds the PR Negotiation (Feature 3) parameters.
 type NegotiationConfig struct {
-	MaxRounds      int    `yaml:"max_rounds"`
-	RoundTimeout   string `yaml:"round_timeout"`
-	GlobalTimeout  string `yaml:"global_timeout"`
-	TranscriptDir  string `yaml:"transcript_dir"`
+	MaxRounds     int    `yaml:"max_rounds"`
+	RoundTimeout  string `yaml:"round_timeout"`
+	GlobalTimeout string `yaml:"global_timeout"`
+	TranscriptDir string `yaml:"transcript_dir"`
 }
 
 // PromptsConfig holds the Prompt Registry (Feature 4) parameters.
 type PromptsConfig struct {
-	RegistryPath         string `yaml:"registry_path"`
-	DeprecatedGraceDays  int    `yaml:"deprecated_grace_days"`
-	RetiredAfterDays     int    `yaml:"retired_after_days"`
+	RegistryPath        string `yaml:"registry_path"`
+	DeprecatedGraceDays int    `yaml:"deprecated_grace_days"`
+	RetiredAfterDays    int    `yaml:"retired_after_days"`
 }
 
 // ServiceTarget defines a health-check target for a platform service.
 type ServiceTarget struct {
-	URL             string `yaml:"url"`
-	HealthEndpoint  string `yaml:"health_endpoint"`
+	URL            string `yaml:"url"`
+	HealthEndpoint string `yaml:"health_endpoint"`
 }
 
 // ServicesConfig holds health-check targets for all platform services.

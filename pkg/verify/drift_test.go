@@ -45,7 +45,7 @@ func healthySnapshot() MetricsSnapshot {
 		P50LatencyMs:    49,    // slight improvement
 		ErrorCount:      9,     // slight improvement
 		NewErrorTypes:   0,
-		MemoryGrowthPct: 2.0,   // same as baseline
+		MemoryGrowthPct: 2.0, // same as baseline
 		RequestCount:    10500,
 		Timestamp:       time.Now().UTC(),
 	}
@@ -188,7 +188,7 @@ func TestAssess_DegradedAllBreach(t *testing.T) {
 func TestAssess_SuccessRateDrop(t *testing.T) {
 	d := NewDriftDetector(goodBaseline())
 	d.RecordSample(MetricsSnapshot{
-		SuccessRate: 0.95, // ~4% drop from 0.99 → exceeds 2% threshold
+		SuccessRate:  0.95, // ~4% drop from 0.99 → exceeds 2% threshold
 		P99LatencyMs: 100,
 		P50LatencyMs: 50,
 		ErrorCount:   10,

@@ -78,18 +78,18 @@ func TestDetermineTier_ScoreJustBelowThreshold(t *testing.T) {
 
 func TestDetermineTier_BelowAllThresholdsReturnsProvisional(t *testing.T) {
 	tests := []struct {
-		score float64
+		score  float64
 		merges int
 		inc180 int
-		want  TrustTier
+		want   TrustTier
 	}{
 		{0.0, 0, 0, TierProvisional},
 		{0.1, 0, 0, TierProvisional},
 		{0.39, 100, 0, TierProvisional},
 		{0.40, 99, 0, TierProvisional},
-		{0.64, 500, 0, TierObserved},    // below trusted score (0.65), meets merges → observed
-		{0.85, 1999, 0, TierTrusted},   // not enough merges for veteran
-		{0.85, 2000, 2, TierProvisional},   // too many incidents for all tiers
+		{0.64, 500, 0, TierObserved},     // below trusted score (0.65), meets merges → observed
+		{0.85, 1999, 0, TierTrusted},     // not enough merges for veteran
+		{0.85, 2000, 2, TierProvisional}, // too many incidents for all tiers
 	}
 	for _, tc := range tests {
 		got := DetermineTier(tc.score, tc.merges, tc.inc180)
@@ -208,8 +208,8 @@ func TestCalculate_ClampsBelowZero(t *testing.T) {
 
 func TestIncidentAttributionWeight_ExactDays(t *testing.T) {
 	tests := []struct {
-		days  float64
-		want  float64
+		days float64
+		want float64
 	}{
 		{0, 1.0},
 		{3, 1.0},
@@ -688,8 +688,8 @@ func TestIntegration_FullAgentLifecycle(t *testing.T) {
 
 	// Day 1: New agent starts with neutral scores
 	dims := DimensionScores{
-		MergeSuccessRate: 1.0,   // no reverted merges yet
-		IncidentTrack:    0.5,    // neutral — no incidents
+		MergeSuccessRate: 1.0, // no reverted merges yet
+		IncidentTrack:    0.5, // neutral — no incidents
 		ReviewConsensus:  0.7,
 		PromptIntegrity:  1.0,
 		HumanFeedback:    0.5,
@@ -704,7 +704,7 @@ func TestIntegration_FullAgentLifecycle(t *testing.T) {
 	// After 100 successful merges, 100 days, good ratings
 	dims100 := DimensionScores{
 		MergeSuccessRate: 1.0,
-		IncidentTrack:    IncidentTrackScore(100),  // 0.95 — clean record
+		IncidentTrack:    IncidentTrackScore(100), // 0.95 — clean record
 		ReviewConsensus:  0.85,
 		PromptIntegrity:  1.0,
 		HumanFeedback:    0.8,

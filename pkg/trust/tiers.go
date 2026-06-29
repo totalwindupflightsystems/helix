@@ -32,9 +32,9 @@ func AllTiers() []TrustTier {
 // TierThresholds defines the minimum score, merge count, and max incidents
 // (rolling 180d) required for each tier.
 type TierThresholds struct {
-	MinScore          float64
-	MinMerges         int
-	MaxIncidents180d  int // -1 means unlimited
+	MinScore         float64
+	MinMerges        int
+	MaxIncidents180d int // -1 means unlimited
 }
 
 // Thresholds for each tier per spec §Tier Thresholds.
@@ -77,7 +77,7 @@ func DetermineTier(score float64, totalMerges int, incidents180d int) TrustTier 
 // DimensionWeights holds the per-dimension weights from the spec.
 // All weights sum to 1.0.
 var DimensionWeights = map[string]float64{
-	"merge_success_rate":  0.25,
+	"merge_success_rate":   0.25,
 	"incident_attribution": 0.30,
 	"review_consensus":     0.15,
 	"prompt_integrity":     0.10,
@@ -105,12 +105,12 @@ func (s TrustScore) Clamp() TrustScore {
 
 // DimensionScores holds the raw (pre-weight) scores for each dimension in [0,1].
 type DimensionScores struct {
-	MergeSuccessRate  float64 // Merged PRs / (merged + reverted)
-	IncidentTrack     float64 // Transformed from merges-since-last-incident; 1.0 = clean, 0.0 = recent incident
-	ReviewConsensus   float64 // Average review model agreement score
-	PromptIntegrity   float64 // Ratio of commits with valid prompt attestation
-	HumanFeedback     float64 // Normalized human ratings from marketplace
-	Tenure            float64 // Log-scaled days since first contribution
+	MergeSuccessRate float64 // Merged PRs / (merged + reverted)
+	IncidentTrack    float64 // Transformed from merges-since-last-incident; 1.0 = clean, 0.0 = recent incident
+	ReviewConsensus  float64 // Average review model agreement score
+	PromptIntegrity  float64 // Ratio of commits with valid prompt attestation
+	HumanFeedback    float64 // Normalized human ratings from marketplace
+	Tenure           float64 // Log-scaled days since first contribution
 }
 
 // Calculate produces a weighted TrustScore from dimension scores.

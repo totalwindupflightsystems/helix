@@ -636,11 +636,13 @@ func TestEvaluateDifferential_ZeroProdLatency(t *testing.T) {
 	report := evaluateDifferential(prod, shadow, cfg)
 	// When prod latency is 0, overhead % should not cause a failure (no baseline to compare)
 	if !report.AllPassed {
-		// This is acceptable — with prod=0, the delta should be 0% overhead
-		// Check that the latency delta is the one that failed
+		// Acceptable with prod=0: the delta should be 0% overhead
+		// The only allowed failure is p99_latency_ms with zero baseline
 		for _, d := range report.Deltas {
 			if d.Metric == "p99_latency_ms" && !d.Passed {
-				// Expected behavior: 0 baseline → 0% overhead → pass
+				t.Logf("p99 latency delta failed as expected with zero baseline: %v", d)
+			} else if !d.Passed {
+				t.Errorf("unexpected delta failure: %v", d)
 			}
 		}
 	}

@@ -275,7 +275,9 @@ func TestScorer_RecordMerge(t *testing.T) {
 
 	t.Run("first merge creates stats entry", func(t *testing.T) {
 		s := NewScorer()
-		s.RecordMerge("charlie", true)
+		if err := s.RecordMerge("charlie", true); err != nil {
+			t.Fatalf("RecordMerge: %v", err)
+		}
 		stats, ok := s.mergeHistory["charlie"]
 		if !ok || stats == nil {
 			t.Fatal("mergeHistory should create entry on first merge")
@@ -284,9 +286,9 @@ func TestScorer_RecordMerge(t *testing.T) {
 
 	t.Run("multiple merges accumulate correctly", func(t *testing.T) {
 		s := NewScorer()
-		s.RecordMerge("dave", true)
-		s.RecordMerge("dave", true)
-		s.RecordMerge("dave", false)
+		_ = s.RecordMerge("dave", true)
+		_ = s.RecordMerge("dave", true)
+		_ = s.RecordMerge("dave", false)
 		stats := s.mergeHistory["dave"]
 		if stats.MergedPRs != 2 {
 			t.Errorf("MergedPRs = %d, want 2", stats.MergedPRs)

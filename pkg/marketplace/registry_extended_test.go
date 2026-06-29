@@ -396,9 +396,9 @@ func TestGetAgent_MoreThanFiveReviewsTruncated(t *testing.T) {
 	reviews := make([]Review, 10)
 	for i := 0; i < 10; i++ {
 		reviews[i] = Review{
-			Author:  "user",
-			Rating:  4,
-			Date:    "2026-0" + string(rune('1'+i/2)) + "-01", // not critical, just unique-enough
+			Author: "user",
+			Rating: 4,
+			Date:   "2026-0" + string(rune('1'+i/2)) + "-01", // not critical, just unique-enough
 		}
 	}
 	// Make sure they're distinct for sorting.

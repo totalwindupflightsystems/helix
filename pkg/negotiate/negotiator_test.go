@@ -17,9 +17,9 @@ import (
 
 func TestDetectConflict(t *testing.T) {
 	tests := []struct {
-		name     string
-		a, b     Verdict
-		want     bool
+		name string
+		a, b Verdict
+		want bool
 	}{
 		{name: "different_verdicts", a: VerdictApproved, b: VerdictRequestChanges, want: true},
 		{name: "same_verdicts_approved", a: VerdictApproved, b: VerdictApproved, want: false},

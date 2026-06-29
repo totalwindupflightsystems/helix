@@ -52,10 +52,10 @@ func TestKnownFriends_AllAgents(t *testing.T) {
 
 	t.Run("agents across all statuses - all included and sorted", func(t *testing.T) {
 		k := &KnownFriends{Agents: map[string]*Agent{
-			"zulu":    {Name: "zulu", Status: StatusOffboarded, Tier: TierPro},
-			"alpha":   {Name: "alpha", Status: StatusActive, Tier: TierFlash},
-			"mike":    {Name: "mike", Status: StatusPending, Tier: TierPro},
-			"kilo":    {Name: "kilo", Status: StatusActive, Tier: TierPro},
+			"zulu":     {Name: "zulu", Status: StatusOffboarded, Tier: TierPro},
+			"alpha":    {Name: "alpha", Status: StatusActive, Tier: TierFlash},
+			"mike":     {Name: "mike", Status: StatusPending, Tier: TierPro},
+			"kilo":     {Name: "kilo", Status: StatusActive, Tier: TierPro},
 			"november": {Name: "november", Status: StatusActive, Tier: TierFlash},
 		}}
 		got := k.AllAgents()

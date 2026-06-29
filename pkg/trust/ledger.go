@@ -12,14 +12,14 @@ import (
 // =============================================================================
 
 const (
-	EventMergeSuccess     = "merge_success"
-	EventIncidentAttrib   = "incident_attributed"
-	EventReviewConsensus  = "review_consensus"
-	EventHumanRating      = "human_rating"
-	EventTierChange       = "tier_change"
-	EventDecayApplied     = "decay_applied"
-	EventIncidentPenalty  = "incident_penalty"
-	EventDemotion         = "demotion"
+	EventMergeSuccess    = "merge_success"
+	EventIncidentAttrib  = "incident_attributed"
+	EventReviewConsensus = "review_consensus"
+	EventHumanRating     = "human_rating"
+	EventTierChange      = "tier_change"
+	EventDecayApplied    = "decay_applied"
+	EventIncidentPenalty = "incident_penalty"
+	EventDemotion        = "demotion"
 )
 
 // TrustEvent is one entry in the trust ledger (appendix-only JSONL).
