@@ -52,12 +52,13 @@
 - **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >85% coverage
 - **Logic:** False positive tracking (human_dismissed counter per model), threshold (10 dismissals → flag), model re-evaluation trigger (curated test suite of known-true + known-false findings), model rotation (remove models with >15% FP rate).
 
-## [~] Add trust tier enforcement to GitReins pre-commit hook
+## [x] Add trust tier enforcement to GitReins pre-commit hook
 - **Priority:** high
 - **Spec:** specs/trust-model.md §Integration Points
 - **Files:** .gitreins/config.yaml (update), scripts/check-trust-tier.sh (NEW)
 - **AC:** GitReins pre-commit blocks merges from agents below required trust tier for changed file categories
 - **Logic:** File category mapping (IaC → Tier 1+, CI/CD → Tier 3+, auth → Tier 2+), trust tier from Helix marketplace, hook: query agent trust → compare to file requirements → block/report.
+- **Result:** [x] `scripts/check-trust-tier.sh` created with file classification, tier resolution, and enforcement. Integrated into `.gitreins/config.yaml` tier1 pipeline. Guard passes. Tested: provisional blocked on auth/cicd, trusted/veteran allowed on auth. Committed at #NEXT.
 
 ## [] Write incident learning database schema — pkg/incident/
 - **Priority:** medium
