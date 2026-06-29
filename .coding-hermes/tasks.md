@@ -344,3 +344,27 @@
 - **AC:** `go build ./... && go test ./pkg/trust/... -count=1 -cover` passes with >85% coverage
 - **Logic:** TrustSnapshot captures a point-in-time view of an agent's trust state: current score, tier, score breakdown by dimension, recent events (last 30 days), tier history. GetSnapshot(agentID) replays the ledger and returns the full snapshot. GetScoreBreakdown returns per-dimension scores. GetTierHistory returns promotion/demotion events. ScoreTrend returns the score change over N days.
 - **Result:** [x] 25 tests, 91.6% pkg/trust coverage. GetSnapshot replays ledger → full TrustSnapshot (score, tier, breakdown, recent events, tier history, score trend). GetScoreBreakdown with 6 dimensions (weight × estimated score = contribution). GetTierHistory extracts promotion/demotion transitions. ScoreTrendOver with up/down/stable direction detection. GetRecentEvents for N-day window queries. Full suite 24/24 pass.
+
+## [ ] Implement debate round validator — pkg/negotiate/
+- **Priority:** high
+- **Spec:** specs/pr-negotiation.md §7.2 (Debate Round Format) + §7.5 (Strike System)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/negotiate/debate_validator.go (NEW), pkg/negotiate/debate_validator_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
+- **Logic:** DebateValidator validates structured debate comments per spec §7.2. ValidateEvidence checks: minimum 2 evidence items per comment, at least 1 cites a spec file or test output, at least 1 references the other agent's argument. "I disagree" without evidence → comment rejected, agent gets strike. StrikeTracker accumulates strikes per agent: posting without evidence → 1 strike, missing a round → 1 strike + auto-concede on 2nd miss, 3 strikes → auto-concede. ParseRoundComment extracts position, evidence items, counter-argument, concession conditions from a structured comment body.
+
+## [ ] Implement canary promotion decision engine — pkg/verify/
+- **Priority:** medium
+- **Spec:** specs/production-verification.md §Canary Promotion
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/verify/canary.go (NEW), pkg/verify/canary_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/verify/... -count=1 -cover` passes with >85% coverage
+- **Logic:** CanaryPromoter evaluates whether a shadow deployment is ready for canary promotion. EvaluatePromotion(shadowResult) checks: behavior contract passed all assertions, drift detector shows no degradation, success rate within threshold of baseline, no new error types introduced, minimum observation window elapsed. Returns PromotionDecision (READY/NOT_READY/NEEDS_MORE_DATA) with per-check results. ComputeCanaryPercentage decides traffic ramp: Provisional 1%, Observed 5%, Trusted 10%, Veteran 25%. AutoRampSchedule generates gradual ramp-up schedule with observation gaps between increments.
+
+## [ ] Implement prompt attestation validator — pkg/prompt/
+- **Priority:** medium
+- **Spec:** specs/prompt-registry.md §Attestation
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/prompt/attestation_validator.go (NEW), pkg/prompt/attestation_validator_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/prompt/... -count=1 -cover` passes with >85% coverage
+- **Logic:** AttestationValidator verifies that every commit in a PR has a valid prompt attestation link. ValidateCommitMessage checks the `Prompt: prompts/<name>/v<N>.md` trailer format. VerifyPromptExists confirms the referenced prompt file exists in the registry. VerifyHashMatch confirms the prompt file's hash matches the attested hash. ValidatePR scans all commits in a PR and returns AttestationReport with per-commit status (VALID/MISSING/MALFORMED/HASH_MISMATCH/FILE_NOT_FOUND). Integrate with merge gate: no attestation → merge blocked.
