@@ -236,16 +236,16 @@ func TestAuditEntry_JSON(t *testing.T) {
 			t.Fatalf("unmarshal error: %v", err)
 		}
 		checks := map[string]string{
-			"timestamp":  "2026-06-24T12:00:00Z",
-			"operation":  "transition",
-			"component":  "agent-identity",
-			"version":    "v1.0.0",
-			"hash":       "sha256:abc123",
-			"commit":     "abc123def",
-			"actor":      "wojons",
-			"reason":     "second_commit",
-			"from":       "attested",
-			"to":         "active",
+			"timestamp": "2026-06-24T12:00:00Z",
+			"operation": "transition",
+			"component": "agent-identity",
+			"version":   "v1.0.0",
+			"hash":      "sha256:abc123",
+			"commit":    "abc123def",
+			"actor":     "wojons",
+			"reason":    "second_commit",
+			"from":      "attested",
+			"to":        "active",
 		}
 		for key, want := range checks {
 			got, ok := decoded[key]

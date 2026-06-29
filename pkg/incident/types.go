@@ -11,15 +11,15 @@ import (
 
 // Incident represents a production incident attributable to one or more agents.
 type Incident struct {
-	ID          string    `json:"id"`
-	AgentID     string    `json:"agent_id"`
-	PRURL       string    `json:"pr_url"`
-	Severity    string    `json:"severity"` // "low", "medium", "high", "critical"
-	CausalChain []string  `json:"causal_chain"`
-	Timestamp   time.Time `json:"timestamp"`
+	ID          string     `json:"id"`
+	AgentID     string     `json:"agent_id"`
+	PRURL       string     `json:"pr_url"`
+	Severity    string     `json:"severity"` // "low", "medium", "high", "critical"
+	CausalChain []string   `json:"causal_chain"`
+	Timestamp   time.Time  `json:"timestamp"`
 	ResolvedAt  *time.Time `json:"resolved_at,omitempty"`
-	Description string    `json:"description"`
-	Evidence    []string  `json:"evidence"`
+	Description string     `json:"description"`
+	Evidence    []string   `json:"evidence"`
 }
 
 // Severity constants.

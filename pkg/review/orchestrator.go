@@ -130,7 +130,7 @@ func (p *ReviewPanel) Formation() Formation {
 
 // ReviewOrchestrator coordinates multi-model adversarial review.
 type ReviewOrchestrator struct {
-	stripper *BiasStripper
+	stripper  *BiasStripper
 	fpTracker *FPTracker
 	// minProviderDiversity is the minimum number of distinct provider families.
 	// Default 2 per spec: "at least 2 different provider families."
@@ -251,8 +251,8 @@ func DiversityScore(f Formation) int {
 
 // ReviewResult is the complete output of a multi-model review session.
 type ReviewResult struct {
-	Bundle       *EvidenceBundle `json:"bundle"`
-	DiversityScore int           `json:"diversity_score"`
+	Bundle         *EvidenceBundle `json:"bundle"`
+	DiversityScore int             `json:"diversity_score"`
 	// ModelsAgree is how many models returned an approving verdict.
 	ModelsAgree int `json:"models_agree"`
 	// TotalModels is the number of models that participated.
@@ -296,9 +296,9 @@ func (o *ReviewOrchestrator) Review(ctx context.Context, panel *ReviewPanel,
 
 	// Step 3: Dispatch to each model concurrently.
 	type modelOutput struct {
-		role    ReviewRole
-		result  *ModelReviewResult
-		err     error
+		role   ReviewRole
+		result *ModelReviewResult
+		err    error
 	}
 
 	roles := panel.Roles()

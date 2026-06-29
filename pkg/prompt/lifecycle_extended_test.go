@@ -243,8 +243,8 @@ func TestShouldRetire_RecentlyDeprecatedNoRetire(t *testing.T) {
 	now := time.Now().UTC()
 	deprecationTime := now.Add(-10 * 24 * time.Hour)
 	m := &Metadata{
-		Status:  StatusDeprecated,
-		Changes: "active → deprecated (transition at " + deprecationTime.Format(time.RFC3339) + ")",
+		Status:    StatusDeprecated,
+		Changes:   "active → deprecated (transition at " + deprecationTime.Format(time.RFC3339) + ")",
 		Promptfoo: PromptfooResult{LastRun: now.Add(-5 * 24 * time.Hour)},
 	}
 	if ShouldRetire(m, now, config) {
@@ -259,8 +259,8 @@ func TestShouldRetire_NoCommitsTrigger(t *testing.T) {
 	deprecationTime := now.Add(-10 * 24 * time.Hour)
 	// But no promptfoo activity for 200 days (exceeds 180-day threshold).
 	m := &Metadata{
-		Status:  StatusDeprecated,
-		Changes: "active → deprecated (transition at " + deprecationTime.Format(time.RFC3339) + ")",
+		Status:    StatusDeprecated,
+		Changes:   "active → deprecated (transition at " + deprecationTime.Format(time.RFC3339) + ")",
 		Promptfoo: PromptfooResult{LastRun: now.Add(-200 * 24 * time.Hour)},
 	}
 	if !ShouldRetire(m, now, config) {
