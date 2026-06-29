@@ -59,14 +59,14 @@ type AgentCostBreakdown struct {
 // CostReport is the final per-agent cost breakdown after a negotiation
 // completes (or escalates).
 type CostReport struct {
-	AgentShares   map[string]float64     `json:"agent_shares"`
-	TieBreakCost  float64                `json:"tie_break_cost"`
-	DebateCosts   []RoundCost            `json:"debate_costs"`
-	TotalCost     float64                `json:"total_cost"`
+	AgentShares   map[string]float64            `json:"agent_shares"`
+	TieBreakCost  float64                       `json:"tie_break_cost"`
+	DebateCosts   []RoundCost                   `json:"debate_costs"`
+	TotalCost     float64                       `json:"total_cost"`
 	Breakdowns    map[string]AgentCostBreakdown `json:"breakdowns"`
-	OverrunAgents []string               `json:"overrun_agents"`
-	Escalated     bool                   `json:"escalated"`
-	Reason        string                 `json:"reason,omitempty"`
+	OverrunAgents []string                      `json:"overrun_agents"`
+	Escalated     bool                          `json:"escalated"`
+	Reason        string                        `json:"reason,omitempty"`
 }
 
 // CostReconciler tracks debate costs across rounds, splits tie-break costs
@@ -81,9 +81,9 @@ type CostReport struct {
 //	// ... more rounds ...
 //	report := cr.ApplyTieBreakCost(chimeraCost, "agent-a", "agent-b")
 type CostReconciler struct {
-	budgets     map[string]AgentBudget
-	roundCosts  []RoundCost
-	agentTotals map[string]float64 // debate costs only (no tie-break yet)
+	budgets      map[string]AgentBudget
+	roundCosts   []RoundCost
+	agentTotals  map[string]float64 // debate costs only (no tie-break yet)
 	tieBreakCost float64
 }
 
@@ -230,10 +230,10 @@ func (cr *CostReconciler) Finalize() CostReport {
 	for agent, debateTotal := range cr.agentTotals {
 		budget, hasBudget := cr.budgets[agent]
 		bd := AgentCostBreakdown{
-			Agent:       agent,
-			DebateTotal: roundTo2(debateTotal),
+			Agent:         agent,
+			DebateTotal:   roundTo2(debateTotal),
 			TieBreakShare: 0,
-			Total:       roundTo2(debateTotal),
+			Total:         roundTo2(debateTotal),
 		}
 		if hasBudget {
 			bd.BudgetWeekly = budget.BudgetWeekly

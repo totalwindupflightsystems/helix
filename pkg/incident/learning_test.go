@@ -108,12 +108,12 @@ func TestStoreFromIncident(t *testing.T) {
 func TestFeedReviewContext_CategoryMatch(t *testing.T) {
 	db := NewLearningDatabase()
 	db.Store(&IncidentPattern{
-		ID:         "inc-1",
-		Categories: []FileCategory{CategoryAuth, CategoryDatabase},
-		Severity:   SeverityCritical,
-		Keywords:   []string{"injection"},
+		ID:             "inc-1",
+		Categories:     []FileCategory{CategoryAuth, CategoryDatabase},
+		Severity:       SeverityCritical,
+		Keywords:       []string{"injection"},
 		LessonsLearned: []string{"validate all inputs", "use parameterized queries"},
-		Timestamp:  time.Now(),
+		Timestamp:      time.Now(),
 	})
 	db.Store(&IncidentPattern{
 		ID:         "inc-2",

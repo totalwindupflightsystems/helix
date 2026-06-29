@@ -494,10 +494,10 @@ func TestRoundTo2(t *testing.T) {
 		input    float64
 		expected float64
 	}{
-		{0.005, 0.01},  // rounds up
-		{0.004, 0.0},   // rounds down
-		{1.235, 1.24},  // rounds up
-		{1.234, 1.23},  // rounds down
+		{0.005, 0.01}, // rounds up
+		{0.004, 0.0},  // rounds down
+		{1.235, 1.24}, // rounds up
+		{1.234, 1.23}, // rounds down
 		{0, 0},
 		{100.999, 101.0},
 	}
@@ -568,5 +568,3 @@ func TestApplyTieBreakCost_ReasonContainsInfo(t *testing.T) {
 		t.Error("reason should mention the overrun agent")
 	}
 }
-
-

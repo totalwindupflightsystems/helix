@@ -55,17 +55,17 @@ const (
 // database. It captures the patterns that make the incident relevant for
 // future reviews.
 type IncidentPattern struct {
-	ID            string        `json:"id"`
-	AgentID       string        `json:"agent_id"`
-	Categories    []FileCategory `json:"categories"`
-	ChangeType    ChangeType    `json:"change_type"`
-	Severity      string        `json:"severity"`
-	Keywords      []string      `json:"keywords"`       // extracted from description + evidence
-	Description   string        `json:"description"`
-	RootCause     string        `json:"root_cause"`
-	LessonsLearned []string     `json:"lessons_learned"` // actionable review criteria derived from incident
-	Evidence      []string      `json:"evidence"`
-	Timestamp     time.Time     `json:"timestamp"`
+	ID             string         `json:"id"`
+	AgentID        string         `json:"agent_id"`
+	Categories     []FileCategory `json:"categories"`
+	ChangeType     ChangeType     `json:"change_type"`
+	Severity       string         `json:"severity"`
+	Keywords       []string       `json:"keywords"` // extracted from description + evidence
+	Description    string         `json:"description"`
+	RootCause      string         `json:"root_cause"`
+	LessonsLearned []string       `json:"lessons_learned"` // actionable review criteria derived from incident
+	Evidence       []string       `json:"evidence"`
+	Timestamp      time.Time      `json:"timestamp"`
 }
 
 // PRContext describes a new PR being reviewed, used to find relevant incidents.
@@ -79,17 +79,17 @@ type PRContext struct {
 // ReviewContextItem is one past incident surfaced as relevant review context.
 type ReviewContextItem struct {
 	Pattern      IncidentPattern `json:"pattern"`
-	Similarity   float64         `json:"similarity"`   // 0.0–1.0
+	Similarity   float64         `json:"similarity"`    // 0.0–1.0
 	MatchReasons []string        `json:"match_reasons"` // why this was surfaced
 }
 
 // ReviewContextReport is the output of FeedReviewContext — a ranked list of
 // past incidents relevant to a new PR, with actionable review criteria.
 type ReviewContextReport struct {
-	Items            []ReviewContextItem `json:"items"`
-	ReviewCriteria   []string            `json:"review_criteria"`    // accumulated lessons learned
-	MaxSimilarity    float64             `json:"max_similarity"`
-	TotalIncidents   int                 `json:"total_incidents_searched"`
+	Items          []ReviewContextItem `json:"items"`
+	ReviewCriteria []string            `json:"review_criteria"` // accumulated lessons learned
+	MaxSimilarity  float64             `json:"max_similarity"`
+	TotalIncidents int                 `json:"total_incidents_searched"`
 }
 
 // LearningDatabase stores incident patterns and provides similarity-based
