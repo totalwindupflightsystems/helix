@@ -1,12 +1,13 @@
 # Helix Coding Tasks — Foreman Queue
 
-## [~] Implement trust scoring engine — pkg/trust/
+## [x] Implement trust scoring engine — pkg/trust/
 - **Priority:** high
 - **Spec:** specs/trust-model.md
 - **Model:** direct write — Go package, pure math + JSONL
 - **Files:** pkg/trust/scorer.go, pkg/trust/ledger.go, pkg/trust/tiers.go, pkg/trust/scorer_test.go
 - **AC:** `go build ./... && go test ./pkg/trust/... -count=1 -cover` passes with >80% coverage
 - **Logic:** TrustScore calculation (6 dimensions: merge success 0.25, incident attribution 0.30, review consensus 0.15, prompt integrity 0.10, human feedback 0.10, tenure 0.10), tier thresholds (Provisional/Observed/Trusted/Veteran), incident attribution with time-decay weight (100% at 0-7d, 50% at 8-30d, 10% at 31-90d, 0% after 90d), trust decay on inactivity (0.05/week), tier demotion logic, JSONL ledger append + replay verification.
+- **Result:** [x] 59 tests, 86.8% coverage, all passing. Build + vet clean. Committed at #NEXT.
 
 ## [] Implement bias-stripper for adversarial review — pkg/review/
 - **Priority:** high
