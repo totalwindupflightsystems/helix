@@ -356,9 +356,9 @@ func TestLoadStateFile_NilAgentsInit(t *testing.T) {
 		dir := t.TempDir()
 		path := filepath.Join(dir, "state.json")
 		content, err := json.Marshal(map[string]any{
-			"version": 1,
+			"version":   1,
 			"last_sync": nil,
-			"agents": nil,
+			"agents":    nil,
 		})
 		if err != nil {
 			t.Fatalf("marshal: %v", err)

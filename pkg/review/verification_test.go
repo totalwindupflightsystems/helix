@@ -244,16 +244,16 @@ func TestVerifyFindings_MitigationTooShort(t *testing.T) {
 
 func TestVerifyFindings_MixedResults(t *testing.T) {
 	runner := newMockTestRunner()
-	runner.results["t-pass"] = true   // false positive
-	runner.results["t-fail"] = false  // verified
+	runner.results["t-pass"] = true  // false positive
+	runner.results["t-fail"] = false // verified
 
 	v := NewEvidenceVerifier(WithTestRunner(runner))
 	bundle := sampleBundle()
 	bundle.Findings = []Finding{
-		finding("adv", "high", "test_run_id: t-fail"),    // verified
-		finding("adv", "low", "test_run_id: t-pass"),     // false positive
-		finding("adv", "medium", "no test"),              // unverifiable
-		{Mitigation: "Add proper error handling here"},   // verified (mitigation)
+		finding("adv", "high", "test_run_id: t-fail"),  // verified
+		finding("adv", "low", "test_run_id: t-pass"),   // false positive
+		finding("adv", "medium", "no test"),            // unverifiable
+		{Mitigation: "Add proper error handling here"}, // verified (mitigation)
 	}
 
 	report, err := v.VerifyFindings(context.Background(), bundle)

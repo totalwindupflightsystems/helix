@@ -317,9 +317,9 @@ func TestChecker_CheckAll_AllPass(t *testing.T) {
 	c, _ := ParseContract(validContractYAML)
 	ch := NewChecker()
 	metrics := map[string]float64{
-		"auth_token_refresh_success_rate":     0.9995,
-		"auth_token_refresh_p99_latency_ms":   150,
-		"concurrent_session_limit_errors":     0,
+		"auth_token_refresh_success_rate":   0.9995,
+		"auth_token_refresh_p99_latency_ms": 150,
+		"concurrent_session_limit_errors":   0,
 	}
 	results := ch.CheckAll(c, metrics)
 	if !AllPassed(results) {
@@ -334,9 +334,9 @@ func TestChecker_CheckAll_SomeFail(t *testing.T) {
 	c, _ := ParseContract(validContractYAML)
 	ch := NewChecker()
 	metrics := map[string]float64{
-		"auth_token_refresh_success_rate":     0.99,
-		"auth_token_refresh_p99_latency_ms":   300,
-		"concurrent_session_limit_errors":     1,
+		"auth_token_refresh_success_rate":   0.99,
+		"auth_token_refresh_p99_latency_ms": 300,
+		"concurrent_session_limit_errors":   1,
 	}
 	results := ch.CheckAll(c, metrics)
 	if AllPassed(results) {
@@ -495,9 +495,9 @@ func TestMonitor_RegisterAndEvaluate(t *testing.T) {
 
 	// All metrics within bounds → no breaches
 	metrics := map[string]float64{
-		"auth_token_refresh_success_rate":     0.9995,
-		"auth_token_refresh_p99_latency_ms":   150,
-		"concurrent_session_limit_errors":     0,
+		"auth_token_refresh_success_rate":   0.9995,
+		"auth_token_refresh_p99_latency_ms": 150,
+		"concurrent_session_limit_errors":   0,
 	}
 	breaches := m.Evaluate(metrics)
 	if len(breaches) != 0 {
@@ -511,9 +511,9 @@ func TestMonitor_Evaluate_BreachDetected(t *testing.T) {
 	m.RegisterContract(c)
 
 	metrics := map[string]float64{
-		"auth_token_refresh_success_rate":     0.99,
-		"auth_token_refresh_p99_latency_ms":   150,
-		"concurrent_session_limit_errors":     0,
+		"auth_token_refresh_success_rate":   0.99,
+		"auth_token_refresh_p99_latency_ms": 150,
+		"concurrent_session_limit_errors":   0,
 	}
 	breaches := m.Evaluate(metrics)
 	if len(breaches) != 1 {
@@ -540,9 +540,9 @@ func TestMonitor_EvaluateOne_Registered(t *testing.T) {
 	m.RegisterContract(c)
 
 	breach := m.EvaluateOne("auth-session-v2", map[string]float64{
-		"auth_token_refresh_success_rate": 0.99,
+		"auth_token_refresh_success_rate":   0.99,
 		"auth_token_refresh_p99_latency_ms": 150,
-		"concurrent_session_limit_errors": 0,
+		"concurrent_session_limit_errors":   0,
 	})
 	if breach == nil {
 		t.Fatal("expected a breach")
@@ -563,9 +563,9 @@ func TestMonitor_EvaluateOne_AllPass(t *testing.T) {
 	m.RegisterContract(c)
 
 	breach := m.EvaluateOne("auth-session-v2", map[string]float64{
-		"auth_token_refresh_success_rate":     0.9995,
-		"auth_token_refresh_p99_latency_ms":   150,
-		"concurrent_session_limit_errors":     0,
+		"auth_token_refresh_success_rate":   0.9995,
+		"auth_token_refresh_p99_latency_ms": 150,
+		"concurrent_session_limit_errors":   0,
 	})
 	if breach != nil {
 		t.Errorf("expected nil (all pass), got breach: %s", breach.Error())
@@ -588,8 +588,8 @@ func TestMonitor_Unregister(t *testing.T) {
 
 func TestBreachError(t *testing.T) {
 	b := Breach{
-		ContractName: "test-contract",
-		FailedChecks: []CheckResult{{Passed: false}},
+		ContractName:   "test-contract",
+		FailedChecks:   []CheckResult{{Passed: false}},
 		ShouldRollback: true,
 	}
 	err := b.Error()

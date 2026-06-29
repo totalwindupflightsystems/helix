@@ -11,13 +11,13 @@ import (
 
 // Breach represents a contract breach event.
 type Breach struct {
-	ContractName string       `json:"contract_name"`
-	Agent        string       `json:"agent"`
-	MergeCommit  string       `json:"merge_commit"`
-	Timestamp    time.Time    `json:"timestamp"`
-	FailedChecks []CheckResult `json:"failed_checks"`
-	ShouldRollback bool      `json:"should_rollback"`
-	ShouldNotify  bool       `json:"should_notify"`
+	ContractName   string        `json:"contract_name"`
+	Agent          string        `json:"agent"`
+	MergeCommit    string        `json:"merge_commit"`
+	Timestamp      time.Time     `json:"timestamp"`
+	FailedChecks   []CheckResult `json:"failed_checks"`
+	ShouldRollback bool          `json:"should_rollback"`
+	ShouldNotify   bool          `json:"should_notify"`
 }
 
 // BreachError returns a human-readable summary of the breach.
@@ -39,8 +39,8 @@ func (b Breach) TotalChecks() int {
 // It detects breaches and determines the appropriate response (rollback, notify,
 // or both).
 type Monitor struct {
-	contracts     map[string]*BehaviorContract
-	checker       *Checker
+	contracts map[string]*BehaviorContract
+	checker   *Checker
 }
 
 // NewMonitor creates a Monitor with no registered contracts.

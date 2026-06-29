@@ -26,19 +26,19 @@ type BehaviorContract struct {
 
 // ContractBody carries the contract metadata and assertions.
 type ContractBody struct {
-	Name        string      `yaml:"name"`
-	Agent       string      `yaml:"agent"`
-	MergeCommit string      `yaml:"merge_commit"`
-	Assertions  []Assertion `yaml:"assertions"`
-	BreachAction string     `yaml:"breach_action"`
+	Name         string      `yaml:"name"`
+	Agent        string      `yaml:"agent"`
+	MergeCommit  string      `yaml:"merge_commit"`
+	Assertions   []Assertion `yaml:"assertions"`
+	BreachAction string      `yaml:"breach_action"`
 }
 
 // Assertion defines a single behavior expectation.
 type Assertion struct {
 	Metric string  `yaml:"metric"`
-	Op     string  `yaml:"operator"`  // "gte", "lte", "eq"
+	Op     string  `yaml:"operator"` // "gte", "lte", "eq"
 	Value  float64 `yaml:"value"`
-	Window string  `yaml:"window"`    // e.g., "1h", "24h"
+	Window string  `yaml:"window"` // e.g., "1h", "24h"
 }
 
 // AssertionOperator returns the operator for display/validation.
@@ -215,9 +215,9 @@ func AllPassed(results []CheckResult) bool {
 
 // CanaryStep defines one step in the canary ramp.
 type CanaryStep struct {
-	Step     int     `json:"step"`
-	TrafficPct float64 `json:"traffic_pct"` // percentage of traffic to new code
-	Duration time.Duration `json:"duration"` // how long this step lasts
+	Step       int           `json:"step"`
+	TrafficPct float64       `json:"traffic_pct"` // percentage of traffic to new code
+	Duration   time.Duration `json:"duration"`    // how long this step lasts
 }
 
 // CanarySchedule returns the deployment ramp schedule for a given trust tier.

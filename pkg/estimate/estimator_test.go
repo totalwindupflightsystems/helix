@@ -60,9 +60,9 @@ func TestNewEstimator(t *testing.T) {
 func TestEstimator_hitRatio(t *testing.T) {
 	pricing := &PricingYAML{
 		Cache: CacheRatios{
-			ProHitRatio:      0.60,
-			FlashHitRatio:    0.80,
-			NewRepoHitRatio:  0.0,
+			ProHitRatio:     0.60,
+			FlashHitRatio:   0.80,
+			NewRepoHitRatio: 0.0,
 		},
 	}
 
@@ -94,9 +94,9 @@ func TestEstimator_hitRatio(t *testing.T) {
 func TestEstimator_writeRatio(t *testing.T) {
 	pricing := &PricingYAML{
 		Cache: CacheRatios{
-			ProWriteRatio:      0.50,
-			FlashWriteRatio:    0.70,
-			NewRepoWriteRatio:  0.50,
+			ProWriteRatio:     0.50,
+			FlashWriteRatio:   0.70,
+			NewRepoWriteRatio: 0.50,
 		},
 	}
 

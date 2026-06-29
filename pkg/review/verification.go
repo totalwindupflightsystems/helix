@@ -47,12 +47,12 @@ type TestRunner interface {
 
 // VerificationResult is the outcome of verifying one finding.
 type VerificationResult struct {
-	FindingIdx    int           `json:"finding_idx"`
-	Status        FindingStatus `json:"status"`
-	TestID        string        `json:"test_id,omitempty"`
-	TestPassed    bool          `json:"test_passed"`
-	Detail        string        `json:"detail"`
-	Duration      time.Duration `json:"duration"`
+	FindingIdx int           `json:"finding_idx"`
+	Status     FindingStatus `json:"status"`
+	TestID     string        `json:"test_id,omitempty"`
+	TestPassed bool          `json:"test_passed"`
+	Detail     string        `json:"detail"`
+	Duration   time.Duration `json:"duration"`
 }
 
 // VerificationReport aggregates results for an entire evidence bundle.
@@ -123,9 +123,9 @@ func NewEvidenceVerifier(opts ...VerifierOption) *EvidenceVerifier {
 type FindingClass int
 
 const (
-	ClassTestable    FindingClass = iota // has a test we can run
-	ClassMitigation                      // has a fix to verify
-	ClassUnverifiable                    // no actionable evidence
+	ClassTestable     FindingClass = iota // has a test we can run
+	ClassMitigation                       // has a fix to verify
+	ClassUnverifiable                     // no actionable evidence
 )
 
 // extractTestID parses the finding's evidence string for a test identifier.

@@ -165,7 +165,7 @@
 - **Logic:** Trace causal chain from incident → changed code paths → merge commit → responsible agent. Attribution weights: author 70%, reviewers 20% (shared), approving human 10%. Feed attribution result into trust scoring engine (pkg/trust). Record evidence links in incident record. Multiple agents → shared responsibility distribution.
 - **Result:** [x] AttributionEngine with spec-compliant weights (author 70%, reviewers 20% shared, approver 10%). Multi-path normalization (sums to 1.0). TrustPenalty with severity multipliers (low 0.05, medium 0.10, high 0.20, critical 0.40). ApplyTrustPenalties callback for trust engine integration. FindResponsiblePaths filters by causal chain. MergeAttribution for multi-incident aggregation. 28 tests, **100% coverage** on entire pkg/incident.
 
-## [ ] Fix CI: Helix CI — golangci-lint failures (gofmt, errcheck, unused funcs, SA9003)
+## [x] Fix CI: Helix CI — golangci-lint failures (gofmt, errcheck, unused funcs, SA9003)
 - **Priority:** high
 - **Branch:** master
 - **CI Run:** https://github.com/totalwindupflightsystems/helix/actions/runs/28372979462

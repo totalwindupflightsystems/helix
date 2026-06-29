@@ -44,22 +44,7 @@ func captureStderr(f func()) string {
 	return <-done
 }
 
-// executeRoot runs the root command with given args, capturing stdout+stderr.
-func executeRoot(args []string) (string, string, error) {
-	var stdout, stderr string
-	root := newRootCmd()
-	root.SetArgs(args)
 
-	out := captureOutput(func() {
-		errOut := captureStderr(func() {
-			_ = root.Execute()
-		})
-		stderr = errOut
-	})
-	stdout = out
-	// cobra returns the error from Execute, but we need to capture it separately
-	return stdout, stderr, nil
-}
 
 // ---------------------------------------------------------------------------
 // Command tree structure

@@ -214,20 +214,20 @@ func TestPricingYAML_GetModelPrice(t *testing.T) {
 func TestPricingYAML_GetTaskDefaults(t *testing.T) {
 	p := &PricingYAML{
 		Tasks: map[string]TaskDefaults{
-			string(TaskSpec):     {InputTokens: 80000, OutputRatio: 2.0, MaxIterations: 5},
-			string(TaskCode):     {InputTokens: 120000, OutputRatio: 0.8, MaxIterations: 20},
-			string(TaskTest):     {InputTokens: 30000, OutputRatio: 1.0, MaxIterations: 10},
-			"custom-task":        {InputTokens: 50000, OutputRatio: 0.5, MaxIterations: 3},
+			string(TaskSpec): {InputTokens: 80000, OutputRatio: 2.0, MaxIterations: 5},
+			string(TaskCode): {InputTokens: 120000, OutputRatio: 0.8, MaxIterations: 20},
+			string(TaskTest): {InputTokens: 30000, OutputRatio: 1.0, MaxIterations: 10},
+			"custom-task":    {InputTokens: 50000, OutputRatio: 0.5, MaxIterations: 3},
 		},
 	}
 
 	tests := []struct {
-		name    string
-		p       *PricingYAML
-		t       TaskType
-		wantOK  bool
-		errSub  string
-		check   func(t *testing.T, td TaskDefaults)
+		name   string
+		p      *PricingYAML
+		t      TaskType
+		wantOK bool
+		errSub string
+		check  func(t *testing.T, td TaskDefaults)
 	}{
 		{
 			name:   "known task — spec",
@@ -331,28 +331,28 @@ func TestApplyTaskDefaults(t *testing.T) {
 		},
 		{
 			name: "no defaults — all already set",
-			td:   TaskDefaults{InputTokens: 100, OutputRatio: 0.5, MaxIterations: 1,
+			td: TaskDefaults{InputTokens: 100, OutputRatio: 0.5, MaxIterations: 1,
 				InputPerFile: 3000, TokensPerIter: 8000, TokensPer10Diff: 2},
 			want: TaskDefaults{InputTokens: 100, OutputRatio: 0.5, MaxIterations: 1,
 				InputPerFile: 3000, TokensPerIter: 8000, TokensPer10Diff: 2},
 		},
 		{
 			name: "partial defaults — only input_per_file zero",
-			td:   TaskDefaults{InputTokens: 100, OutputRatio: 0.5, MaxIterations: 1,
+			td: TaskDefaults{InputTokens: 100, OutputRatio: 0.5, MaxIterations: 1,
 				TokensPerIter: 8000, TokensPer10Diff: 2},
 			want: TaskDefaults{InputTokens: 100, OutputRatio: 0.5, MaxIterations: 1,
 				InputPerFile: 5000, TokensPerIter: 8000, TokensPer10Diff: 2},
 		},
 		{
 			name: "partial defaults — only tokens_per_iter zero",
-			td:   TaskDefaults{InputTokens: 100, OutputRatio: 0.5, MaxIterations: 1,
+			td: TaskDefaults{InputTokens: 100, OutputRatio: 0.5, MaxIterations: 1,
 				InputPerFile: 3000, TokensPer10Diff: 2},
 			want: TaskDefaults{InputTokens: 100, OutputRatio: 0.5, MaxIterations: 1,
 				InputPerFile: 3000, TokensPerIter: 10000, TokensPer10Diff: 2},
 		},
 		{
 			name: "partial defaults — only tokens_per_10_diff zero",
-			td:   TaskDefaults{InputTokens: 100, OutputRatio: 0.5, MaxIterations: 1,
+			td: TaskDefaults{InputTokens: 100, OutputRatio: 0.5, MaxIterations: 1,
 				InputPerFile: 3000, TokensPerIter: 8000},
 			want: TaskDefaults{InputTokens: 100, OutputRatio: 0.5, MaxIterations: 1,
 				InputPerFile: 3000, TokensPerIter: 8000, TokensPer10Diff: 1},

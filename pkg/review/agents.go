@@ -37,20 +37,20 @@ const (
 
 // AgentInfo describes an adversarial agent's identity and mission.
 type AgentInfo struct {
-	Type        AgentType `json:"type"`
-	Name        string    `json:"name"`
-	Mission     string    `json:"mission"`
-	ModelHint   string    `json:"model_hint,omitempty"`
-	ProviderHint string   `json:"provider_hint,omitempty"`
+	Type         AgentType `json:"type"`
+	Name         string    `json:"name"`
+	Mission      string    `json:"mission"`
+	ModelHint    string    `json:"model_hint,omitempty"`
+	ProviderHint string    `json:"provider_hint,omitempty"`
 }
 
 // AgentTrigger defines when an agent should be dispatched based on
 // the change category and code patterns detected.
 type AgentTrigger struct {
-	Agent     AgentType
-	Category  ChangeCategory // empty = any
-	FilePattern string      // empty = any; e.g. "auth", "crypto", "secret"
-	Required  bool           // if true, the agent is mandatory for matching changes
+	Agent       AgentType
+	Category    ChangeCategory // empty = any
+	FilePattern string         // empty = any; e.g. "auth", "crypto", "secret"
+	Required    bool           // if true, the agent is mandatory for matching changes
 }
 
 // Default triggers per spec.
@@ -81,42 +81,42 @@ type ProsecutorAgent interface {
 
 // AgentRequest is the input sent to a prosecutor agent.
 type AgentRequest struct {
-	Diff           string        `json:"diff"`
-	CommitMsg      string        `json:"commit_msg"`
+	Diff           string         `json:"diff"`
+	CommitMsg      string         `json:"commit_msg"`
 	ChangeCategory ChangeCategory `json:"change_category"`
-	ChangedFiles   []string      `json:"changed_files"`
-	PRURL          string        `json:"pr_url"`
+	ChangedFiles   []string       `json:"changed_files"`
+	PRURL          string         `json:"pr_url"`
 }
 
 // AgentResult is what a prosecutor agent returns after attempting to break code.
 type AgentResult struct {
-	AgentType         AgentType        `json:"agent_type"`
-	ExploitPaths      []ExploitPath    `json:"exploit_paths,omitempty"`
-	AssumptionsFound  []Assumption     `json:"assumptions_challenged,omitempty"`
-	FaultInjections   []FaultResult    `json:"fault_injections,omitempty"`
-	CostEstimate      *CostEstimate    `json:"cost_estimate,omitempty"`
-	Findings          []Finding        `json:"findings,omitempty"`
-	Verdict           string           `json:"verdict"` // "clean", "suspicious", "exploited"
-	Duration          time.Duration    `json:"duration"`
+	AgentType        AgentType     `json:"agent_type"`
+	ExploitPaths     []ExploitPath `json:"exploit_paths,omitempty"`
+	AssumptionsFound []Assumption  `json:"assumptions_challenged,omitempty"`
+	FaultInjections  []FaultResult `json:"fault_injections,omitempty"`
+	CostEstimate     *CostEstimate `json:"cost_estimate,omitempty"`
+	Findings         []Finding     `json:"findings,omitempty"`
+	Verdict          string        `json:"verdict"` // "clean", "suspicious", "exploited"
+	Duration         time.Duration `json:"duration"`
 }
 
 // ExploitPath describes a security vulnerability an agent found.
 type ExploitPath struct {
-	Description string `json:"description"`
-	Severity    string `json:"severity"`
-	File        string `json:"file"`
-	Line        int    `json:"line"`
+	Description string   `json:"description"`
+	Severity    string   `json:"severity"`
+	File        string   `json:"file"`
+	Line        int      `json:"line"`
 	Steps       []string `json:"steps"` // attack steps
-	Evidence    string `json:"evidence"`
+	Evidence    string   `json:"evidence"`
 }
 
 // Assumption is an implicit assumption the code makes that may not hold.
 type Assumption struct {
-	Description    string `json:"description"`
-	File           string `json:"file"`
-	Line           int    `json:"line"`
-	RiskLevel      string `json:"risk_level"` // "low", "medium", "high"
-	Challenge      string `json:"challenge"`  // why it might not hold
+	Description string `json:"description"`
+	File        string `json:"file"`
+	Line        int    `json:"line"`
+	RiskLevel   string `json:"risk_level"` // "low", "medium", "high"
+	Challenge   string `json:"challenge"`  // why it might not hold
 }
 
 // FaultResult is the outcome of a chaos-engineer fault injection.
@@ -266,10 +266,10 @@ func (d *AdversarialAgentDispatcher) Dispatch(ctx context.Context, req AgentRequ
 
 	if len(selected) == 0 {
 		return &DispatchReport{
-			PRURL:      req.PRURL,
-			AgentsRun:  0,
-			Results:    []AgentResult{},
-			CleanBill:  true,
+			PRURL:     req.PRURL,
+			AgentsRun: 0,
+			Results:   []AgentResult{},
+			CleanBill: true,
 		}, nil
 	}
 
