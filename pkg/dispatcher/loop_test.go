@@ -167,7 +167,7 @@ func TestExecuteLoop(t *testing.T) {
 		d := NewDispatcher(agents)
 
 		item := WorkItem{
-			Task: Task{ID: "WI-004", Description: "test feature"},
+			Task:  Task{ID: "WI-004", Description: "test feature"},
 			Agent: AgentProfile{Name: "test-agent", Capability: "code"},
 			Steps: []Step{
 				{Action: "impl", ExpectedOutput: "code written"},
@@ -218,15 +218,15 @@ func TestExecuteLoop(t *testing.T) {
 	t.Run("lock already held blocks execution", func(t *testing.T) {
 		dir := t.TempDir()
 		helixDir := filepath.Join(dir, ".helix")
-		os.MkdirAll(helixDir, 0o755)
+		_ = os.MkdirAll(helixDir, 0o755)
 
 		origDir, _ := os.Getwd()
-		os.Chdir(dir)
+		_ = os.Chdir(dir)
 		defer func() { _ = os.Chdir(origDir) }()
 
 		// Pre-create the lock file.
 		lockPath := filepath.Join(dir, ".helix", "dispatch.lock")
-		os.WriteFile(lockPath, []byte("pid=12345\nts=2026-06-23T00:00:00Z\n"), 0o644)
+		_ = os.WriteFile(lockPath, []byte("pid=12345\nts=2026-06-23T00:00:00Z\n"), 0o644)
 
 		d := NewDispatcher(nil)
 		item := WorkItem{
@@ -246,10 +246,10 @@ func TestExecuteLoop(t *testing.T) {
 	t.Run("step failure marks step as failed", func(t *testing.T) {
 		dir := t.TempDir()
 		helixDir := filepath.Join(dir, ".helix")
-		os.MkdirAll(helixDir, 0o755)
+		_ = os.MkdirAll(helixDir, 0o755)
 
 		origDir, _ := os.Getwd()
-		os.Chdir(dir)
+		_ = os.Chdir(dir)
 		defer func() { _ = os.Chdir(origDir) }()
 
 		d := NewDispatcher(nil)
@@ -268,15 +268,15 @@ func TestExecuteLoop(t *testing.T) {
 
 		// Create worktree as a file (not directory) so executeStep fails.
 		worktreePath := filepath.Join(dir, ".helix", "worktrees", "WI-006")
-		os.MkdirAll(filepath.Dir(worktreePath), 0o755)
-		os.WriteFile(worktreePath, []byte("block"), 0o644)
+		_ = os.MkdirAll(filepath.Dir(worktreePath), 0o755)
+		_ = os.WriteFile(worktreePath, []byte("block"), 0o644)
 
 		err := d.ExecuteLoop(item)
 		if err == nil {
 			t.Fatal("ExecuteLoop() with unwritable worktree = nil, want error")
 		}
 		if len(item.Steps) > 0 && item.Steps[0].Status == StepInProgress {
-			// The step was set to InProgress before failing.
+			t.Log("step was set to InProgress before failing as expected")
 		}
 	})
 }
@@ -289,10 +289,10 @@ func TestRunPipeline(t *testing.T) {
 	t.Run("dispatches and executes tasks", func(t *testing.T) {
 		dir := t.TempDir()
 		helixDir := filepath.Join(dir, ".helix")
-		os.MkdirAll(helixDir, 0o755)
+		_ = os.MkdirAll(helixDir, 0o755)
 
 		origDir, _ := os.Getwd()
-		os.Chdir(dir)
+		_ = os.Chdir(dir)
 		defer func() { _ = os.Chdir(origDir) }()
 
 		agents := []AgentProfile{
@@ -332,10 +332,10 @@ func TestRunPipeline(t *testing.T) {
 	t.Run("no agents returns dispatch error", func(t *testing.T) {
 		dir := t.TempDir()
 		helixDir := filepath.Join(dir, ".helix")
-		os.MkdirAll(helixDir, 0o755)
+		_ = os.MkdirAll(helixDir, 0o755)
 
 		origDir, _ := os.Getwd()
-		os.Chdir(dir)
+		_ = os.Chdir(dir)
 		defer func() { _ = os.Chdir(origDir) }()
 
 		d := NewDispatcher(nil)
@@ -350,14 +350,14 @@ func TestRunPipeline(t *testing.T) {
 	t.Run("task failure captured in result error", func(t *testing.T) {
 		dir := t.TempDir()
 		helixDir := filepath.Join(dir, ".helix")
-		os.MkdirAll(helixDir, 0o755)
+		_ = os.MkdirAll(helixDir, 0o755)
 
 		origDir, _ := os.Getwd()
-		os.Chdir(dir)
+		_ = os.Chdir(dir)
 		defer func() { _ = os.Chdir(origDir) }()
 
 		// Pre-create lock so the first task's ExecuteLoop fails.
-		os.WriteFile(filepath.Join(dir, ".helix", "dispatch.lock"),
+		_ = os.WriteFile(filepath.Join(dir, ".helix", "dispatch.lock"),
 			[]byte("pid=99999\nts=2026-06-23T00:00:00Z\n"), 0o644)
 
 		agents := []AgentProfile{
@@ -404,6 +404,6 @@ func TestAcquireLock_ErrorPaths(t *testing.T) {
 		if _, err := os.Stat(lockPath); err != nil {
 			t.Fatalf("lock not created: %v", err)
 		}
-		releaseLock(lockPath)
+		_ = releaseLock(lockPath)
 	})
 }
