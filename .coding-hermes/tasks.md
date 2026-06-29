@@ -317,3 +317,27 @@
 - **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
 - **Logic:** ValidateVeto checks all 4 spec §8.1 conditions (trust≥70, spec section cited, test command, AC reference). VetoTracker tracks frivolous vetoes with 90-day rolling window. 3 frivolous vetoes → trust capped at 69 (loses veto power). VetoWeight returns 1.5× for trust≥90 agents. Body parsers extract spec refs, test commands, and AC references from veto body text.
 - **Result:** [x] 30 tests, 97.3% pkg/negotiate coverage. Full suite 23/23 pass. Committed at `64ae24a`.
+
+## [ ] Implement escalation comment formatter — pkg/negotiate/
+- **Priority:** medium
+- **Spec:** specs/pr-negotiation.md §12.2 (Escalation Format)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/negotiate/escalation.go (NEW), pkg/negotiate/escalation_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
+- **Logic:** FormatEscalationComment renders the spec §12.2 escalation PR comment template: reason (timeout|budget_exhausted|chimera_unavailable), agent names + trust levels, rounds completed, deadlock status, debate log path, agent positions with summaries, recommended action. EscalationData struct with all fields. EscalationReason constants. Integration with Negotiator.Escalate — when escalated, generate the comment body.
+
+## [ ] Implement evidence bundle file store — pkg/review/
+- **Priority:** medium
+- **Spec:** specs/adversarial-review.md §Evidence Bundles — "stored in DuckBrain and linked from the merge commit"
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/review/store.go (NEW), pkg/review/store_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >85% coverage
+- **Logic:** EvidenceStore persists evidence bundles to disk as JSON files. Store(bundle) writes to ~/.helix/evidence/<review_id>.json. Load(reviewID) reads and verifies signatures. ListByAgent(agentID) returns all bundles for an agent. ListByPR(prURL) returns bundles for a PR. VerifyIntegrity re-checks all signatures on load. LinkFromMerge returns the path to embed in merge commit message.
+
+## [ ] Implement trust snapshot query API — pkg/trust/
+- **Priority:** medium
+- **Spec:** specs/trust-model.md §The Trust Ledger — "replay the ledger to verify any agent's current score"
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/trust/snapshot.go (NEW), pkg/trust/snapshot_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/trust/... -count=1 -cover` passes with >85% coverage
+- **Logic:** TrustSnapshot captures a point-in-time view of an agent's trust state: current score, tier, score breakdown by dimension, recent events (last 30 days), tier history. GetSnapshot(agentID) replays the ledger and returns the full snapshot. GetScoreBreakdown returns per-dimension scores. GetTierHistory returns promotion/demotion events. ScoreTrend returns the score change over N days.
