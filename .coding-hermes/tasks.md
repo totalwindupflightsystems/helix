@@ -115,13 +115,10 @@
 - **AC:** `helix dispatch --spec specs/agent-identity.md --agent test-agent` creates a branch in Forgejo, provisions an agent, and returns a PR URL
 - **Logic:** Full Ralph Loop: acquire lock → create worktree → spawn agent → wait for completion → run GitReins guards → open PR → return URL. Requires Forgejo running on :3030.
 
-## [ ] Implement retry middleware with exponential backoff
+## [x] Implement retry middleware with exponential backoff
 - **Priority:** medium
 - **Spec:** specs/cross-component-wiring.md §7
-- **Model:** direct write — Go package
-- **Files:** pkg/retry/retry.go, pkg/retry/retry_test.go (NEW)
-- **AC:** `go build ./... && go test ./pkg/retry/... -count=1 -cover` passes with >85% coverage
-- **Logic:** RetryWithBackoff(ctx, fn, maxAttempts, initialBackoff). Exponential backoff with jitter. Context-aware (returns ctx.Err() on cancellation). Configurable retryable error detection (retry on 5xx, timeout, connection refused — don't retry on 4xx). Used by Forgejo client and Chimera adapter.
+- **Result:** [x] Generic WithBackoff[T] function with exponential backoff + jitter. IsRetryable detects network errors, 5xx, 429. DoHTTP convenience wrapper for http.Client. Context-aware cancellation. 30 tests, 95.0% coverage.
 
 ## [ ] Implement cost estimation engine
 - **Priority:** high
