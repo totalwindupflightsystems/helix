@@ -23,6 +23,21 @@ pkg/
   sandbox/           Bubblewrap executor, cgroup isolation
   integration/       End-to-end integration tests
 specs/               Feature specifications + platform docs
+  ├── agent-identity.md         Agent provisioning in Forgejo
+  ├── cost-estimator.md         Pre-flight token burn estimation
+  ├── pr-negotiation.md         Agent debate protocol + Chimera arbiter
+  ├── prompt-registry.md        Prompt provenance + hash attestation
+  ├── agent-marketplace.md      Agent registry + trust scoring
+  ├── sandbox.md                Bubblewrap agent isolation
+  ├── trust-model.md            ★ NEW — graduated trust tiers, incident-linked decay
+  ├── adversarial-review.md     ★ NEW — confirmation bias defense, multi-model gates
+  ├── production-verification.md ★ NEW — shadow deployment, canary by trust tier
+  ├── integrations.md           9 sub-project adapter interfaces
+  ├── deployment.md             Docker Compose + CI/CD
+  ├── config.md                 Platform configuration spec
+  ├── build-order.md            Bootstrap and build sequence
+  ├── cross-component-wiring.md Component discovery and interaction
+  └── error-recovery.md         Recovery procedures per component
 prompts/             Prompt files (linked in commits via GitReins)
 ```
 
