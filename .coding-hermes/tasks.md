@@ -354,13 +354,14 @@
 - **Logic:** DebateValidator validates structured debate comments per spec §7.2. ValidateEvidence checks: minimum 2 evidence items per comment, at least 1 cites a spec file or test output, at least 1 references the other agent's argument. "I disagree" without evidence → comment rejected, agent gets strike. StrikeTracker accumulates strikes per agent: posting without evidence → 1 strike, missing a round → 1 strike + auto-concede on 2nd miss, 3 strikes → auto-concede. ParseRoundComment extracts position, evidence items, counter-argument, concession conditions from a structured comment body.
 - **Result:** [x] 45 tests, 98.3% pkg/negotiate coverage (up from 97.3%). Full suite 24/24 pass. ParseRoundComment parses §7.2 markdown format (round number, agent name, trust level, position, evidence items by type, counter-argument with @mention extraction, concession conditions). ValidateEvidence enforces all 3 §7.2 requirements (min 2 items, ≥1 spec/test, ≥1 counter-arg ref). StrikeTracker with auto-concede on 3 strikes or 2 round misses, thread-safe with sync.Mutex, full strike audit log.
 
-## [ ] Implement canary promotion decision engine — pkg/verify/
+## [x] Implement canary promotion decision engine — pkg/verify/
 - **Priority:** medium
 - **Spec:** specs/production-verification.md §Canary Promotion
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/verify/canary.go (NEW), pkg/verify/canary_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/verify/... -count=1 -cover` passes with >85% coverage
 - **Logic:** CanaryPromoter evaluates whether a shadow deployment is ready for canary promotion. EvaluatePromotion(shadowResult) checks: behavior contract passed all assertions, drift detector shows no degradation, success rate within threshold of baseline, no new error types introduced, minimum observation window elapsed. Returns PromotionDecision (READY/NOT_READY/NEEDS_MORE_DATA) with per-check results. ComputeCanaryPercentage decides traffic ramp: Provisional 1%, Observed 5%, Trusted 10%, Veteran 25%. AutoRampSchedule generates gradual ramp-up schedule with observation gaps between increments.
+- **Result:** [x] 45 tests, 97.7% pkg/verify coverage (up from 97.3%). Full suite 24/24 pass. CanaryPromoter with 5 readiness checks (contract, drift, success rate, new errors, observation window). READY/NOT_READY/NEEDS_MORE_DATA decision logic with nil-input skip semantics. ComputeCanaryPercentage with 4 trust tiers. AutoRampSchedule generates tier-specific ramp steps from CanarySchedule. DriftAssessment helpers (HasCriticalBreach, DriftCount).
 
 ## [ ] Implement prompt attestation validator — pkg/prompt/
 - **Priority:** medium
