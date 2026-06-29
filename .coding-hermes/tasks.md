@@ -154,6 +154,30 @@
 - **Spec:** specs/cross-component-wiring.md §7
 - **Result:** [x] Generic WithBackoff[T] function with exponential backoff + jitter. IsRetryable detects network errors, 5xx, 429. DoHTTP convenience wrapper for http.Client. Context-aware cancellation. 30 tests, 95.0% coverage.
 
+## [ ] Implement trust tier promotion engine — pkg/trust/
+- **Priority:** high
+- **Spec:** specs/trust-model.md §Trust Tiers + §Tier Thresholds
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/trust/promotion.go (NEW), pkg/trust/promotion_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/trust/... -count=1 -cover` passes with >85% coverage
+- **Logic:** TierPromotionEngine evaluates whether an agent qualifies for tier promotion. Checks ALL entry criteria from spec: trust score threshold (Provisional 0.0, Observed 0.40, Trusted 0.65, Veteran 0.85), minimum merge count (100/500/2000), maximum attributable incidents (0 for Observed/Trusted, 1 for Veteran in 180d), minimum days active (30/90/180), and for Veteran: minimum PR reviews (50). ShouldPromote returns bool + reason. PromoteTo returns the target tier. EvaluatePromotion checks all criteria and returns a PromotionResult with per-criterion pass/fail. Integrates with existing ShouldDemote/DemoteTo for a complete tier lifecycle.
+
+## [ ] Implement cross-service error propagation — pkg/integration/
+- **Priority:** medium
+- **Spec:** specs/cross-component-wiring.md §7 (Error Propagation)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/integration/errors.go (NEW), pkg/integration/errors_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/integration/... -count=1 -cover` passes with >85% coverage
+- **Logic:** Centralized error type mapping for all cross-service failures per spec §7 table. Each service pair has specific error format: Forgejo→Chimera unreachable → "Chimera unavailable — manual review required"; negotiate→Chimera budget exhausted → "BUDGET_EXHAUSTED: tie-break cost $X > remaining"; identity→Forgejo 503 → "CONNECTION_REFUSED: retry in Ns (attempt N/M)"; estimate→OpenRouter 401 → "AUTH_FAILED: agent key is dead — trigger key rotation"; Axiom→Forgejo 409 → "BRANCH_CONFLICT: feat/X exists — use --force-branch". ServiceError type with Code, Message, Retryable flag, RetryAfter duration. ClassifyError maps HTTP status codes to error types. IsRetryable for circuit breaker integration.
+
+## [ ] Implement agent notification dispatcher — pkg/verify/
+- **Priority:** medium
+- **Spec:** specs/production-verification.md §Behavior Contracts + §Integration Points
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/verify/notify.go (NEW), pkg/verify/notify_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/verify/... -count=1 -cover` passes with >85% coverage
+- **Logic:** NotificationDispatcher sends breach alerts to responsible agents when behavior contracts are violated. Per spec: on breach → (1) immediate agent notification with evidence, (2) auto-rollback if configured, (3) trust penalty, (4) incident record. Notifier interface with Notify(agentID, breach, evidence) method. Channels: Forgejo PR comment (structured markdown with breach details), trust ledger event, incident store entry. BreachNotification with contract name, failed checks, metrics snapshot, evidence links, recommended action. NotificationResult tracking delivery status per channel. Debounce: don't spam the same agent for the same breach within 5 minutes.
+
 ## [x] Implement cost estimation engine
 - **Priority:** high
 - **Spec:** specs/cost-estimator.md
