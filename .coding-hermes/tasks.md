@@ -131,13 +131,14 @@
   Returns MergeDecision (ALLOWED/BLOCKED/ESCALATED) with per-check results and reason messages.
 - **Result:** [x] MergeGate composes 5 checks: evidence bundle, consensus, behavior contract, trust tier, cost guard. ALLOWED/BLOCKED/ESCALATED decisions. 55 tests, 95.7% coverage. Full suite 24/24 pass.
 
-## [ ] Implement PR negotiation cost reconciliation — pkg/negotiate/
+## [x] Implement PR negotiation cost reconciliation — pkg/negotiate/
 - **Priority:** medium
 - **Spec:** specs/pr-negotiation.md §9.3 (Cost Split)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/negotiate/cost_recon.go (NEW), pkg/negotiate/cost_recon_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
 - **Logic:** CostReconciler tracks debate costs across rounds, splits tie-break costs between disagreeing agents, checks against agent weekly budgets (pkg/estimate.BudgetTracker), and flags cost overruns. Report with per-agent cost breakdown.
+- **Result:** [x] CostReconciler with round-by-round cost tracking, even tie-break split (spec §9.3), budget exhaustion detection (spec §14 exit 3), escalation flagging with BUDGET_EXHAUSTED reason. 28 tests, 97.9% pkg/negotiate coverage (up from 97.3%). Full suite 24/24 pass.
 
 ## [ ] Implement incident learning feedback loop — pkg/incident/
 - **Priority:** medium
