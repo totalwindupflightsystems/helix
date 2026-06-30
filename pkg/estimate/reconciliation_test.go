@@ -1,8 +1,10 @@
 package estimate
 
 import (
-	"errors"
+	"context"
 	"math"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -30,29 +32,63 @@ func TestNewOpenRouterClient(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// GetKeyUsage / GetKeyLimit (ErrNotImplemented stubs)
+// GetKeyUsage / GetKeyLimit (with httptest mock server)
 // ---------------------------------------------------------------------------
 
 func TestOpenRouterClient_GetKeyUsage(t *testing.T) {
-	c := NewOpenRouterClient("")
-	v, err := c.GetKeyUsage("sk-test")
-	if v != 0 {
-		t.Errorf("GetKeyUsage() value = %v, want 0", v)
+	// Create a mock server returning spec §9.1 format.
+	srv := newMockOpenRouterServer(t, http.StatusOK, `{
+		"data": {
+			"label": "test-agent",
+			"limit": 10.00,
+			"usage": 3.42,
+			"limit_remaining": 6.58,
+			"is_free_tier": false
+		}
+	}`)
+	defer srv.Close()
+
+	c := NewOpenRouterClient(srv.URL)
+	v, err := c.GetKeyUsage(context.Background(), "sk-test")
+	if err != nil {
+		t.Fatalf("GetKeyUsage() error = %v", err)
 	}
-	if !errors.Is(err, ErrNotImplemented) {
-		t.Errorf("GetKeyUsage() error = %v, want ErrNotImplemented", err)
+	if v != 3.42 {
+		t.Errorf("GetKeyUsage() = %v, want 3.42", v)
 	}
 }
 
 func TestOpenRouterClient_GetKeyLimit(t *testing.T) {
-	c := NewOpenRouterClient("")
-	v, err := c.GetKeyLimit("sk-test")
-	if v != 0 {
-		t.Errorf("GetKeyLimit() value = %v, want 0", v)
+	srv := newMockOpenRouterServer(t, http.StatusOK, `{
+		"data": {
+			"label": "test-agent",
+			"limit": 10.00,
+			"usage": 3.42,
+			"limit_remaining": 6.58,
+			"is_free_tier": false
+		}
+	}`)
+	defer srv.Close()
+
+	c := NewOpenRouterClient(srv.URL)
+	v, err := c.GetKeyLimit(context.Background(), "sk-test")
+	if err != nil {
+		t.Fatalf("GetKeyLimit() error = %v", err)
 	}
-	if !errors.Is(err, ErrNotImplemented) {
-		t.Errorf("GetKeyLimit() error = %v, want ErrNotImplemented", err)
+	if v != 10.00 {
+		t.Errorf("GetKeyLimit() = %v, want 10.00", v)
 	}
+}
+
+// newMockOpenRouterServer creates a test HTTP server that returns the given
+// status code and JSON body for every request.
+func newMockOpenRouterServer(t *testing.T, status int, body string) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(body))
+	}))
 }
 
 // ---------------------------------------------------------------------------
