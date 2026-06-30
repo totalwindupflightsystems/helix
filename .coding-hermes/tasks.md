@@ -624,10 +624,11 @@
 - **Logic:** ResourceUsageTracker monitors sandboxed agent sessions: peak memory usage (from cgroup memory.events), CPU time consumed, wall-clock duration, network access attempts, filesystem writes count. UsageReport with per-session metrics. SessionSummary aggregates across all sessions for an agent. EnforceResourceLimits checks if a session exceeded its configured memory/time limits. Integration with existing CgroupV2 for reading memory.events and cpu.stat.
 - **Result:** [x] 47 tests, 93.8% pkg/sandbox coverage. ResourceUsageTracker with StartSession/EndSession/Sample lifecycle. Reads memory.current, cpu.stat (usage_usec), memory.events (oom count) from cgroup v2. Peak memory tracking (monotonic). Network/Fs write counters. EnforceResourceLimits for memory + time. SummarizeAgent for per-agent aggregation. Fake cgroup filesystem in tests. Full suite 25/25 pass. Lint clean.
 
-## [ ] Implement negotiation consensus calculator — pkg/negotiate/
+## [x] Implement negotiation consensus calculator — pkg/negotiate/
 - **Priority:** medium
 - **Spec:** specs/pr-negotiation.md §11 (Consensus Rules) + §10.1 (Weighted Consensus)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/negotiate/consensus.go (NEW), pkg/negotiate/consensus_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
 - **Logic:** ConsensusCalculator computes the final verdict from multiple review signals. Weighted consensus per spec §10.1: each reviewer's trust level determines their vote weight (trust 90+ = 1.5×, trust 70+ = 1.0×, trust <70 = 0.5×). Required quorum per change category (contract = 3/3, behavioral = 2/2, cosmetic = 1/1). Override detection: a trust-90+ reviewer can override a single dissent from a trust-<70 reviewer. ComputeConsensus returns ConsensusResult with per-reviewer weights, total weighted score, and final verdict.
+- **Result:** [x] 42 tests, 97.4% pkg/negotiate coverage. ConsensusCalculator with ComputeWeight (spec §10.1: 90+→1.5×, 70+→1.0×, <70→0.5×), RequiredQuorum (contract 3, behavioral 2, resilience/cosmetic 1), CheckOverride (trust-90+ overrides trust-<70 dissent unless a veto-capable reviewer also dissents), ComputeConsensus (weighted approve/reject, quorum check, tie→reject safety), FormatConsensus for audit logs. Full suite 25/25 pass. Lint clean.
