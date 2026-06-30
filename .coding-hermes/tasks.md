@@ -515,3 +515,12 @@
 - **AC:** `go build ./... && go test ./pkg/marketplace/... -count=1 -cover` passes with >85% coverage
 - **Logic:** MetricsCollector implementing all 5 Prometheus metrics from spec §14: helix_marketplace_agents_total{status} (gauge), helix_marketplace_trust_score{agent} (gauge), helix_marketplace_queries_total{filter} (counter), helix_marketplace_ratings_total (counter), helix_marketplace_assignments_total{agent} (counter). Collect() emits Prometheus text exposition format with HELP/TYPE headers. Thread-safe with sync.RWMutex. AgentsByStatus and TrustScoreGauges derive gauges from registry state.
 - **Result:** [x] 20 tests, 94.2% pkg/marketplace coverage (up from 93.6%). All 5 spec §14 metrics implemented. Prometheus text format with HELP/TYPE headers, deterministic ordering, thread-safe. Full suite 24/24 pass.
+
+## [x] Implement negotiation history query + audit trail — pkg/negotiate/
+- **Priority:** medium
+- **Spec:** specs/pr-negotiation.md §13 (Filesystem Layout) — audit trail query
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/negotiate/history.go (NEW), pkg/negotiate/history_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
+- **Logic:** QueryHistory scans the negotiations directory for JSONL debate transcripts, replays each via existing ReplayTranscript, and returns matching HistoryEntry items. Filters: by agent name, PR number, outcome, time range (Since/Until), and result limit. Results sorted by StartedAt descending (most recent first). FormatHistory renders a human-readable table for CLI output. Skips non-JSONL files (verdict.md, state.json) and malformed transcripts.
+- **Result:** [x] 17 tests, 97.3% pkg/negotiate coverage. Filters for agent/PR/outcome/time-range all verified. Sorted descending. Malformed transcripts skipped gracefully. Full suite 24/24 pass.
