@@ -337,17 +337,6 @@ func (w *agentWindow) rollupDailySummaries(maxSummaries int) {
 	}
 }
 
-// recentBreaches returns how many breaches occurred in the last 24h.
-func (w *agentWindow) recentBreaches() int {
-	count := 0
-	for _, ds := range w.dailySummaries {
-		if time.Since(ds.Date) < 24*time.Hour {
-			count += ds.BreachCount
-		}
-	}
-	return count
-}
-
 // ============================================================================
 // SteadyStateAggregator
 // ============================================================================
