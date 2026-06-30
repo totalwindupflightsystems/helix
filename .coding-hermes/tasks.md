@@ -435,13 +435,14 @@
 - **Logic:** ChainOfCustody tracks the full lifecycle of an evidence bundle: creation timestamp, signing model IDs, verification history, mutation log. Any modification to the bundle after creation is tracked as a custody event. VerifyChain checks that no tampering occurred since the last valid signature. CustodyReport summarizes the chain for audit display. Integrates with existing EvidenceStore for persistence.
 - **Result:** [x] 27 tests, 92.9% pkg/review coverage. ChainOfCustody with 7 event types (created/signed/verified/modified/finding_added/consensus_set/re_signed). VerifyChain detects: unsigned modifications (tampering), verification failures, missing signatures. Re-signing after modification clears the tamper flag. CustodyReport with IsValid/ShouldBlockMerge/FormatReport. CustodyStore wraps EvidenceStore for init/track/verify. Full suite 24/24 pass.
 
-## [ ] Implement steady-state surveillance aggregator — pkg/verify/
+## [x] Implement steady-state surveillance aggregator — pkg/verify/
 - **Priority:** medium
 - **Spec:** specs/production-verification.md §Phase 3 — Steady-State Surveillance (72h+)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/verify/surveillance.go (NEW), pkg/verify/surveillance_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/verify/... -count=1 -cover` passes with >85% coverage
 - **Logic:** SteadyStateAggregator runs continuous behavior contract checks on deployed agents. Aggregates metrics from multiple sources (success rate, latency, error types), evaluates contracts periodically, and emits surveillance events. LongRunningMonitor detects gradual degradation over 7-day windows. AlertEscalation triggers when sustained drift exceeds thresholds. Integrates with existing DriftDetector, BehaviorContract, and NotificationDispatcher.
+- **Result:** [x] 68 tests, 94.8% pkg/verify coverage. SteadyStateAggregator with multi-agent surveillance. LongRunningMonitor with daily summary aggregation and 4-metric degradation analysis (success rate, P99 latency, error rate, memory). AlertEscalation with 4 levels (none→notify→investigate→rollback) and sustained drift tracking. Full lifecycle: healthy→breach→recovery. NotificationDispatcher integration. Full suite 24/24 pass.
 
 ## [ ] Implement marketplace search ranking algorithm — pkg/marketplace/
 - **Priority:** medium
