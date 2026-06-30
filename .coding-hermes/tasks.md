@@ -125,13 +125,14 @@
 - **Logic:** Full Ralph Loop: acquire lock → create worktree → spawn agent → wait for completion → run GitReins guards → open PR → return URL. Requires Forgejo running on :3030.
 - **Note:** Blocked until Forgejo is running. Cannot test without live service.
 
-## [ ] Implement OpenRouter key budget client — pkg/estimate/
+## [x] Implement OpenRouter key budget client — pkg/estimate/
 - **Priority:** high
 - **Spec:** specs/cost-estimator.md §9.1 (OpenRouter Key Budget Query)
 - **Model:** direct write — Go package, real HTTP client
 - **Files:** pkg/estimate/openrouter.go, pkg/estimate/openrouter_test.go
 - **AC:** `go build ./... && go test ./pkg/estimate/... -count=1 -cover` passes with >85% coverage
 - **Logic:** Replace ErrNotImplemented stubs with real HTTP GET calls to OpenRouter API (/api/v1/key). Parse JSON response for usage and limit. Return cost data. Handle 401 (dead key), 429 (rate limited), 5xx (retry). Test with httptest mock server. Context-aware with timeout.
+- **Result:** [x] Real HTTP client with GetKeyUsage, GetKeyLimit, GetKeyRemaining, GetKeyInfo. Context-aware. Error sentinels: ErrAuthFailed (401), ErrRateLimited (429). KeyInfo with BudgetRemaining/BudgetUsed fraction helpers. 13 tests with httptest mock: success, 401, 429, 500, empty key, malformed JSON, context cancelled, auth header verification, full response parsing. 92.8% pkg/estimate coverage. Full suite 24/24 pass.
 
 ## [ ] Implement marketplace daily trust recalculation — pkg/marketplace/
 - **Priority:** medium
