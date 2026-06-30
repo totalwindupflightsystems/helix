@@ -632,3 +632,27 @@
 - **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
 - **Logic:** ConsensusCalculator computes the final verdict from multiple review signals. Weighted consensus per spec §10.1: each reviewer's trust level determines their vote weight (trust 90+ = 1.5×, trust 70+ = 1.0×, trust <70 = 0.5×). Required quorum per change category (contract = 3/3, behavioral = 2/2, cosmetic = 1/1). Override detection: a trust-90+ reviewer can override a single dissent from a trust-<70 reviewer. ComputeConsensus returns ConsensusResult with per-reviewer weights, total weighted score, and final verdict.
 - **Result:** [x] 42 tests, 97.4% pkg/negotiate coverage. ConsensusCalculator with ComputeWeight (spec §10.1: 90+→1.5×, 70+→1.0×, <70→0.5×), RequiredQuorum (contract 3, behavioral 2, resilience/cosmetic 1), CheckOverride (trust-90+ overrides trust-<70 dissent unless a veto-capable reviewer also dissents), ComputeConsensus (weighted approve/reject, quorum check, tie→reject safety), FormatConsensus for audit logs. Full suite 25/25 pass. Lint clean.
+
+## [ ] Implement budget approval gate engine — pkg/estimate/
+- **Priority:** high
+- **Spec:** specs/cost-estimator.md §8.1 (Approval Gates)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/estimate/approval.go (NEW), pkg/estimate/approval_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/estimate/... -count=1 -cover` passes with >85% coverage
+- **Logic:** ApprovalGate evaluates estimated cost against remaining budget. AUTO_APPROVED if cost ≤ remaining. AUTO_APPROVED_WITH_WARNING if cost ≤ remaining × 1.5 AND trust ≥ 70. BLOCKED if cost > remaining (with 3 options: wait, increase, cheaper model). ESCALATED if cost > weekly cap (requires human approval). Returns ApprovalDecision with reason, remaining budget after, and suggested alternatives (cheaper model IDs).
+
+## [ ] Implement production verification breach reporter — pkg/verify/
+- **Priority:** medium
+- **Spec:** specs/production-verification.md §Behavior Contracts (breach display) + specs/adversarial-review.md §Evidence Bundles (structured display)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/verify/breach_report.go (NEW), pkg/verify/breach_report_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/verify/... -count=1 -cover` passes with >85% coverage
+- **Logic:** BreachReporter generates structured breach reports for Forgejo PR comments when behavior contracts are violated. Report sections: contract name, agent ID, deployment phase (shadow/canary/steady-state), failed assertions with actual vs expected values, metrics snapshot at breach time, drift summary, recommended action (rollback/investigate/waive), evidence bundle link. FormatBreachReport renders markdown suitable for Forgejo comment rendering.
+
+## [ ] Implement trust ledger compaction — pkg/trust/
+- **Priority:** medium
+- **Spec:** specs/trust-model.md §The Trust Ledger — "replay the ledger to verify any agent's current score" (ledger grows unbounded without compaction)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/trust/compaction.go (NEW), pkg/trust/compaction_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/trust/... -count=1 -cover` passes with >85% coverage
+- **Logic:** LedgerCompactor reduces JSONL trust ledger size by summarizing old events. Events older than the compaction threshold (default 90 days) are summarized into a single CompactionSummary entry per agent (score snapshot, event count, date range). Recent events (within threshold) are preserved verbatim. Compact reads the ledger, partitions by age, writes a new ledger with summary prefix + recent events. VerifyCompaction replays the compacted ledger and confirms scores match the pre-compaction replay.
