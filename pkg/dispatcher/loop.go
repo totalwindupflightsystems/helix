@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"syscall"
 	"time"
 )
 
@@ -84,8 +86,8 @@ func (d *Dispatcher) RunPipeline(tasks []Task) ([]DispatchResult, error) {
 // ---------------------------------------------------------------------------
 
 // acquireLock creates a lock file with the current PID and timestamp.
-// If the lock already exists and is held by a live process, it returns
-// an error.
+// If the lock already exists, it checks whether the PID is still alive.
+// A stale lock (dead PID) is overwritten. A live lock returns an error.
 func acquireLock(lockPath string) error {
 	dir := filepath.Dir(lockPath)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -94,9 +96,12 @@ func acquireLock(lockPath string) error {
 
 	// Check for existing lock.
 	if data, err := os.ReadFile(lockPath); err == nil {
-		// Lock file exists — in a real implementation we would check if
-		// the PID is still alive. For now, we fail fast.
-		return fmt.Errorf("lock already held: %s", string(data))
+		// Lock file exists — check if the PID is still alive.
+		existingPID := parseLockPID(string(data))
+		if existingPID > 0 && isProcessAlive(existingPID) {
+			return fmt.Errorf("lock already held by live process pid=%d: %s", existingPID, string(data))
+		}
+		// Stale lock — PID is dead, safe to overwrite.
 	}
 
 	// Write lock file with PID and timestamp.
@@ -107,6 +112,49 @@ func acquireLock(lockPath string) error {
 		return fmt.Errorf("cannot write lock file: %w", err)
 	}
 	return nil
+}
+
+// parseLockPID extracts the PID from a lock file content string.
+// Format: "pid=1234\nts=2026-06-30T12:00:00Z\n"
+// Returns 0 if no valid PID is found.
+func parseLockPID(content string) int {
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "pid=") {
+			val := strings.TrimPrefix(line, "pid=")
+			pid := 0
+			for _, c := range val {
+				if c < '0' || c > '9' {
+					break
+				}
+				pid = pid*10 + int(c-'0')
+			}
+			if pid > 0 {
+				return pid
+			}
+		}
+	}
+	return 0
+}
+
+// isProcessAlive checks whether a process with the given PID is running.
+// Uses os.FindProcess + signal 0 (non-destructive check).
+func isProcessAlive(pid int) bool {
+	if pid <= 0 {
+		return false
+	}
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+	// signal 0 checks if the process exists without actually sending a signal.
+	// On Unix, os.FindProcess always succeeds (it's lazy), so we must signal.
+	if err := proc.Signal(syscall.Signal(0)); err != nil {
+		// ESRCH = no such process → not alive.
+		// EPERM = exists but no permission → alive (shouldn't happen for our own PIDs).
+		return err == syscall.EPERM
+	}
+	return true
 }
 
 // releaseLock removes the lock file.

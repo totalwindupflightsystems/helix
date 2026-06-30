@@ -224,9 +224,9 @@ func TestExecuteLoop(t *testing.T) {
 		_ = os.Chdir(dir)
 		defer func() { _ = os.Chdir(origDir) }()
 
-		// Pre-create the lock file.
+		// Pre-create the lock file with our own PID (alive).
 		lockPath := filepath.Join(dir, ".helix", "dispatch.lock")
-		_ = os.WriteFile(lockPath, []byte("pid=12345\nts=2026-06-23T00:00:00Z\n"), 0o644)
+		_ = os.WriteFile(lockPath, []byte(fmt.Sprintf("pid=%d\nts=2026-06-23T00:00:00Z\n", os.Getpid())), 0o644)
 
 		d := NewDispatcher(nil)
 		item := WorkItem{
@@ -236,10 +236,35 @@ func TestExecuteLoop(t *testing.T) {
 		}
 		err := d.ExecuteLoop(item)
 		if err == nil {
-			t.Fatal("ExecuteLoop() with existing lock = nil, want error")
+			t.Fatal("ExecuteLoop() with existing live lock = nil, want error")
 		}
 		if !strings.Contains(err.Error(), "lock acquisition failed") {
 			t.Errorf("ExecuteLoop() error = %v, want lock acquisition failed", err)
+		}
+	})
+
+	t.Run("stale lock (dead PID) is overwritten", func(t *testing.T) {
+		dir := t.TempDir()
+		helixDir := filepath.Join(dir, ".helix")
+		_ = os.MkdirAll(helixDir, 0o755)
+
+		origDir, _ := os.Getwd()
+		_ = os.Chdir(dir)
+		defer func() { _ = os.Chdir(origDir) }()
+
+		// Pre-create the lock file with a dead PID.
+		lockPath := filepath.Join(dir, ".helix", "dispatch.lock")
+		_ = os.WriteFile(lockPath, []byte("pid=999999\nts=2026-06-23T00:00:00Z\n"), 0o644)
+
+		d := NewDispatcher(nil)
+		item := WorkItem{
+			Task:  Task{ID: "WI-005B", Description: "should succeed"},
+			Agent: AgentProfile{Name: "a1", Capability: "code"},
+			Steps: []Step{{Action: "impl", ExpectedOutput: "ok"}},
+		}
+		err := d.ExecuteLoop(item)
+		if err != nil {
+			t.Fatalf("ExecuteLoop() with stale lock = %v, want nil (stale lock should be overwritten)", err)
 		}
 	})
 
@@ -356,9 +381,9 @@ func TestRunPipeline(t *testing.T) {
 		_ = os.Chdir(dir)
 		defer func() { _ = os.Chdir(origDir) }()
 
-		// Pre-create lock so the first task's ExecuteLoop fails.
+		// Pre-create lock with our own PID (alive) so the first task's ExecuteLoop fails.
 		_ = os.WriteFile(filepath.Join(dir, ".helix", "dispatch.lock"),
-			[]byte("pid=99999\nts=2026-06-23T00:00:00Z\n"), 0o644)
+			[]byte(fmt.Sprintf("pid=%d\nts=2026-06-23T00:00:00Z\n", os.Getpid())), 0o644)
 
 		agents := []AgentProfile{
 			{Name: "coder", Capability: "code", CurrentLoad: 0, MaxLoad: 5},
@@ -384,6 +409,90 @@ func TestRunPipeline(t *testing.T) {
 // ---------------------------------------------------------------------------
 // Error paths for acquireLock
 // ---------------------------------------------------------------------------
+
+func TestParseLockPID(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  int
+	}{
+		{"valid PID", "pid=1234\nts=2026-06-30T00:00:00Z\n", 1234},
+		{"valid PID only line", "pid=42\n", 42},
+		{"missing pid prefix", "ts=2026-06-30\n", 0},
+		{"empty content", "", 0},
+		{"non-numeric pid", "pid=abc\n", 0},
+		{"multi-line with pid in middle", "line1\npid=9999\nts=2026\n", 9999},
+		{"large pid", "pid=999999\nts=2026\n", 999999},
+		{"pid with trailing spaces", "pid=555  \nts=2026\n", 555},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseLockPID(tt.input)
+			if got != tt.want {
+				t.Errorf("parseLockPID(%q) = %d, want %d", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsProcessAlive_CurrentPID(t *testing.T) {
+	pid := os.Getpid()
+	if !isProcessAlive(pid) {
+		t.Error("current process should be alive")
+	}
+}
+
+func TestIsProcessAlive_DeadPID(t *testing.T) {
+	// PID 999999 is almost certainly not running.
+	if isProcessAlive(999999) {
+		t.Error("PID 999999 should not be alive")
+	}
+}
+
+func TestIsProcessAlive_ZeroOrNegative(t *testing.T) {
+	if isProcessAlive(0) {
+		t.Error("PID 0 should not be alive")
+	}
+	if isProcessAlive(-1) {
+		t.Error("PID -1 should not be alive")
+	}
+}
+
+func TestAcquireLock_StaleOverwritten(t *testing.T) {
+	dir := t.TempDir()
+	lockPath := filepath.Join(dir, "dispatch.lock")
+
+	// Write a stale lock with a dead PID.
+	_ = os.WriteFile(lockPath, []byte("pid=999999\nts=2026-06-30T00:00:00Z\n"), 0o644)
+
+	// Should succeed — stale lock is overwritten.
+	if err := acquireLock(lockPath); err != nil {
+		t.Fatalf("acquireLock with stale lock: %v", err)
+	}
+
+	// Verify lock now has our PID.
+	data, err := os.ReadFile(lockPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := fmt.Sprintf("pid=%d", os.Getpid())
+	if !strings.Contains(string(data), expected) {
+		t.Errorf("expected lock to contain %q, got: %s", expected, string(data))
+	}
+}
+
+func TestAcquireLock_LiveBlocks(t *testing.T) {
+	dir := t.TempDir()
+	lockPath := filepath.Join(dir, "dispatch.lock")
+
+	// Write a lock with our own PID (alive).
+	_ = os.WriteFile(lockPath, []byte(fmt.Sprintf("pid=%d\nts=2026-06-30T00:00:00Z\n", os.Getpid())), 0o644)
+
+	// Should fail — live lock blocks.
+	if err := acquireLock(lockPath); err == nil {
+		t.Fatal("acquireLock with live lock should fail")
+	}
+}
 
 func TestAcquireLock_ErrorPaths(t *testing.T) {
 	t.Run("release already released lock is no-op", func(t *testing.T) {
