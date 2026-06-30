@@ -615,13 +615,14 @@
 - **Logic:** PlatformHealthAggregator collects health status from all Helix subsystems (trust, review, negotiate, verify, marketplace, estimate, sandbox) and produces a unified dashboard report. Each subsystem reports its own health status (healthy/degraded/down) with optional metrics. Aggregator runs periodic checks, caches results with TTL, and exposes a JSON dashboard endpoint. Includes degradation detection: if any critical subsystem is down, the entire platform is marked degraded. Used by CLI `helix status` to show platform health at a glance.
 - **Result:** [x] 55 tests, 99.0% pkg/health coverage. PlatformHealthAggregator with SubsystemHealth interface (each subsystem implements HealthCheck). Concurrent health checks with TTL-based caching (15s default). DashboardReport with overall state (healthy/degraded/down) computed from critical/non-critical subsystem states. FormatDashboard for CLI output. ServiceHealthAdapter bridges existing Checker-based checks. Full suite 25/25 pass. Lint clean.
 
-## [ ] Implement sandbox resource usage tracker — pkg/sandbox/
+## [x] Implement sandbox resource usage tracker — pkg/sandbox/
 - **Priority:** medium
 - **Spec:** specs/sandbox.md §6 (Resource Limits) + §7 (Five Isolation Layers)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/sandbox/usage.go (NEW), pkg/sandbox/usage_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/sandbox/... -count=1 -cover` passes with >80% coverage
 - **Logic:** ResourceUsageTracker monitors sandboxed agent sessions: peak memory usage (from cgroup memory.events), CPU time consumed, wall-clock duration, network access attempts, filesystem writes count. UsageReport with per-session metrics. SessionSummary aggregates across all sessions for an agent. EnforceResourceLimits checks if a session exceeded its configured memory/time limits. Integration with existing CgroupV2 for reading memory.events and cpu.stat.
+- **Result:** [x] 47 tests, 93.8% pkg/sandbox coverage. ResourceUsageTracker with StartSession/EndSession/Sample lifecycle. Reads memory.current, cpu.stat (usage_usec), memory.events (oom count) from cgroup v2. Peak memory tracking (monotonic). Network/Fs write counters. EnforceResourceLimits for memory + time. SummarizeAgent for per-agent aggregation. Fake cgroup filesystem in tests. Full suite 25/25 pass. Lint clean.
 
 ## [ ] Implement negotiation consensus calculator — pkg/negotiate/
 - **Priority:** medium
