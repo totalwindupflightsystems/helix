@@ -579,13 +579,14 @@
 - **Logic:** ConsensusReport renders the ReviewOrchestrator results as a structured markdown report for Forgejo PR comments. Sections: header (PR URL, review ID, timestamp), formation summary (models + providers used, diversity score), findings table (per-finding: model, severity, type, file:line, description, evidence), consensus block (per-model verdicts + resolution: PASS/WARN/BLOCK/FLAG), bias-stripped commit hash, original commit hash, evidence bundle link. FormatConsensusReport(evidence EvidenceBundle) string. RenderFindingsTable([]Finding) string. RenderConsensusBlock(Consensus) string.
 - **Result:** [x] 22 tests, 93.5% pkg/review coverage. FormatConsensusReport renders structured markdown with all sections. RenderFindingsTable with empty/single/multiple/no-line cases. RenderConsensusBlock with all verdict types + resolutions. formatVerdict/formatResolution with emoji labels. shortSHA display helper. Full suite 24/24 pass.
 
-## [ ] Implement PR lifecycle coordinator — pkg/coordinator/
+## [x] Implement PR lifecycle coordinator — pkg/coordinator/
 - **Priority:** high
 - **Spec:** specs/cross-component-wiring.md (component discovery + interaction)
 - **Model:** direct write — Go package, composes existing components
 - **Files:** pkg/coordinator/lifecycle.go (NEW), pkg/coordinator/lifecycle_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/coordinator/... -count=1 -cover` passes with >80% coverage
 - **Logic:** PRLifecycleCoordinator orchestrates the full PR lifecycle: PR opened → cost estimate (pkg/estimate) → adversarial review (pkg/review) → PR negotiation if contested (pkg/negotiate) → merge gate validation (pkg/mergegate) → shadow deployment if approved (pkg/verify) → steady-state surveillance (pkg/verify). Coordinator holds references to each subsystem and calls them in sequence. Returns PRLifecycleResult with per-stage status. Handles failures gracefully (each stage can fail independently without crashing the pipeline).
+- **Result:** [x] 57 tests, 89.6% coverage. 6-stage lifecycle pipeline: cost estimate, adversarial review, negotiation (contested PRs), merge gate, shadow deploy, steady-state surveillance. PRLifecycleCoordinator with WithStages() for selective execution. LifecycleResult with StageByName/HasStage/AllPassed/HasFailure/Summary. Short-circuit on failure (REJECTED) or escalation (ESCALATED). Full suite 25/25 pass. Lint clean.
 
 ## [ ] Implement trust audit runner — pkg/trust/
 - **Priority:** medium
