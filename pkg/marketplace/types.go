@@ -171,6 +171,7 @@ type Agent struct {
 	CreatedAt        string           `yaml:"created_at"        json:"created_at"`
 	UpdatedAt        string           `yaml:"updated_at"        json:"updated_at"`
 	DeprecatedAt     string           `yaml:"deprecated_at,omitempty" json:"deprecated_at,omitempty"`
+	History          AgentHistory     `yaml:"history,omitempty" json:"history,omitempty"`
 }
 
 // Review is a human rating of an agent (spec §9). Ratings are 1-5 stars,
