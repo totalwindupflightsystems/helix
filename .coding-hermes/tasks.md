@@ -570,10 +570,11 @@
 - **Logic:** ReconcilePipeline chains the reconciliation steps per spec §8.2: (1) receive GitReins LLMUsage from evaluator, (2) compute actual cost via existing ActualCost(), (3) update budget_used in BudgetInfo, (4) log drift via existing DriftTracker, (5) feed DriftTracker into Calibrator for weekly recalibration. ReconciliationResult with estimated, actual, drift_pct, budget_remaining_after. ReconcileAgent convenience method that takes agent BudgetInfo + Usage + estimated CostEstimate and returns full ReconciliationResult. This wires together the existing reconciliation.go, drift.go, calibrator.go, and budget.go into a single pipeline.
 - **Result:** [x] 18 tests, 94.4% pkg/estimate coverage (up from 94.1%). ReconcilePipeline chains all 5 spec §8.2 steps. Non-mutating (returns updated BudgetInfo copy). Nil-safe for tracker/calibrator. ReconcileAgent convenience wrapper. FormatReconciliation for CLI output. Full integration test (3 reconciliations → tracker + calibrator fed). Full suite 24/24 pass.
 
-## [ ] Implement review consensus report formatter — pkg/review/
+## [x] Implement review consensus report formatter — pkg/review/
 - **Priority:** low
 - **Spec:** specs/adversarial-review.md §Evidence Bundles (consensus display)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/review/consensus_report.go (NEW), pkg/review/consensus_report_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >85% coverage
 - **Logic:** ConsensusReport renders the ReviewOrchestrator results as a structured markdown report for Forgejo PR comments. Sections: header (PR URL, review ID, timestamp), formation summary (models + providers used, diversity score), findings table (per-finding: model, severity, type, file:line, description, evidence), consensus block (per-model verdicts + resolution: PASS/WARN/BLOCK/FLAG), bias-stripped commit hash, original commit hash, evidence bundle link. FormatConsensusReport(evidence EvidenceBundle) string. RenderFindingsTable([]Finding) string. RenderConsensusBlock(Consensus) string.
+- **Result:** [x] 22 tests, 93.5% pkg/review coverage. FormatConsensusReport renders structured markdown with all sections. RenderFindingsTable with empty/single/multiple/no-line cases. RenderConsensusBlock with all verdict types + resolutions. formatVerdict/formatResolution with emoji labels. shortSHA display helper. Full suite 24/24 pass.
