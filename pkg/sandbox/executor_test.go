@@ -491,14 +491,14 @@ func TestDryRun_PrintsStructuredSummary(t *testing.T) {
 // Run tests
 // =============================================================================
 
-// TestRun_ReturnsErrNotImplemented verifies that Run returns ErrNotImplemented
-// for a non-dry-run execution (stub behavior).
-func TestRun_ReturnsErrNotImplemented(t *testing.T) {
+// TestRun_IsolationNone_Success verifies that Run succeeds for a simple
+// command in IsolationNone mode (direct host execution).
+func TestRun_IsolationNone_Success(t *testing.T) {
 	cfg := SandboxConfig{
 		SessionID:   "test-session-run",
 		Isolation:   IsolationNone,
 		SessionRoot: t.TempDir(),
-		BwrapPath:   "/bin/true", // a real executable so pathExists passes
+		BwrapPath:   "/bin/true",
 		Command:     []string{"true"},
 	}
 	exec, err := NewExecutor(cfg)
@@ -506,12 +506,39 @@ func TestRun_ReturnsErrNotImplemented(t *testing.T) {
 		t.Fatalf("new executor: %v", err)
 	}
 
-	err = exec.Run(context.TODO())
-	if err == nil {
-		t.Fatal("expected error from Run (stub)")
+	var outBuf, errBuf bytes.Buffer
+	exec.SetOutput(&outBuf, &errBuf)
+
+	err = exec.Run(context.Background())
+	if err != nil {
+		t.Fatalf("expected nil error for IsolationNone true, got: %v", err)
 	}
-	if !errors.Is(err, ErrNotImplemented) {
-		t.Errorf("expected ErrNotImplemented, got: %v", err)
+}
+
+// TestRun_IsolationNone_FailedCommand verifies that Run returns
+// ErrExecutionFailed for a command that exits non-zero in IsolationNone mode.
+func TestRun_IsolationNone_FailedCommand(t *testing.T) {
+	cfg := SandboxConfig{
+		SessionID:   "test-session-fail",
+		Isolation:   IsolationNone,
+		SessionRoot: t.TempDir(),
+		BwrapPath:   "/bin/true",
+		Command:     []string{"false"},
+	}
+	exec, err := NewExecutor(cfg)
+	if err != nil {
+		t.Fatalf("new executor: %v", err)
+	}
+
+	var outBuf, errBuf bytes.Buffer
+	exec.SetOutput(&outBuf, &errBuf)
+
+	err = exec.Run(context.Background())
+	if err == nil {
+		t.Fatal("expected error for exit-code-1 command")
+	}
+	if !errors.Is(err, ErrExecutionFailed) {
+		t.Errorf("expected ErrExecutionFailed, got: %v", err)
 	}
 }
 
@@ -548,7 +575,8 @@ func TestRun_DryRunMode(t *testing.T) {
 // =============================================================================
 
 // TestRunWithTimeout_NoTimeLimit verifies that RunWithTimeout works without a
-// configured time limit.
+// configured time limit. With real execution and a simple command, it should
+// succeed.
 func TestRunWithTimeout_NoTimeLimit(t *testing.T) {
 	cfg := SandboxConfig{
 		SessionID:   "test-session-ntl",
@@ -563,18 +591,18 @@ func TestRunWithTimeout_NoTimeLimit(t *testing.T) {
 		t.Fatalf("new executor: %v", err)
 	}
 
-	// RunWithTimeout creates context and calls Run, which returns ErrNotImplemented
+	var outBuf, errBuf bytes.Buffer
+	exec.SetOutput(&outBuf, &errBuf)
+
 	err = exec.RunWithTimeout()
-	if err == nil {
-		t.Fatal("expected error from Run")
-	}
-	if !errors.Is(err, ErrNotImplemented) {
-		t.Errorf("expected ErrNotImplemented, got: %v", err)
+	if err != nil {
+		t.Fatalf("expected nil error for IsolationNone true with no time limit, got: %v", err)
 	}
 }
 
 // TestRunWithTimeout_WithTimeLimit verifies that RunWithTimeout applies the
-// configured time limit.
+// configured time limit. With real execution and a generous limit, the
+// simple command should succeed.
 func TestRunWithTimeout_WithTimeLimit(t *testing.T) {
 	cfg := SandboxConfig{
 		SessionID:   "test-session-wtl",
@@ -589,13 +617,40 @@ func TestRunWithTimeout_WithTimeLimit(t *testing.T) {
 		t.Fatalf("new executor: %v", err)
 	}
 
-	// Should still return ErrNotImplemented, but the context should have a deadline
+	var outBuf, errBuf bytes.Buffer
+	exec.SetOutput(&outBuf, &errBuf)
+
+	err = exec.RunWithTimeout()
+	if err != nil {
+		t.Fatalf("expected nil error for IsolationNone true with 30s limit, got: %v", err)
+	}
+}
+
+// TestRunWithTimeout_TimedOut verifies that RunWithTimeout returns
+// ErrTimeoutExceeded when the time limit is shorter than command runtime.
+func TestRunWithTimeout_TimedOut(t *testing.T) {
+	cfg := SandboxConfig{
+		SessionID:   "test-session-to",
+		Isolation:   IsolationNone,
+		TimeLimit:   1, // 1 second — sleep will exceed this
+		SessionRoot: t.TempDir(),
+		BwrapPath:   "/bin/true",
+		Command:     []string{"sleep", "10"},
+	}
+	exec, err := NewExecutor(cfg)
+	if err != nil {
+		t.Fatalf("new executor: %v", err)
+	}
+
+	var outBuf, errBuf bytes.Buffer
+	exec.SetOutput(&outBuf, &errBuf)
+
 	err = exec.RunWithTimeout()
 	if err == nil {
-		t.Fatal("expected error from Run")
+		t.Fatal("expected error for timed-out command")
 	}
-	if !errors.Is(err, ErrNotImplemented) {
-		t.Errorf("expected ErrNotImplemented, got: %v", err)
+	if !errors.Is(err, ErrTimeoutExceeded) {
+		t.Errorf("expected ErrTimeoutExceeded, got: %v", err)
 	}
 }
 

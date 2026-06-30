@@ -110,6 +110,16 @@ func (c *CgroupV2) CgroupPIDPath() string {
 	return filepath.Join(c.Path, "cgroup.procs")
 }
 
+// WritePID writes the sandboxed process PID to cgroup.procs. This must be
+// called after the child process starts so that cgroup resource limits
+// (memory.max, cpu.max) apply to it.
+func (c *CgroupV2) WritePID(pid int) error {
+	if !c.Enabled {
+		return nil
+	}
+	return writeFile(c.CgroupPIDPath(), fmt.Sprintf("%d", pid))
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

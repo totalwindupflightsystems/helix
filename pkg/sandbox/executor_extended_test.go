@@ -14,26 +14,26 @@ import (
 )
 
 // =============================================================================
-// _killProcessGroup tests
+// killProcessGroup tests
 // =============================================================================
 
 // TestKillProcessGroup_NonExistentPID verifies that sending SIGKILL to a
 // non-existent process group returns an error.
 func TestKillProcessGroup_NonExistentPID(t *testing.T) {
 	// PID 999999 is extremely unlikely to exist.
-	err := _killProcessGroup(999999)
+	err := killProcessGroup(999999)
 	if err == nil {
 		t.Fatal("expected error for non-existent PID")
 	}
 }
 
-// TestKillProcessGroup_ChildProcess verifies that _killProcessGroup successfully
+// TestKillProcessGroup_ChildProcess verifies that killProcessGroup successfully
 // kills a child process by its PID. Starts a sleep process, kills it via
-// _killProcessGroup, and verifies the process was terminated by signal.
+// killProcessGroup, and verifies the process was terminated by signal.
 func TestKillProcessGroup_ChildProcess(t *testing.T) {
 	// Start a sleep process as a child.
 	cmd := exec.Command("sleep", "60")
-	// Put the child in its own process group so _killProcessGroup targets only it.
+	// Put the child in its own process group so killProcessGroup targets only it.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start child: %v", err)
@@ -46,9 +46,9 @@ func TestKillProcessGroup_ChildProcess(t *testing.T) {
 	}
 
 	// Kill the process group.
-	err := _killProcessGroup(pid)
+	err := killProcessGroup(pid)
 	if err != nil {
-		t.Fatalf("_killProcessGroup(%d): %v", pid, err)
+		t.Fatalf("killProcessGroup(%d): %v", pid, err)
 	}
 
 	// Wait for the child — it should have been killed.
@@ -73,15 +73,15 @@ func TestKillProcessGroup_ChildProcess(t *testing.T) {
 }
 
 // =============================================================================
-// _findBwrapBinary tests
+// findBwrapBinary tests
 // =============================================================================
 
-// TestFindBwrapBinary_EnvVarSet verifies that _findBwrapBinary returns the
+// TestFindBwrapBinary_EnvVarSet verifies that findBwrapBinary returns the
 // path from HELIX_SANDBOX_BWRAP when it points to an existing binary.
 func TestFindBwrapBinary_EnvVarSet(t *testing.T) {
 	// Use /bin/true which is guaranteed to exist on Linux.
 	t.Setenv("HELIX_SANDBOX_BWRAP", "/bin/true")
-	result := _findBwrapBinary()
+	result := findBwrapBinary()
 	if result != "/bin/true" {
 		t.Errorf("expected /bin/true, got %q", result)
 	}
@@ -94,7 +94,7 @@ func TestFindBwrapBinary_EnvVarSetNonExistent(t *testing.T) {
 	// BwrapBinary is usually "bwrap" which won't be found via pathExists("bwrap")
 	// unless it's in the PATH... actually pathExists doesn't use PATH, it uses
 	// os.Stat directly. So this will return "" unless /usr/bin/bwrap exists.
-	result := _findBwrapBinary()
+	result := findBwrapBinary()
 	// Just verify it's not the env var path.
 	if result == "/nonexistent/path/to/bwrap" {
 		t.Error("should not return nonexistent env var path")
@@ -106,7 +106,7 @@ func TestFindBwrapBinary_EnvVarSetNonExistent(t *testing.T) {
 func TestFindBwrapBinary_AllCandidatesEmpty(t *testing.T) {
 	// Unset HELIX_SANDBOX_BWRAP and rely on BwrapBinary + common paths.
 	_ = os.Unsetenv("HELIX_SANDBOX_BWRAP")
-	result := _findBwrapBinary()
+	result := findBwrapBinary()
 	// We don't know if bwrap is installed — just verify it doesn't panic.
 	// If bwrap IS installed at a common path, result will be that path.
 	// If not, result will be empty.
@@ -119,13 +119,13 @@ func TestFindBwrapBinary_AllCandidatesEmpty(t *testing.T) {
 }
 
 // =============================================================================
-// _ensureBwrapAvailable tests
+// ensureBwrapAvailable tests
 // =============================================================================
 
 // TestEnsureBwrapAvailable_ExistingExecutable verifies that a real executable
 // passes the check.
 func TestEnsureBwrapAvailable_ExistingExecutable(t *testing.T) {
-	err := _ensureBwrapAvailable("/bin/true")
+	err := ensureBwrapAvailable("/bin/true")
 	if err != nil {
 		t.Errorf("expected nil for /bin/true, got: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestEnsureBwrapAvailable_ExistingExecutable(t *testing.T) {
 // TestEnsureBwrapAvailable_NotFound verifies the error path when the binary
 // doesn't exist.
 func TestEnsureBwrapAvailable_NotFound(t *testing.T) {
-	err := _ensureBwrapAvailable("/nonexistent/bwrap_path")
+	err := ensureBwrapAvailable("/nonexistent/bwrap_path")
 	if err == nil {
 		t.Fatal("expected error for nonexistent path")
 	}
@@ -149,7 +149,7 @@ func TestEnsureBwrapAvailable_NotFound(t *testing.T) {
 // TestEnsureBwrapAvailable_IsDirectory verifies the error when the path is a
 // directory instead of a file.
 func TestEnsureBwrapAvailable_IsDirectory(t *testing.T) {
-	err := _ensureBwrapAvailable(t.TempDir())
+	err := ensureBwrapAvailable(t.TempDir())
 	if err == nil {
 		t.Fatal("expected error for directory path")
 	}
@@ -174,7 +174,7 @@ func TestEnsureBwrapAvailable_NotExecutable(t *testing.T) {
 		t.Fatalf("chmod: %v", err)
 	}
 
-	err = _ensureBwrapAvailable(f.Name())
+	err = ensureBwrapAvailable(f.Name())
 	if err == nil {
 		t.Fatal("expected error for non-executable file")
 	}
@@ -187,7 +187,7 @@ func TestEnsureBwrapAvailable_NotExecutable(t *testing.T) {
 }
 
 // =============================================================================
-// _execContext tests
+// execContext tests
 // =============================================================================
 
 // captureStdout runs fn with stdout redirected to a buffer and returns the output.
@@ -209,23 +209,23 @@ func captureStdout(fn func()) string {
 	return <-done
 }
 
-// TestExecContext_Success verifies that _execContext succeeds with /bin/true.
+// TestExecContext_Success verifies that execContext succeeds with /bin/true.
 func TestExecContext_Success(t *testing.T) {
 	ctx := context.Background()
-	err := _execContext(ctx, "true", "")
+	err := execContext(ctx, "true", "")
 	if err != nil {
 		t.Errorf("expected nil for /bin/true, got: %v", err)
 	}
 }
 
-// TestExecContext_CommandFailed verifies that _execContext returns an error
+// TestExecContext_CommandFailed verifies that execContext returns an error
 // for a command that exits non-zero (e.g., /bin/false or `false`).
 func TestExecContext_CommandFailed(t *testing.T) {
 	ctx := context.Background()
 
 	// Use `false` (shell builtin or /bin/false) which exits 1.
-	// _execContext calls exec.CommandContext which uses os/exec.LookPath.
-	err := _execContext(ctx, "false", "")
+	// execContext calls exec.CommandContext which uses os/exec.LookPath.
+	err := execContext(ctx, "false", "")
 	if err == nil {
 		t.Fatal("expected error for exit code 1")
 	}
@@ -237,11 +237,11 @@ func TestExecContext_CommandFailed(t *testing.T) {
 	}
 }
 
-// TestExecContext_CommandNotFound verifies that _execContext returns an error
+// TestExecContext_CommandNotFound verifies that execContext returns an error
 // for a non-existent command.
 func TestExecContext_CommandNotFound(t *testing.T) {
 	ctx := context.Background()
-	err := _execContext(ctx, "nonexistent-command-xyz-12345", "")
+	err := execContext(ctx, "nonexistent-command-xyz-12345", "")
 	if err == nil {
 		t.Fatal("expected error for nonexistent command")
 	}
@@ -253,7 +253,7 @@ func TestExecContext_CommandNotFound(t *testing.T) {
 	}
 }
 
-// TestExecContext_TimeoutExceeded verifies that _execContext returns
+// TestExecContext_TimeoutExceeded verifies that execContext returns
 // ErrTimeoutExceeded when the context deadline expires.
 func TestExecContext_TimeoutExceeded(t *testing.T) {
 	// Create a context that's already expired.
@@ -263,7 +263,7 @@ func TestExecContext_TimeoutExceeded(t *testing.T) {
 	// Use `sleep 1` — the context is already expired so Start/Wait
 	// behavior depends on whether exec.CommandContext rejects the deadline
 	// immediately.
-	err := _execContext(ctx, "sleep", "10")
+	err := execContext(ctx, "sleep", "10")
 	if err == nil {
 		t.Fatal("expected error for expired context")
 	}
@@ -277,19 +277,19 @@ func TestExecContext_TimeoutExceeded(t *testing.T) {
 }
 
 // =============================================================================
-// _joinPath tests
+// joinPath tests
 // =============================================================================
 
-// TestJoinPath_Single verifies that _joinPath with a single element returns
+// TestJoinPath_Single verifies that joinPath with a single element returns
 // it unchanged (unless it's absolute, which it joins normally).
 func TestJoinPath_Single(t *testing.T) {
-	result := _joinPath("foo")
+	result := joinPath("foo")
 	if result != "foo" {
 		t.Errorf("expected 'foo', got %q", result)
 	}
 }
 
-// TestJoinPath_Multiple verifies that _joinPath joins multiple path elements.
+// TestJoinPath_Multiple verifies that joinPath joins multiple path elements.
 func TestJoinPath_Multiple(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -305,13 +305,13 @@ func TestJoinPath_Multiple(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := _joinPath(tc.elements...)
+			result := joinPath(tc.elements...)
 			expected := filepath.Join(tc.elements...)
 			if result != expected {
-				t.Errorf("_joinPath = %q, filepath.Join = %q", result, expected)
+				t.Errorf("joinPath = %q, filepath.Join = %q", result, expected)
 			}
 			if result != tc.want {
-				t.Errorf("_joinPath = %q, want %q", result, tc.want)
+				t.Errorf("joinPath = %q, want %q", result, tc.want)
 			}
 		})
 	}
@@ -462,7 +462,7 @@ func TestCleanupSessionDir_Verbose(t *testing.T) {
 }
 
 // =============================================================================
-// captureStdout helper (used by _execContext tests above)
+// captureStdout helper (used by execContext tests above)
 // =============================================================================
 var _ = captureStdout // suppress unused warning; helper available for future tests
 
@@ -583,16 +583,265 @@ func TestRun_CgroupSetupWarning(t *testing.T) {
 	}
 	exec.logger = &logBuf
 
-	// Run should log a cgroup warning but still succeed up to ErrNotImplemented.
-	err = exec.Run(context.TODO())
-	if err == nil {
-		t.Fatal("expected error from Run (stub)")
-	}
-	if !errors.Is(err, ErrNotImplemented) {
-		t.Errorf("expected ErrNotImplemented, got: %v", err)
+	// Run should log a cgroup warning but still execute successfully.
+	// IsolationNone mode runs directly on host, cgroup is non-fatal.
+	err = exec.Run(context.Background())
+	if err != nil {
+		t.Fatalf("expected nil error from Run with non-fatal cgroup warning, got: %v", err)
 	}
 	logStr := logBuf.String()
 	if !strings.Contains(logStr, "cgroup setup warning") {
 		t.Errorf("expected cgroup setup warning in log, got: %q", logStr)
+	}
+}
+
+// =============================================================================
+// Real execution tests (bwrap must be installed)
+// =============================================================================
+
+// TestRun_WorkspaceIsolation_RealBwrap tests that Run with workspace isolation
+// actually invokes bubblewrap and runs the command inside the sandbox.
+// This test is skipped if bwrap is not installed.
+func TestRun_WorkspaceIsolation_RealBwrap(t *testing.T) {
+	if _, err := exec.LookPath("bwrap"); err != nil {
+		t.Skip("bwrap not installed — skipping real execution test")
+	}
+
+	cfg := SandboxConfig{
+		SessionID:   "test-real-bwrap",
+		Isolation:   IsolationWorkspace,
+		Workdir:     "/workspace",
+		SessionRoot: t.TempDir(),
+		BwrapPath:   "/usr/bin/bwrap",
+		Command:     []string{"/bin/echo", "hello-from-sandbox"},
+	}
+
+	exec, err := NewExecutor(cfg)
+	if err != nil {
+		t.Fatalf("new executor: %v", err)
+	}
+
+	var outBuf, errBuf bytes.Buffer
+	exec.SetOutput(&outBuf, &errBuf)
+
+	err = exec.Run(context.Background())
+	if err != nil {
+		t.Fatalf("expected nil error from real bwrap execution, got: %v", err)
+	}
+
+	if !strings.Contains(outBuf.String(), "hello-from-sandbox") {
+		t.Errorf("expected 'hello-from-sandbox' in stdout, got: %q", outBuf.String())
+	}
+}
+
+// TestRun_WorkspaceIsolation_BwrapNotFound tests that Run returns
+// ErrBwrapNotFound when the bwrap binary doesn't exist.
+func TestRun_WorkspaceIsolation_BwrapNotFound(t *testing.T) {
+	cfg := SandboxConfig{
+		SessionID:   "test-no-bwrap",
+		Isolation:   IsolationWorkspace,
+		Workdir:     "/workspace",
+		SessionRoot: t.TempDir(),
+		BwrapPath:   "/nonexistent/bwrap-binary-xyz",
+		Command:     []string{"echo", "test"},
+	}
+
+	exec, err := NewExecutor(cfg)
+	if err != nil {
+		t.Fatalf("new executor: %v", err)
+	}
+
+	var outBuf, errBuf bytes.Buffer
+	exec.SetOutput(&outBuf, &errBuf)
+
+	err = exec.Run(context.Background())
+	if err == nil {
+		t.Fatal("expected error for missing bwrap binary")
+	}
+	if !errors.Is(err, ErrBwrapNotFound) {
+		t.Errorf("expected ErrBwrapNotFound, got: %v", err)
+	}
+}
+
+// TestRun_IsolationNone_NoCommand tests that runDirect returns
+// ErrConfigInvalid when no command is specified.
+func TestRun_IsolationNone_NoCommand(t *testing.T) {
+	cfg := SandboxConfig{
+		SessionID:   "test-no-cmd",
+		Isolation:   IsolationNone,
+		SessionRoot: t.TempDir(),
+		BwrapPath:   "/bin/true",
+		Command:     []string{},
+	}
+
+	exec, err := NewExecutor(cfg)
+	if err != nil {
+		t.Fatalf("new executor: %v", err)
+	}
+
+	var outBuf, errBuf bytes.Buffer
+	exec.SetOutput(&outBuf, &errBuf)
+
+	err = exec.Run(context.Background())
+	if err == nil {
+		t.Fatal("expected error for empty command in IsolationNone")
+	}
+	if !errors.Is(err, ErrConfigInvalid) {
+		t.Errorf("expected ErrConfigInvalid, got: %v", err)
+	}
+}
+
+// TestRun_IsolationNone_CommandNotFound tests that runDirect returns
+// ErrExecutionFailed for a nonexistent command.
+func TestRun_IsolationNone_CommandNotFound(t *testing.T) {
+	cfg := SandboxConfig{
+		SessionID:   "test-bad-cmd",
+		Isolation:   IsolationNone,
+		SessionRoot: t.TempDir(),
+		BwrapPath:   "/bin/true",
+		Command:     []string{"nonexistent-binary-xyz-12345"},
+	}
+
+	exec, err := NewExecutor(cfg)
+	if err != nil {
+		t.Fatalf("new executor: %v", err)
+	}
+
+	var outBuf, errBuf bytes.Buffer
+	exec.SetOutput(&outBuf, &errBuf)
+
+	err = exec.Run(context.Background())
+	if err == nil {
+		t.Fatal("expected error for nonexistent command")
+	}
+	if !errors.Is(err, ErrExecutionFailed) {
+		t.Errorf("expected ErrExecutionFailed, got: %v", err)
+	}
+}
+
+// TestRun_SessionDirCleanup verifies that the session directory is cleaned up
+// after Run completes (even on failure).
+func TestRun_SessionDirCleanup(t *testing.T) {
+	tmpRoot := t.TempDir()
+	cfg := SandboxConfig{
+		SessionID:   "test-cleanup",
+		Isolation:   IsolationNone,
+		SessionRoot: tmpRoot,
+		BwrapPath:   "/bin/true",
+		Command:     []string{"true"},
+	}
+
+	exec, err := NewExecutor(cfg)
+	if err != nil {
+		t.Fatalf("new executor: %v", err)
+	}
+
+	var outBuf, errBuf bytes.Buffer
+	exec.SetOutput(&outBuf, &errBuf)
+
+	sessionDir := cfg.SessionDir()
+
+	err = exec.Run(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if pathExists(sessionDir) {
+		t.Errorf("session dir %q should have been cleaned up", sessionDir)
+	}
+}
+
+// =============================================================================
+// CgroupV2.WritePID tests
+// =============================================================================
+
+// TestCgroupV2_WritePID_NotEnabled tests that WritePID is a no-op when the
+// cgroup is not enabled.
+func TestCgroupV2_WritePID_NotEnabled(t *testing.T) {
+	cfg := SandboxConfig{
+		SessionID:  "test-pid-noenabled",
+		CgroupRoot: "/nonexistent-cgroup-root",
+	}
+	cg := NewCgroup(cfg)
+	// Enabled is false by default (Setup not called)
+	err := cg.WritePID(12345)
+	if err != nil {
+		t.Errorf("expected nil error when cgroup not enabled, got: %v", err)
+	}
+}
+
+// TestCgroupV2_WritePID_WithFakeRoot tests WritePID with a fake cgroup
+// filesystem where Setup succeeds.
+func TestCgroupV2_WritePID_WithFakeRoot(t *testing.T) {
+	fakeRoot := t.TempDir()
+	helixDir := filepath.Join(fakeRoot, "helix")
+	if err := os.MkdirAll(helixDir, 0o755); err != nil {
+		t.Fatalf("mkdir helixDir: %v", err)
+	}
+
+	// Create a writable subdirectory to simulate a cgroup that we can write to.
+	sessionCgroup := filepath.Join(helixDir, "test-pid-session")
+	if err := os.MkdirAll(sessionCgroup, 0o755); err != nil {
+		t.Fatalf("mkdir sessionCgroup: %v", err)
+	}
+
+	cfg := SandboxConfig{
+		SessionID:  "test-pid-session",
+		CgroupRoot: fakeRoot,
+	}
+	cg := NewCgroup(cfg)
+
+	// Manually set up the cgroup path and enable it.
+	cg.Path = sessionCgroup
+	cg.Enabled = true
+
+	// Write PID.
+	err := cg.WritePID(99999)
+	if err != nil {
+		t.Fatalf("WritePID failed: %v", err)
+	}
+
+	// Verify the PID was written.
+	procsPath := filepath.Join(sessionCgroup, "cgroup.procs")
+	data, err := os.ReadFile(procsPath)
+	if err != nil {
+		t.Fatalf("ReadFile procs: %v", err)
+	}
+	if strings.TrimSpace(string(data)) != "99999" {
+		t.Errorf("expected PID '99999' in cgroup.procs, got: %q", string(data))
+	}
+}
+
+// =============================================================================
+// findBwrapBinary tests (real search)
+// =============================================================================
+
+// TestFindBwrapBinary_RealBinary tests that findBwrapBinary locates the
+// installed bwrap binary.
+func TestFindBwrapBinary_RealBinary(t *testing.T) {
+	if _, err := exec.LookPath("bwrap"); err != nil {
+		t.Skip("bwrap not installed")
+	}
+
+	path := findBwrapBinary()
+	if path == "" {
+		t.Fatal("expected non-empty bwrap path, got empty string")
+	}
+	if !pathExists(path) {
+		t.Errorf("findBwrapBinary returned path that doesn't exist: %q", path)
+	}
+}
+
+// TestEnsureBwrapAvailable_RealBinary tests ensureBwrapAvailable with the
+// real bwrap binary.
+func TestEnsureBwrapAvailable_RealBinary(t *testing.T) {
+	if _, err := exec.LookPath("bwrap"); err != nil {
+		t.Skip("bwrap not installed")
+	}
+
+	path := findBwrapBinary()
+	err := ensureBwrapAvailable(path)
+	if err != nil {
+		t.Errorf("expected nil error for real bwrap at %q, got: %v", path, err)
 	}
 }

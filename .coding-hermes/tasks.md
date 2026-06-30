@@ -107,6 +107,15 @@
 - **Spec:** specs/deployment.md §5
 - **Result:** [x] 3 workflow files created: gitreins.yaml (Tier 1 on push, Tier 2 on PR), chimera-review.yaml (multi-model PR review with fallback), promptfoo.yaml (prompt regression tests on prompt changes). All reference correct service URLs from deployment.md §3.
 
+## [x] Wire real bwrap execution in sandbox executor — pkg/sandbox/
+- **Priority:** high
+- **Spec:** specs/sandbox.md §12 (Implementation Status → Wiring the Real Execution)
+- **Model:** direct write — Go package, bwrap IS installed at /usr/bin/bwrap
+- **Files:** pkg/sandbox/executor.go, pkg/sandbox/executor_test.go, pkg/sandbox/executor_extended_test.go
+- **AC:** `go build ./... && go test ./pkg/sandbox/... -count=1 -cover` passes with >80% coverage
+- **Logic:** Replace ErrNotImplemented stub in Run() with real bwrap invocation. Handle IsolationNone (direct exec), workspace/full (bwrap args). Context-aware timeout enforcement. Process group management for clean SIGKILL on timeout. Defer chain for session dir + cgroup cleanup. Promote underscore-prefixed helpers to real functions.
+- **Result:** [x] Run() now executes real bwrap for workspace/full isolation, runs directly for IsolationNone. Added WritePID to CgroupV2 for PID→cgroup.procs wiring. Promoted 5 underscore-prefixed helpers to real functions. 11 new tests covering real bwrap execution, timeout enforcement, session cleanup, WritePID, bwrap-not-found, empty-command, and binary discovery. 93.8% coverage (up from 92.5%). Full suite 24/24 pass.
+
 ## [ ] Wire dispatcher to Forgejo — agent spawn pipeline
 - **Priority:** critical
 - **Spec:** specs/dispatcher.md + specs/agent-identity.md

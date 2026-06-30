@@ -17,10 +17,10 @@ import (
 // ---------------------------------------------------------------------------
 
 // BwrapExecutor builds the bubblewrap command line from a SandboxConfig and
-// MountSpec, then executes it (or prints it for dry-run). The actual bwrap
-// invocation is stubbed via ErrNotImplemented for the real-execution path in
-// this deliverable; however, dry-run mode, command construction, session
-// directory setup, and cgroup wiring are fully implemented.
+// MountSpec, then executes it (or prints it for dry-run). For IsolationNone,
+// the command runs directly on the host. For workspace and full isolation,
+// the command runs inside a bubblewrap container with namespace isolation,
+// cgroup resource limits, and context-aware timeout enforcement.
 type BwrapExecutor struct {
 	Config SandboxConfig
 	Spec   *MountSpec
@@ -252,34 +252,34 @@ func (e *BwrapExecutor) DryRun() error {
 }
 
 // ---------------------------------------------------------------------------
-// Execution (STUBBED)
+// Execution
 // ---------------------------------------------------------------------------
 
-// Run executes the sandbox command. In this deliverable, the actual bwrap
-// invocation is stubbed: it returns ErrNotImplemented after performing all
-// setup steps (session dir creation, cgroup wiring, dry-run output).
+// Run executes the sandbox command. For IsolationNone the command runs
+// directly on the host. For workspace and full isolation the command runs
+// inside a bubblewrap container.
 //
-// The full implementation would:
+// The full lifecycle is:
 //  1. Create session directories (SetupSessionDir)
 //  2. Set up cgroup v2 limits (CgroupV2.Setup)
-//  3. Build the bwrap command (BwrapArgs)
+//  3. Build the bwrap command (BwrapArgs) — or run directly for IsolationNone
 //  4. Start the process with a context timeout
 //  5. Forward stdin/stdout/stderr
-//  6. Wait for completion, enforcing the time limit
-//  7. Clean up session dir and cgroup
-//
-// Returns ErrNotImplemented in all cases.
+//  6. Write the sandbox PID to cgroup.procs (when cgroup is enabled)
+//  7. Wait for completion, enforcing the time limit
+//  8. Clean up session dir and cgroup (deferred)
 func (e *BwrapExecutor) Run(ctx context.Context) error {
 	if e.Config.DryRun {
 		return e.DryRun()
 	}
 
-	// Perform real setup so the dry-run path and the stub path exercise the
-	// same code.
 	if err := e.SetupSessionDir(); err != nil {
 		_ = e.CleanupSessionDir()
 		return err
 	}
+
+	// Defer session dir cleanup — runs after cgroup cleanup.
+	defer func() { _ = e.CleanupSessionDir() }()
 
 	cg := NewCgroup(e.Config)
 	if err := cg.Setup(); err != nil {
@@ -290,15 +290,86 @@ func (e *BwrapExecutor) Run(ctx context.Context) error {
 	}
 	defer func() { _ = cg.Cleanup() }()
 
-	// Verify bwrap exists.
-	if !pathExists(e.Config.BwrapPath) {
-		_ = e.CleanupSessionDir()
-		return fmt.Errorf("%w: %s", ErrBwrapNotFound, e.Config.BwrapPath)
+	// --- IsolationNone: run directly on the host ---
+	if e.Config.Isolation == IsolationNone {
+		return e.runDirect(ctx)
 	}
 
-	// --- STUB: real execution is not implemented in this deliverable ---
-	_ = e.CleanupSessionDir()
-	return fmt.Errorf("%w: bwrap execution", ErrNotImplemented)
+	// --- workspace / full: execute via bubblewrap ---
+
+	// Verify bwrap exists and is executable.
+	if err := ensureBwrapAvailable(e.Config.BwrapPath); err != nil {
+		return err
+	}
+
+	bwrapArgs, err := e.BwrapArgs()
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.CommandContext(ctx, e.Config.BwrapPath, bwrapArgs...)
+	cmd.Stdout = e.stdout
+	cmd.Stderr = e.stderr
+	cmd.Stdin = os.Stdin
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setpgid: true, // Put the child in its own process group for timeout kill.
+	}
+
+	if e.Config.Verbose {
+		fmt.Fprintf(e.logger, "[sandbox] executing: %s\n",
+			shellEscape(append([]string{e.Config.BwrapPath}, bwrapArgs...)))
+	}
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("%w: %v", ErrExecutionFailed, err)
+	}
+
+	// Write the PID to the cgroup so resource limits apply to the sandbox.
+	if cg.Enabled {
+		if err := cg.WritePID(cmd.Process.Pid); err != nil {
+			if e.Config.Verbose {
+				fmt.Fprintf(e.logger, "[sandbox] cgroup PID write warning: %v\n", err)
+			}
+			// Non-fatal — the sandbox runs without cgroup enforcement.
+		}
+	}
+
+	if err := cmd.Wait(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			_ = killProcessGroup(cmd.Process.Pid)
+			return ErrTimeoutExceeded
+		}
+		return fmt.Errorf("%w: %v", ErrExecutionFailed, err)
+	}
+
+	return nil
+}
+
+// runDirect executes the command directly on the host (IsolationNone).
+func (e *BwrapExecutor) runDirect(ctx context.Context) error {
+	if len(e.Config.Command) == 0 {
+		return fmt.Errorf("%w: no command specified", ErrConfigInvalid)
+	}
+
+	cmd := exec.CommandContext(ctx, e.Config.Command[0], e.Config.Command[1:]...)
+	cmd.Stdout = e.stdout
+	cmd.Stderr = e.stderr
+	cmd.Stdin = os.Stdin
+	cmd.Dir = e.Config.WorkspaceDir()
+
+	if e.Config.Verbose {
+		fmt.Fprintf(e.logger, "[sandbox] direct exec: %s\n",
+			shellEscape(e.Config.Command))
+	}
+
+	if err := cmd.Run(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return ErrTimeoutExceeded
+		}
+		return fmt.Errorf("%w: %v", ErrExecutionFailed, err)
+	}
+
+	return nil
 }
 
 // RunWithTimeout is a convenience wrapper that applies the configured time
@@ -347,28 +418,19 @@ func needsQuoting(arg string) bool {
 }
 
 // ---------------------------------------------------------------------------
-// Unused but referenced for future implementation
+// Process and binary helpers
 // ---------------------------------------------------------------------------
 
-// _unusedRefs suppresses "unused" lint warnings for functions that are
-// intentionally kept for the full Bubblewrap implementation (Phase 2+).
-var _ = []func(any) error{
-	func(x any) error { return _killProcessGroup(0) },
-}
-var _ = _findBwrapBinary
-var _ = func(p string) error { return _ensureBwrapAvailable(p) }
-var _ = func(ctx context.Context, n string, a ...string) error { return _execContext(ctx, n, a...) }
-var _ = func(e ...string) string { return _joinPath(e...) }
-
 // killProcessGroup sends SIGKILL to an entire process group. This is the
-// timeout-enforcement mechanism for the full implementation.
-func _killProcessGroup(pid int) error {
+// timeout-enforcement mechanism: when the context deadline fires we kill
+// the entire process group so that no child processes survive.
+func killProcessGroup(pid int) error {
 	// Negative PID kills the entire process group.
 	return syscall.Kill(-pid, syscall.SIGKILL)
 }
 
 // findBwrapBinary searches for the bubblewrap binary at common locations.
-func _findBwrapBinary() string {
+func findBwrapBinary() string {
 	candidates := []string{
 		os.Getenv("HELIX_SANDBOX_BWRAP"),
 		BwrapBinary,
@@ -384,7 +446,7 @@ func _findBwrapBinary() string {
 }
 
 // ensureBwrapAvailable checks that the bwrap binary exists and is executable.
-func _ensureBwrapAvailable(path string) error {
+func ensureBwrapAvailable(path string) error {
 	info, err := os.Stat(path)
 	if err != nil {
 		return fmt.Errorf("%w: %s (%v)", ErrBwrapNotFound, path, err)
@@ -398,9 +460,16 @@ func _ensureBwrapAvailable(path string) error {
 	return nil
 }
 
-// execContext is the real execution function (unexported, for future wiring).
-// It starts the command, waits with the context, and handles timeout.
-func _execContext(ctx context.Context, name string, args ...string) error {
+// joinPath is a convenience to avoid importing filepath in multiple files.
+func joinPath(elem ...string) string {
+	return filepath.Join(elem...)
+}
+
+// execContext starts a command with the given context, forwards stdio, and
+// handles timeout enforcement via process group SIGKILL. It is the core
+// execution primitive used by Run for bwrap invocation, and is also tested
+// directly for timeout/failure paths.
+func execContext(ctx context.Context, name string, args ...string) error {
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -415,16 +484,11 @@ func _execContext(ctx context.Context, name string, args ...string) error {
 
 	if err := cmd.Wait(); err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			_ = _killProcessGroup(cmd.Process.Pid)
+			_ = killProcessGroup(cmd.Process.Pid)
 			return ErrTimeoutExceeded
 		}
 		return fmt.Errorf("%w: %v", ErrExecutionFailed, err)
 	}
 
 	return nil
-}
-
-// joinPath is a convenience to avoid importing filepath in multiple files.
-func _joinPath(elem ...string) string {
-	return filepath.Join(elem...)
 }
