@@ -597,7 +597,7 @@ func TestLongRunningMonitor_GetLastReport(t *testing.T) {
 	m.Analyze("agent-1", summaries)
 	report := m.GetLastReport("agent-1")
 	if report == nil {
-		t.Error("expected last report, got nil")
+		t.Fatal("expected last report, got nil")
 	}
 	if report.AgentID != "agent-1" {
 		t.Errorf("expected agent-1, got %s", report.AgentID)

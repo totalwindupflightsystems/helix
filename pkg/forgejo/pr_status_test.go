@@ -159,6 +159,7 @@ func TestPostReviewComment_Approve(t *testing.T) {
 		body, _ := io.ReadAll(r.Body)
 		capturedBody = string(body)
 		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("{}"))
 	})
 
 	mgr := NewPRStatusManager(client)
@@ -210,7 +211,7 @@ func TestPostReviewComment_RequestChanges(t *testing.T) {
 func TestPostReviewComment_APIError(t *testing.T) {
 	client := makeMockClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("internal error"))
+		_, _ = w.Write([]byte("internal error"))
 	})
 
 	mgr := NewPRStatusManager(client)
@@ -272,7 +273,9 @@ func TestPostReviewStatus_Approve(t *testing.T) {
 	}
 
 	var status CommitStatus
-	json.Unmarshal([]byte(capturedBody), &status)
+	if err := json.Unmarshal([]byte(capturedBody), &status); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
 	if status.State != StatusStateSuccess {
 		t.Errorf("expected success for APPROVE, got %s", status.State)
 	}
@@ -293,7 +296,9 @@ func TestPostReviewStatus_Reject(t *testing.T) {
 	}
 
 	var status CommitStatus
-	json.Unmarshal([]byte(capturedBody), &status)
+	if err := json.Unmarshal([]byte(capturedBody), &status); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
 	if status.State != StatusStateFailure {
 		t.Errorf("expected failure for REJECT, got %s", status.State)
 	}
@@ -314,7 +319,9 @@ func TestPostReviewStatus_RequestChanges(t *testing.T) {
 	}
 
 	var status CommitStatus
-	json.Unmarshal([]byte(capturedBody), &status)
+	if err := json.Unmarshal([]byte(capturedBody), &status); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
 	if status.State != StatusStateWarning {
 		t.Errorf("expected warning for REQUEST_CHANGES, got %s", status.State)
 	}
@@ -340,7 +347,9 @@ func TestPostDeploymentStatus_Canary(t *testing.T) {
 	}
 
 	var status CommitStatus
-	json.Unmarshal([]byte(capturedBody), &status)
+	if err := json.Unmarshal([]byte(capturedBody), &status); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
 	if status.State != StatusStatePending {
 		t.Errorf("expected pending for canary, got %s", status.State)
 	}
@@ -366,7 +375,9 @@ func TestPostDeploymentStatus_Promoted(t *testing.T) {
 	}
 
 	var status CommitStatus
-	json.Unmarshal([]byte(capturedBody), &status)
+	if err := json.Unmarshal([]byte(capturedBody), &status); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
 	if status.State != StatusStateSuccess {
 		t.Errorf("expected success for promoted, got %s", status.State)
 	}
@@ -390,7 +401,9 @@ func TestPostDeploymentStatus_RolledBack(t *testing.T) {
 	}
 
 	var status CommitStatus
-	json.Unmarshal([]byte(capturedBody), &status)
+	if err := json.Unmarshal([]byte(capturedBody), &status); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
 	if status.State != StatusStateError {
 		t.Errorf("expected error for rolled_back, got %s", status.State)
 	}
@@ -416,7 +429,9 @@ func TestPostDeploymentStatus_CanaryWithBreaches(t *testing.T) {
 	}
 
 	var status CommitStatus
-	json.Unmarshal([]byte(capturedBody), &status)
+	if err := json.Unmarshal([]byte(capturedBody), &status); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
 	if status.State != StatusStateWarning {
 		t.Errorf("expected warning for canary with breaches, got %s", status.State)
 	}
@@ -587,7 +602,9 @@ func TestPostDeploymentComment(t *testing.T) {
 	}
 
 	var req CreatePRReviewRequest
-	json.Unmarshal([]byte(capturedBody), &req)
+	if err := json.Unmarshal([]byte(capturedBody), &req); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
 	if req.Event != "COMMENT" {
 		t.Errorf("expected COMMENT event, got %s", req.Event)
 	}
@@ -717,7 +734,7 @@ func TestPostReviewComment_RoundTrip(t *testing.T) {
 		body, _ := io.ReadAll(r.Body)
 		postedBody = string(body)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("{}"))
+		_, _ = w.Write([]byte("{}"))
 	})
 
 	mgr := NewPRStatusManager(client)
@@ -764,7 +781,9 @@ func TestPostReviewStatus_Description(t *testing.T) {
 	}
 
 	var status CommitStatus
-	json.Unmarshal([]byte(capturedBody), &status)
+	if err := json.Unmarshal([]byte(capturedBody), &status); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
 	if !strings.Contains(status.Description, "APPROVE") {
 		t.Errorf("expected APPROVE in description, got %s", status.Description)
 	}
@@ -776,7 +795,7 @@ func TestPostReviewStatus_Description(t *testing.T) {
 func TestPostCommitStatus_APIError(t *testing.T) {
 	client := makeMockClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte("forbidden"))
+		_, _ = w.Write([]byte("forbidden"))
 	})
 
 	mgr := NewPRStatusManager(client)
