@@ -524,3 +524,27 @@
 - **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
 - **Logic:** QueryHistory scans the negotiations directory for JSONL debate transcripts, replays each via existing ReplayTranscript, and returns matching HistoryEntry items. Filters: by agent name, PR number, outcome, time range (Since/Until), and result limit. Results sorted by StartedAt descending (most recent first). FormatHistory renders a human-readable table for CLI output. Skips non-JSONL files (verdict.md, state.json) and malformed transcripts.
 - **Result:** [x] 17 tests, 97.3% pkg/negotiate coverage. Filters for agent/PR/outcome/time-range all verified. Sorted descending. Malformed transcripts skipped gracefully. Full suite 24/24 pass.
+
+## [ ] Implement budget period reset manager — pkg/estimate/
+- **Priority:** medium
+- **Spec:** specs/cost-estimator.md §8.3 (Budget Period Management)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/estimate/period.go (NEW), pkg/estimate/period_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/estimate/... -count=1 -cover` passes with >85% coverage
+- **Logic:** PeriodManager for weekly budget period management per spec §8.3. Period: Sunday 00:00 UTC to Saturday 23:59:59 UTC. ResetBudgets sets budget_used_usd = 0 for all agents. NextReset returns time until next Sunday 00:00 UTC. IsInPeriod checks if a timestamp falls in the current period. CanRollover always returns false in v1 (spec: no rollover). ResetAgent resets a single agent's budget. ResetAgentList resets multiple agents in batch. ShouldResetAlert returns true when within 1 hour of reset (cron trigger window).
+
+## [ ] Implement estimation drift tracker — pkg/estimate/
+- **Priority:** medium
+- **Spec:** specs/cost-estimator.md §8.2 (Post-Execution Reconciliation) + §9.2 (Reconciliation Strategy)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/estimate/drift.go (NEW), pkg/estimate/drift_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/estimate/... -count=1 -cover` passes with >85% coverage
+- **Logic:** DriftTracker logs estimation drift per spec §8.2 step 4. RecordDrift(agent, estimated, actual) stores an entry with timestamp. DriftReport returns {agent, count, avg_drift_pct, max_drift, recent_entries}. IsOverThreshold returns true when avg drift > 10% per spec §9.2. ExportDriftLog writes all entries as JSONL. Integrates with existing Calibrator — feeds calibration records weekly.
+
+## [ ] Implement marketplace agent auto-deprecation time-window enforcement — pkg/marketplace/
+- **Priority:** medium
+- **Spec:** specs/agent-marketplace.md §10.2 (Auto-Deprecation Rules)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/marketplace/lifecycle.go (extend), pkg/marketplace/lifecycle_extended_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/marketplace/... -count=1 -cover` passes with >85% coverage
+- **Logic:** Replace stub proxies in AutoDeprecationRules with spec-compliant time-window checks. Rule 1: trust < 20 for 30 consecutive days (track trust_dropped_at timestamp). Rule 2: no completed tasks in 90 days (track last_task_completed_at). Rule 3: budget exhausted for 14 consecutive days (track budget_exhausted_at). Add AgentHistory struct with these timestamps to Agent. ShouldAutoDeprecate evaluates a single agent against all 3 rules with proper time windows. Reactivate auto-check per §10.3: trust > 20 for 7 days → auto-reactivation candidate.
