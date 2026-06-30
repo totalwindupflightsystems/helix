@@ -606,13 +606,14 @@
 - **Logic:** WebhookHandler receives Forgejo webhook events (PR opened, PR updated, push, review submitted) and dispatches them to the appropriate handler. ParseWebhook extracts event type + payload. HandlePROpened triggers the review pipeline. HandleReviewSubmitted checks consensus. Each handler returns a WebhookResult (processed/skipped/error). HMAC signature verification for webhook authenticity. Event type routing table.
 - **Result:** [x] 44 tests, 95.7% coverage. WebhookHandler with HMAC-SHA256 signature verification (Forgejo + Gitea header support). EventHandler interface with 5 callbacks. ParsePRInfo/ParsePushInfo/ParseReviewInfo for structured payload extraction. Action-based dispatch (opened/reopened→OnPROpened, closed→OnPRClosed, other→OnPRUpdated). NoOpHandler default. Full suite 25/25 pass. Lint clean.
 
-## [ ] Implement platform health aggregation dashboard — pkg/health/
+## [x] Implement platform health aggregation dashboard — pkg/health/
 - **Priority:** medium
 - **Spec:** specs/cross-component-wiring.md §8 (Health Checks) + specs/deployment.md §4.3 (Fail Fast)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/health/aggregator.go (NEW), pkg/health/aggregator_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/health/... -count=1 -cover` passes with >80% coverage
 - **Logic:** PlatformHealthAggregator collects health status from all Helix subsystems (trust, review, negotiate, verify, marketplace, estimate, sandbox) and produces a unified dashboard report. Each subsystem reports its own health status (healthy/degraded/down) with optional metrics. Aggregator runs periodic checks, caches results with TTL, and exposes a JSON dashboard endpoint. Includes degradation detection: if any critical subsystem is down, the entire platform is marked degraded. Used by CLI `helix status` to show platform health at a glance.
+- **Result:** [x] 55 tests, 99.0% pkg/health coverage. PlatformHealthAggregator with SubsystemHealth interface (each subsystem implements HealthCheck). Concurrent health checks with TTL-based caching (15s default). DashboardReport with overall state (healthy/degraded/down) computed from critical/non-critical subsystem states. FormatDashboard for CLI output. ServiceHealthAdapter bridges existing Checker-based checks. Full suite 25/25 pass. Lint clean.
 
 ## [ ] Implement sandbox resource usage tracker — pkg/sandbox/
 - **Priority:** medium
