@@ -444,13 +444,14 @@
 - **Logic:** SteadyStateAggregator runs continuous behavior contract checks on deployed agents. Aggregates metrics from multiple sources (success rate, latency, error types), evaluates contracts periodically, and emits surveillance events. LongRunningMonitor detects gradual degradation over 7-day windows. AlertEscalation triggers when sustained drift exceeds thresholds. Integrates with existing DriftDetector, BehaviorContract, and NotificationDispatcher.
 - **Result:** [x] 68 tests, 94.8% pkg/verify coverage. SteadyStateAggregator with multi-agent surveillance. LongRunningMonitor with daily summary aggregation and 4-metric degradation analysis (success rate, P99 latency, error rate, memory). AlertEscalation with 4 levels (none→notify→investigate→rollback) and sustained drift tracking. Full lifecycle: healthy→breach→recovery. NotificationDispatcher integration. Full suite 24/24 pass.
 
-## [ ] Implement marketplace search ranking algorithm — pkg/marketplace/
+## [x] Implement marketplace search ranking algorithm — pkg/marketplace/
 - **Priority:** medium
 - **Spec:** specs/agent-marketplace.md §Discovery (search + ranking)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/marketplace/search.go (NEW), pkg/marketplace/search_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/marketplace/... -count=1 -cover` passes with >85% coverage
 - **Logic:** SearchRanker computes a relevance score for each agent listing given a SearchQuery. Ranking factors: trust score (primary sort dimension per spec), capability match (keyword + tag overlap), performance metrics (merge success rate, avg review time), human ratings, cost-effectiveness. Return ranked AgentListing slice. Supports filtering by trust tier minimum, max cost, and capability tags.
+- **Result:** [x] 52 tests, 96.3% pkg/marketplace coverage. SearchRanker with 5-factor composite scoring (trust 35%, capability 25%, performance 15%, rating 15%, cost 10%). Filter by capabilities (ALL must match), min trust, max cost. TextSearch for keyword/name/capability fuzzy matching. Custom weight override via WithSearchWeights. Full suite 24/24 pass.
 
 ## [ ] Implement Forgejo PR status integration — pkg/forgejo/
 - **Priority:** medium
