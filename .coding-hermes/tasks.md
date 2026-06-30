@@ -588,13 +588,14 @@
 - **Logic:** PRLifecycleCoordinator orchestrates the full PR lifecycle: PR opened → cost estimate (pkg/estimate) → adversarial review (pkg/review) → PR negotiation if contested (pkg/negotiate) → merge gate validation (pkg/mergegate) → shadow deployment if approved (pkg/verify) → steady-state surveillance (pkg/verify). Coordinator holds references to each subsystem and calls them in sequence. Returns PRLifecycleResult with per-stage status. Handles failures gracefully (each stage can fail independently without crashing the pipeline).
 - **Result:** [x] 57 tests, 89.6% coverage. 6-stage lifecycle pipeline: cost estimate, adversarial review, negotiation (contested PRs), merge gate, shadow deploy, steady-state surveillance. PRLifecycleCoordinator with WithStages() for selective execution. LifecycleResult with StageByName/HasStage/AllPassed/HasFailure/Summary. Short-circuit on failure (REJECTED) or escalation (ESCALATED). Full suite 25/25 pass. Lint clean.
 
-## [ ] Implement trust audit runner — pkg/trust/
+## [x] Implement trust audit runner — pkg/trust/
 - **Priority:** medium
 - **Spec:** specs/trust-model.md §The Trust Ledger — "replay the ledger to verify any agent's current score"
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/trust/audit.go (NEW), pkg/trust/audit_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/trust/... -count=1 -cover` passes with >85% coverage
 - **Logic:** TrustAuditRunner performs a full audit of the trust system: (1) replay all JSONL ledger entries for every agent, (2) verify each agent's computed score matches their stored score, (3) detect anomalies (score drift, missing events, corrupted entries), (4) generate an AuditReport with per-agent findings (PASS/FAIL/ANOMALY), (5) flag agents whose tier doesn't match their score. Batch processing for all agents in the ledger. Used by a periodic cron to catch ledger corruption or stale caches.
+- **Result:** [x] 45 tests, 91.2% coverage. TrustAuditRunner with 6 anomaly types (score_drift, tier_mismatch, backwards_score, no_activity, corrupted_entry, missing_events). AuditReport with per-agent findings, summary, FormatReport. Configurable tolerance and inactivity threshold. Full suite 25/25 pass. Lint clean.
 
 ## [ ] Implement Forgejo webhook event handler — pkg/forgejo/
 - **Priority:** medium
