@@ -488,3 +488,21 @@
 - **AC:** `go build ./... && go test ./pkg/forgejo/... -count=1 -cover` passes with >85% coverage
 - **Logic:** PRStatusManager posts review verdicts and deployment status as Forgejo PR comments and commit statuses. PostReviewComment renders Chimera verdict as structured markdown comment. PostCommitStatus sets CI-style status check (success/failure/pending) on commits. PostDeploymentStatus shows canary/shadow progress inline. ParsePRReviews reads existing review comments. Integrates with existing ForgejoClient for REST API calls.
 - **Result:** [x] 60 tests, 94.4% pkg/forgejo coverage. PRStatusManager with PostReviewComment (Chimera verdict → markdown), PostCommitStatus (CI-style checks), PostReviewStatus (verdict → commit state), PostDeploymentStatus (canary/shadow → pending/success/error/warning), PostDeploymentComment (progress bar + breach display). ParsePRReviews extracts structured data from existing Helix review comments. httptest mock servers for all API calls. Full suite 24/24 pass.
+
+## [x] Implement negotiation transcript replay + verdict file writer — pkg/negotiate/
+- **Priority:** high
+- **Spec:** specs/pr-negotiation.md §13 (Filesystem Layout)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/negotiate/transcript.go (NEW), pkg/negotiate/transcript_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
+- **Logic:** ReplayTranscript reads JSONL debate transcripts and returns a TranscriptSummary (agents, rounds, outcome, deadlock/chimera/escalation flags). WriteVerdictFile renders spec §13 `*-verdict.md` markdown summary. WriteStateFile/LoadStateFile manage the `state.json` active negotiation recovery file.
+- **Result:** [x] 18 tests. ReplayTranscript handles: empty, full debate, concession, escalation, blank lines, malformed JSON, agent collection, large buffer. VerdictFile: file creation, filename convention, no-chimera case, nested dir. StateFile: write/load round-trip, not-found. Full suite 24/24 pass.
+
+## [x] Implement dispatcher stale lock recovery — PID liveness check
+- **Priority:** high
+- **Spec:** specs/dispatcher.md — "acquireLock prevents concurrent pipeline runs"
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/dispatcher/loop.go (extend), pkg/dispatcher/loop_test.go (extend)
+- **AC:** `go build ./... && go test ./pkg/dispatcher/... -count=1` passes
+- **Logic:** Replace the "fail fast" lock behavior with PID liveness checking. When a lock file exists, parse the PID, check if the process is alive (signal 0). Dead PID → stale lock, safe to overwrite. Live PID → block. parseLockPID extracts PID from lock file format. isProcessAlive uses syscall.Signal(0) for non-destructive check. Tests updated: live lock uses os.Getpid(), stale lock test added.
+- **Result:** [x] 10 new tests (parseLockPID 8 cases, isProcessAlive 3 scenarios, stale/live acquireLock). Existing lock-held tests updated to use current PID. Full suite 24/24 pass.
