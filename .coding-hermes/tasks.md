@@ -534,13 +534,14 @@
 - **Logic:** PeriodManager for weekly budget period management per spec §8.3. Period: Sunday 00:00 UTC to Saturday 23:59:59 UTC. ResetBudgets sets budget_used_usd = 0 for all agents. NextReset returns time until next Sunday 00:00 UTC. IsInPeriod checks if a timestamp falls in the current period. CanRollover always returns false in v1 (spec: no rollover). ResetAgent resets a single agent's budget. ResetAgentList resets multiple agents in batch. ShouldResetAlert returns true when within 1 hour of reset (cron trigger window).
 - **Result:** [x] 25 tests, 92.9% pkg/estimate coverage. Period boundary tests (Sunday reset, Saturday last second, non-UTC time). Alert window edge cases. Custom reset hour support. ResetBudgets non-mutating. Full suite 24/24 pass.
 
-## [ ] Implement estimation drift tracker — pkg/estimate/
+## [x] Implement estimation drift tracker — pkg/estimate/
 - **Priority:** medium
 - **Spec:** specs/cost-estimator.md §8.2 (Post-Execution Reconciliation) + §9.2 (Reconciliation Strategy)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/estimate/drift.go (NEW), pkg/estimate/drift_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/estimate/... -count=1 -cover` passes with >85% coverage
 - **Logic:** DriftTracker logs estimation drift per spec §8.2 step 4. RecordDrift(agent, estimated, actual) stores an entry with timestamp. DriftReport returns {agent, count, avg_drift_pct, max_drift, recent_entries}. IsOverThreshold returns true when avg drift > 10% per spec §9.2. ExportDriftLog writes all entries as JSONL. Integrates with existing Calibrator — feeds calibration records weekly.
+- **Result:** [x] 29 tests, 94.1% pkg/estimate coverage (up from 92.9%). DriftTracker with RecordDrift/RecordDriftEntry, DriftReport (avg/max/min/recent entries/period), IsOverThreshold (10% per spec §9.2), Count, Clear, ExportDriftLog/ImportDriftLog (JSONL round-trip), FeedCalibrator (drift→CalibrationRecord bridge with cache ratio inference), AgentsWithDrift, FormatDriftReport. Thread-safe with sync.RWMutex. Concurrent test (10 writers × 10 records). Full suite 24/24 pass.
 
 ## [ ] Implement marketplace agent auto-deprecation time-window enforcement — pkg/marketplace/
 - **Priority:** medium
