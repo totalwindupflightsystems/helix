@@ -597,10 +597,11 @@
 - **Logic:** TrustAuditRunner performs a full audit of the trust system: (1) replay all JSONL ledger entries for every agent, (2) verify each agent's computed score matches their stored score, (3) detect anomalies (score drift, missing events, corrupted entries), (4) generate an AuditReport with per-agent findings (PASS/FAIL/ANOMALY), (5) flag agents whose tier doesn't match their score. Batch processing for all agents in the ledger. Used by a periodic cron to catch ledger corruption or stale caches.
 - **Result:** [x] 45 tests, 91.2% coverage. TrustAuditRunner with 6 anomaly types (score_drift, tier_mismatch, backwards_score, no_activity, corrupted_entry, missing_events). AuditReport with per-agent findings, summary, FormatReport. Configurable tolerance and inactivity threshold. Full suite 25/25 pass. Lint clean.
 
-## [ ] Implement Forgejo webhook event handler — pkg/forgejo/
+## [x] Implement Forgejo webhook event handler — pkg/forgejo/
 - **Priority:** medium
 - **Spec:** specs/cross-component-wiring.md §2 (Forgejo as event source)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/forgejo/webhook.go (NEW), pkg/forgejo/webhook_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/forgejo/... -count=1 -cover` passes with >85% coverage
 - **Logic:** WebhookHandler receives Forgejo webhook events (PR opened, PR updated, push, review submitted) and dispatches them to the appropriate handler. ParseWebhook extracts event type + payload. HandlePROpened triggers the review pipeline. HandleReviewSubmitted checks consensus. Each handler returns a WebhookResult (processed/skipped/error). HMAC signature verification for webhook authenticity. Event type routing table.
+- **Result:** [x] 44 tests, 95.7% coverage. WebhookHandler with HMAC-SHA256 signature verification (Forgejo + Gitea header support). EventHandler interface with 5 callbacks. ParsePRInfo/ParsePushInfo/ParseReviewInfo for structured payload extraction. Action-based dispatch (opened/reopened→OnPROpened, closed→OnPRClosed, other→OnPRUpdated). NoOpHandler default. Full suite 25/25 pass. Lint clean.
