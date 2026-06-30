@@ -525,13 +525,14 @@
 - **Logic:** QueryHistory scans the negotiations directory for JSONL debate transcripts, replays each via existing ReplayTranscript, and returns matching HistoryEntry items. Filters: by agent name, PR number, outcome, time range (Since/Until), and result limit. Results sorted by StartedAt descending (most recent first). FormatHistory renders a human-readable table for CLI output. Skips non-JSONL files (verdict.md, state.json) and malformed transcripts.
 - **Result:** [x] 17 tests, 97.3% pkg/negotiate coverage. Filters for agent/PR/outcome/time-range all verified. Sorted descending. Malformed transcripts skipped gracefully. Full suite 24/24 pass.
 
-## [ ] Implement budget period reset manager — pkg/estimate/
+## [x] Implement budget period reset manager — pkg/estimate/
 - **Priority:** medium
 - **Spec:** specs/cost-estimator.md §8.3 (Budget Period Management)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/estimate/period.go (NEW), pkg/estimate/period_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/estimate/... -count=1 -cover` passes with >85% coverage
 - **Logic:** PeriodManager for weekly budget period management per spec §8.3. Period: Sunday 00:00 UTC to Saturday 23:59:59 UTC. ResetBudgets sets budget_used_usd = 0 for all agents. NextReset returns time until next Sunday 00:00 UTC. IsInPeriod checks if a timestamp falls in the current period. CanRollover always returns false in v1 (spec: no rollover). ResetAgent resets a single agent's budget. ResetAgentList resets multiple agents in batch. ShouldResetAlert returns true when within 1 hour of reset (cron trigger window).
+- **Result:** [x] 25 tests, 92.9% pkg/estimate coverage. Period boundary tests (Sunday reset, Saturday last second, non-UTC time). Alert window edge cases. Custom reset hour support. ResetBudgets non-mutating. Full suite 24/24 pass.
 
 ## [ ] Implement estimation drift tracker — pkg/estimate/
 - **Priority:** medium
