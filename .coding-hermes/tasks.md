@@ -543,10 +543,11 @@
 - **Logic:** DriftTracker logs estimation drift per spec §8.2 step 4. RecordDrift(agent, estimated, actual) stores an entry with timestamp. DriftReport returns {agent, count, avg_drift_pct, max_drift, recent_entries}. IsOverThreshold returns true when avg drift > 10% per spec §9.2. ExportDriftLog writes all entries as JSONL. Integrates with existing Calibrator — feeds calibration records weekly.
 - **Result:** [x] 29 tests, 94.1% pkg/estimate coverage (up from 92.9%). DriftTracker with RecordDrift/RecordDriftEntry, DriftReport (avg/max/min/recent entries/period), IsOverThreshold (10% per spec §9.2), Count, Clear, ExportDriftLog/ImportDriftLog (JSONL round-trip), FeedCalibrator (drift→CalibrationRecord bridge with cache ratio inference), AgentsWithDrift, FormatDriftReport. Thread-safe with sync.RWMutex. Concurrent test (10 writers × 10 records). Full suite 24/24 pass.
 
-## [ ] Implement marketplace agent auto-deprecation time-window enforcement — pkg/marketplace/
+## [x] Implement marketplace agent auto-deprecation time-window enforcement — pkg/marketplace/
 - **Priority:** medium
 - **Spec:** specs/agent-marketplace.md §10.2 (Auto-Deprecation Rules)
 - **Model:** direct write — Go package, extend existing
-- **Files:** pkg/marketplace/lifecycle.go (extend), pkg/marketplace/lifecycle_extended_test.go (NEW)
+- **Files:** pkg/marketplace/lifecycle.go (extend), pkg/marketplace/lifecycle_extended_test.go (NEW), pkg/marketplace/types.go (add History field)
 - **AC:** `go build ./... && go test ./pkg/marketplace/... -count=1 -cover` passes with >85% coverage
 - **Logic:** Replace stub proxies in AutoDeprecationRules with spec-compliant time-window checks. Rule 1: trust < 20 for 30 consecutive days (track trust_dropped_at timestamp). Rule 2: no completed tasks in 90 days (track last_task_completed_at). Rule 3: budget exhausted for 14 consecutive days (track budget_exhausted_at). Add AgentHistory struct with these timestamps to Agent. ShouldAutoDeprecate evaluates a single agent against all 3 rules with proper time windows. Reactivate auto-check per §10.3: trust > 20 for 7 days → auto-reactivation candidate.
+- **Result:** [x] 54 tests, 94.5% pkg/marketplace coverage. AgentHistory with 4 lifecycle timestamps. ShouldAutoDeprecate with all 3 spec §10.2 time-window rules + DeprecationDecision/Reason. ShouldReactivate for spec §10.3 (trust recovery 7d + budget replenishment). AutoReactivationRules batch. UpdateTrustHistory/MarkTaskCompleted/UpdateBudgetStatus for daily cron integration. parseTimestamp/daysSince/isBudgetExhausted helpers. Existing lifecycle tests updated to new time-window semantics. Full suite 24/24 pass.

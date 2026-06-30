@@ -5,15 +5,24 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// TestAutoDeprecationRules
+// TestAutoDeprecationRules — spec §10.2 time-window enforcement
 // ---------------------------------------------------------------------------
 
 func TestAutoDeprecationRules(t *testing.T) {
+	// Fixed reference time for deterministic time-window checks.
+	now := parseTimestamp("2026-06-30T12:00:00Z")
+	nowStr := "2026-06-30T12:00:00Z"
+
+	// Helper: N days ago as RFC3339.
+	daysAgo := func(days int) string {
+		return now.AddDate(0, 0, -days).Format("2006-01-02T15:04:05Z")
+	}
+
 	tests := []struct {
 		name    string
 		agents  map[string]*Agent
-		want    []string // expected deprecated names (order-insensitive)
-		wantLen int      // override for len check when ordering varies
+		want    []string
+		wantLen int
 	}{
 		{
 			name:    "no_agents",
@@ -21,85 +30,154 @@ func TestAutoDeprecationRules(t *testing.T) {
 			wantLen: 0,
 		},
 		{
-			name: "rule1_trust_below_20",
+			name: "rule1_trust_below_20_for_30d",
 			agents: map[string]*Agent{
-				"low-trust": {Name: "low-trust", Status: StatusActive, TrustScore: 19},
+				"low-trust": {
+					Name:        "low-trust",
+					Status:      StatusActive,
+					TrustScore:  19,
+					Performance: Performance{TasksCompleted: 1},
+					History:     AgentHistory{TrustDroppedAt: daysAgo(35)},
+				},
 			},
 			want: []string{"low-trust"},
+		},
+		{
+			name: "rule1_trust_below_20_but_not_30d_yet",
+			agents: map[string]*Agent{
+				"recently-low": {
+					Name:        "recently-low",
+					Status:      StatusActive,
+					TrustScore:  19,
+					Performance: Performance{TasksCompleted: 1},
+					History:     AgentHistory{TrustDroppedAt: daysAgo(10)},
+				},
+			},
+			wantLen: 0,
 		},
 		{
 			name: "rule1_trust_at_20_not_deprecated",
 			agents: map[string]*Agent{
 				"borderline": {
-					Name: "borderline", Status: StatusActive, TrustScore: 20,
-					Performance: Performance{TasksCompleted: 1}, // has tasks → Rule 2 won't fire
+					Name:        "borderline",
+					Status:      StatusActive,
+					TrustScore:  20,
+					Performance: Performance{TasksCompleted: 1},
 				},
 			},
 			wantLen: 0,
 		},
 		{
-			name: "rule1_trust_at_19_deprecated",
+			name: "rule1_trust_below_20_no_timestamp_not_deprecated",
 			agents: map[string]*Agent{
-				"barely": {Name: "barely", Status: StatusActive, TrustScore: 19},
+				"low-trust-no-ts": {
+					Name:        "low-trust-no-ts",
+					Status:      StatusActive,
+					TrustScore:  19,
+					Performance: Performance{TasksCompleted: 1},
+				},
 			},
-			want: []string{"barely"},
+			wantLen: 0,
 		},
 		{
-			name: "rule2_no_tasks_and_trust_below_30",
+			name: "rule2_no_tasks_90d",
 			agents: map[string]*Agent{
 				"idle": {
-					Name: "idle", Status: StatusActive, TrustScore: 25,
+					Name:        "idle",
+					Status:      StatusActive,
+					TrustScore:  25,
 					Performance: Performance{TasksCompleted: 0},
+					CreatedAt:   daysAgo(95),
 				},
 			},
 			want: []string{"idle"},
 		},
 		{
-			name: "rule2_no_tasks_but_trust_30_not_deprecated",
+			name: "rule2_no_tasks_but_created_recently",
 			agents: map[string]*Agent{
-				"idle-but-trusted": {
-					Name: "idle-but-trusted", Status: StatusActive, TrustScore: 30,
+				"new-agent": {
+					Name:        "new-agent",
+					Status:      StatusActive,
+					TrustScore:  25,
 					Performance: Performance{TasksCompleted: 0},
+					CreatedAt:   daysAgo(30),
 				},
 			},
 			wantLen: 0,
 		},
 		{
-			name: "rule2_has_tasks_low_trust_not_deprecated",
+			name: "rule2_last_task_95d_ago",
 			agents: map[string]*Agent{
-				"busy": {
-					Name: "busy", Status: StatusActive, TrustScore: 25,
-					Performance: Performance{TasksCompleted: 5},
+				"stale-agent": {
+					Name:        "stale-agent",
+					Status:      StatusActive,
+					TrustScore:  50,
+					Performance: Performance{TasksCompleted: 10},
+					History:     AgentHistory{LastTaskCompletedAt: daysAgo(95)},
+				},
+			},
+			want: []string{"stale-agent"},
+		},
+		{
+			name: "rule2_last_task_10d_ago_not_deprecated",
+			agents: map[string]*Agent{
+				"active-agent": {
+					Name:        "active-agent",
+					Status:      StatusActive,
+					TrustScore:  50,
+					Performance: Performance{TasksCompleted: 10},
+					History:     AgentHistory{LastTaskCompletedAt: daysAgo(10)},
 				},
 			},
 			wantLen: 0,
 		},
 		{
-			name: "rule3_budget_exhausted",
+			name: "rule3_budget_exhausted_14d",
 			agents: map[string]*Agent{
 				"overspent": {
-					Name: "overspent", Status: StatusActive, TrustScore: 50,
-					Budget: Budget{WeeklyLimit: 100, AverageTaskCost: 100},
+					Name:       "overspent",
+					Status:     StatusActive,
+					TrustScore: 50,
+					Budget:     Budget{WeeklyLimit: 100, AverageTaskCost: 100},
+					History:    AgentHistory{BudgetExhaustedAt: daysAgo(15)},
 				},
 			},
 			want: []string{"overspent"},
 		},
 		{
-			name: "rule3_budget_exhausted_above_limit",
+			name: "rule3_budget_exhausted_but_only_5d",
 			agents: map[string]*Agent{
-				"way-over": {
-					Name: "way-over", Status: StatusActive, TrustScore: 50,
-					Budget: Budget{WeeklyLimit: 100, AverageTaskCost: 200},
+				"recently-broke": {
+					Name:       "recently-broke",
+					Status:     StatusActive,
+					TrustScore: 50,
+					Budget:     Budget{WeeklyLimit: 100, AverageTaskCost: 100},
+					History:    AgentHistory{BudgetExhaustedAt: daysAgo(5)},
 				},
 			},
-			want: []string{"way-over"},
+			wantLen: 0,
+		},
+		{
+			name: "rule3_budget_exhausted_no_timestamp",
+			agents: map[string]*Agent{
+				"broke-no-ts": {
+					Name:       "broke-no-ts",
+					Status:     StatusActive,
+					TrustScore: 50,
+					Budget:     Budget{WeeklyLimit: 100, AverageTaskCost: 100},
+				},
+			},
+			wantLen: 0,
 		},
 		{
 			name: "rule3_budget_not_exhausted",
 			agents: map[string]*Agent{
 				"under-budget": {
-					Name: "under-budget", Status: StatusActive, TrustScore: 50,
-					Budget: Budget{WeeklyLimit: 100, AverageTaskCost: 50},
+					Name:       "under-budget",
+					Status:     StatusActive,
+					TrustScore: 50,
+					Budget:     Budget{WeeklyLimit: 100, AverageTaskCost: 50},
+					History:    AgentHistory{BudgetExhaustedAt: daysAgo(20)},
 				},
 			},
 			wantLen: 0,
@@ -108,8 +186,10 @@ func TestAutoDeprecationRules(t *testing.T) {
 			name: "rule3_zero_weekly_limit_skipped",
 			agents: map[string]*Agent{
 				"no-limit": {
-					Name: "no-limit", Status: StatusActive, TrustScore: 50,
-					Budget: Budget{WeeklyLimit: 0, AverageTaskCost: 999},
+					Name:       "no-limit",
+					Status:     StatusActive,
+					TrustScore: 50,
+					Budget:     Budget{WeeklyLimit: 0, AverageTaskCost: 999},
 				},
 			},
 			wantLen: 0,
@@ -117,33 +197,65 @@ func TestAutoDeprecationRules(t *testing.T) {
 		{
 			name: "non_active_agents_skipped",
 			agents: map[string]*Agent{
-				"deprecated-trust-10": {Name: "deprecated-trust-10", Status: StatusDeprecated, TrustScore: 10},
-				"retired-trust-5":     {Name: "retired-trust-5", Status: StatusRetired, TrustScore: 5},
+				"deprecated-trust-10": {
+					Name:       "deprecated-trust-10",
+					Status:     StatusDeprecated,
+					TrustScore: 10,
+					History:    AgentHistory{TrustDroppedAt: daysAgo(60)},
+				},
+				"retired-trust-5": {
+					Name:       "retired-trust-5",
+					Status:     StatusRetired,
+					TrustScore: 5,
+					History:    AgentHistory{TrustDroppedAt: daysAgo(60)},
+				},
 			},
 			wantLen: 0,
 		},
 		{
 			name: "multiple_rules_triggered",
 			agents: map[string]*Agent{
-				"trust-10": {
-					Name: "trust-10", Status: StatusActive, TrustScore: 10,
+				"trust-low-30d": {
+					Name:        "trust-low-30d",
+					Status:      StatusActive,
+					TrustScore:  10,
+					Performance: Performance{TasksCompleted: 1},
+					History:     AgentHistory{TrustDroppedAt: daysAgo(35)},
 				},
-				"no-tasks-low-trust": {
-					Name: "no-tasks-low-trust", Status: StatusActive, TrustScore: 20,
+				"no-tasks-90d": {
+					Name:        "no-tasks-90d",
+					Status:      StatusActive,
+					TrustScore:  25,
 					Performance: Performance{TasksCompleted: 0},
+					CreatedAt:   daysAgo(100),
 				},
-				"overspent": {
-					Name: "overspent", Status: StatusActive, TrustScore: 50,
-					Budget: Budget{WeeklyLimit: 50, AverageTaskCost: 100},
+				"overspent-14d": {
+					Name:       "overspent-14d",
+					Status:     StatusActive,
+					TrustScore: 50,
+					Budget:     Budget{WeeklyLimit: 50, AverageTaskCost: 100},
+					History:    AgentHistory{BudgetExhaustedAt: daysAgo(20)},
 				},
-				"fine": {Name: "fine", Status: StatusActive, TrustScore: 80},
+				"fine": {
+					Name:        "fine",
+					Status:      StatusActive,
+					TrustScore:  80,
+					Performance: Performance{TasksCompleted: 10},
+					History:     AgentHistory{LastTaskCompletedAt: daysAgo(1)},
+				},
 			},
-			want: []string{"trust-10", "no-tasks-low-trust", "overspent"},
+			want: []string{"trust-low-30d", "no-tasks-90d", "overspent-14d"},
 		},
 		{
 			name: "status_updated_after_deprecation",
 			agents: map[string]*Agent{
-				"doomed": {Name: "doomed", Status: StatusActive, TrustScore: 10},
+				"doomed": {
+					Name:        "doomed",
+					Status:      StatusActive,
+					TrustScore:  10,
+					Performance: Performance{TasksCompleted: 1},
+					History:     AgentHistory{TrustDroppedAt: daysAgo(40)},
+				},
 			},
 			want: []string{"doomed"},
 		},
@@ -152,9 +264,9 @@ func TestAutoDeprecationRules(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &Registry{agents: tt.agents}
-			got, err := r.AutoDeprecationRules()
+			got, err := r.AutoDeprecationRulesAt(now)
 			if err != nil {
-				t.Fatalf("AutoDeprecationRules() unexpected error: %v", err)
+				t.Fatalf("AutoDeprecationRulesAt() unexpected error: %v", err)
 			}
 
 			expectedLen := len(tt.want)
@@ -167,7 +279,6 @@ func TestAutoDeprecationRules(t *testing.T) {
 				return
 			}
 
-			// Check each expected name appears
 			gotSet := make(map[string]bool, len(got))
 			for _, name := range got {
 				gotSet[name] = true
@@ -178,7 +289,6 @@ func TestAutoDeprecationRules(t *testing.T) {
 				}
 			}
 
-			// Verify deprecated agents have their status and timestamps updated
 			for _, name := range got {
 				a := r.agents[name]
 				if a.Status != StatusDeprecated {
@@ -193,6 +303,7 @@ func TestAutoDeprecationRules(t *testing.T) {
 			}
 		})
 	}
+	_ = nowStr // used in closure
 }
 
 // ---------------------------------------------------------------------------
@@ -205,13 +316,15 @@ func TestReactivate(t *testing.T) {
 		agents  map[string]*Agent
 		target  string
 		wantErr bool
-		errStr  string // substring to match in error
+		errStr  string
 	}{
 		{
 			name: "success_deprecated_to_active",
 			agents: map[string]*Agent{
 				"old-agent": {
-					Name: "old-agent", Status: StatusDeprecated, TrustScore: 40,
+					Name:         "old-agent",
+					Status:       StatusDeprecated,
+					TrustScore:   40,
 					DeprecatedAt: "2026-01-15T00:00:00Z",
 				},
 			},
@@ -267,7 +380,6 @@ func TestReactivate(t *testing.T) {
 				t.Fatalf("Reactivate(%q) unexpected error: %v", tt.target, err)
 			}
 
-			// Verify agent is now active
 			a := r.agents[tt.target]
 			if a.Status != StatusActive {
 				t.Errorf("agent %q status = %q, want %q", tt.target, a.Status, StatusActive)
