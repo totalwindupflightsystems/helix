@@ -506,3 +506,12 @@
 - **AC:** `go build ./... && go test ./pkg/dispatcher/... -count=1` passes
 - **Logic:** Replace the "fail fast" lock behavior with PID liveness checking. When a lock file exists, parse the PID, check if the process is alive (signal 0). Dead PID → stale lock, safe to overwrite. Live PID → block. parseLockPID extracts PID from lock file format. isProcessAlive uses syscall.Signal(0) for non-destructive check. Tests updated: live lock uses os.Getpid(), stale lock test added.
 - **Result:** [x] 10 new tests (parseLockPID 8 cases, isProcessAlive 3 scenarios, stale/live acquireLock). Existing lock-held tests updated to use current PID. Full suite 24/24 pass.
+
+## [x] Implement marketplace metrics collector (Observability) — pkg/marketplace/
+- **Priority:** medium
+- **Spec:** specs/agent-marketplace.md §14 (Observability)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/marketplace/metrics.go (NEW), pkg/marketplace/metrics_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/marketplace/... -count=1 -cover` passes with >85% coverage
+- **Logic:** MetricsCollector implementing all 5 Prometheus metrics from spec §14: helix_marketplace_agents_total{status} (gauge), helix_marketplace_trust_score{agent} (gauge), helix_marketplace_queries_total{filter} (counter), helix_marketplace_ratings_total (counter), helix_marketplace_assignments_total{agent} (counter). Collect() emits Prometheus text exposition format with HELP/TYPE headers. Thread-safe with sync.RWMutex. AgentsByStatus and TrustScoreGauges derive gauges from registry state.
+- **Result:** [x] 20 tests, 94.2% pkg/marketplace coverage (up from 93.6%). All 5 spec §14 metrics implemented. Prometheus text format with HELP/TYPE headers, deterministic ordering, thread-safe. Full suite 24/24 pass.
