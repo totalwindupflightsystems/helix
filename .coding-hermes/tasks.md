@@ -134,13 +134,14 @@
 - **Logic:** Replace ErrNotImplemented stubs with real HTTP GET calls to OpenRouter API (/api/v1/key). Parse JSON response for usage and limit. Return cost data. Handle 401 (dead key), 429 (rate limited), 5xx (retry). Test with httptest mock server. Context-aware with timeout.
 - **Result:** [x] Real HTTP client with GetKeyUsage, GetKeyLimit, GetKeyRemaining, GetKeyInfo. Context-aware. Error sentinels: ErrAuthFailed (401), ErrRateLimited (429). KeyInfo with BudgetRemaining/BudgetUsed fraction helpers. 13 tests with httptest mock: success, 401, 429, 500, empty key, malformed JSON, context cancelled, auth header verification, full response parsing. 92.8% pkg/estimate coverage. Full suite 24/24 pass.
 
-## [ ] Implement marketplace daily trust recalculation — pkg/marketplace/
+## [x] Implement marketplace daily trust recalculation — pkg/marketplace/
 - **Priority:** medium
 - **Spec:** specs/agent-marketplace.md §7.4 (Daily Trust Recalculation)
 - **Model:** direct write — Go package, data aggregation
 - **Files:** pkg/marketplace/scorer.go (extend), pkg/marketplace/scorer_extended_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/marketplace/... -count=1 -cover` passes with >85% coverage
 - **Logic:** Replace no-op stub in DailyRecalculation. Read agent manifests from marketplaceDir, recompute trust from existing Scorer data (merge success, review quality, task completion). Write updated manifests back to disk. Log to recalculation.log. Handles missing directories gracefully.
+- **Result:** [x] DailyRecalculation now reads manifests, recomputes trust from Performance metrics (PR acceptance rate, budget adherence, human ratings), applies time-based decay, writes updated manifests back, logs to recalculation.log. Handles PrAcceptanceRate/BudgetAdherence=0 as "not tracked". 11 tests: single agent, multiple agents, retired skip, no-tasks base score, budget overruns, human rating bonus, malformed skip, log written, empty/nonexistent dirs. 93.6% pkg/marketplace coverage. Full suite 24/24 pass.
 
 ## [x] Implement merge gate validator — pkg/mergegate/
 - **Priority:** high
