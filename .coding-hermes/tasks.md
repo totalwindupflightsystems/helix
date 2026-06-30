@@ -605,3 +605,27 @@
 - **AC:** `go build ./... && go test ./pkg/forgejo/... -count=1 -cover` passes with >85% coverage
 - **Logic:** WebhookHandler receives Forgejo webhook events (PR opened, PR updated, push, review submitted) and dispatches them to the appropriate handler. ParseWebhook extracts event type + payload. HandlePROpened triggers the review pipeline. HandleReviewSubmitted checks consensus. Each handler returns a WebhookResult (processed/skipped/error). HMAC signature verification for webhook authenticity. Event type routing table.
 - **Result:** [x] 44 tests, 95.7% coverage. WebhookHandler with HMAC-SHA256 signature verification (Forgejo + Gitea header support). EventHandler interface with 5 callbacks. ParsePRInfo/ParsePushInfo/ParseReviewInfo for structured payload extraction. Action-based dispatch (opened/reopened→OnPROpened, closed→OnPRClosed, other→OnPRUpdated). NoOpHandler default. Full suite 25/25 pass. Lint clean.
+
+## [ ] Implement platform health aggregation dashboard — pkg/health/
+- **Priority:** medium
+- **Spec:** specs/cross-component-wiring.md §8 (Health Checks) + specs/deployment.md §4.3 (Fail Fast)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/health/aggregator.go (NEW), pkg/health/aggregator_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/health/... -count=1 -cover` passes with >80% coverage
+- **Logic:** PlatformHealthAggregator collects health status from all Helix subsystems (trust, review, negotiate, verify, marketplace, estimate, sandbox) and produces a unified dashboard report. Each subsystem reports its own health status (healthy/degraded/down) with optional metrics. Aggregator runs periodic checks, caches results with TTL, and exposes a JSON dashboard endpoint. Includes degradation detection: if any critical subsystem is down, the entire platform is marked degraded. Used by CLI `helix status` to show platform health at a glance.
+
+## [ ] Implement sandbox resource usage tracker — pkg/sandbox/
+- **Priority:** medium
+- **Spec:** specs/sandbox.md §6 (Resource Limits) + §7 (Five Isolation Layers)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/sandbox/usage.go (NEW), pkg/sandbox/usage_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/sandbox/... -count=1 -cover` passes with >80% coverage
+- **Logic:** ResourceUsageTracker monitors sandboxed agent sessions: peak memory usage (from cgroup memory.events), CPU time consumed, wall-clock duration, network access attempts, filesystem writes count. UsageReport with per-session metrics. SessionSummary aggregates across all sessions for an agent. EnforceResourceLimits checks if a session exceeded its configured memory/time limits. Integration with existing CgroupV2 for reading memory.events and cpu.stat.
+
+## [ ] Implement negotiation consensus calculator — pkg/negotiate/
+- **Priority:** medium
+- **Spec:** specs/pr-negotiation.md §11 (Consensus Rules) + §10.1 (Weighted Consensus)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/negotiate/consensus.go (NEW), pkg/negotiate/consensus_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/negotiate/... -count=1 -cover` passes with >85% coverage
+- **Logic:** ConsensusCalculator computes the final verdict from multiple review signals. Weighted consensus per spec §10.1: each reviewer's trust level determines their vote weight (trust 90+ = 1.5×, trust 70+ = 1.0×, trust <70 = 0.5×). Required quorum per change category (contract = 3/3, behavioral = 2/2, cosmetic = 1/1). Override detection: a trust-90+ reviewer can override a single dissent from a trust-<70 reviewer. ComputeConsensus returns ConsensusResult with per-reviewer weights, total weighted score, and final verdict.
