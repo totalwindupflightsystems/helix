@@ -561,13 +561,14 @@
 - **Logic:** Standalone normalization pipeline per spec §8.2 steps 1-5: (1) normalize line endings CRLF/CR→LF, (2) collapse runs of spaces/tabs within a line to single space — suppressed inside fenced code blocks (``` or ~~~), (3) strip trailing whitespace per line, (4) ensure exactly one trailing newline at EOF, (5) preserve leading whitespace. The fence-exempt normalizer tracks fence state line-by-line. An unclosed fence is treated as "inside" until EOF. YAML frontmatter (leading `---`...`---`) is stripped before normalization. Export NormalizeForHash(raw string) string as a reusable function the existing hasher.go can call.
 - **Result:** [x] 55 tests, 92.9% pkg/prompt coverage. NormalizeForHash implements all 5 spec §8.2 steps. collapseSpacesAndTabs collapses both spaces AND tabs (step 2) while preserving leading whitespace (step 5). Fenced code block exemption (``` and ~~~) with unclosed-fence-until-EOF handling. YAML frontmatter stripping. Idempotent, deterministic, content-equivalence verified. Full suite 24/24 pass.
 
-## [ ] Implement cost estimate reconciliation pipeline — pkg/estimate/
+## [x] Implement cost estimate reconciliation pipeline — pkg/estimate/
 - **Priority:** medium
 - **Spec:** specs/cost-estimator.md §8.2 (Post-Execution Reconciliation) steps 1-5
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/estimate/pipeline.go (NEW), pkg/estimate/pipeline_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/estimate/... -count=1 -cover` passes with >85% coverage
 - **Logic:** ReconcilePipeline chains the reconciliation steps per spec §8.2: (1) receive GitReins LLMUsage from evaluator, (2) compute actual cost via existing ActualCost(), (3) update budget_used in BudgetInfo, (4) log drift via existing DriftTracker, (5) feed DriftTracker into Calibrator for weekly recalibration. ReconciliationResult with estimated, actual, drift_pct, budget_remaining_after. ReconcileAgent convenience method that takes agent BudgetInfo + Usage + estimated CostEstimate and returns full ReconciliationResult. This wires together the existing reconciliation.go, drift.go, calibrator.go, and budget.go into a single pipeline.
+- **Result:** [x] 18 tests, 94.4% pkg/estimate coverage (up from 94.1%). ReconcilePipeline chains all 5 spec §8.2 steps. Non-mutating (returns updated BudgetInfo copy). Nil-safe for tracker/calibrator. ReconcileAgent convenience wrapper. FormatReconciliation for CLI output. Full integration test (3 reconciliations → tracker + calibrator fed). Full suite 24/24 pass.
 
 ## [ ] Implement review consensus report formatter — pkg/review/
 - **Priority:** low
