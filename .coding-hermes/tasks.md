@@ -552,13 +552,14 @@
 - **Logic:** Replace stub proxies in AutoDeprecationRules with spec-compliant time-window checks. Rule 1: trust < 20 for 30 consecutive days (track trust_dropped_at timestamp). Rule 2: no completed tasks in 90 days (track last_task_completed_at). Rule 3: budget exhausted for 14 consecutive days (track budget_exhausted_at). Add AgentHistory struct with these timestamps to Agent. ShouldAutoDeprecate evaluates a single agent against all 3 rules with proper time windows. Reactivate auto-check per §10.3: trust > 20 for 7 days → auto-reactivation candidate.
 - **Result:** [x] 54 tests, 94.5% pkg/marketplace coverage. AgentHistory with 4 lifecycle timestamps. ShouldAutoDeprecate with all 3 spec §10.2 time-window rules + DeprecationDecision/Reason. ShouldReactivate for spec §10.3 (trust recovery 7d + budget replenishment). AutoReactivationRules batch. UpdateTrustHistory/MarkTaskCompleted/UpdateBudgetStatus for daily cron integration. parseTimestamp/daysSince/isBudgetExhausted helpers. Existing lifecycle tests updated to new time-window semantics. Full suite 24/24 pass.
 
-## [ ] Implement prompt normalization pipeline for fenced code blocks — pkg/prompt/
+## [x] Implement prompt normalization pipeline for fenced code blocks — pkg/prompt/
 - **Priority:** medium
 - **Spec:** specs/prompt-registry-v2.md §8.2-§8.3 (Normalization + Fenced-Code-Block Exemption)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/prompt/normalize.go (NEW), pkg/prompt/normalize_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/prompt/... -count=1 -cover` passes with >85% coverage
 - **Logic:** Standalone normalization pipeline per spec §8.2 steps 1-5: (1) normalize line endings CRLF/CR→LF, (2) collapse runs of spaces/tabs within a line to single space — suppressed inside fenced code blocks (``` or ~~~), (3) strip trailing whitespace per line, (4) ensure exactly one trailing newline at EOF, (5) preserve leading whitespace. The fence-exempt normalizer tracks fence state line-by-line. An unclosed fence is treated as "inside" until EOF. YAML frontmatter (leading `---`...`---`) is stripped before normalization. Export NormalizeForHash(raw string) string as a reusable function the existing hasher.go can call.
+- **Result:** [x] 55 tests, 92.9% pkg/prompt coverage. NormalizeForHash implements all 5 spec §8.2 steps. collapseSpacesAndTabs collapses both spaces AND tabs (step 2) while preserving leading whitespace (step 5). Fenced code block exemption (``` and ~~~) with unclosed-fence-until-EOF handling. YAML frontmatter stripping. Idempotent, deterministic, content-equivalence verified. Full suite 24/24 pass.
 
 ## [ ] Implement cost estimate reconciliation pipeline — pkg/estimate/
 - **Priority:** medium
