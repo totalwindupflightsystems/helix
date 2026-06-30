@@ -551,3 +551,27 @@
 - **AC:** `go build ./... && go test ./pkg/marketplace/... -count=1 -cover` passes with >85% coverage
 - **Logic:** Replace stub proxies in AutoDeprecationRules with spec-compliant time-window checks. Rule 1: trust < 20 for 30 consecutive days (track trust_dropped_at timestamp). Rule 2: no completed tasks in 90 days (track last_task_completed_at). Rule 3: budget exhausted for 14 consecutive days (track budget_exhausted_at). Add AgentHistory struct with these timestamps to Agent. ShouldAutoDeprecate evaluates a single agent against all 3 rules with proper time windows. Reactivate auto-check per §10.3: trust > 20 for 7 days → auto-reactivation candidate.
 - **Result:** [x] 54 tests, 94.5% pkg/marketplace coverage. AgentHistory with 4 lifecycle timestamps. ShouldAutoDeprecate with all 3 spec §10.2 time-window rules + DeprecationDecision/Reason. ShouldReactivate for spec §10.3 (trust recovery 7d + budget replenishment). AutoReactivationRules batch. UpdateTrustHistory/MarkTaskCompleted/UpdateBudgetStatus for daily cron integration. parseTimestamp/daysSince/isBudgetExhausted helpers. Existing lifecycle tests updated to new time-window semantics. Full suite 24/24 pass.
+
+## [ ] Implement prompt normalization pipeline for fenced code blocks — pkg/prompt/
+- **Priority:** medium
+- **Spec:** specs/prompt-registry-v2.md §8.2-§8.3 (Normalization + Fenced-Code-Block Exemption)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/prompt/normalize.go (NEW), pkg/prompt/normalize_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/prompt/... -count=1 -cover` passes with >85% coverage
+- **Logic:** Standalone normalization pipeline per spec §8.2 steps 1-5: (1) normalize line endings CRLF/CR→LF, (2) collapse runs of spaces/tabs within a line to single space — suppressed inside fenced code blocks (``` or ~~~), (3) strip trailing whitespace per line, (4) ensure exactly one trailing newline at EOF, (5) preserve leading whitespace. The fence-exempt normalizer tracks fence state line-by-line. An unclosed fence is treated as "inside" until EOF. YAML frontmatter (leading `---`...`---`) is stripped before normalization. Export NormalizeForHash(raw string) string as a reusable function the existing hasher.go can call.
+
+## [ ] Implement cost estimate reconciliation pipeline — pkg/estimate/
+- **Priority:** medium
+- **Spec:** specs/cost-estimator.md §8.2 (Post-Execution Reconciliation) steps 1-5
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/estimate/pipeline.go (NEW), pkg/estimate/pipeline_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/estimate/... -count=1 -cover` passes with >85% coverage
+- **Logic:** ReconcilePipeline chains the reconciliation steps per spec §8.2: (1) receive GitReins LLMUsage from evaluator, (2) compute actual cost via existing ActualCost(), (3) update budget_used in BudgetInfo, (4) log drift via existing DriftTracker, (5) feed DriftTracker into Calibrator for weekly recalibration. ReconciliationResult with estimated, actual, drift_pct, budget_remaining_after. ReconcileAgent convenience method that takes agent BudgetInfo + Usage + estimated CostEstimate and returns full ReconciliationResult. This wires together the existing reconciliation.go, drift.go, calibrator.go, and budget.go into a single pipeline.
+
+## [ ] Implement review consensus report formatter — pkg/review/
+- **Priority:** low
+- **Spec:** specs/adversarial-review.md §Evidence Bundles (consensus display)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/review/consensus_report.go (NEW), pkg/review/consensus_report_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >85% coverage
+- **Logic:** ConsensusReport renders the ReviewOrchestrator results as a structured markdown report for Forgejo PR comments. Sections: header (PR URL, review ID, timestamp), formation summary (models + providers used, diversity score), findings table (per-finding: model, severity, type, file:line, description, evidence), consensus block (per-model verdicts + resolution: PASS/WARN/BLOCK/FLAG), bias-stripped commit hash, original commit hash, evidence bundle link. FormatConsensusReport(evidence EvidenceBundle) string. RenderFindingsTable([]Finding) string. RenderConsensusBlock(Consensus) string.
