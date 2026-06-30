@@ -434,7 +434,7 @@ func TestWriteStateFile_EmptyDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	defer os.Remove(path)
+	defer func() { _ = os.Remove(path) }()
 
 	if filepath.Base(path) != "state.json" {
 		t.Errorf("expected state.json, got %s", filepath.Base(path))
