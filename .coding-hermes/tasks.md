@@ -453,10 +453,11 @@
 - **Logic:** SearchRanker computes a relevance score for each agent listing given a SearchQuery. Ranking factors: trust score (primary sort dimension per spec), capability match (keyword + tag overlap), performance metrics (merge success rate, avg review time), human ratings, cost-effectiveness. Return ranked AgentListing slice. Supports filtering by trust tier minimum, max cost, and capability tags.
 - **Result:** [x] 52 tests, 96.3% pkg/marketplace coverage. SearchRanker with 5-factor composite scoring (trust 35%, capability 25%, performance 15%, rating 15%, cost 10%). Filter by capabilities (ALL must match), min trust, max cost. TextSearch for keyword/name/capability fuzzy matching. Custom weight override via WithSearchWeights. Full suite 24/24 pass.
 
-## [ ] Implement Forgejo PR status integration — pkg/forgejo/
+## [x] Implement Forgejo PR status integration — pkg/forgejo/
 - **Priority:** medium
 - **Spec:** specs/cross-component-wiring.md §2.1 (Forgejo → Chimera PR review) + specs/deployment.md §5
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/forgejo/pr_status.go (NEW), pkg/forgejo/pr_status_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/forgejo/... -count=1 -cover` passes with >85% coverage
 - **Logic:** PRStatusManager posts review verdicts and deployment status as Forgejo PR comments and commit statuses. PostReviewComment renders Chimera verdict as structured markdown comment. PostCommitStatus sets CI-style status check (success/failure/pending) on commits. PostDeploymentStatus shows canary/shadow progress inline. ParsePRReviews reads existing review comments. Integrates with existing ForgejoClient for REST API calls.
+- **Result:** [x] 60 tests, 94.4% pkg/forgejo coverage. PRStatusManager with PostReviewComment (Chimera verdict → markdown), PostCommitStatus (CI-style checks), PostReviewStatus (verdict → commit state), PostDeploymentStatus (canary/shadow → pending/success/error/warning), PostDeploymentComment (progress bar + breach display). ParsePRReviews extracts structured data from existing Helix review comments. httptest mock servers for all API calls. Full suite 24/24 pass.
