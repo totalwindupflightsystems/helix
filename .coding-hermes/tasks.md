@@ -633,13 +633,14 @@
 - **Logic:** ConsensusCalculator computes the final verdict from multiple review signals. Weighted consensus per spec §10.1: each reviewer's trust level determines their vote weight (trust 90+ = 1.5×, trust 70+ = 1.0×, trust <70 = 0.5×). Required quorum per change category (contract = 3/3, behavioral = 2/2, cosmetic = 1/1). Override detection: a trust-90+ reviewer can override a single dissent from a trust-<70 reviewer. ComputeConsensus returns ConsensusResult with per-reviewer weights, total weighted score, and final verdict.
 - **Result:** [x] 42 tests, 97.4% pkg/negotiate coverage. ConsensusCalculator with ComputeWeight (spec §10.1: 90+→1.5×, 70+→1.0×, <70→0.5×), RequiredQuorum (contract 3, behavioral 2, resilience/cosmetic 1), CheckOverride (trust-90+ overrides trust-<70 dissent unless a veto-capable reviewer also dissents), ComputeConsensus (weighted approve/reject, quorum check, tie→reject safety), FormatConsensus for audit logs. Full suite 25/25 pass. Lint clean.
 
-## [ ] Implement budget approval gate engine — pkg/estimate/
+## [x] Implement budget approval gate engine — pkg/estimate/
 - **Priority:** high
 - **Spec:** specs/cost-estimator.md §8.1 (Approval Gates)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/estimate/approval.go (NEW), pkg/estimate/approval_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/estimate/... -count=1 -cover` passes with >85% coverage
 - **Logic:** ApprovalGate evaluates estimated cost against remaining budget. AUTO_APPROVED if cost ≤ remaining. AUTO_APPROVED_WITH_WARNING if cost ≤ remaining × 1.5 AND trust ≥ 70. BLOCKED if cost > remaining (with 3 options: wait, increase, cheaper model). ESCALATED if cost > weekly cap (requires human approval). Returns ApprovalDecision with reason, remaining budget after, and suggested alternatives (cheaper model IDs).
+- **Result:** [x] 29 tests, 94.9% pkg/estimate coverage (up from 94.4%). ApprovalGate with Evaluate (full spec §8.1 logic), EvaluateWithTrust (trust override), BatchEvaluate (multi-agent). GateApprovalResult with RemainingBefore/After, BlockedOptions (wait/increase/cheaper_model), CheaperAlternatives (sorted, ≤5, skips original model). estimateCheaperCost recalculates with different model pricing + markup. AnyApproved/AllBlocked batch helpers. FormatGateResult for CLI. Full suite 25/25 pass. Lint clean.
 
 ## [ ] Implement production verification breach reporter — pkg/verify/
 - **Priority:** medium
