@@ -794,13 +794,14 @@
 - **Logic:** Add `postci` subcommand to helix-prompt CLI. Reads PromptFoo eval results JSON, parses pass/fail per test case, updates metadata.yaml promptfoo status for each affected component, writes summary to stdout. Exit code: 0 if all pass, 1 if any fail. Integrates with existing GeneratePromptFooYAML and ParsePromptFooResults.
 - **Result:** [x] 5 new PostCI tests (subcommand exists, required flag, file-not-found, pass results, fail results). postci subcommand parses PromptFoo JSON, extracts component/version pairs from test descriptions, updates metadata.yaml promptfoo.status, prints summary. Added UpdatePromptFooStatus + GetMetadata to pkg/prompt. Full suite 25/25 pass. Lint clean.
 
-## [ ] Implement Conscientiousness adapter HTTP client — pkg/integration/
+## [x] Implement Conscientiousness adapter HTTP client — pkg/integration/
 - **Priority:** medium
 - **Spec:** specs/integrations.md §3 (Conscientiousness → Helix Adversarial Review Adapter)
 - **Model:** direct write — Go package, concrete HTTP client
 - **Files:** pkg/integration/conscientiousness_client.go (NEW), pkg/integration/conscientiousness_client_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/integration/... -count=1 -cover` passes with >85% coverage
 - **Logic:** ConscientiousnessClient implements ConscientiousnessAdapter interface with real HTTP calls. SubmitReview() POSTs adversarial review findings to Conscientiousness for feedback loop. QueryPatterns() GETs known adversarial patterns. Health() checks service. All methods use httptest mock servers. Context-aware. Error handling for 401/429/5xx. Follows ChimeraClient pattern.
+- **Result:** [x] 15 tests. ConscientiousnessClient with Evaluate (PR → verdict) and Health. httptest mock for all paths (success, 401, 429, 500, conn error, malformed JSON, auth header verification). parseConscientiousnessVerdict with attack vectors + mitigations. 89-100% coverage on all new functions. Full suite 25/25 pass. Lint clean.
 
 ## [ ] Implement Muster adapter HTTP client — pkg/integration/
 - **Priority:** medium
