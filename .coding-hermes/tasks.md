@@ -651,10 +651,11 @@
 - **Logic:** BreachReporter generates structured breach reports for Forgejo PR comments when behavior contracts are violated. Report sections: contract name, agent ID, deployment phase (shadow/canary/steady-state), failed assertions with actual vs expected values, metrics snapshot at breach time, drift summary, recommended action (rollback/investigate/waive), evidence bundle link. FormatBreachReport renders markdown suitable for Forgejo comment rendering.
 - **Result:** [x] 25 tests, 95.5% pkg/verify coverage. BreachReporter with ReportFromBreach (Monitor.Breach → BreachReportData). Phase-aware recommended action (shadow→rollback safe, canary→investigate, steady-state→rollback). FormatBreachReport renders full markdown (header, action badge, failed assertions table, metrics table, drift table, evidence link). PhaseFromState maps ShadowState→DeploymentPhase. BreachSummary for log output. Full pipeline integration test (Monitor.Evaluate → breach → report). Full suite 25/25 pass. Lint clean.
 
-## [ ] Implement trust ledger compaction — pkg/trust/
+## [x] Implement trust ledger compaction — pkg/trust/
 - **Priority:** medium
 - **Spec:** specs/trust-model.md §The Trust Ledger — "replay the ledger to verify any agent's current score" (ledger grows unbounded without compaction)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/trust/compaction.go (NEW), pkg/trust/compaction_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/trust/... -count=1 -cover` passes with >85% coverage
 - **Logic:** LedgerCompactor reduces JSONL trust ledger size by summarizing old events. Events older than the compaction threshold (default 90 days) are summarized into a single CompactionSummary entry per agent (score snapshot, event count, date range). Recent events (within threshold) are preserved verbatim. Compact reads the ledger, partitions by age, writes a new ledger with summary prefix + recent events. VerifyCompaction replays the compacted ledger and confirms scores match the pre-compaction replay.
+- **Result:** [x] 19 tests, 89.5% pkg/trust coverage. LedgerCompactor with Compact (90d default, 10-event min threshold), in-place compaction with .bak backup. CompactionSummary captures score snapshot. VerifyCompaction with FP-tolerant score matching. NeedsCompaction (>30% old threshold). GetStats for ledger diagnostics. replayToScoreFromEvents handles EventCompactionSummary. Replaces pre-existing summaries. Full suite 25/25 pass. Lint clean.
