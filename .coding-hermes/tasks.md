@@ -651,6 +651,15 @@
 - **Logic:** BreachReporter generates structured breach reports for Forgejo PR comments when behavior contracts are violated. Report sections: contract name, agent ID, deployment phase (shadow/canary/steady-state), failed assertions with actual vs expected values, metrics snapshot at breach time, drift summary, recommended action (rollback/investigate/waive), evidence bundle link. FormatBreachReport renders markdown suitable for Forgejo comment rendering.
 - **Result:** [x] 25 tests, 95.5% pkg/verify coverage. BreachReporter with ReportFromBreach (Monitor.Breach → BreachReportData). Phase-aware recommended action (shadow→rollback safe, canary→investigate, steady-state→rollback). FormatBreachReport renders full markdown (header, action badge, failed assertions table, metrics table, drift table, evidence link). PhaseFromState maps ShadowState→DeploymentPhase. BreachSummary for log output. Full pipeline integration test (Monitor.Evaluate → breach → report). Full suite 25/25 pass. Lint clean.
 
+## [x] Implement prompt index consistency checker with auto-rebuild — pkg/prompt/
+- **Priority:** high
+- **Spec:** specs/prompt-registry-v2.md §8.4 (Index Consistency)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/prompt/consistency.go (NEW), pkg/prompt/consistency_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/prompt/... -count=1 -cover` passes with >85% coverage
+- **Logic:** CheckIndex per spec §8.4: recompute hash from prompt.md, compare against metadata.hash and index.hash. INDEX_STALE (index != metadata but metadata == disk) → non-blocking warning + auto-rebuild. TAMPER_DETECTED (metadata != recomputed) → blocking. MISSING (metadata.yaml or prompt.md absent) → report. ORPHANED (prompt directory exists but not in index) → report. RebuildIndex reconstructs _index.yaml from disk by scanning all component/version directories. Report with per-entry status, summary counts, and CLI formatting.
+- **Result:** [x] 28 tests, 93.5% pkg/prompt coverage. CheckIndex with 5 consistency statuses (ok/index_stale/tamper_detected/missing_on_disk/orphaned_on_disk). Auto-rebuild on stale entries only (never on tamper). RebuildIndex from disk with underscore-dir/invalid-entry skipping. ConsistencyReport with HasIssues/ShouldBlock/FormatReport. Round-trip integration tests. Full suite 25/25 pass. Lint clean.
+
 ## [x] Implement trust ledger compaction — pkg/trust/
 - **Priority:** medium
 - **Spec:** specs/trust-model.md §The Trust Ledger — "replay the ledger to verify any agent's current score" (ledger grows unbounded without compaction)
