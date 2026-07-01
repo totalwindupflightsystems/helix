@@ -56,6 +56,11 @@ func newTestProvisioner(t *testing.T, srv *httptest.Server, maxAttempts int) *Pr
 		retry:        RetryPolicy{MaxAttempts: maxAttempts, InitialBackoff: 10 * time.Millisecond, MaxBackoff: 50 * time.Millisecond, Multiplier: 2.0},
 		redactedBase: redactURL(srv.URL),
 	}
+	t.Cleanup(func() {
+		if p.limiter != nil {
+			p.limiter.Close()
+		}
+	})
 	return p
 }
 
@@ -147,17 +152,69 @@ func TestRateLimiter_NilTokens(t *testing.T) {
 
 func TestRateLimiter_BurstExhausted(t *testing.T) {
 	rl := NewRateLimiter(10, 2)
+	defer rl.Close()
 	// Drain both tokens.
 	<-rl.tokens
 	<-rl.tokens
-	// Acquire should not block — it's a non-blocking select with default.
-	rl.Acquire()
+	// Acquire blocks until the refill goroutine adds one (≤100ms at rate 10/s).
+	done := make(chan struct{})
+	go func() {
+		rl.Acquire()
+		close(done)
+	}()
+	select {
+	case <-done:
+		// success — token arrived from refill goroutine
+	case <-time.After(2 * time.Second):
+		t.Fatal("Acquire blocked too long after burst exhaustion")
+	}
 }
 
 func TestRateLimiter_Accessors(t *testing.T) {
 	rl := NewRateLimiter(10, 5)
+	defer rl.Close()
 	assert.Equal(t, 10, rl.Rate())
 	assert.Equal(t, 5, rl.Burst())
+}
+
+func TestRateLimiter_RealThrottle(t *testing.T) {
+	rl := NewRateLimiter(5, 1) // 5 tokens/sec, 1 burst
+	defer rl.Close()
+	// First Acquire should be instant (initial burst token).
+	start := time.Now()
+	rl.Acquire()
+	first := time.Since(start)
+	assert.Less(t, first.Milliseconds(), int64(50), "first acquire should be instant")
+	// Second Acquire should wait ~200ms for the refill (5 tokens/sec = 200ms/token).
+	start = time.Now()
+	rl.Acquire()
+	second := time.Since(start)
+	assert.GreaterOrEqual(t, second.Milliseconds(), int64(100), "second acquire should throttle")
+}
+
+func TestRateLimiter_CloseIdempotent(t *testing.T) {
+	rl := NewRateLimiter(10, 3)
+	rl.Close()
+	rl.Close() // should not panic
+}
+
+func TestRateLimiter_ConcurrentAcquire(t *testing.T) {
+	rl := NewRateLimiter(100, 5) // fast refill, moderate burst
+	defer rl.Close()
+	done := make(chan struct{}, 10)
+	for i := 0; i < 10; i++ {
+		go func() {
+			rl.Acquire()
+			done <- struct{}{}
+		}()
+	}
+	for i := 0; i < 10; i++ {
+		select {
+		case <-done:
+		case <-time.After(3 * time.Second):
+			t.Fatal("concurrent Acquire timed out")
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------

@@ -686,3 +686,29 @@
 - **AC:** `go build ./... && go test ./pkg/integration/... -count=1 -cover` passes with >85% coverage
 - **Logic:** Concrete HTTP implementation of LangFuseAdapter interface. IngestTrace posts to /api/public/ingestion with BasicAuth. GetTrace retrieves by ID from /api/public/traces/{id}. ListTraces queries with project filter + pagination. Health checks /api/public/health with context-aware timeout. All methods use httptest mock servers for testing. parseLangFuseTrace converts raw JSON maps to typed structs.
 - **Result:** [x] 15 tests. IngestTrace with auth verification + error handling (500/401/connection error). GetTrace with 404 handling. ListTraces with project filter + empty results. Health with down/connection-error detection. WithTimeout + WithCustomHTTPClient options. Full suite 25/25 pass. Lint clean.
+## [x] Implement real rate limiter (token bucket) — pkg/identity/
+- **Priority:** high
+- **Spec:** specs/agent-identity.md §13 (Rate Limiting and Retry)
+- **Model:** direct write — Go package, replace no-op stub
+- **Files:** pkg/identity/provisioner.go (extend), pkg/identity/provisioner_http_test.go (extend), pkg/identity/types_test.go (extend)
+- **AC:** `go build ./... && go test ./pkg/identity/... -count=1` passes
+- **Logic:** Replace the no-op Acquire() stub with a real token bucket using time.Ticker + buffered channel. Background goroutine refills tokens at rate per second. Close() method stops the goroutine. Steady state: 10 req/s, burst: configurable. Spec §13 compliance.
+- **Result:** [x] Real token bucket with background refill goroutine. Acquire() now blocks when tokens exhausted. Close() for clean shutdown. 4 new tests: real throttle timing, burst exhaustion, concurrent acquire, idempotent close. Existing tests updated with Close() cleanup. Full suite 25/25 pass. Lint clean.
+
+## [x] Implement prompt provenance display formatter — pkg/prompt/
+- **Priority:** medium
+- **Spec:** specs/prompt-registry.md §11.2 (Chain Verification display format) + §11.3 (Tamper Detection)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/prompt/provenance_display.go (NEW), pkg/prompt/provenance_display_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/prompt/... -count=1 -cover` passes with >85% coverage
+- **Logic:** FormatProvenanceChain renders the spec §11.2 structured display format (COMMIT/PROMPT/SPEC/WORK ITEM/INTENT with ✅/❌ markers). FormatTamperReport renders the §11.3 tamper detection output. SummarizeProvenance returns a compact machine-readable summary for audit logs.
+- **Result:** [x] 11 tests. FormatProvenanceChain (complete/incomplete/nil/short-SHA), FormatTamperReport, SummarizeProvenance (complete/with-failures), stageDisplayLabel, shortSHA. Full suite 25/25 pass. Lint clean.
+
+## [x] Implement cost estimator structured observability logger — pkg/estimate/
+- **Priority:** medium
+- **Spec:** specs/cost-estimator.md §14 (Observability)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/estimate/observability.go (NEW), pkg/estimate/observability_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/estimate/... -count=1 -cover` passes with >85% coverage
+- **Logic:** EstimationLogger implementing spec §14: verbose structured logging (timestamp [level] agent=NAME task_type=CODE model=X estimated=$Y cache_hit=Z% decision=D), JSON estimation record files for reconciliation, drift metric gauge logging, recalibration flag (>20% drift over 20 tasks). WriteEstimationRecord/ReadEstimationRecords for JSONL persistence.
+- **Result:** [x] 12 tests. LogVerbose (human-readable spec §14 format), LogEstimation (JSON), LogDrift (gauge metric), LogRecalibration (threshold flag), LogError, nil-safety. WriteEstimationRecord/ReadEstimationRecords JSONL round-trip. CheckRecalibration (triggered/not-triggered/too-few). splitJSONL helper. Full suite 25/25 pass. Lint clean.
