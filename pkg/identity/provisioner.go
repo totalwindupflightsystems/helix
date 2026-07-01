@@ -149,45 +149,76 @@ func (c *ProvisionerConfig) Validate() error {
 // Rate limiter (token bucket, hand-rolled — no x/time/rate dependency)
 // ---------------------------------------------------------------------------
 
-// RateLimiter is a hand-rolled token bucket. v1's Acquire is a no-op stub
-// (returns immediately) because the transport itself is stubbed. The real
-// implementation will use time.Ticker + a buffered channel of size Burst.
+// RateLimiter is a hand-rolled token bucket (spec §13: Rate Limiter).
+// Steady state rate with burst capacity. Uses time.Ticker + buffered channel
+// of size Burst. No x/time/rate dependency.
 //
-// The structure is defined here so the Provisioner can hold one and callers
-// can see the rate/burst policy without depending on a real implementation.
+// The limiter starts a background goroutine on construction that refills
+// tokens at the configured rate. Call Close() to stop the goroutine.
 type RateLimiter struct {
 	rate   int           // tokens per second
 	burst  int           // max tokens held at once
 	tokens chan struct{} // buffered channel, capacity = burst
+	stop   chan struct{} // signals refill goroutine to exit
 }
 
 // NewRateLimiter constructs a token bucket. The channel is filled with
-// `burst` tokens initially; the real transport drains one per request and a
-// goroutine refills at `rate` per second.
+// `burst` tokens initially; a goroutine refills at `rate` per second.
 func NewRateLimiter(rate, burst int) *RateLimiter {
 	rl := &RateLimiter{
 		rate:   rate,
 		burst:  burst,
 		tokens: make(chan struct{}, burst),
+		stop:   make(chan struct{}),
 	}
 	for i := 0; i < burst; i++ {
 		rl.tokens <- struct{}{}
 	}
+	go rl.refill()
 	return rl
 }
 
-// Acquire blocks until a token is available. In v1 this is a no-op because
-// no real requests are made; the structure exists to make the contract
-// explicit and to make the real implementation a one-method swap.
+// refill runs in a background goroutine, adding tokens at rate per second.
+func (rl *RateLimiter) refill() {
+	interval := time.Second / time.Duration(rl.rate)
+	if interval <= 0 {
+		interval = time.Second
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-rl.stop:
+			return
+		case <-ticker.C:
+			select {
+			case rl.tokens <- struct{}{}:
+			default: // bucket full, drop token
+			}
+		}
+	}
+}
+
+// Acquire blocks until a token is available. Safe for concurrent use.
+// If the limiter is nil or has nil tokens, it returns immediately (no-op mode
+// for testing).
 func (rl *RateLimiter) Acquire() {
 	if rl == nil || rl.tokens == nil {
 		return
 	}
-	select {
-	case <-rl.tokens:
+	<-rl.tokens
+}
+
+// Close stops the background refill goroutine. Safe to call multiple times.
+func (rl *RateLimiter) Close() {
+	if rl == nil || rl.stop == nil {
 		return
+	}
+	select {
+	case <-rl.stop:
+		// already closed
 	default:
-		return // v1 stub: never block
+		close(rl.stop)
 	}
 }
 
