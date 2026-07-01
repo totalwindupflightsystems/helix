@@ -767,13 +767,14 @@
 - **Logic:** ContractGenerator converts EvidenceBundle findings into BehaviorContract assertions. Each finding (high severity, performance, logic) maps to a contract assertion: performance finding → latency_p99 lte Xms, logic finding → success_rate gte 99%, security finding → error_count lte 0. GenerateFromFindings takes an EvidenceBundle and returns a *verify.BehaviorContract with auto-generated assertions. Includes confidence-based assertion thresholds (high-confidence findings → stricter assertions).
 - **Result:** [x] 25 tests, 100% coverage on contract_gen.go, 93.5% total pkg/review. Category-aware mapping: security→error_count+success_rate, performance→latency_p99, logic→success_rate, race→error_count+latency, spec_violation→success_rate. Severity-based thresholds (critical stricter than high). Confidence weight scaling. Consensus-based breach action. Full suite 25/25 pass. Lint clean.
 
-## [ ] Implement end-to-end deployment trace pipeline — pkg/verify + pkg/integration
+## [x] Implement end-to-end deployment trace pipeline — pkg/verify + pkg/integration
 - **Priority:** low
 - **Spec:** specs/production-verification.md §Integration Points: "LangFuse: Full trace of agent → merge → shadow → canary → production → incident"
 - **Model:** direct write — Go package, cross-package bridge
 - **Files:** pkg/verify/trace.go (NEW), pkg/verify/trace_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/verify/... -count=1 -cover` passes with >85% coverage
 - **Logic:** DeploymentTracePipeline records every lifecycle stage of a deployment as a LangFuse trace span. From agent commit → GitReins guard → merge → shadow deploy → canary → production → incident (if any). Each stage is a trace with duration, status, cost, and evidence links. ExportTrace converts to LangFuseTrace for ingestion. Enables full observability of the agent → production pipeline.
+- **Result:** [x] 42 tests, 96.0% pkg/verify coverage. DeploymentTracePipeline with 8 lifecycle stages (commit, guard, review, merge, shadow, canary, production, incident). TraceSpan with DurationMs/IsComplete. Convenience methods for each stage (RecordGuardSpan, RecordMergeSpan, RecordShadowSpan, RecordCanarySpan, RecordProductionSpan, RecordIncidentSpan). ExportTrace → LangFuseTraceExport with per-span metadata merging (evidence + metadata + cost/duration). TraceSummary with IsComplete/HasIncident/FinalStage. Thread-safe with sync.RWMutex. Concurrent access verified. Full suite 25/25 pass.
 
 ## [x] Implement platform metrics aggregator — pkg/health/
 - **Priority:** medium
