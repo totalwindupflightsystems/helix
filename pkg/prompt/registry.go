@@ -319,6 +319,40 @@ func readMetadata(path string) (*Metadata, error) {
 	return &m, nil
 }
 
+// GetMetadata reads the metadata.yaml for the given component and version.
+// Exported for use by CLI tools that need to inspect prompt metadata.
+func GetMetadata(component, version string) (*Metadata, error) {
+	metadataPath := filepath.Join(RegistryDir, component, version, "metadata.yaml")
+	return readMetadata(metadataPath)
+}
+
+// UpdatePromptFooStatus updates the promptfoo CI status in metadata.yaml for
+// the given component and version. Per spec §11, the CI result is stored in
+// metadata under the promptfoo key. Returns the updated metadata.
+func UpdatePromptFooStatus(component, version, status string) (*Metadata, error) {
+	metadataPath := filepath.Join(RegistryDir, component, version, "metadata.yaml")
+	m, err := readMetadata(metadataPath)
+	if err != nil {
+		return nil, fmt.Errorf("read metadata for %s/%s: %w", component, version, err)
+	}
+
+	m.Promptfoo = PromptfooResult{
+		TestSuite: fmt.Sprintf("prompts/%s/%s/promptfoo.yaml", component, version),
+		LastRun:   time.Now().UTC(),
+		Status:    status,
+	}
+
+	if err := writeMetadata(metadataPath, m); err != nil {
+		return nil, fmt.Errorf("write metadata for %s/%s: %w", component, version, err)
+	}
+
+	if Verbose {
+		fmt.Fprintf(os.Stderr, "[verbose] updated %s/%s promptfoo status → %s\n", component, version, status)
+	}
+
+	return m, nil
+}
+
 // writePrompt writes raw prompt content to a file path.
 func writePrompt(path string, content string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {

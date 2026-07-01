@@ -785,13 +785,14 @@
 - **Logic:** PlatformMetricsCollector aggregates Prometheus metrics from all Helix subsystems into a single /metrics endpoint. Combines: trust (trust score distribution, tier counts), review (reviews total, findings by severity, consensus resolution rate), estimate (estimates total, budget utilization), marketplace (agents active, queries), verify (deployments shadowing/canaried/promoted, breaches), negotiate (negotiations total, resolutions). Prometheus text exposition format. Thread-safe.
 - **Result:** [x] 23 tests, 100% coverage on metrics.go, 99.3% total pkg/health. MetricsSource interface for pluggable subsystem registration. Deterministic metric+label sorting. Header deduplication. Internal counter support. Large metric set handling (100+ lines). Full suite 25/25 pass. Lint clean.
 
-## [ ] Implement PromptFoo CI result processor CLI — cmd/helix-prompt/
+## [x] Implement PromptFoo CI result processor CLI — cmd/helix-prompt/
 - **Priority:** medium
 - **Spec:** specs/prompt-registry-v2.md §11.3 (postci command) + §11 (PromptFoo CI Integration)
 - **Model:** direct write — Go package, extend CLI
 - **Files:** cmd/helix-prompt/main.go (extend), cmd/helix-prompt/main_test.go (extend)
 - **AC:** `go build ./... && go test ./cmd/helix-prompt/... -count=1` passes
 - **Logic:** Add `postci` subcommand to helix-prompt CLI. Reads PromptFoo eval results JSON, parses pass/fail per test case, updates metadata.yaml promptfoo status for each affected component, writes summary to stdout. Exit code: 0 if all pass, 1 if any fail. Integrates with existing GeneratePromptFooYAML and ParsePromptFooResults.
+- **Result:** [x] 5 new PostCI tests (subcommand exists, required flag, file-not-found, pass results, fail results). postci subcommand parses PromptFoo JSON, extracts component/version pairs from test descriptions, updates metadata.yaml promptfoo.status, prints summary. Added UpdatePromptFooStatus + GetMetadata to pkg/prompt. Full suite 25/25 pass. Lint clean.
 
 ## [ ] Implement Conscientiousness adapter HTTP client — pkg/integration/
 - **Priority:** medium

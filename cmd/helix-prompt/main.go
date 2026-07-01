@@ -58,6 +58,7 @@ Subcommands:
   attest   <component> <version>   Attest a prompt to a commit
   verify   <commit-sha>            Verify a commit's attestation
   list                             List registered prompts
+  postci   --results <file>        Process PromptFoo CI results
 
 Run "helix-prompt <subcommand> --help" for per-command flags.`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
@@ -71,6 +72,7 @@ Run "helix-prompt <subcommand> --help" for per-command flags.`,
 		newAttestCmd(gOpts),
 		newVerifyCmd(gOpts),
 		newListCmd(gOpts),
+		newPostCICmd(gOpts),
 	)
 	return root
 }
@@ -414,3 +416,120 @@ func shortHashDisplay(hash string) string {
 	}
 	return hash
 }
+
+// ---------------------------------------------------------------------------
+// postci subcommand (spec §11.3)
+// ---------------------------------------------------------------------------
+
+type postCIOptions struct {
+	*globalOptions
+	results string
+}
+
+func newPostCICmd(gOpts *globalOptions) *cobra.Command {
+	opts := &postCIOptions{globalOptions: gOpts}
+	cmd := &cobra.Command{
+		Use:   "postci --results <file>",
+		Short: "Process PromptFoo CI results and update prompt metadata",
+		Long: `Process the JSON output of 'promptfoo eval' and update the promptfoo CI
+status in each affected prompt's metadata.yaml.
+
+Reads the results JSON file, determines pass/fail, and writes the status
+(pass|fail) to metadata for each prompt that has tests in the result.
+
+Exit codes:
+  0 — all PromptFoo tests passed
+  1 — one or more PromptFoo tests failed
+  2 — error reading or parsing results`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runPostCI(opts)
+		},
+	}
+	cmd.Flags().StringVar(&opts.results, "results", "", "path to promptfoo eval results JSON (required)")
+	_ = cmd.MarkFlagRequired("results")
+	return cmd
+}
+
+func runPostCI(opts *postCIOptions) error {
+	data, err := os.ReadFile(opts.results)
+	if err != nil {
+		return fmt.Errorf("cannot read results file %s: %w", opts.results, err)
+	}
+
+	results, err := prompt.ParsePromptFooResults(data)
+	if err != nil {
+		return fmt.Errorf("cannot parse results: %w", err)
+	}
+
+	// Determine overall status
+	status := "pass"
+	if results.FailedTests > 0 {
+		status = "fail"
+	}
+
+	// Extract unique components from test descriptions
+	// PromptFoo test descriptions are in format "component/version: description"
+	components := make(map[string]bool)
+	for _, r := range results.Results {
+		parts := strings.SplitN(r.Description, "/", 2)
+		if len(parts) == 2 {
+			compAndVer := strings.SplitN(parts[1], ":", 2)
+			if len(compAndVer) == 2 {
+				cv := strings.TrimSpace(parts[0] + "/" + compAndVer[0])
+				components[cv] = true
+			}
+		}
+	}
+
+	// If no components extracted, try to update all active prompts
+	if len(components) == 0 {
+		fmt.Fprintln(os.Stderr, "[WARN] no component/version pairs found in test descriptions")
+		fmt.Fprintln(os.Stderr, "      updating all active prompts with overall status")
+		versions, listErr := prompt.List(prompt.ListFilter{Status: prompt.StatusActive})
+		if listErr != nil {
+			return fmt.Errorf("cannot list prompts: %w", listErr)
+		}
+		for _, v := range versions {
+			if _, err := prompt.UpdatePromptFooStatus(v.Component, v.Version, status); err != nil {
+				fmt.Fprintf(os.Stderr, "[WARN] failed to update %s/%s: %v\n", v.Component, v.Version, err)
+			}
+		}
+	} else {
+		for cv := range components {
+			parts := strings.SplitN(cv, "/", 2)
+			if len(parts) != 2 {
+				continue
+			}
+			if _, err := prompt.UpdatePromptFooStatus(parts[0], parts[1], status); err != nil {
+				fmt.Fprintf(os.Stderr, "[WARN] failed to update %s: %v\n", cv, err)
+			}
+		}
+	}
+
+	// Print summary
+	fmt.Printf("PromptFoo CI Results:\n")
+	fmt.Printf("  Total tests: %d\n", results.TotalTests)
+	fmt.Printf("  Passed:      %d\n", results.PassedTests)
+	fmt.Printf("  Failed:      %d\n", results.FailedTests)
+	fmt.Printf("  Status:      %s\n", status)
+
+	if len(components) > 0 {
+		fmt.Printf("  Updated:     %d prompt(s)\n", len(components))
+	}
+
+	for _, r := range results.Results {
+		if !r.Passed {
+			fmt.Printf("  ✗ %s: %s\n", r.Description, r.Error)
+		}
+	}
+
+	if status == "fail" {
+		// Return a sentinel error so RunE can produce exit code 1.
+		return errPromptFooFailed
+	}
+	return nil
+}
+
+// errPromptFooFailed is the sentinel error returned when PromptFoo tests fail.
+var errPromptFooFailed = fmt.Errorf("promptfoo tests failed")
