@@ -712,3 +712,30 @@
 - **AC:** `go build ./... && go test ./pkg/estimate/... -count=1 -cover` passes with >85% coverage
 - **Logic:** EstimationLogger implementing spec §14: verbose structured logging (timestamp [level] agent=NAME task_type=CODE model=X estimated=$Y cache_hit=Z% decision=D), JSON estimation record files for reconciliation, drift metric gauge logging, recalibration flag (>20% drift over 20 tasks). WriteEstimationRecord/ReadEstimationRecords for JSONL persistence.
 - **Result:** [x] 12 tests. LogVerbose (human-readable spec §14 format), LogEstimation (JSON), LogDrift (gauge metric), LogRecalibration (threshold flag), LogError, nil-safety. WriteEstimationRecord/ReadEstimationRecords JSONL round-trip. CheckRecalibration (triggered/not-triggered/too-few). splitJSONL helper. Full suite 25/25 pass. Lint clean.
+
+## [x] Implement marketplace agent display formatter — pkg/marketplace/
+- **Priority:** high
+- **Spec:** specs/agent-marketplace.md §17 (Example Outputs)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/marketplace/display.go (NEW), pkg/marketplace/display_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/marketplace/... -count=1 -cover` passes with >85% coverage
+- **Logic:** FormatAgentTable renders spec §17 list agents table (NAME, TIER, TRUST, RATING, TASKS, COST/AVG, CAPABILITIES). FormatAgentDetail renders detailed agent view with capabilities, cost profile, performance metrics, ratings, recent reviews, deprecation warnings. FormatRatingSubmission renders rating confirmation. FormatDeprecationNotice renders auto-deprecation progress warning. Star rating formatters (integer and float with half-star support). FormatTrustDistribution histogram. FormatRegistrySummary marketplace overview. 95.0% pkg/marketplace coverage.
+- **Result:** [x] 22 tests. Full suite 25/25 pass. Lint clean.
+
+## [x] Implement prompt Prometheus metrics collector — pkg/prompt/
+- **Priority:** medium
+- **Spec:** specs/prompt-registry-v2.md §19 (Observability)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/metrics.go (NEW), pkg/prompt/metrics_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/prompt/... -count=1 -cover` passes with >85% coverage
+- **Logic:** MetricsCollector implementing all 5 spec §19 Prometheus metrics: helix_prompts_total{status} (gauge), helix_prompt_attestations_total (counter), helix_prompt_attestation_failures_total{reason} (counter), helix_prompt_versions_total{component} (gauge), helix_prompt_overrides_total (counter). Prometheus text exposition format with HELP/TYPE headers. Deterministic ordering (sorted by metric name then label). Thread-safe with sync.RWMutex. UpdateFromIndex populates from registry Index. 93.0% pkg/prompt coverage.
+- **Result:** [x] 12 tests. Full suite 25/25 pass. Lint clean.
+
+## [x] Implement sandbox security property validator — pkg/sandbox/
+- **Priority:** high
+- **Spec:** specs/sandbox.md §9 (Security Properties)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/sandbox/security.go (NEW), pkg/sandbox/security_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/sandbox/... -count=1 -cover` passes with >85% coverage
+- **Logic:** SecurityValidator checks all 7 spec §9 security properties: (1) no-home-access — /home, /root, ~/.ssh never mounted, (2) no-network-access — workspace/full unshare network, (3) pid-isolation — private PID namespace, (4) memory-bounds — cgroup v2 memory.max, (5) time-bounds — context deadline + SIGKILL, (6) no-gpu-full-mode — GPU never enabled, (7) die-with-parent — cleanup on exit. ValidateStrict returns error if any check fails. CheckSessionPermissions rejects path traversal. ValidateMountSpec rejects forbidden source/dest paths. RequiredMountPoints returns spec-mandated bind mounts. ForbiddenMountSources lists never-mount paths. 93.1% pkg/sandbox coverage.
+- **Result:** [x] 20 tests. Full suite 25/25 pass. Lint clean.
