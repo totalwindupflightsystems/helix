@@ -775,10 +775,11 @@
 - **AC:** `go build ./... && go test ./pkg/verify/... -count=1 -cover` passes with >85% coverage
 - **Logic:** DeploymentTracePipeline records every lifecycle stage of a deployment as a LangFuse trace span. From agent commit → GitReins guard → merge → shadow deploy → canary → production → incident (if any). Each stage is a trace with duration, status, cost, and evidence links. ExportTrace converts to LangFuseTrace for ingestion. Enables full observability of the agent → production pipeline.
 
-## [ ] Implement platform metrics aggregator — pkg/health/
+## [x] Implement platform metrics aggregator — pkg/health/
 - **Priority:** medium
 - **Spec:** specs/SPECIFICATION.md §8 (Observability) — aggregate metrics from all subsystems
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/health/metrics.go (NEW), pkg/health/metrics_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/health/... -count=1 -cover` passes with >85% coverage
 - **Logic:** PlatformMetricsCollector aggregates Prometheus metrics from all Helix subsystems into a single /metrics endpoint. Combines: trust (trust score distribution, tier counts), review (reviews total, findings by severity, consensus resolution rate), estimate (estimates total, budget utilization), marketplace (agents active, queries), verify (deployments shadowing/canaried/promoted, breaches), negotiate (negotiations total, resolutions). Prometheus text exposition format. Thread-safe.
+- **Result:** [x] 23 tests, 100% coverage on metrics.go, 99.3% total pkg/health. MetricsSource interface for pluggable subsystem registration. Deterministic metric+label sorting. Header deduplication. Internal counter support. Large metric set handling (100+ lines). Full suite 25/25 pass. Lint clean.
