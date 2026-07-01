@@ -677,3 +677,12 @@
 - **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >85% coverage
 - **Logic:** RotationTracker records model→role assignments across reviews to enforce rotation fairness. FormationAssigner selects models from pool and assigns roles per change category (contract=3, behavioral=2, resilience/cosmetic=1). Selection prioritizes models with lower consecutive-same-role counts (prevents any model from being "stuck" in one role). Provider diversity enforced (no two from same provider). RLHF diversity configurable. Deterministic per-review seed (same PR → same assignment). CheckDiversity validates formation against diversity rules. SeedFromPR for deterministic seed generation.
 - **Result:** [x] 27 tests, 94.2% pkg/review coverage. RotationTracker with consecutive/total tracking. FormationAssigner with rotation-priority sorting and diversity-enforced selection. CheckDiversity with provider + RLHF diversity checks. PanelSizeForCategory + rolesForPanelSize helpers. Deterministic seeding via SHA-256 hash. Thread-safe. Full suite 25/25 pass. Lint clean.
+
+## [x] Implement LangFuse HTTP client — pkg/integration/
+- **Priority:** medium
+- **Spec:** specs/cross-component-wiring.md §3.1 (Chimera → LangFuse observability)
+- **Model:** direct write — Go package, concrete HTTP client
+- **Files:** pkg/integration/langfuse_client.go (NEW), pkg/integration/langfuse_client_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/integration/... -count=1 -cover` passes with >85% coverage
+- **Logic:** Concrete HTTP implementation of LangFuseAdapter interface. IngestTrace posts to /api/public/ingestion with BasicAuth. GetTrace retrieves by ID from /api/public/traces/{id}. ListTraces queries with project filter + pagination. Health checks /api/public/health with context-aware timeout. All methods use httptest mock servers for testing. parseLangFuseTrace converts raw JSON maps to typed structs.
+- **Result:** [x] 15 tests. IngestTrace with auth verification + error handling (500/401/connection error). GetTrace with 404 handling. ListTraces with project filter + empty results. Health with down/connection-error detection. WithTimeout + WithCustomHTTPClient options. Full suite 25/25 pass. Lint clean.
