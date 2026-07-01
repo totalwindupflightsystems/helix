@@ -757,3 +757,28 @@
 - **AC:** `go build ./... && go test ./pkg/integration/... -count=1 -cover` passes with >85% coverage
 - **Logic:** GitReinsClient implements GitReinsAdapter interface with real HTTP/subprocess calls. Guard() invokes `gitreins guard` subprocess or HTTP endpoint. Evaluate() POSTs diff to GitReins API. Cost() computes from LLMUsage in EvalResult using pricing data. All methods use httptest mock servers. Context-aware. Error handling for all spec §1 error scenarios.
 - **Result:** [x] 21 tests (Guard success/auth/rate-limit/server-error/conn-error/malformed, Evaluate success/auth/timeout/rate-limit/server-error/conn-error, Cost with-pricing/nil/zero-tokens, Health success/conn-error/server-error, parseGuardResult/parseEvalResult empty/nil). All new functions 80-100% coverage. Full suite 25/25 pass. Lint clean.
+
+## [x] Generate behavior contract assertions from review findings — pkg/review + pkg/verify
+- **Priority:** medium
+- **Spec:** specs/production-verification.md §Integration Points: "Chimera: Generates behavior contract assertions from review findings"
+- **Model:** direct write — Go packages, cross-package bridge
+- **Files:** pkg/review/contract_gen.go (NEW), pkg/review/contract_gen_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >85% coverage
+- **Logic:** ContractGenerator converts EvidenceBundle findings into BehaviorContract assertions. Each finding (high severity, performance, logic) maps to a contract assertion: performance finding → latency_p99 lte Xms, logic finding → success_rate gte 99%, security finding → error_count lte 0. GenerateFromFindings takes an EvidenceBundle and returns a *verify.BehaviorContract with auto-generated assertions. Includes confidence-based assertion thresholds (high-confidence findings → stricter assertions).
+- **Result:** [x] 25 tests, 100% coverage on contract_gen.go, 93.5% total pkg/review. Category-aware mapping: security→error_count+success_rate, performance→latency_p99, logic→success_rate, race→error_count+latency, spec_violation→success_rate. Severity-based thresholds (critical stricter than high). Confidence weight scaling. Consensus-based breach action. Full suite 25/25 pass. Lint clean.
+
+## [ ] Implement end-to-end deployment trace pipeline — pkg/verify + pkg/integration
+- **Priority:** low
+- **Spec:** specs/production-verification.md §Integration Points: "LangFuse: Full trace of agent → merge → shadow → canary → production → incident"
+- **Model:** direct write — Go package, cross-package bridge
+- **Files:** pkg/verify/trace.go (NEW), pkg/verify/trace_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/verify/... -count=1 -cover` passes with >85% coverage
+- **Logic:** DeploymentTracePipeline records every lifecycle stage of a deployment as a LangFuse trace span. From agent commit → GitReins guard → merge → shadow deploy → canary → production → incident (if any). Each stage is a trace with duration, status, cost, and evidence links. ExportTrace converts to LangFuseTrace for ingestion. Enables full observability of the agent → production pipeline.
+
+## [ ] Implement platform metrics aggregator — pkg/health/
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §8 (Observability) — aggregate metrics from all subsystems
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/health/metrics.go (NEW), pkg/health/metrics_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/health/... -count=1 -cover` passes with >85% coverage
+- **Logic:** PlatformMetricsCollector aggregates Prometheus metrics from all Helix subsystems into a single /metrics endpoint. Combines: trust (trust score distribution, tier counts), review (reviews total, findings by severity, consensus resolution rate), estimate (estimates total, budget utilization), marketplace (agents active, queries), verify (deployments shadowing/canaried/promoted, breaches), negotiate (negotiations total, resolutions). Prometheus text exposition format. Thread-safe.
