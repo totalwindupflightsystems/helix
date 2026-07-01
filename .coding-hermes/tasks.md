@@ -668,3 +668,12 @@
 - **AC:** `go build ./... && go test ./pkg/trust/... -count=1 -cover` passes with >85% coverage
 - **Logic:** LedgerCompactor reduces JSONL trust ledger size by summarizing old events. Events older than the compaction threshold (default 90 days) are summarized into a single CompactionSummary entry per agent (score snapshot, event count, date range). Recent events (within threshold) are preserved verbatim. Compact reads the ledger, partitions by age, writes a new ledger with summary prefix + recent events. VerifyCompaction replays the compacted ledger and confirms scores match the pre-compaction replay.
 - **Result:** [x] 19 tests, 89.5% pkg/trust coverage. LedgerCompactor with Compact (90d default, 10-event min threshold), in-place compaction with .bak backup. CompactionSummary captures score snapshot. VerifyCompaction with FP-tolerant score matching. NeedsCompaction (>30% old threshold). GetStats for ledger diagnostics. replayToScoreFromEvents handles EventCompactionSummary. Replaces pre-existing summaries. Full suite 25/25 pass. Lint clean.
+
+## [x] Implement model rotation for adversarial review — pkg/review/
+- **Priority:** high
+- **Spec:** specs/adversarial-review.md §Model Formation Strategy: "Rotation: model assignments change per-review to prevent adversarial adaptation"
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/review/rotation.go (NEW), pkg/review/rotation_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/review/... -count=1 -cover` passes with >85% coverage
+- **Logic:** RotationTracker records model→role assignments across reviews to enforce rotation fairness. FormationAssigner selects models from pool and assigns roles per change category (contract=3, behavioral=2, resilience/cosmetic=1). Selection prioritizes models with lower consecutive-same-role counts (prevents any model from being "stuck" in one role). Provider diversity enforced (no two from same provider). RLHF diversity configurable. Deterministic per-review seed (same PR → same assignment). CheckDiversity validates formation against diversity rules. SeedFromPR for deterministic seed generation.
+- **Result:** [x] 27 tests, 94.2% pkg/review coverage. RotationTracker with consecutive/total tracking. FormationAssigner with rotation-priority sorting and diversity-enforced selection. CheckDiversity with provider + RLHF diversity checks. PanelSizeForCategory + rolesForPanelSize helpers. Deterministic seeding via SHA-256 hash. Thread-safe. Full suite 25/25 pass. Lint clean.
