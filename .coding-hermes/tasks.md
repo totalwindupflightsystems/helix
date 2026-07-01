@@ -642,13 +642,14 @@
 - **Logic:** ApprovalGate evaluates estimated cost against remaining budget. AUTO_APPROVED if cost ≤ remaining. AUTO_APPROVED_WITH_WARNING if cost ≤ remaining × 1.5 AND trust ≥ 70. BLOCKED if cost > remaining (with 3 options: wait, increase, cheaper model). ESCALATED if cost > weekly cap (requires human approval). Returns ApprovalDecision with reason, remaining budget after, and suggested alternatives (cheaper model IDs).
 - **Result:** [x] 29 tests, 94.9% pkg/estimate coverage (up from 94.4%). ApprovalGate with Evaluate (full spec §8.1 logic), EvaluateWithTrust (trust override), BatchEvaluate (multi-agent). GateApprovalResult with RemainingBefore/After, BlockedOptions (wait/increase/cheaper_model), CheaperAlternatives (sorted, ≤5, skips original model). estimateCheaperCost recalculates with different model pricing + markup. AnyApproved/AllBlocked batch helpers. FormatGateResult for CLI. Full suite 25/25 pass. Lint clean.
 
-## [ ] Implement production verification breach reporter — pkg/verify/
+## [x] Implement production verification breach reporter — pkg/verify/
 - **Priority:** medium
 - **Spec:** specs/production-verification.md §Behavior Contracts (breach display) + specs/adversarial-review.md §Evidence Bundles (structured display)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/verify/breach_report.go (NEW), pkg/verify/breach_report_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/verify/... -count=1 -cover` passes with >85% coverage
 - **Logic:** BreachReporter generates structured breach reports for Forgejo PR comments when behavior contracts are violated. Report sections: contract name, agent ID, deployment phase (shadow/canary/steady-state), failed assertions with actual vs expected values, metrics snapshot at breach time, drift summary, recommended action (rollback/investigate/waive), evidence bundle link. FormatBreachReport renders markdown suitable for Forgejo comment rendering.
+- **Result:** [x] 25 tests, 95.5% pkg/verify coverage. BreachReporter with ReportFromBreach (Monitor.Breach → BreachReportData). Phase-aware recommended action (shadow→rollback safe, canary→investigate, steady-state→rollback). FormatBreachReport renders full markdown (header, action badge, failed assertions table, metrics table, drift table, evidence link). PhaseFromState maps ShadowState→DeploymentPhase. BreachSummary for log output. Full pipeline integration test (Monitor.Evaluate → breach → report). Full suite 25/25 pass. Lint clean.
 
 ## [ ] Implement trust ledger compaction — pkg/trust/
 - **Priority:** medium
