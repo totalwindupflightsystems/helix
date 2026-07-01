@@ -739,3 +739,21 @@
 - **AC:** `go build ./... && go test ./pkg/sandbox/... -count=1 -cover` passes with >85% coverage
 - **Logic:** SecurityValidator checks all 7 spec §9 security properties: (1) no-home-access — /home, /root, ~/.ssh never mounted, (2) no-network-access — workspace/full unshare network, (3) pid-isolation — private PID namespace, (4) memory-bounds — cgroup v2 memory.max, (5) time-bounds — context deadline + SIGKILL, (6) no-gpu-full-mode — GPU never enabled, (7) die-with-parent — cleanup on exit. ValidateStrict returns error if any check fails. CheckSessionPermissions rejects path traversal. ValidateMountSpec rejects forbidden source/dest paths. RequiredMountPoints returns spec-mandated bind mounts. ForbiddenMountSources lists never-mount paths. 93.1% pkg/sandbox coverage.
 - **Result:** [x] 20 tests. Full suite 25/25 pass. Lint clean.
+
+## [x] Implement Chimera HTTP client — pkg/integration/
+- **Priority:** high
+- **Spec:** specs/integrations.md §2 (Chimera Adapter) + specs/cross-component-wiring.md §3
+- **Model:** direct write — Go package, concrete HTTP client (follows LangFuse client pattern)
+- **Files:** pkg/integration/chimera_client.go (NEW), pkg/integration/chimera_client_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/integration/... -count=1 -cover` passes with >85% coverage
+- **Logic:** ChimeraClient implements ChimeraAdapter interface with real HTTP calls. Review() POSTs to /api/v1/deliberate with ChimeraPR payload. Formations() GETs /api/v1/formations. Models() GETs /api/v1/models. Health() GETs /api/v1/health. All methods use httptest mock servers for testing. Context-aware with timeout. Auth via Bearer token. Error handling for 401/429/5xx. parseChimeraVerdict converts raw JSON to typed ChimeraVerdict.
+- **Result:** [x] 25 tests (Review success/auth/rate-limit/budget/server-error/conn-error/malformed, Formations success/auth/empty/error, Models success/auth/empty/error, Health success/down/conn/malformed, parseChimeraVerdict empty/nil/multiple-findings, serializeAgentReviews, with-agent-reviews). All new functions 86-100% coverage. Full suite 25/25 pass. Lint clean.
+
+## [x] Implement GitReins HTTP client — pkg/integration/
+- **Priority:** high
+- **Spec:** specs/integrations.md §1 (GitReins Adapter) + specs/cross-component-wiring.md §1
+- **Model:** direct write — Go package, concrete HTTP client (follows LangFuse client pattern)
+- **Files:** pkg/integration/gitreins_client.go (NEW), pkg/integration/gitreins_client_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/integration/... -count=1 -cover` passes with >85% coverage
+- **Logic:** GitReinsClient implements GitReinsAdapter interface with real HTTP/subprocess calls. Guard() invokes `gitreins guard` subprocess or HTTP endpoint. Evaluate() POSTs diff to GitReins API. Cost() computes from LLMUsage in EvalResult using pricing data. All methods use httptest mock servers. Context-aware. Error handling for all spec §1 error scenarios.
+- **Result:** [x] 21 tests (Guard success/auth/rate-limit/server-error/conn-error/malformed, Evaluate success/auth/timeout/rate-limit/server-error/conn-error, Cost with-pricing/nil/zero-tokens, Health success/conn-error/server-error, parseGuardResult/parseEvalResult empty/nil). All new functions 80-100% coverage. Full suite 25/25 pass. Lint clean.
