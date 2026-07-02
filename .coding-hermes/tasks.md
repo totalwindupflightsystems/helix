@@ -829,3 +829,44 @@
 - **AC:** `go build ./... && go test ./pkg/integration/... -count=1 -cover` passes with >85% coverage
 - **Logic:** HivemindClient implements HivemindAdapter interface with real HTTP calls. QueryMemory() searches shared agent memory. StoreMemory() persists a learning or observation. ScheduleTask() queues a periodic task. GetSchedule() retrieves schedule. Health() checks service. httptest mock servers. Context-aware. Follows LangFuseClient pattern.
 - **Result:** [x] 25 tests. HivemindClient with ScheduleTask/ClaimTask/CompleteTask/ReadMemory/WriteMemory/Health. httptest mocks for all paths (success, 401, 429, 500, malformed, empty, auth header verification). parseHiveTask/parseMemoryEntry converters. 80.3% pkg/integration coverage. Full suite 25/25 pass. Lint clean.
+
+## [x] Implement co-approval gate engine — pkg/coapproval/
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §7.2 (Gate Ordering — Co-Approval Gate) + §13.3 (Phase 3 success criteria: "PR blocked until 1 human + 1 agent approve")
+- **Model:** direct write — Go package, pure logic
+- **Files:** pkg/coapproval/gate.go (NEW), pkg/coapproval/gate_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/coapproval/... -count=1 -cover` passes with >85% coverage
+- **Logic:** CoApprovalGate enforces the final merge gate: both 1 human AND 1 trusted agent must approve. ApprovalTracker tracks pending approvals by type (human, agent). RecordApproval adds an approval with reviewer identity, trust level, and timestamp. IsSatisfied returns true when both types have at least 1 approval. Trusted agent overrides: agents with trust >= 70 satisfy the agent side; below 70 requires 2 agents. Expiry: approvals expire after 24h (must re-approve if PR changes after approval). MergeEligibility returns ALLOWED/BLOCKED/NEEDS_HUMAN/NEEDS_AGENT with reason. Integrates with MergeGate as the final check.
+- **Result:** [x] 35 tests, 100% coverage. CoApprovalGate with trust-tiered agent approval (trusted >= 70 solo, untrusted needs 2), veto protocol (trust >= 90, no un-veto), 24h expiry, commit-SHA invalidation on push. Thread-safe. Full suite 26/26 pass. Lint clean.
+
+## [ ] Implement platform alert rules engine — pkg/health/
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §8.4 (Prometheus Metrics — Alert thresholds)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/health/alerts.go (NEW), pkg/health/alerts_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/health/... -count=1 -cover` passes with >85% coverage
+- **Logic:** AlertRule engine implementing all 5 spec §8.4 alerts: HighCostAgent (agent cost > $5/hr), GateFailureSpike (tier1 pass rate < 70% in 15m), PRStuck (PR cycle > 2h), AgentDown (agent uptime == 0), CostAnomaly (PR cost > 3x weekly average). EvaluateRules takes a MetricsSnapshot and returns AlertResults with firing/resolved state. Alert with severity (critical/warning), annotation, and labels. Configurable thresholds.
+
+## [ ] Implement Forgejo branch protection enforcer — pkg/forgejo/
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §13.2 (Day 9-10: scoped permissions) + §5 (IAM)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/forgejo/branch_protection.go (NEW), pkg/forgejo/branch_protection_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/forgejo/... -count=1 -cover` passes with >85% coverage
+- **Logic:** BranchProtectionEnforcer configures Forgejo branch protection rules per trust tier. ConfigureBranch sets: required approvals (Provisional: 2, Observed: 2, Trusted: 1, Veteran: 1), required status checks (tier1, tier2, chimera), push restrictions (agents can push to feat/* but not main). ApplyTierProtection applies the appropriate protection rules when an agent's tier changes. Integrates with existing ForgejoClient for API calls. httptest mock for API verification.
+
+## [ ] Implement helix-doctor diagnostic CLI — cmd/helix/
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §10.5 (helix-doctor diagnostic checks)
+- **Model:** direct write — Go package, extend CLI
+- **Files:** cmd/helix/doctor.go (NEW), cmd/helix/doctor_test.go (NEW)
+- **AC:** `go build ./... && go test ./cmd/helix/... -count=1` passes
+- **Logic:** `helix doctor` runs the spec §10.5 diagnostic checklist: Forgejo reachable, Chimera healthy, Conscientiousness healthy, Hivemind healthy, LangFuse reachable, Prometheus scraping, agent containers running, disk usage, memory, backup freshness. Each check returns ✓/✗ with detail. Exit code 0 if all pass, 1 if any fail. Uses existing pkg/health checker for service probes, adds system-level checks (disk, memory, backup age). Configurable service URLs via flags.
+
+## [ ] Implement per-agent Prometheus metrics collector — pkg/health/
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §8.4 (Agent metrics)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/health/agent_metrics.go (NEW), pkg/health/agent_metrics_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/health/... -count=1 -cover` passes with >85% coverage
+- **Logic:** AgentMetricsCollector implementing all 6 spec §8.4 per-agent metrics: helix_agent_tasks_total{agent, repo, status}, helix_agent_llm_calls_total{agent, model}, helix_agent_tokens_used{agent, model, type}, helix_agent_cost_total{agent, repo}, helix_agent_sandbox_uptime_seconds{agent}, helix_agent_worktree_count{agent}. Prometheus text exposition format. Thread-safe with sync.RWMutex. RecordTask, RecordLLMCall, RecordCost, SetSandboxUptime, SetWorktreeCount methods. Integrates with existing platform metrics aggregator.
