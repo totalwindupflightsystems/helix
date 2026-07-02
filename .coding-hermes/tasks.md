@@ -946,3 +946,12 @@
 - **AC:** `go build ./... && go test ./pkg/prompt/... -count=1 -cover` passes with >85% coverage
 - **Logic:** Parse and format the Helix-Attestation JSON trailer defined in spec §2.2 Step 5. The trailer format includes task_id, prompt_hash, model, context_hash, cost_usd, tokens (input/output), langfuse_trace_id, agent, confidence. Parser handles multi-line indented JSON with nested objects. Builder produces compact single-line JSON. Validation checks required fields (prompt_hash sha256: prefix, model, agent), range checks (confidence 0-100, cost non-negative), optional field validation (context_hash prefix if present). Legacy struct conversion for backward compatibility with existing Attestation struct.
 - **Result:** [x] 38 tests, 91.5% pkg/prompt coverage. ParseHelixAttestation with balanced-brace extraction for nested JSON. FormatHelixAttestation/AppendHelixAttestation/HasHelixAttestation. ValidateHelixAttestation with 10 validation rules. Legacy bidirectional conversion. Spec example round-trip verified. Full suite 29/29 pass. Lint clean.
+
+## [x] Implement quality gate pipeline executor — pkg/mergegate/
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §7.2 (Gate Ordering)
+- **Model:** direct write — Go package, extend existing (foreman is GLM 5.2)
+- **Files:** pkg/mergegate/pipeline.go (NEW), pkg/mergegate/pipeline_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/mergegate/... -count=1 -cover` passes with >85% coverage
+- **Logic:** GatePipeline executes the full 6-gate sequence per spec §7.2: GitReins Tier 1 → Tier 2 → Chimera Formation → Conscientiousness → PromptFoo → Co-Approval. Sequential execution, stop-on-first-fail (default), context-aware per-gate timeout, global skip set, conditional skip (per-change-type), PipelineReport with per-gate GateResult (status, evidence, duration), PipelineSummary for CLI display. Gate interface with StubGate for testing.
+- **Result:** [x] 17 pipeline tests, 96.6% pkg/mergegate coverage. GatePipeline with configurable StopOnFirstFail, TimeoutPerGate, SkipGates. Gate/StubGate/NewPassingStub/NewFailingStub. PipelineReport with AllPassed/FailedGate/GateReached. PipelineSummary with pass/fail/skip icons. slowGate timeout test. Full suite 29/29 pass. Lint clean.
