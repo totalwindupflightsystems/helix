@@ -920,6 +920,15 @@
 - **Logic:** BackupManager encodes the spec §10.1 backup table as structured data: BackupTarget (Path, Content, Frequency, Retention). All 8 spec backup targets registered. ValidateBackups checks retention periods, computes expired backups, and verifies backup target paths exist. RestorePlan generates the spec §10.2 restore procedure as ordered steps. BackupStatus reports per-target freshness (last backup age vs frequency). ComputeRetentionCleanup lists expired backup files for deletion.
 - **Result:** [x] 24 tests, 93.1% coverage. 8 spec §10.1 backup targets. BackupManager with Validate/ValidateAtTime (retention compliance), CheckFreshness/CheckFreshnessAtTime (fresh/stale/overdue), ComputeRetentionCleanup (expired file detection). RestorePlan generates spec §10.2 4-step restore procedure. FormatRestorePlan/FormatBackupReport for CLI output. parseRetentionDays supports days and weeks. Full suite 28/28 pass.
 
+## [x] Implement pipeline state machine for 12-step flow — pkg/pipeline/
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §2.2 (Step-by-Step State Transitions and Data Contracts) + §1.5 (12-Step Flow)
+- **Model:** direct write — Go package, state machine + persistence
+- **Files:** pkg/pipeline/state.go, pkg/pipeline/state_test.go
+- **AC:** `go build ./... && go test ./pkg/pipeline/... -count=1 -cover` passes with >85% coverage
+- **Logic:** PipelineStateMachine encodes the 12-step Helix flow (spec §1.5/§2.2) as a state machine with transitions, preconditions, and data contracts. Steps: idle → task_created → swarm_assembled → worktree_acquired → agent_writing → agent_committed → guard_fired → pr_opened → review_complete → adversarial_complete → promptfoo_passed → co_approved → merged_deployed. Each step has entry/exit conditions, failure states (failed/escalated/blocked), and a data contract (input → output). StateTransitions validates only legal transitions. PersistState/LoadState for crash recovery. GetStep returns step metadata. IsTerminal/IsBlocked/IsFailed helpers. StepDuration tracks per-step latency budgets (spec §2.3).
+- **Result:** [x] 30 tests, 94.9% coverage. PipelineStateMachine with 12 normal + 3 failure states. Legal-transition validation including rebase loops, guard rejections, blocked retries, escalated overrides. PersistState/LoadState for JSON crash recovery. GetStepInfo with latency budgets per spec §2.3. GetDataContract per spec §2.2. Full happy path test + edge cases (skip adversarial, guard reject→recommit, rebase loop, blocked→retry, escalated→override). Full suite 29/29 pass.
+
 ## [x] Implement enhanced config validation — pkg/config/
 - **Priority:** medium
 - **Spec:** specs/helix-config.md (Configuration Validation) + specs/SPECIFICATION.md §10 (Operations)
