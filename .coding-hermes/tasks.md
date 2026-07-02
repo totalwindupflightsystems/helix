@@ -937,3 +937,12 @@
 - **AC:** `go build ./... && go test ./pkg/config/... -count=1 -cover` passes with >85% coverage
 - **Logic:** ValidateAll returns ALL config errors at once (not just the first). Validates 11 config sections: version, forgejo, chimera, langfuse, gitreins, estimator, marketplace, negotiation, prompts, budget, services. Two severity levels: error (blocks) and warning (recommended). Duration string validation for all timeout fields. Budget reset day validation. Escalation threshold range. ConfigErrors type with HasErrors/HasWarnings/ErrorMessages/FormatErrors.
 - **Result:** [x] 24 tests. ValidateAll covering all 11 config sections with error+warning detection. ConfigErrors type with HasErrors/HasWarnings/FormatErrors. isValidDurationString supporting compound durations (1h30m). ConfigError with Section/Field/Message/Severity. Full suite 26/26 pass. Lint clean.
+
+## [x] Implement Helix-Attestation commit trailer parser/builder — pkg/prompt/
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §2.2 Step 5 (Commit Attestation Data Contract)
+- **Model:** direct write — Go package, extend existing (foreman is GLM 5.2)
+- **Files:** pkg/prompt/attestation_trailer.go (NEW), pkg/prompt/attestation_trailer_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/prompt/... -count=1 -cover` passes with >85% coverage
+- **Logic:** Parse and format the Helix-Attestation JSON trailer defined in spec §2.2 Step 5. The trailer format includes task_id, prompt_hash, model, context_hash, cost_usd, tokens (input/output), langfuse_trace_id, agent, confidence. Parser handles multi-line indented JSON with nested objects. Builder produces compact single-line JSON. Validation checks required fields (prompt_hash sha256: prefix, model, agent), range checks (confidence 0-100, cost non-negative), optional field validation (context_hash prefix if present). Legacy struct conversion for backward compatibility with existing Attestation struct.
+- **Result:** [x] 38 tests, 91.5% pkg/prompt coverage. ParseHelixAttestation with balanced-brace extraction for nested JSON. FormatHelixAttestation/AppendHelixAttestation/HasHelixAttestation. ValidateHelixAttestation with 10 validation rules. Legacy bidirectional conversion. Spec example round-trip verified. Full suite 29/29 pass. Lint clean.
