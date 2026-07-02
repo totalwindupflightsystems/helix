@@ -883,3 +883,30 @@
 - **AC:** `go build ./... && go test ./pkg/health/... -count=1 -cover` passes with >85% coverage
 - **Logic:** AgentMetricsCollector implementing all 6 spec §8.4 per-agent metrics: helix_agent_tasks_total{agent, repo, status}, helix_agent_llm_calls_total{agent, model}, helix_agent_tokens_used{agent, model, type}, helix_agent_cost_total{agent, repo}, helix_agent_sandbox_uptime_seconds{agent}, helix_agent_worktree_count{agent}. Prometheus text exposition format. Thread-safe with sync.RWMutex. RecordTask, RecordLLMCall, RecordCost, SetSandboxUptime, SetWorktreeCount methods. Integrates with existing platform metrics aggregator.
 - **Result:** [x] 36 new tests, 98.0% pkg/health coverage. All 6 spec §8.4 agent metrics with Prometheus text format (HELP/TYPE headers, deterministic ordering, counter vs gauge types). RecordTask/RecordLLMCall/RecordTokens/RecordCost/SetSandboxUptime/SetWorktreeCount methods. AgentMetricsSummary for aggregate reporting. MetricsSource interface integration. Thread-safe (concurrent test verified). Full suite 26/26 pass. Lint clean.
+
+## [x] Implement graceful degradation checker — pkg/health/
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §14.2 (Graceful Degradation — "What Still Works" matrix)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/health/degradation.go (NEW), pkg/health/degradation_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/health/... -count=1 -cover` passes with >85% coverage
+- **Logic:** DegradationChecker encodes the spec §14.2 matrix: given which subsystems are down/degraded, compute which platform capabilities (push_code, open_pr, merge_pr, human_review, agent_review, etc.) remain available, degraded, or blocked. Rules for all 13 subsystems (forgejo, chimera, conscientiousness, hivemind, langfuse, prometheus, sandbox, trust, review, negotiate, dispatcher, marketplace, estimate). EvaluateFromDashboard bridges from existing health aggregator. FormatDegradationReport for CLI output.
+- **Result:** [x] 20 tests. EvaluateDegradation for all spec §14.2 subsystems (forgejo/chimera/conscientiousness/hivemind/langfuse/prometheus/sandbox/trust). 14 capability types. Blocked>degraded>available severity ordering. EvaluateFromDashboard integration. FormatDegradationReport for human output. Full suite 26/26 pass. Lint clean.
+
+## [x] Implement key rotation manager — pkg/identity/
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §5.5 (Key Rotation) + §14 (Error Recovery)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/identity/key_rotation.go (NEW), pkg/identity/key_rotation_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/identity/... -count=1` passes
+- **Logic:** KeyRotator tracks SSH/PAT/OpenRouter key ages and produces rotation plans. RotationPolicy with spec-recommended intervals (SSH 90d, OpenRouter 30d, PAT 7d pre-expiry warning). AgentKeyRegistry tracks key metadata (hash, created, last rotated, expiry, status). EvaluateKey checks age/expiry/dead-key conditions. RotationPlan with urgency levels (immediate/high/normal/low). HashKey/VerifyKeyHash for secure key storage (sha256). FormatRotationPlan for CLI output.
+- **Result:** [x] 20 tests. KeyRotator with 3 key types, 4 urgency levels, 4 rotation reasons. DefaultRotationPolicies matching spec intervals. AgentKeyRegistry with RegisterKey/MarkRotated/MarkDead/GetKey. HashKey/VerifyKeyHash for secure storage. Multiple-key mixed-state scenarios. Full suite 26/26 pass. Lint clean.
+
+## [x] Implement enhanced config validation — pkg/config/
+- **Priority:** medium
+- **Spec:** specs/helix-config.md (Configuration Validation) + specs/SPECIFICATION.md §10 (Operations)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/config/validation.go (NEW), pkg/config/validation_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/config/... -count=1 -cover` passes with >85% coverage
+- **Logic:** ValidateAll returns ALL config errors at once (not just the first). Validates 11 config sections: version, forgejo, chimera, langfuse, gitreins, estimator, marketplace, negotiation, prompts, budget, services. Two severity levels: error (blocks) and warning (recommended). Duration string validation for all timeout fields. Budget reset day validation. Escalation threshold range. ConfigErrors type with HasErrors/HasWarnings/ErrorMessages/FormatErrors.
+- **Result:** [x] 24 tests. ValidateAll covering all 11 config sections with error+warning detection. ConfigErrors type with HasErrors/HasWarnings/FormatErrors. isValidDurationString supporting compound durations (1h30m). ConfigError with Section/Field/Message/Severity. Full suite 26/26 pass. Lint clean.
