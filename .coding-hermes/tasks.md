@@ -911,6 +911,15 @@
 - **Logic:** Encodes the spec §14.1 component failure matrix as structured Go data. FailureEntry with Component, FailureMode, Detection, Impact, Recovery actions, RTO, RPO. RecoveryRegistry with all 14 spec failure entries. LookupByComponent and LookupByFailureMode for targeted recovery guidance. Severity classification (SEV-1/2/3 per §10.5). RecoveryAction with command templates, verification steps, and expected outcome. FormatRunbook renders human-readable recovery instructions for CLI output. RecoveryMatrix returns the full grid as structured data.
 - **Result:** [x] 20 tests, 100% coverage. 18 failure entries covering 11 components (Forgejo×4, Chimera×3, Conscientiousness, Hivemind×2, Agent container×2, LangFuse×2, Prometheus, Caddy, DNS, GitReins hook). Severity classification (SEV-1/2/3). Lookup by component/failure mode/ID/severity. RecoveryMatrix as structured map. FormatRunbook/FormatMatrix for CLI output. RetryConfig with spec §14.3 exponential backoff (overflow-safe). Full suite 27/27 pass.
 
+## [x] Implement backup strategy manager — pkg/backup/
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §10.1 (Backup Strategy) + §10.2 (Restore Procedure)
+- **Model:** direct write — Go package, backup config + validation
+- **Files:** pkg/backup/strategy.go, pkg/backup/strategy_test.go
+- **AC:** `go build ./... && go test ./pkg/backup/... -count=1 -cover` passes with >85% coverage
+- **Logic:** BackupManager encodes the spec §10.1 backup table as structured data: BackupTarget (Path, Content, Frequency, Retention). All 8 spec backup targets registered. ValidateBackups checks retention periods, computes expired backups, and verifies backup target paths exist. RestorePlan generates the spec §10.2 restore procedure as ordered steps. BackupStatus reports per-target freshness (last backup age vs frequency). ComputeRetentionCleanup lists expired backup files for deletion.
+- **Result:** [x] 24 tests, 93.1% coverage. 8 spec §10.1 backup targets. BackupManager with Validate/ValidateAtTime (retention compliance), CheckFreshness/CheckFreshnessAtTime (fresh/stale/overdue), ComputeRetentionCleanup (expired file detection). RestorePlan generates spec §10.2 4-step restore procedure. FormatRestorePlan/FormatBackupReport for CLI output. parseRetentionDays supports days and weeks. Full suite 28/28 pass.
+
 ## [x] Implement enhanced config validation — pkg/config/
 - **Priority:** medium
 - **Spec:** specs/helix-config.md (Configuration Validation) + specs/SPECIFICATION.md §10 (Operations)
