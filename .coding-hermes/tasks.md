@@ -857,13 +857,14 @@
 - **Logic:** BranchProtectionEnforcer configures Forgejo branch protection rules per trust tier. ConfigureBranch sets: required approvals (Provisional: 2, Observed: 2, Trusted: 1, Veteran: 1), required status checks (tier1, tier2, chimera), push restrictions (agents can push to feat/* but not main). ApplyTierProtection applies the appropriate protection rules when an agent's tier changes. Integrates with existing ForgejoClient for API calls. httptest mock for API verification.
 - **Result:** [x] 25 new tests, 95.8% pkg/forgejo coverage. BranchProtectionEnforcer with tier-based required approvals, status checks, push/merge whitelist. AgentPushAllowed (feat/* allowed, main blocked, release/* needs Trusted+). AgentMergeAllowed (Veteran can merge own PRs). ApplyTierProtection + CreateFeatureBranchRule API calls. Full suite 26/26 pass. Lint clean.
 
-## [ ] Implement helix-doctor diagnostic CLI — cmd/helix/
+## [x] Implement helix-doctor diagnostic CLI — cmd/helix/
 - **Priority:** medium
 - **Spec:** specs/SPECIFICATION.md §10.5 (helix-doctor diagnostic checks)
 - **Model:** direct write — Go package, extend CLI
 - **Files:** cmd/helix/doctor.go (NEW), cmd/helix/doctor_test.go (NEW)
 - **AC:** `go build ./... && go test ./cmd/helix/... -count=1` passes
 - **Logic:** `helix doctor` runs the spec §10.5 diagnostic checklist: Forgejo reachable, Chimera healthy, Conscientiousness healthy, Hivemind healthy, LangFuse reachable, Prometheus scraping, agent containers running, disk usage, memory, backup freshness. Each check returns ✓/✗ with detail. Exit code 0 if all pass, 1 if any fail. Uses existing pkg/health checker for service probes, adds system-level checks (disk, memory, backup age). Configurable service URLs via flags.
+- **Result:** [x] 25 new tests, 86.4% cmd/helix coverage. `helix doctor` command with 9 diagnostic checks (6 HTTP health probes + disk usage + memory + backup freshness). DoctorConfig with configurable URLs and thresholds. DoctorReport with AllPassed/HasWarnings/Summary. JSON report output for machine consumption. Flag parsing (--forgejo-url, --chimera-url, --disk-path). Full suite 26/26 pass. Lint clean.
 
 ## [ ] Implement per-agent Prometheus metrics collector — pkg/health/
 - **Priority:** medium
