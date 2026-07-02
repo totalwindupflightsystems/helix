@@ -866,6 +866,15 @@
 - **Logic:** `helix doctor` runs the spec §10.5 diagnostic checklist: Forgejo reachable, Chimera healthy, Conscientiousness healthy, Hivemind healthy, LangFuse reachable, Prometheus scraping, agent containers running, disk usage, memory, backup freshness. Each check returns ✓/✗ with detail. Exit code 0 if all pass, 1 if any fail. Uses existing pkg/health checker for service probes, adds system-level checks (disk, memory, backup age). Configurable service URLs via flags.
 - **Result:** [x] 25 new tests, 86.4% cmd/helix coverage. `helix doctor` command with 9 diagnostic checks (6 HTTP health probes + disk usage + memory + backup freshness). DoctorConfig with configurable URLs and thresholds. DoctorReport with AllPassed/HasWarnings/Summary. JSON report output for machine consumption. Flag parsing (--forgejo-url, --chimera-url, --disk-path). Full suite 26/26 pass. Lint clean.
 
+## [x] Implement platform-level Prometheus metrics recorder — pkg/health/
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §8.4 (Platform metrics)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/health/platform_metrics.go (NEW), pkg/health/platform_metrics_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/health/... -count=1 -cover` passes with >85% coverage
+- **Logic:** PlatformMetricsRecorder implementing all 7 spec §8.4 platform metrics: helix_pr_cycle_time_seconds{repo, quantile}, helix_gate_pass_rate{gate}, helix_active_agents, helix_queued_tasks, helix_forgejo_api_latency_seconds{endpoint, quantile}, helix_cost_per_pr{repo}, helix_merge_rate{repo, period}. Prometheus text exposition format. Implements MetricsSource interface for aggregator integration. ToSnapshot() converts to MetricsSnapshot for AlertEngine consumption. Thread-safe.
+- **Result:** [x] 37 new tests. All 7 metrics with Prometheus text format (HELP/TYPE headers, quantile summaries, deterministic ordering). RecordPRCycleTime/RecordGateResult/SetActiveAgents/SetQueuedTasks/RecordAPILatency/RecordPRCost/RecordMerge methods. MetricsSource interface integration with existing PlatformMetricsCollector. ToSnapshot bridges to AlertEngine. Reset for windowing. PlatformMetricsSummary aggregate reporting. 96.1% pkg/health coverage. Full suite 26/26 pass. Lint clean.
+
 ## [x] Implement per-agent Prometheus metrics collector — pkg/health/
 - **Priority:** medium
 - **Spec:** specs/SPECIFICATION.md §8.4 (Agent metrics)
