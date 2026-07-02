@@ -839,13 +839,14 @@
 - **Logic:** CoApprovalGate enforces the final merge gate: both 1 human AND 1 trusted agent must approve. ApprovalTracker tracks pending approvals by type (human, agent). RecordApproval adds an approval with reviewer identity, trust level, and timestamp. IsSatisfied returns true when both types have at least 1 approval. Trusted agent overrides: agents with trust >= 70 satisfy the agent side; below 70 requires 2 agents. Expiry: approvals expire after 24h (must re-approve if PR changes after approval). MergeEligibility returns ALLOWED/BLOCKED/NEEDS_HUMAN/NEEDS_AGENT with reason. Integrates with MergeGate as the final check.
 - **Result:** [x] 35 tests, 100% coverage. CoApprovalGate with trust-tiered agent approval (trusted >= 70 solo, untrusted needs 2), veto protocol (trust >= 90, no un-veto), 24h expiry, commit-SHA invalidation on push. Thread-safe. Full suite 26/26 pass. Lint clean.
 
-## [ ] Implement platform alert rules engine — pkg/health/
+## [x] Implement platform alert rules engine — pkg/health/
 - **Priority:** medium
 - **Spec:** specs/SPECIFICATION.md §8.4 (Prometheus Metrics — Alert thresholds)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/health/alerts.go (NEW), pkg/health/alerts_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/health/... -count=1 -cover` passes with >85% coverage
 - **Logic:** AlertRule engine implementing all 5 spec §8.4 alerts: HighCostAgent (agent cost > $5/hr), GateFailureSpike (tier1 pass rate < 70% in 15m), PRStuck (PR cycle > 2h), AgentDown (agent uptime == 0), CostAnomaly (PR cost > 3x weekly average). EvaluateRules takes a MetricsSnapshot and returns AlertResults with firing/resolved state. Alert with severity (critical/warning), annotation, and labels. Configurable thresholds.
+- **Result:** [x] 37 new alert tests, 98.9% pkg/health coverage (up from 99.0%). AlertEngine with all 5 spec §8.4 rules. Configurable thresholds via AlertConfig. AlertSummary with HasFiring/HasCritical/FormatSummary. Thread-safe. Sorted results for deterministic output. Full suite 26/26 pass. Lint clean.
 
 ## [ ] Implement Forgejo branch protection enforcer — pkg/forgejo/
 - **Priority:** medium
