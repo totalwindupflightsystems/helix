@@ -866,10 +866,11 @@
 - **Logic:** `helix doctor` runs the spec §10.5 diagnostic checklist: Forgejo reachable, Chimera healthy, Conscientiousness healthy, Hivemind healthy, LangFuse reachable, Prometheus scraping, agent containers running, disk usage, memory, backup freshness. Each check returns ✓/✗ with detail. Exit code 0 if all pass, 1 if any fail. Uses existing pkg/health checker for service probes, adds system-level checks (disk, memory, backup age). Configurable service URLs via flags.
 - **Result:** [x] 25 new tests, 86.4% cmd/helix coverage. `helix doctor` command with 9 diagnostic checks (6 HTTP health probes + disk usage + memory + backup freshness). DoctorConfig with configurable URLs and thresholds. DoctorReport with AllPassed/HasWarnings/Summary. JSON report output for machine consumption. Flag parsing (--forgejo-url, --chimera-url, --disk-path). Full suite 26/26 pass. Lint clean.
 
-## [ ] Implement per-agent Prometheus metrics collector — pkg/health/
+## [x] Implement per-agent Prometheus metrics collector — pkg/health/
 - **Priority:** medium
 - **Spec:** specs/SPECIFICATION.md §8.4 (Agent metrics)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/health/agent_metrics.go (NEW), pkg/health/agent_metrics_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/health/... -count=1 -cover` passes with >85% coverage
 - **Logic:** AgentMetricsCollector implementing all 6 spec §8.4 per-agent metrics: helix_agent_tasks_total{agent, repo, status}, helix_agent_llm_calls_total{agent, model}, helix_agent_tokens_used{agent, model, type}, helix_agent_cost_total{agent, repo}, helix_agent_sandbox_uptime_seconds{agent}, helix_agent_worktree_count{agent}. Prometheus text exposition format. Thread-safe with sync.RWMutex. RecordTask, RecordLLMCall, RecordCost, SetSandboxUptime, SetWorktreeCount methods. Integrates with existing platform metrics aggregator.
+- **Result:** [x] 36 new tests, 98.0% pkg/health coverage. All 6 spec §8.4 agent metrics with Prometheus text format (HELP/TYPE headers, deterministic ordering, counter vs gauge types). RecordTask/RecordLLMCall/RecordTokens/RecordCost/SetSandboxUptime/SetWorktreeCount methods. AgentMetricsSummary for aggregate reporting. MetricsSource interface integration. Thread-safe (concurrent test verified). Full suite 26/26 pass. Lint clean.
