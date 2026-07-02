@@ -240,11 +240,13 @@ func TestRunAllChecks_ServicesDown(t *testing.T) {
 func TestCheckDiskUsage_Success(t *testing.T) {
 	cfg := DoctorConfig{
 		DiskPath:        t.TempDir(),
-		MaxDiskUsagePct: 100.0, // Use 100% to always pass on any disk
+		MaxDiskUsagePct: 100.0, // Use 100% to never FAIL on any disk
 	}
 	result := checkDiskUsage(cfg)
-	if result.Status != "PASS" {
-		t.Errorf("expected PASS for any disk, got %s: %s", result.Status, result.Detail)
+	// On a heavily used disk, the check may return WARN (approaching limit)
+	// but should never FAIL when MaxDiskUsagePct is set to 100%.
+	if result.Status == "FAIL" {
+		t.Errorf("expected PASS or WARN for MaxDiskUsagePct=100, got FAIL: %s", result.Detail)
 	}
 }
 
