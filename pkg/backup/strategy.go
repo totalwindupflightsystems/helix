@@ -302,7 +302,7 @@ func parseRetentionDays(s string) int {
 
 	var days int
 	var unit string
-	fmt.Sscanf(s, "%d %s", &days, &unit)
+	_, _ = fmt.Sscanf(s, "%d %s", &days, &unit)
 
 	switch unit {
 	case "day", "days", "d":
@@ -413,7 +413,7 @@ func FormatBackupReport(results []ValidationResult) string {
 
 // HasFreshBackup is a helper to check if a path has a fresh backup in results.
 func (r ValidationResult) HasFreshBackup(_ []ValidationResult, _ string) bool {
-	return r.LastBackup.IsZero() == false
+	return !r.LastBackup.IsZero()
 }
 
 // formatDuration renders a time.Duration in a human-friendly way.
