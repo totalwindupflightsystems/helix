@@ -902,6 +902,15 @@
 - **Logic:** KeyRotator tracks SSH/PAT/OpenRouter key ages and produces rotation plans. RotationPolicy with spec-recommended intervals (SSH 90d, OpenRouter 30d, PAT 7d pre-expiry warning). AgentKeyRegistry tracks key metadata (hash, created, last rotated, expiry, status). EvaluateKey checks age/expiry/dead-key conditions. RotationPlan with urgency levels (immediate/high/normal/low). HashKey/VerifyKeyHash for secure key storage (sha256). FormatRotationPlan for CLI output.
 - **Result:** [x] 20 tests. KeyRotator with 3 key types, 4 urgency levels, 4 rotation reasons. DefaultRotationPolicies matching spec intervals. AgentKeyRegistry with RegisterKey/MarkRotated/MarkDead/GetKey. HashKey/VerifyKeyHash for secure storage. Multiple-key mixed-state scenarios. Full suite 26/26 pass. Lint clean.
 
+## [x] Implement error recovery procedures engine — pkg/recovery/
+- **Priority:** high
+- **Spec:** specs/error-recovery.md + specs/SPECIFICATION.md §14 (Error Recovery)
+- **Model:** direct write — Go package, structured failure→recovery mapping
+- **Files:** pkg/recovery/runbook.go, pkg/recovery/runbook_test.go
+- **AC:** `go build ./... && go test ./pkg/recovery/... -count=1 -cover` passes with >85% coverage
+- **Logic:** Encodes the spec §14.1 component failure matrix as structured Go data. FailureEntry with Component, FailureMode, Detection, Impact, Recovery actions, RTO, RPO. RecoveryRegistry with all 14 spec failure entries. LookupByComponent and LookupByFailureMode for targeted recovery guidance. Severity classification (SEV-1/2/3 per §10.5). RecoveryAction with command templates, verification steps, and expected outcome. FormatRunbook renders human-readable recovery instructions for CLI output. RecoveryMatrix returns the full grid as structured data.
+- **Result:** [x] 20 tests, 100% coverage. 18 failure entries covering 11 components (Forgejo×4, Chimera×3, Conscientiousness, Hivemind×2, Agent container×2, LangFuse×2, Prometheus, Caddy, DNS, GitReins hook). Severity classification (SEV-1/2/3). Lookup by component/failure mode/ID/severity. RecoveryMatrix as structured map. FormatRunbook/FormatMatrix for CLI output. RetryConfig with spec §14.3 exponential backoff (overflow-safe). Full suite 27/27 pass.
+
 ## [x] Implement enhanced config validation — pkg/config/
 - **Priority:** medium
 - **Spec:** specs/helix-config.md (Configuration Validation) + specs/SPECIFICATION.md §10 (Operations)
