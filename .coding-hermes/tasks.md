@@ -848,13 +848,14 @@
 - **Logic:** AlertRule engine implementing all 5 spec §8.4 alerts: HighCostAgent (agent cost > $5/hr), GateFailureSpike (tier1 pass rate < 70% in 15m), PRStuck (PR cycle > 2h), AgentDown (agent uptime == 0), CostAnomaly (PR cost > 3x weekly average). EvaluateRules takes a MetricsSnapshot and returns AlertResults with firing/resolved state. Alert with severity (critical/warning), annotation, and labels. Configurable thresholds.
 - **Result:** [x] 37 new alert tests, 98.9% pkg/health coverage (up from 99.0%). AlertEngine with all 5 spec §8.4 rules. Configurable thresholds via AlertConfig. AlertSummary with HasFiring/HasCritical/FormatSummary. Thread-safe. Sorted results for deterministic output. Full suite 26/26 pass. Lint clean.
 
-## [ ] Implement Forgejo branch protection enforcer — pkg/forgejo/
+## [x] Implement Forgejo branch protection enforcer — pkg/forgejo/
 - **Priority:** medium
 - **Spec:** specs/SPECIFICATION.md §13.2 (Day 9-10: scoped permissions) + §5 (IAM)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/forgejo/branch_protection.go (NEW), pkg/forgejo/branch_protection_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/forgejo/... -count=1 -cover` passes with >85% coverage
 - **Logic:** BranchProtectionEnforcer configures Forgejo branch protection rules per trust tier. ConfigureBranch sets: required approvals (Provisional: 2, Observed: 2, Trusted: 1, Veteran: 1), required status checks (tier1, tier2, chimera), push restrictions (agents can push to feat/* but not main). ApplyTierProtection applies the appropriate protection rules when an agent's tier changes. Integrates with existing ForgejoClient for API calls. httptest mock for API verification.
+- **Result:** [x] 25 new tests, 95.8% pkg/forgejo coverage. BranchProtectionEnforcer with tier-based required approvals, status checks, push/merge whitelist. AgentPushAllowed (feat/* allowed, main blocked, release/* needs Trusted+). AgentMergeAllowed (Veteran can merge own PRs). ApplyTierProtection + CreateFeatureBranchRule API calls. Full suite 26/26 pass. Lint clean.
 
 ## [ ] Implement helix-doctor diagnostic CLI — cmd/helix/
 - **Priority:** medium
