@@ -491,7 +491,7 @@ func TestValidate_FileSystemCheck(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(f.Name())
+	defer func() { _ = os.Remove(f.Name()) }()
 
 	m := NewBackupManagerWithTargets([]BackupTarget{
 		{Path: f.Name(), Content: "exists", Frequency: FrequencyDaily, Retention: "30 days"},
