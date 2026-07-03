@@ -643,7 +643,7 @@ func TestValidationError_Error(t *testing.T) {
 func TestContractValidator_MultipleErrors(t *testing.T) {
 	v := NewContractValidator()
 	v.ValidateForgejoCreateUser(ForgejoCreateUserRequest{}) // 4 errors (username, email, password empty, password short)
-	v.ValidateChimeraDeliberate(ChimeraDeliberateRequest{})   // 2 errors
+	v.ValidateChimeraDeliberate(ChimeraDeliberateRequest{}) // 2 errors
 	if len(v.Errors()) != 6 {
 		t.Errorf("Errors() = %d, want 6 (4+2)", len(v.Errors()))
 	}
