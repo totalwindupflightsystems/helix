@@ -1001,13 +1001,14 @@
 - **Logic:** SecurityHardeningChecker encodes spec §6.6 checklist: deployment hardening (admin password strength, reverse proxy TLS, port binding 127.0.0.1, userns-remap, no --privileged, VPN config, .env perms 600, chimera.yaml perms 600, secrets scanner installed, .gitignore coverage, branch protection on main, CI runner isolation, DB backups, SSH key-only auth) and operational hardening (H4F bridge cron, auto-repair logging, key budget review, trust recalculation, dependency vuln scan, LangFuse cost dashboards, failed step monitoring, force-merge label review). Each check returns PASS/FAIL/WARN with detail. HardeningReport with AllPassed/FailedChecks/WarningChecks. Configurable per-check overrides.
 - **Result:** [x] 35 tests, 97.2% coverage. 22 checks (14 deployment + 8 operational). HardeningChecker with pluggable CheckFunc per check. HardeningReport with FormatReport/FailedChecks/WarningChecks. HardeningSummary for CLI. CheckFilePermissions/CheckFileExists helpers. Full suite 31/31 pass. Lint clean.
 
-## [ ] Implement incident response engine — pkg/security/
+## [x] Implement incident response engine — pkg/security/
 - **Priority:** medium
 - **Spec:** specs/SPECIFICATION.md §6.7 (Incident Response)
 - **Model:** direct write — Go package, extend existing
 - **Files:** pkg/security/incident.go (NEW), pkg/security/incident_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/security/... -count=1 -cover` passes with >85% coverage
 - **Logic:** IncidentResponseEngine encodes spec §6.7 severity levels (SEV-0 through SEV-3) with response procedures. SEV-0 (platform compromise): kill all containers, rotate management key, revoke all agent keys, rotate Forgejo admin, audit commits, re-provision agents. SEV-1 (runaway agent): kill specific container, revoke key, revert PRs, audit traces, review prompt. Each severity has ResponseStep list with action, verification, and expected outcome. IncidentRecord tracks active incidents. EscalateFromMetrics auto-classifies incidents from alert engine output.
+- **Result:** [x] 40 tests, 96.2% coverage (combined pkg/security). 4 severity levels with full response procedures (SEV-0: 6 steps, SEV-1: 5 steps, SEV-2: 3 steps, SEV-3: 2 steps). IncidentResponseEngine with RegisterIncident/ActiveIncidents/ResolveIncident/EscalateIncident/CompleteStep. ClassifyFromAlert maps alert signals to severity. IncidentStats with mean resolve time. SortedIncidents by severity. FormatIncident/FormatProcedure/FormatStats for CLI. Full suite 31/31 pass. Lint clean.
 
 ## [ ] Implement API contract validator — pkg/api/
 - **Priority:** medium
