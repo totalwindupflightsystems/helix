@@ -334,8 +334,9 @@ func TestSLARecorderThreadSafe(t *testing.T) {
 		<-done
 	}
 
-	if !r.HasBreaches() {
-		// All 5s, P99=30s, no breaches expected
+	// All 5s, P99=30s, no breaches expected
+	if r.HasBreaches() {
+		t.Errorf("expected no breaches for under-target latencies, got %d", len(r.Breaches()))
 	}
 	samples := r.Samples("sync.task_to_agent_assigned")
 	if len(samples) != 100 {
