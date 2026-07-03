@@ -1018,3 +1018,27 @@
 - **AC:** `go build ./... && go test ./pkg/api/... -count=1 -cover` passes with >85% coverage
 - **Logic:** Encode the Forgejo API contract (§15.1: Create User, Create SSH Key, Create PAT, Get PR, Merge PR), Chimera API contract (§15.2: Run Deliberation), Conscientiousness API (§15.3), Hivemind API (§15.4), and Muster API (§15.5) as typed Go structs with request/response validation. ContractValidator checks that requests match expected schemas and responses match expected shapes. RequestBuilder constructs properly-formatted requests. ResponseParser extracts typed data from raw JSON. Error type mapping (400/403/409/422 for Forgejo, 400/429/500/504 for Chimera).
 - **Result:** [x] 48 tests, 91.0% coverage. 5 services with 19 total endpoints (Forgejo: 5, Chimera: 3, Conscientiousness: 3, Hivemind: 5, Muster: 3). ContractValidator with per-endpoint request/response validation. BuildRequest constructs http.Request with proper auth headers. MarshalRequest/UnmarshalResponse JSON helpers. IsValidStatusCode checks against spec-expected codes. Full suite 32/32 pass. Lint clean.
+
+## [ ] Implement DuckBrain memory schema types — pkg/memory/
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §8.5 (DuckBrain Memory Schema)
+- **Model:** direct write — Go package, pure types + validation
+- **Files:** pkg/memory/schema.go (NEW), pkg/memory/schema_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/memory/... -count=1 -cover` passes with >85% coverage
+- **Logic:** DuckBrain memory schema per spec §8.5. Namespace structure (agents/decisions, agents/anti-patterns, agents/preferences, repos/conventions, repos/known-issues, repos/architecture, platform/incidents, platform/runbooks, platform/config). MemoryEntry with key, domain (concept/event/message/raw_note/config), attributes (decision, rationale, tradeoffs, supersedes, superseded_by), embedding_text. Key validation (must start with /helix/). Supersession chain tracking. MemoryQuery for namespace-scoped retrieval. MemoryStore interface for write/query/delete.
+
+## [ ] Implement Hivemind memory bank lifecycle — pkg/memory/
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §8.6 (Hivemind Memory Bank Lifecycle)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/memory/lifecycle.go (NEW), pkg/memory/lifecycle_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/memory/... -count=1 -cover` passes with >85% coverage
+- **Logic:** Hivemind memory bank lifecycle per spec §8.6. Inbox (raw events) → Compiler (deduplicates, categorizes, enriches) → Compiled memory (structured) → _index (human-readable) → DuckBrain (persistent). Inbox events within 5 minutes with same agent+repo+event_type are batched. Deduplication: same file touched + same operation = one event. Each compiled entry gets UUID, timestamp, agent attribution, repo context, tags. Compiler with Batch/Compile/Deduplicate. CompiledEntry with full metadata. IndexBuilder generates human-readable navigation. PersistenceBridge exports to DuckBrain MemoryEntry format.
+
+## [ ] Implement env var inventory validator — pkg/config/
+- **Priority:** low
+- **Spec:** specs/SPECIFICATION.md §9.6 (Env Var Inventory)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/config/envvars.go (NEW), pkg/config/envvars_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/config/... -count=1 -cover` passes with >85% coverage
+- **Logic:** EnvVarInventory per spec §9.6. All platform env vars with: name, service, description, required (bool), default value, source (.env, docker-compose, systemd, secret manager). ValidateEnvVars checks all required vars are present. MissingRequiredVars returns list of missing required vars. EnvVarGroup organizes by service. FormatEnvVarReport for CLI output.
