@@ -982,3 +982,12 @@
 - **AC:** `go build ./... && go test ./pkg/mergegate/... -count=1 -cover` passes with >85% coverage
 - **Logic:** GatePipeline executes the full 6-gate sequence per spec §7.2: GitReins Tier 1 → Tier 2 → Chimera Formation → Conscientiousness → PromptFoo → Co-Approval. Sequential execution, stop-on-first-fail (default), context-aware per-gate timeout, global skip set, conditional skip (per-change-type), PipelineReport with per-gate GateResult (status, evidence, duration), PipelineSummary for CLI display. Gate interface with StubGate for testing.
 - **Result:** [x] 17 pipeline tests, 96.6% pkg/mergegate coverage. GatePipeline with configurable StopOnFirstFail, TimeoutPerGate, SkipGates. Gate/StubGate/NewPassingStub/NewFailingStub. PipelineReport with AllPassed/FailedGate/GateReached. PipelineSummary with pass/fail/skip icons. slowGate timeout test. Full suite 29/29 pass. Lint clean.
+
+## [x] Implement 12-step audit trail checker — pkg/audit/
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §6.5 (Audit Trail Requirements)
+- **Model:** direct write — Go package, pure composition (foreman is GLM 5.2)
+- **Files:** pkg/audit/chain.go (NEW), pkg/audit/chain_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/audit/... -count=1 -cover` passes with >85% coverage
+- **Logic:** 12-step audit trail checker per spec §6.5. For any merged PR, the checker validates evidence for all 12 pipeline steps: Forgejo issue (URL+creator+timestamp), Axiom work item (plan.yaml+agents+run_id), Ralph Loop (lock_id+worktree+timestamps), OpenCode session (session_id+model+tokens+cost+LangFuse), Git commit (SHA+attestation+prompt_hash+model+agent), GitReins verdict (Tier1+Tier2), PR metadata (index+issue+spec+evidence bundle), Chimera review (trace+formation+3+ models+verdict+score), Conscientiousness report (attack vectors+DEFENSIBLE/VULNERABLE), PromptFoo CI (test results+Actions run ID), Co-approvals (human+agent), Merge (SHA+strategy+timestamp+trace). Missing evidence = audit failure. AuditReport with FormatReport, FailedSteps, MissingSteps. Ledger for append-only audit log with PassRate and RecentFailures. ChainBuilder fluent API for assembling evidence step-by-step.
+- **Result:** [x] 47 tests, 86.4% coverage. Full suite 30/30 pass. Lint clean.
