@@ -1010,10 +1010,11 @@
 - **Logic:** IncidentResponseEngine encodes spec §6.7 severity levels (SEV-0 through SEV-3) with response procedures. SEV-0 (platform compromise): kill all containers, rotate management key, revoke all agent keys, rotate Forgejo admin, audit commits, re-provision agents. SEV-1 (runaway agent): kill specific container, revoke key, revert PRs, audit traces, review prompt. Each severity has ResponseStep list with action, verification, and expected outcome. IncidentRecord tracks active incidents. EscalateFromMetrics auto-classifies incidents from alert engine output.
 - **Result:** [x] 40 tests, 96.2% coverage (combined pkg/security). 4 severity levels with full response procedures (SEV-0: 6 steps, SEV-1: 5 steps, SEV-2: 3 steps, SEV-3: 2 steps). IncidentResponseEngine with RegisterIncident/ActiveIncidents/ResolveIncident/EscalateIncident/CompleteStep. ClassifyFromAlert maps alert signals to severity. IncidentStats with mean resolve time. SortedIncidents by severity. FormatIncident/FormatProcedure/FormatStats for CLI. Full suite 31/31 pass. Lint clean.
 
-## [ ] Implement API contract validator — pkg/api/
+## [x] Implement API contract validator — pkg/api/
 - **Priority:** medium
 - **Spec:** specs/SPECIFICATION.md §15 (API Contracts)
 - **Model:** direct write — Go package, contract types + validation
 - **Files:** pkg/api/contracts.go (NEW), pkg/api/contracts_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/api/... -count=1 -cover` passes with >85% coverage
 - **Logic:** Encode the Forgejo API contract (§15.1: Create User, Create SSH Key, Create PAT, Get PR, Merge PR), Chimera API contract (§15.2: Run Deliberation), Conscientiousness API (§15.3), Hivemind API (§15.4), and Muster API (§15.5) as typed Go structs with request/response validation. ContractValidator checks that requests match expected schemas and responses match expected shapes. RequestBuilder constructs properly-formatted requests. ResponseParser extracts typed data from raw JSON. Error type mapping (400/403/409/422 for Forgejo, 400/429/500/504 for Chimera).
+- **Result:** [x] 48 tests, 91.0% coverage. 5 services with 19 total endpoints (Forgejo: 5, Chimera: 3, Conscientiousness: 3, Hivemind: 5, Muster: 3). ContractValidator with per-endpoint request/response validation. BuildRequest constructs http.Request with proper auth headers. MarshalRequest/UnmarshalResponse JSON helpers. IsValidStatusCode checks against spec-expected codes. Full suite 32/32 pass. Lint clean.
