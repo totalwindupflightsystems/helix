@@ -992,13 +992,14 @@
 - **Logic:** 12-step audit trail checker per spec §6.5. For any merged PR, the checker validates evidence for all 12 pipeline steps: Forgejo issue (URL+creator+timestamp), Axiom work item (plan.yaml+agents+run_id), Ralph Loop (lock_id+worktree+timestamps), OpenCode session (session_id+model+tokens+cost+LangFuse), Git commit (SHA+attestation+prompt_hash+model+agent), GitReins verdict (Tier1+Tier2), PR metadata (index+issue+spec+evidence bundle), Chimera review (trace+formation+3+ models+verdict+score), Conscientiousness report (attack vectors+DEFENSIBLE/VULNERABLE), PromptFoo CI (test results+Actions run ID), Co-approvals (human+agent), Merge (SHA+strategy+timestamp+trace). Missing evidence = audit failure. AuditReport with FormatReport, FailedSteps, MissingSteps. Ledger for append-only audit log with PassRate and RecentFailures. ChainBuilder fluent API for assembling evidence step-by-step.
 - **Result:** [x] 47 tests, 86.4% coverage. Full suite 30/30 pass. Lint clean.
 
-## [ ] Implement security hardening checklist verifier — pkg/security/
+## [x] Implement security hardening checklist verifier — pkg/security/
 - **Priority:** high
 - **Spec:** specs/SPECIFICATION.md §6.6 (Security Hardening Checklist)
 - **Model:** direct write — Go package, pure validation logic
 - **Files:** pkg/security/hardening.go (NEW), pkg/security/hardening_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/security/... -count=1 -cover` passes with >85% coverage
 - **Logic:** SecurityHardeningChecker encodes spec §6.6 checklist: deployment hardening (admin password strength, reverse proxy TLS, port binding 127.0.0.1, userns-remap, no --privileged, VPN config, .env perms 600, chimera.yaml perms 600, secrets scanner installed, .gitignore coverage, branch protection on main, CI runner isolation, DB backups, SSH key-only auth) and operational hardening (H4F bridge cron, auto-repair logging, key budget review, trust recalculation, dependency vuln scan, LangFuse cost dashboards, failed step monitoring, force-merge label review). Each check returns PASS/FAIL/WARN with detail. HardeningReport with AllPassed/FailedChecks/WarningChecks. Configurable per-check overrides.
+- **Result:** [x] 35 tests, 97.2% coverage. 22 checks (14 deployment + 8 operational). HardeningChecker with pluggable CheckFunc per check. HardeningReport with FormatReport/FailedChecks/WarningChecks. HardeningSummary for CLI. CheckFilePermissions/CheckFileExists helpers. Full suite 31/31 pass. Lint clean.
 
 ## [ ] Implement incident response engine — pkg/security/
 - **Priority:** medium
