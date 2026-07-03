@@ -116,6 +116,33 @@
 - **Logic:** Replace ErrNotImplemented stub in Run() with real bwrap invocation. Handle IsolationNone (direct exec), workspace/full (bwrap args). Context-aware timeout enforcement. Process group management for clean SIGKILL on timeout. Defer chain for session dir + cgroup cleanup. Promote underscore-prefixed helpers to real functions.
 - **Result:** [x] Run() now executes real bwrap for workspace/full isolation, runs directly for IsolationNone. Added WritePID to CgroupV2 for PID→cgroup.procs wiring. Promoted 5 underscore-prefixed helpers to real functions. 11 new tests covering real bwrap execution, timeout enforcement, session cleanup, WritePID, bwrap-not-found, empty-command, and binary discovery. 93.8% coverage (up from 92.5%). Full suite 24/24 pass.
 
+## [x] Implement performance SLA tracker — pkg/health/
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §11 (Performance SLAs)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/health/sla.go (NEW), pkg/health/sla_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/health/... -count=1 -cover` passes with >85% coverage
+- **Logic:** Encode all spec §11 SLA targets as Go types: sync latency (§11.1), review latency (§11.2), merge throughput (§11.3), sandbox startup (§11.4), API latency (§11.5), cost per PR (§11.6), monitoring SLAs (§11.7). SLARecorder tracks observed latencies, checks against targets, records breaches. FormatBreach/FormatCostBreach for CLI output.
+- **Result:** [x] 16 tests, 94.3% pkg/health coverage. All 7 spec §11 SLA sections encoded. SLARecorder with sync/review/API/sandbox/cost tracking. Breach detection with FormatBreach. Full suite 29/29 pass.
+
+## [x] Implement cost attribution model — pkg/estimate/
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §8.3 (Cost Attribution Model)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/estimate/attribution.go (NEW), pkg/estimate/attribution_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/estimate/... -count=1 -cover` passes with >85% coverage
+- **Logic:** CostAttributionModel per spec §8.3: every token cost attributed to namespace/agent/task/prompt_version/model. 4-level cost hierarchy (agent → repo → sprint → platform). Budget exhaustion behavior per spec (agent 403, repo pause, platform Telegram alert). RecordCost, AgentCost, RepoCost, SprintCost, PlatformCost. CheckExhaustion returns highest exhausted tier. EntriesByAgent/Repo/Model for audit queries. Thread-safe.
+- **Result:** [x] 15 tests, 94.3% pkg/estimate coverage. 4-level hierarchy with budget limits + exhaustion detection. All 3 spec §8.3 exhaustion actions. Concurrent test (10 goroutines × 10 entries). Full suite 29/29 pass.
+
+## [x] Implement disaster recovery scenarios — pkg/recovery/
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §10.3 (Disaster Recovery) + §10.4 (Scaling Model)
+- **Model:** direct write — Go package, extend existing
+- **Files:** pkg/recovery/dr.go (NEW), pkg/recovery/dr_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/recovery/... -count=1 -cover` passes with >85% coverage
+- **Logic:** DRScenario encodes spec §10.3 DR table: hardware failure, disk failure, accidental deletion, security breach, Forgejo corruption. Each with detection, response, RTO, RPO, severity. DRRegistry for lookup by ID/severity. KeyRotationSteps returns the 5-step security incident key rotation procedure. ScalingModel encodes §10.4 (20 agents max, 0.8 cores/agent, 2s git latency threshold, 500GB Prometheus limit). ShouldAddHost checks all 3 thresholds.
+- **Result:** [x] 13 tests, 100% pkg/recovery coverage. 5 DR scenarios + registry + key rotation steps + scaling model. Full suite 29/29 pass.
+
 ## [ ] Wire dispatcher to Forgejo — agent spawn pipeline
 - **Priority:** critical
 - **Spec:** specs/dispatcher.md + specs/agent-identity.md
