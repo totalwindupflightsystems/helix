@@ -156,6 +156,8 @@ func (d *dispatcher) dispatch(args []string) error {
 		// handler explicitly so dispatch's --dry-run flag isn't shadowed
 		// by the global parser.
 		return runDispatchWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+	case "coapproval":
+		return runCoapprovalWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 	}
 
 	// Delegate to subcommand binary
