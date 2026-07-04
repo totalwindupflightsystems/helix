@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -168,12 +169,12 @@ func TestProcessEnvLoader(t *testing.T) {
 }
 
 func TestDotEnvLoader(t *testing.T) {
-	dotenv := "/tmp/helix-test.env"
+	// Use HOME-scoped dir to avoid /tmp disk-quota issues in cron contexts.
+	dotenv := filepath.Join(t.TempDir(), "helix-test.env")
 	content := "# comment\nHELIX_TEST_FOO=bar\nHELIX_TEST_RED=sk-or-v1-zzz\nHELIX_TEST_EMPTY=\n"
 	if err := os.WriteFile(dotenv, []byte(content), 0600); err != nil {
 		t.Fatalf("write: %v", err)
 	}
-	defer func() { _ = os.Remove(dotenv) }()
 
 	loader := DotEnvLoader{Path: dotenv}
 	if v, ok := loader.Load("HELIX_TEST_FOO", SourceDotenv); !ok || v != "bar" {
