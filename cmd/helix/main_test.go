@@ -260,26 +260,6 @@ func TestExecSubcommand(t *testing.T) {
 	})
 }
 
-func TestRunStatus(t *testing.T) {
-	// runStatus checks network endpoints (Forgejo, Chimera) plus binary lookup.
-	// Network checks time out when services aren't running — still testable.
-	// We run it and check it doesn't panic, produces output.
-	out := captureStdout(func() {
-		err := runStatus()
-		_ = err // may fail when services are down, that's expected
-	})
-	if !strings.Contains(out, "Helix Status") {
-		t.Error("runStatus output should contain 'Helix Status'")
-	}
-	if !strings.Contains(out, "Subcommand binaries") {
-		t.Error("runStatus output should contain 'Subcommand binaries:'")
-	}
-	// With services down, we expect [WARN] not [OK]
-	if !strings.Contains(out, "OK") && !strings.Contains(out, "WARN") && !strings.Contains(out, "DOWN") {
-		t.Error("runStatus output should contain OK, WARN, or DOWN")
-	}
-}
-
 func TestDispatch(t *testing.T) {
 	d := rootCmd()
 
@@ -345,10 +325,13 @@ func TestDispatch(t *testing.T) {
 
 	t.Run("status subcommand", func(t *testing.T) {
 		out := captureStdout(func() {
-			_ = d.dispatch([]string{"status"})
+			_ = d.dispatch([]string{"status", "--timeout", "200ms"})
 		})
-		if !strings.Contains(out, "Helix Status") {
-			t.Error("dispatch(status) should print Helix Status")
+		// New status output is "Helix Platform Status". Accept either
+		// (the old "Helix Status" string was kept for backwards
+		// compatibility with scripts that grep for it).
+		if !strings.Contains(out, "Helix Platform Status") && !strings.Contains(out, "Helix Status") {
+			t.Error("dispatch(status) should print a Helix Status header")
 		}
 	})
 
@@ -467,18 +450,10 @@ func TestDispatch(t *testing.T) {
 }
 
 func TestCheckEndpoint(t *testing.T) {
-	t.Run("unreachable endpoint", func(t *testing.T) {
-		// Test with a port that should have nothing listening
-		out := captureStdout(func() {
-			ok := checkEndpoint("test-service", "http://127.0.0.1:19999")
-			if ok {
-				t.Log("unexpected — something is listening on 19999")
-			}
-		})
-		if !strings.Contains(out, "[DOWN]") {
-			t.Error("unreachable endpoint should print [DOWN]")
-		}
-	})
+	// Legacy endpoint probe was replaced by the unified
+	// pkg/health.PlatformHealthAggregator in cmd/helix/status.go.
+	// See TestStatus_* in status_test.go for the new behaviour.
+	t.Skip("legacy checkEndpoint removed — superseded by pkg/health + status.go")
 }
 
 func TestConstants(t *testing.T) {
@@ -561,15 +536,6 @@ func TestLookPathNotFoundErrorMessage(t *testing.T) {
 	_, err := lookPath("nonexistent-zzz-98765")
 	if err == nil {
 		t.Error("lookPath should error for nonexistent binary")
-	}
-}
-
-func TestRunStatusReturnsErrorWhenDown(t *testing.T) {
-	// runStatus returns error when components are unreachable (network timeout)
-	err := runStatus()
-	// In test environment without Forgejo/Chimera running, should get error
-	if err == nil {
-		t.Log("all components are reachable (unexpected in test env)")
 	}
 }
 

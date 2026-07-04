@@ -24,13 +24,11 @@ package main
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 )
 
 const (
@@ -147,7 +145,7 @@ func (d *dispatcher) dispatch(args []string) error {
 		printVersion()
 		return nil
 	case "status":
-		return runStatus()
+		return runStatusWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 	case "doctor":
 		return runDoctorWithConfig(parseDoctorFlags(rest))
 	case "dispatch":
@@ -180,51 +178,6 @@ func printVersion() {
 	fmt.Printf("%s %s (%s/%s)\n", AppName, Version, runtime.GOOS, runtime.GOARCH)
 }
 
-func runStatus() error {
-	fmt.Printf("Helix Status (version %s)\n\n", Version)
-	fmt.Println("Checking components...")
-
-	components := []struct {
-		name string
-		url  string
-	}{
-		{"Forgejo", "http://localhost:3000/api/v1/version"},
-		{"Chimera", "http://localhost:8765/v1/health"},
-	}
-
-	allOK := true
-	for _, c := range components {
-		ok := checkEndpoint(c.name, c.url)
-		if !ok {
-			allOK = false
-		}
-	}
-
-	fmt.Println()
-	if allOK {
-		fmt.Println("[OK] All components healthy")
-	} else {
-		fmt.Println("[WARN] Some components are unreachable (see above)")
-	}
-
-	// Check subcommand binaries
-	fmt.Println()
-	fmt.Println("Subcommand binaries:")
-	for name, binary := range subcommands {
-		_, err := lookPath(binary)
-		if err != nil {
-			fmt.Printf("  [MISSING] %s (%s) — not in PATH\n", name, binary)
-		} else {
-			fmt.Printf("  [OK]      %s (%s)\n", name, binary)
-		}
-	}
-
-	if !allOK {
-		return fmt.Errorf("some components are unreachable")
-	}
-	return nil
-}
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -252,20 +205,9 @@ func execSubcommand(binary string, args []string) error {
 	return cmd.Run()
 }
 
-func checkEndpoint(name, url string) bool {
-	// Simple TCP connect check
-	addr := urlToAddr(url)
-	conn, err := net.DialTimeout("tcp", addr, 3*time.Second)
-	if err != nil {
-		fmt.Printf("  [DOWN]  %s — cannot reach %s (%v)\n", name, url, err)
-		return false
-	}
-	conn.Close()
-	fmt.Printf("  [OK]    %s — reachable at %s\n", name, url)
-	return true
-}
-
 // urlToAddr extracts the host:port from a URL for TCP dialing.
+// (Kept for callers that still want a quick TCP probe — not currently
+// used by the unified status path which goes through pkg/health.)
 func urlToAddr(rawURL string) string {
 	// Minimal URL parsing without net/url to avoid import cycles
 	rawURL = strings.TrimPrefix(rawURL, "http://")
