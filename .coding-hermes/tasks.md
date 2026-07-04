@@ -1187,13 +1187,13 @@
 - **Result:** [x] `helix coapproval check` (ALLOWED/BLOCKED/NEEDS_HUMAN/NEEDS_AGENT) + `helix coapproval status` (thresholds) wired through pkg/coapproval.CoApprovalGate. 17 new tests, 83.2% cmd/helix coverage (above 80% AC). Full suite 40/40 packages pass. GitReins Tier 1 PASS. Committed at `f6a721a`.
 - **Logic:** Wire the already-implemented pkg/coapproval.Gate to the helix CLI. The package implements §7.8 fully (1 human + 1 trusted agent approval, trust ≥ 70 short-circuit, veto override at trust ≥ 90, 24h approval expiry, invalidation on new push) but nothing consumes it from the CLI. New subcommand `helix coapproval <sub>` with `check` (evaluate one PR) and `status` (print config + thresholds). Decisions rendered as Forgejo-comment-style markdown for easy integration.
 
-## [~] Wire adversarial scenario pack into helix CLI — `helix adversarial run-all`
+## [x] Wire adversarial scenario pack into helix CLI — `helix adversarial run-all`
 - **Priority:** high
 - **Spec:** specs/SPECIFICATION.md §12.4 (Adversarial Testing)
 - **Model:** direct write — Go CLI addition, consumes existing pkg/adversarial
 - **Files:** cmd/helix/adversarial.go (NEW), cmd/helix/adversarial_test.go (NEW), cmd/helix/main.go (register subcommand)
 - **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix adversarial run-all` returns exit code 0 if every scenario passes, non-zero if any scenario fails or panics; output is a structured table (role, severity, name, outcome, error). Supports `--role filter`, `--severity min`, `--output json` flags.
-- **Logic:** pkg/adversarial already implements §12.4's 6-role scenario pack (@assumption-buster, @redteam, @chaos-engineer, @cost-auditor, @spec-violator, @compliance-checker) with per-scenario Run funcs. CLI exposes them as `helix adversarial run-all`, `helix adversarial run <role>`, `helix adversarial list`. Capture per-scenario output (PASS/FAIL/SKIP/ERROR) and aggregate into a JSON/table report. Per spec: adversarial tests are NOT CI-gated, run on schedule (daily) or pre-release.
+- **Result:** [x] `helix adversarial run-all`, `helix adversarial run`, `helix adversarial list` wired through pkg/adversarial.Library. Live verification: all 5 default scenarios pass (gate-bypass, key-leak, budget-exhaustion, network-isolation-bypass, ralph-lock-race). 83.4% cmd/helix coverage. Panic recovery wraps RunAll. Full suite 40/40 packages pass. GitReins Tier 1 PASS. Committed at `d849ad0`.
 
 ## [ ] Wire PlatformHealthAggregator into `helix status`
 - **Priority:** medium
