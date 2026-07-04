@@ -59,6 +59,7 @@ Subcommands:
   verify   <commit-sha>            Verify a commit's attestation
   list                             List registered prompts
   postci   --results <file>        Process PromptFoo CI results
+  test     <component> <version>   Run offline PromptFoo assertions
 
 Run "helix-prompt <subcommand> --help" for per-command flags.`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
@@ -73,6 +74,7 @@ Run "helix-prompt <subcommand> --help" for per-command flags.`,
 		newVerifyCmd(gOpts),
 		newListCmd(gOpts),
 		newPostCICmd(gOpts),
+		newTestCmd(gOpts),
 	)
 	return root
 }
