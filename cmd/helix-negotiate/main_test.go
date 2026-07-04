@@ -636,6 +636,13 @@ func TestRunResolveWithPositions_HappyPath(t *testing.T) {
 	exitProcess = func(code int) { exited = code }
 	defer func() { exitProcess = os.Exit }()
 
+	// Redirect HOME to a temp dir so the audit log path resolves to a
+	// directory that does NOT pre-exist. This reproduces the CI failure
+	// (`/home/runner/.helix/negotiations/` doesn't exist in CI runners)
+	// and exercises the auto-MkdirAll fix in runResolveWithPositions.
+	fakeHome := t.TempDir()
+	t.Setenv("HOME", fakeHome)
+
 	// Mock Chimera arbiter — returns an APPROVED verdict.
 	// Response shape: {status, confidence, summary, trace:{source, duration, total_tokens}}
 	chimera := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

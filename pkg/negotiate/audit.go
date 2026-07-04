@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 // AuditLogger writes debate events to a JSONL file (spec §13).
@@ -14,9 +15,15 @@ type AuditLogger struct {
 	enc  *json.Encoder
 }
 
-// NewAuditLogger creates a logger at the given file path. The file is opened in
-// append mode so multiple negotiations can share the same transcript file.
+// NewAuditLogger creates a logger at the given file path. The parent directory
+// is created with mode 0o755 if it does not already exist. The file is opened
+// in append mode so multiple negotiations can share the same transcript file.
 func NewAuditLogger(path string) (*AuditLogger, error) {
+	if dir := filepath.Dir(path); dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return nil, fmt.Errorf("create audit log directory %q: %w", dir, err)
+		}
+	}
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("open audit log %q: %w", path, err)

@@ -321,11 +321,16 @@ func runResolveWithPositions(opts *resolveOptions, prNumber int) error {
 		AgentPositions: positions,
 	}
 
+	auditPath := auditLogPath(prNumber)
+	if err := os.MkdirAll(filepath.Dir(auditPath), 0o755); err != nil {
+		return fmt.Errorf("create audit directory: %w", err)
+	}
+
 	cfg := negotiate.NegotiationConfig{
 		ChimeraURL: opts.chimeraURL,
 		MaxRounds:  3,
 		Timeout:    30 * time.Minute,
-		AuditPath:  auditLogPath(prNumber),
+		AuditPath:  auditPath,
 		Verbose:    opts.verbose,
 	}
 
