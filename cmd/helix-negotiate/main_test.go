@@ -2,9 +2,14 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/totalwindupflightsystems/helix/pkg/negotiate"
 )
@@ -426,5 +431,261 @@ func writeFile(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// runDebate handler
+// ---------------------------------------------------------------------------
+
+func TestRunDebate_MissingAgents(t *testing.T) {
+	// Capture stderr for the error case
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldStderr := os.Stderr
+	os.Stderr = w
+	defer func() { os.Stderr = oldStderr }()
+
+	opts := &debateOptions{
+		globalOptions: &globalOptions{},
+		// agent-a and agent-b empty
+	}
+	err = runDebate(opts, "http://localhost:3030/helix/helix/pulls/1")
+	w.Close()
+
+	var buf bytes.Buffer
+	_, _ = buf.ReadFrom(r)
+	if err == nil {
+		t.Fatal("expected error for missing --agent-a/--agent-b")
+	}
+	if !strings.Contains(err.Error(), "required") {
+		t.Errorf("error %q should mention 'required'", err.Error())
+	}
+}
+
+func TestRunDebate_BadPRURL(t *testing.T) {
+	opts := &debateOptions{
+		globalOptions: &globalOptions{},
+		agentA:        "alice",
+		agentB:        "bob",
+	}
+	err := runDebate(opts, "not-a-url")
+	if err == nil {
+		t.Fatal("expected error for malformed PR URL")
+	}
+}
+
+func TestRunDebate_NoConflict(t *testing.T) {
+	// Both verdicts APPROVED → no conflict → returns nil after printing
+	out := captureStdout2(t, func(w *os.File) {
+		old := os.Stdout
+		os.Stdout = w
+		defer func() { os.Stdout = old }()
+
+		opts := &debateOptions{
+			globalOptions: &globalOptions{configPath: defaultConfigPath()},
+			agentA:        "alice",
+			agentB:        "bob",
+			verdictA:      "APPROVED",
+			verdictB:      "APPROVED",
+		}
+		if err := runDebate(opts, "http://localhost:3030/helix/helix/pulls/42"); err != nil {
+			fmt.Fprintf(old, "runDebate error: %v\n", err)
+		}
+	})
+	if !strings.Contains(out, "CONFLICT CHECK") {
+		t.Errorf("missing CONFLICT CHECK header in output:\n%s", out)
+	}
+	if !strings.Contains(out, "No conflict") {
+		t.Errorf("expected 'No conflict' message, got:\n%s", out)
+	}
+}
+
+func TestRunDebate_DryRunConflict(t *testing.T) {
+	// Stub exitProcess to capture the would-be exit code.
+	var exited int
+	exitProcess = func(code int) { exited = code }
+	defer func() { exitProcess = os.Exit }()
+
+	out := captureStdout2(t, func(w *os.File) {
+		old := os.Stdout
+		os.Stdout = w
+		defer func() { os.Stdout = old }()
+
+		opts := &debateOptions{
+			globalOptions: &globalOptions{
+				configPath: defaultConfigPath(),
+				verbose:    false,
+			},
+			agentA:    "alice",
+			agentB:    "bob",
+			verdictA:  "APPROVED",
+			verdictB:  "REQUEST_CHANGES",
+			dryRun:    true,
+			maxRounds: 3,
+			timeout:   30 * time.Minute,
+		}
+		if err := runDebate(opts, "http://localhost:3030/helix/helix/pulls/77"); err != nil {
+			fmt.Fprintf(old, "runDebate error: %v\n", err)
+		}
+	})
+
+	if exited != 10 {
+		t.Errorf("expected exit code 10 from dry-run, got %d", exited)
+	}
+	if !strings.Contains(out, "DRY RUN") {
+		t.Errorf("expected DRY RUN in output:\n%s", out)
+	}
+	if !strings.Contains(out, "Chimera URL:") {
+		t.Errorf("expected Chimera URL in output:\n%s", out)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// runResolve handler
+// ---------------------------------------------------------------------------
+
+func TestRunResolve_PreSetVerdict(t *testing.T) {
+	out := captureStdout2(t, func(w *os.File) {
+		old := os.Stdout
+		os.Stdout = w
+		defer func() { os.Stdout = old }()
+
+		opts := &resolveOptions{
+			globalOptions: &globalOptions{},
+			verdict:       "approved",
+			pr:            42,
+		}
+		if err := runResolve(opts, ""); err != nil {
+			fmt.Fprintf(old, "runResolve error: %v\n", err)
+		}
+	})
+	if !strings.Contains(out, "FORCE VERDICT") {
+		t.Errorf("expected FORCE VERDICT in output:\n%s", out)
+	}
+	if !strings.Contains(out, "PR #42") {
+		t.Errorf("expected 'PR #42' in output:\n%s", out)
+	}
+	if !strings.Contains(out, "APPROVED") {
+		t.Errorf("expected verdict uppercased to APPROVED:\n%s", out)
+	}
+}
+
+func TestRunResolve_PositionsFileMissing(t *testing.T) {
+	opts := &resolveOptions{
+		globalOptions: &globalOptions{},
+		positionsFile: "/nonexistent/positions.json",
+		pr:            42,
+	}
+	err := runResolve(opts, "")
+	if err == nil {
+		t.Fatal("expected error for missing positions file")
+	}
+	if !strings.Contains(err.Error(), "read positions file") {
+		t.Errorf("error should mention 'read positions file', got: %v", err)
+	}
+}
+
+func TestRunResolve_PositionsFileInvalidJSON(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/positions.json"
+	writeFile(t, path, `not valid json {`)
+
+	opts := &resolveOptions{
+		globalOptions: &globalOptions{},
+		positionsFile: path,
+		pr:            42,
+	}
+	err := runResolve(opts, "")
+	if err == nil {
+		t.Fatal("expected error for malformed JSON")
+	}
+	if !strings.Contains(err.Error(), "parse positions JSON") {
+		t.Errorf("error should mention 'parse positions JSON', got: %v", err)
+	}
+}
+
+func TestRunResolve_PositionsTooFew(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/positions.json"
+	writeFile(t, path, `[{"agent":"alice","verdict":"APPROVED","evidence":"lgtm"}]`)
+
+	opts := &resolveOptions{
+		globalOptions: &globalOptions{},
+		positionsFile: path,
+		pr:            42,
+	}
+	err := runResolve(opts, "")
+	if err == nil {
+		t.Fatal("expected error for <2 positions")
+	}
+	if !strings.Contains(err.Error(), "at least 2") {
+		t.Errorf("error should mention 'at least 2', got: %v", err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// runResolveWithPositions handler
+// ---------------------------------------------------------------------------
+
+func TestRunResolveWithPositions_HappyPath(t *testing.T) {
+	// Stub exitProcess (defensive — should not be called on happy path)
+	var exited int
+	exitProcess = func(code int) { exited = code }
+	defer func() { exitProcess = os.Exit }()
+
+	// Mock Chimera arbiter — returns an APPROVED verdict.
+	// Response shape: {status, confidence, summary, trace:{source, duration, total_tokens}}
+	chimera := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"status":     "APPROVED",
+			"confidence": 0.85,
+			"summary":    "alice's evidence was stronger (covers 4/5 spec requirements)",
+			"trace": map[string]any{
+				"source":       "arbiter-formation",
+				"duration":     1.234,
+				"total_tokens": 1234,
+			},
+		})
+	}))
+	defer chimera.Close()
+
+	dir := t.TempDir()
+	positionsPath := dir + "/positions.json"
+	writeFile(t, positionsPath, `[
+		{"agent":"alice","verdict":"APPROVED","evidence":"looks good"},
+		{"agent":"bob","verdict":"REQUEST_CHANGES","evidence":"needs tests"}
+	]`)
+
+	out := captureStdout2(t, func(w *os.File) {
+		old := os.Stdout
+		os.Stdout = w
+		defer func() { os.Stdout = old }()
+
+		opts := &resolveOptions{
+			globalOptions: &globalOptions{
+				configPath: defaultConfigPath(),
+			},
+			chimeraURL:    chimera.URL,
+			positionsFile: positionsPath,
+		}
+		if err := runResolveWithPositions(opts, 99); err != nil {
+			fmt.Fprintf(old, "runResolveWithPositions error: %v\n", err)
+		}
+	})
+	if exited != 0 {
+		t.Errorf("expected no exit on happy path, got code %d", exited)
+	}
+	if !strings.Contains(out, "PR #99") {
+		t.Errorf("expected 'PR #99' in output:\n%s", out)
+	}
+	if !strings.Contains(out, "alice") || !strings.Contains(out, "bob") {
+		t.Errorf("expected both agents in output:\n%s", out)
+	}
+	if !strings.Contains(out, "NEGOTIATION RESULT") {
+		t.Errorf("expected NEGOTIATION RESULT in output:\n%s", out)
 	}
 }
