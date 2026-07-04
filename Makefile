@@ -1,5 +1,11 @@
 .PHONY: build test lint clean docker-build docker-up docker-up all
 
+# Go tmpfs redirect — /tmp on this host is a 30G tmpfs at 80%+ util.
+# Trust ledger integration tests use t.TempDir() and hit quota. Persist via go env -w
+# AND export TMPDIR for the linker (which doesn't honour GOTMPDIR).
+export TMPDIR ?= /home/kara/.cache/go-tmp
+GOTMPCACHE := /home/kara/.cache/go-build
+
 # Default target
 all: lint test build
 

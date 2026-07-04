@@ -4,6 +4,13 @@
 # Matches Helix spec Section 7.3
 set -e
 cd "$(git rev-parse --show-toplevel)"
+
+# ── Redirect Go tmpfs temp dir away from /tmp ──
+# /tmp on this host is a 30G tmpfs at 80%+ utilization; trust ledger integration
+# tests use t.TempDir() which can exhaust the quota. Persist TMPDIR for this hook.
+mkdir -p /home/kara/.cache/go-tmp
+export TMPDIR=/home/kara/.cache/go-tmp
+
 STAGED=$(git diff --cached --name-only --diff-filter=ACM)
 [ -z "$STAGED" ] && exit 0
 FAILED=0
