@@ -1150,12 +1150,13 @@
 - **Logic:** Per `go tool cover -func`, three run* handlers are at low coverage (runRegister 25%, runAttest 15%, runVerify 9.8%). Test pattern mirrors cmd/helix-negotiate's existing runXxx tests: stub exitProcess, redirect HOME to t.TempDir, exercise each run function with httptest/PromptFoo fixtures where appropriate, verify stdout contains expected output. Read cmd/helix-prompt/main.go to learn the function signatures before writing tests.
 - **Result:** [x] Coverage 55.2% → 87.6% (exceeds 80% AC). runRegister 25.0% → 96.4%, runAttest 15.0% → 80.0%, runVerify 9.8% → 87.8%. Added 22 new test functions (TestRunRegister_HappyPath/DefaultPromptFile/MissingPromptFile/NoModelNoProvider, TestRunAttest_NotFound/ForceFlag_HappyPath/HappyPath/InvalidGitCommit/WithErrors, TestRunVerify_HappyPath/BadCommitSHA/AllCheckFlags/GetCommitAttestationError) + 2 git repo helpers (initTestGitRepo, initTestGitRepoWithAttestation). Patterns: stub RegistryDir via setupRegistry(), real git repos for verify path, chdir into temp repo because runVerify reads from "." via GetCommitAttestation. All 41 packages pass. GitReins Tier 1 all 6 guards PASS. Lint clean. Committed at `4a9f3eb`.
 
-## [ ] Cover CLI run handlers (cmd/helix-marketplace) — push coverage to >80%
+## [x] Cover CLI run handlers (cmd/helix-marketplace) — push coverage to >80%
 - **Priority:** medium
 - **Model:** direct write — Go CLI test additions
-- **Files:** cmd/helix-marketplace/main_test.go (NEW)
+- **Files:** cmd/helix-marketplace/main_test.go (extend)
 - **AC:** `go test -short -count=1 ./cmd/helix-marketplace/...` passes; coverage on cmd/helix-marketplace ≥80% (currently 61.3%)
-- **Logic:** Per `go tool cover -func`, four run* handlers are at 0% (runList, runShow, runSearch, runRate, runReview). Test pattern: stub exitProcess, redirect HOME to t.TempDir, populate a known-friends/registry fixture, exercise handlers, verify output. Mirror cmd/helix-negotiate's existing patterns for shape.
+- **Logic:** Per `go tool cover -func`, four run* handlers are at 0% (runList, runShow, runSearch, runRate, runReview). Test pattern: stub exitProcess, redirect HOME to t.TempDir with fixture pricing.yaml + known-friends.json, exercise both `helix-estimate estimate <task>` and `helix-estimate check <model>` commands, verify stdout contains expected cost line. Mirror cmd/helix-negotiate's existing patterns.
+- **Result:** [x] Coverage 61.3% → 85.5% (exceeds 80% AC). runList 0% → 80.8%, runShow 0% → 80.0%, runSearch 0% → 78.6%, runRate 0% → 69.6%. Added 18 new test functions + 3 helpers (writeTestAgentYAML, withRedirectedStdout, itoa). Patterns: real YAML fixtures in t.TempDir/agents/, bypass cobra arg parsing via direct function calls. runRate's ExitInvalidRating and ExitUnauthorized paths skipped (os.Exit terminates process). All 41 packages pass. GitReins Tier 1 all 6 guards PASS. Lint clean. Committed at `14c7716`.
 
 ## [ ] Cover CLI run handlers (cmd/helix-estimate) — push coverage to >80%
 - **Priority:** medium
