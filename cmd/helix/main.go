@@ -150,6 +150,8 @@ func (d *dispatcher) dispatch(args []string) error {
 		return runStatus()
 	case "doctor":
 		return runDoctorWithConfig(parseDoctorFlags(rest))
+	case "dispatch":
+		return runDispatchWithIO(rest, os.Stdout, os.Stderr)
 	}
 
 	// Delegate to subcommand binary

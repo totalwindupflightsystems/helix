@@ -11,3 +11,5 @@
 bin/
 .gitreins/config.yaml.bak
 .gitreins/config.yaml.v*-bak
+
+.helix/
