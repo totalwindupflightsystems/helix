@@ -1037,6 +1037,30 @@
 - **Logic:** Hivemind memory bank lifecycle per spec §8.6. Inbox (raw events) → Compiler (deduplicates, categorizes, enriches) → Compiled memory (structured) → _index (human-readable) → DuckBrain (persistent). Inbox events within 5 minutes with same agent+repo+event_type are batched. Deduplication: same file touched + same operation = one event. Each compiled entry gets UUID, timestamp, agent attribution, repo context, tags. Compiler with Batch/Compile/Deduplicate. CompiledEntry with full metadata. IndexBuilder generates human-readable navigation. PersistenceBridge exports to DuckBrain MemoryEntry format.
 - **Result:** [x] 19 lifecycle tests, 86.5% combined pkg/memory coverage. Full pipeline: Inbox→Compiler→PersistenceBridge→IndexBuilder→Lifecycle.Run composes all 4 stages. Events routed by type: incidents land under /helix/platform/incidents/, anti-patterns under /helix/agents/<id>/anti-patterns/, decisions under /helix/agents/<id>/decisions/, gates under anti-patterns, prefs elsewhere. Custom clocks for deterministic tests. Spec example events covered + dedupe + cycle + nil-store edges + scan-build-blocking failing-store injection.
 
+## [ ] Implement secret-pattern scanner package — pkg/security/secrets/
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §6.2 (Secrets Management)
+- **Model:** direct write — Go package, regex pattern matching
+- **Files:** pkg/security/secrets/scanner.go (NEW), pkg/security/secrets/scanner_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/security/secrets/... -count=1 -cover` passes with >85% coverage
+- **Logic:** Pure-Go secret-pattern scanner per spec §6.2 (the GitReins Tier 1 hooks duplicate the logic across hooks; centralize it). Patterns: `sk-[a-zA-Z0-9_-]{20,}` (OpenRouter/DeepSeek keys with hyphens and underscores), `ghp_[a-zA-Z0-9]{36}` (GitHub PATs), `-----BEGIN (RSA |EC |OPENSSH )PRIVATE KEY-----` (SSH/PEM private keys), env-var-style assignments `(OPENROUTER|DEEPSEEK|ZAI|ANTHROPIC)_API_KEY\s*=\s*sk-[a-zA-Z0-9_-]{20,}`. ScanLine returns Finding{Name, Line, Column, Snippet} for each match. ScanFile/ScanBytes helpers. False-positive allowlist by line prefix (e.g. `cs_sk_` test keys). AllowlistRegex for docs/specs/test exclusions. Required for spec §6.2 compliance and enables commands like `helix secrets scan --path .`.
+
+## [ ] Implement blast radius containment verifier — pkg/security/blast/
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §6.4 (Blast Radius Containment)
+- **Model:** direct write — Go package, declarative data + validation
+- **Files:** pkg/security/blast/blast.go (NEW), pkg/security/blast/blast_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/security/blast/... -count=1 -cover` passes with >85% coverage
+- **Logic:** BlastRadiusVerification per spec §6.4 tables. ContainmentLayer checks for each layer (container isolation, budget enforcement, guardrail enforcement, branch isolation, lock isolation, repository isolation, review isolation, key isolation): boolean present + evidence string. DamageType records (Financial, CodeQuality, DataExfil, CredentialTheft, ServiceDisruption, Reputation) with max-impact bounds (budget_usd_weekly, one bad PR, agent workspace only, etc.). BlastRadiusReport checks all 8 layers + 6 damage bounds. ContainmentFailureScenario struct (5 scenarios from §6.4) with required mitigation. FormatBlastReport for CLI output. Integrates with existing pkg/security/.
+
+## [ ] Implement 12-step evidence chain builder — pkg/audit/builder/
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §6.5 (Audit Trail Requirements) + §2.2 Step-by-Step State Transitions
+- **Model:** direct write — Go package, fluent API
+- **Files:** pkg/audit/builder/builder.go (NEW), pkg/audit/builder/builder_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/audit/builder/... -count=1 -cover` passes with >85% coverage
+- **Logic:** EvidenceChainBuilder per spec §6.5. Fluent API to assemble all 12 audit steps (issue → work item → lock → session → commit → verdict → PR → review → defense → CI → co-approvals → merge). Each step is a StepEvidence struct: name, required fields, JSON-serializable payload. Validate walks the 12 steps and reports missing evidence. The existing pkg/audit/chain.go validates post-hoc; this builder is the producer side for CLI commands like `helix audit chain <pr>`. Supports partial chains (e.g. mid-merge reports what's still needed).
+
 ## [x] Implement env var inventory validator — pkg/config/
 - **Priority:** low
 - **Spec:** specs/SPECIFICATION.md §9.6 (Env Var Inventory)
