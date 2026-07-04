@@ -1269,10 +1269,9 @@
 - **Result:** [x] `pkg/identity` coverage 86.8% → 92.8% (exceeds 90% AC). 25 new tests across 3 categories: (1) permissions (tierRank 66.7%→100%, CanPerformAction/ComputeDelta/HandleTransition edge cases); (2) KeyGenOnly success + chmod-555 read-only-dir failure (66.7%→100%); (3) httptest-driven Sync/provisionAgent/ProvisionOne/DeprovisionOne: existing-account (carry-forward state), 409-conflict downgrade, RegisterKey/CreateToken/RevokeToken 500 paths, all-fail-no-success partial error, all-pass with state file written, saveState failure via parent-dir chmod 555. Per-function: Sync 63.4%→92.7%, provisionAgent 46.2%→81.5%, deprovisionAgent 84.2%→94.7%, ProvisionOne 62.5%→87.5%, DeprovisionOne 62.5%→87.5%, KeyGenOnly 66.7%→100%, tierRank 66.7%→100%. Full suite 41/41 packages pass, lint clean, GitReins Tier 1 all 6 guards PASS. Committed at `b447f10`. Helper `newHttptestSyncer(t, handler)` builds a non-dry-run Syncer pointed at an httptest server with `s.prov.retry` overridden to MaxAttempts=1 (default 4 would burn 30s of backoff per failure).
 - **Logic:** Most gaps were httptest-backed Forgejo API mocks. provisionAgent: 4 branches (existing-account, 409-conflict, RegisterKey 500, CreateToken 500). DeprovisionOne: not-in-state (skip), RevokeToken 500, RevokeToken 204 (success). Sync: per-agent-failure (PartialError), saveState failure (chmod parent dir to 0o555), all-fail-no-success (first-error picked), all-pass (state file on disk). permissions: tierRank monotonic ordering + unknown-tier fallback (-1), CanPerformAction + Can (action aliases + case-insensitivity + unknown-action), ComputeDelta (no-change / grant / revoke / promotion / demotion), HandleTransition (promotion + demotion branches).
 
-## [~] Cover cmd/helix coapproval + adversarial fail paths + status subsystems (low-coverage cmd/helix)
+## [x] Cover cmd/helix coapproval + adversarial fail paths + status subsystems (low-coverage cmd/helix)
 - **Priority:** medium
 - **Model:** direct write — Go test-only
-- **Status:** in-progress (started 2026-07-04)
 - **Files:** cmd/helix/coapproval_test.go, cmd/helix/adversarial_test.go, cmd/helix/status_test.go (append)
 - **AC:**
   1. `cmd/helix` coverage ≥ 92.0% (currently 89.5%)
@@ -1282,3 +1281,45 @@
      - `runStatus` JSON output path + degraded-subsystem display
   3. `go build ./...` clean, full suite 41/41 packages green, lint clean, GitReins Tier 1 all 6 guards PASS.
 - **Logic:** cmd/helix is at 89.5% with the remaining ~10.5pp in render*JSON marshal-error branches (unreachable on current types), main()/Execute (uncallable — they call os.Exit), and the new fail paths above. The new tests should focus on the runXxx-with-bad-input branches which ARE reachable. Pattern: feed malformed JSON via t.TempDir fixtures, verify errExit with code=2 surfaces correctly. For `runStatus`, use a stub PlatformHealthAggregator that returns known subsystem health states; verify the dashboard renders them all.
+- **Result:** [x] `cmd/helix` coverage 89.5% → 92.8% (exceeds 92.0% AC). 60 new test functions in single new file `cmd/helix/extra_coverage_test.go`. Per-function improvements (selected): safeRunAll 75%→100%, parseStatusFlags 75%→100%, renderAdversarialTable 92%→100%, parseAdversarialFlags 79.4%→97.1%, parseCoapprovalFlags 89.7%→97.4%, dispatch (main.go) 87.1%→~93%, renderStatusJSON 66.7%→~85%. Tested: env-var defaults for all 3 parseXxxFlags (HELIX_STATUS_*, HELIX_ADVERSARIAL_*, HELIX_COAPPROVAL_*), invalid-duration fallbacks, safeRunAll panic-recovery via the production helper (not synthetic inlined recover), renderStatusJSON degraded-not-critical rc=1 path, renderCoapprovalJSON allowed/blocked exit codes, runCoapprovalCheck missing-flag/read-error/null-fixture paths, dispatch() helper paths (--version, --help, --config missing value, unknown subcommand, no args usage), parseMemInfoLine NaN-handling documentation. Full suite 41/41 packages pass, lint clean, GitReins Tier 1 all 6 guards PASS. Committed at `16a69e0`. Out-of-reach: main()/Execute (call os.Exit), render*JSON marshal-error branches (require circular struct refs which the typed structs lack).
+
+---
+
+# Next Batch (2026-07-04r2) — Spec-driven follow-ups
+
+## [ ] Cover cmd/helix-marketplace, cmd/helix-prompt, cmd/helix-estimate low-coverage subcommands
+- **Priority:** medium
+- **Model:** direct write — Go CLI test extensions
+- **Files:** cmd/helix-marketplace/main_test.go (append), cmd/helix-prompt/main_test.go (append), cmd/helix-estimate/main_test.go (append)
+- **AC:**
+  1. `cmd/helix-marketplace` ≥ 92% (currently 85.5%)
+  2. `cmd/helix-prompt` ≥ 92% (currently 87.6%)
+  3. `cmd/helix-estimate` ≥ 90% (currently 84.8%)
+  4. `go build ./...` clean, full suite 41/41 packages green, lint clean, GitReins Tier 1 all 6 guards PASS.
+- **Logic:** Each cmd/* binary has a few functions below 80% — identify them via `go tool cover -func=<coverprofile>` per package, then write 5-15 targeted tests each (similar pattern to the prior cmd/helix batch). Patterns to use: stub exitProcess, redirect HOME to t.TempDir with fixture files, capture stdout via bytes.Buffer or pipe, exercise runXxx functions directly. Per the foreman AC: every test must use a hermetic t.TempDir + minimal fixture files (pricing.yaml, known-friends.json, registry fixture). Priority functions (per spec execution paths): pricing load failure modes, manifest parse errors, approval gate escalation paths, prompt hash attestation error paths.
+- **Verify:** `go test -count=1 -short -cover ./cmd/...` after each package to confirm target reached.
+
+## [ ] Add cmd/helix telemetry/logging entry-point — unified observability for all subcommands
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §10.7 (Monitoring SLAs) + specs/deployment.md §3
+- **Model:** direct write — Go package, structured logging
+- **Files:** cmd/helix/observability.go (NEW), pkg/log/structured.go (NEW — env-var-driven JSON or text), cmd/helix/observability_test.go (NEW), pkg/log/structured_test.go (NEW)
+- **AC:**
+  1. Every helix subcommand (status, doctor, dispatch, coapproval, adversarial, identity, estimate, marketplace, negotiate, prompt, sandbox) emits a final structured log line with: subcommand name, exit code, wall-clock duration, optional input/output byte counts.
+  2. `--log-format json|text` flag honoured; default text. `HELIX_LOG` env var enables verbose (DEBUG) logging.
+  3. `pkg/log/structured.go` provides `Emit(level, msg, fields map[string]any)` that respects both formats.
+  4. `cmd/helix` coverage maintained ≥92%; `pkg/log` coverage ≥85%.
+  5. `go build ./...` clean, full suite 41/41+1=42 packages green, lint clean, GitReins Tier 1 all 6 guards PASS.
+- **Logic:** Cross-cutting observability per §10.7 — every CLI invocation should produce a structured log entry for Splunk/Promtail/Loki pipelines to ingest. New `pkg/log` package with no external deps (no zap/logrus — keeps the binary lean). Each run*WithDryRun function in cmd/helix gets a wrapper that emits the log before returning. Format controlled by `--log-format` and `HELIX_LOG_FORMAT` env var. Level controlled by `HELIX_LOG` (set to "1" / "true" / "debug" to enable DEBUG; default is INFO). Per spec §10.7: response time, action count, and feature activation tracking are all logged. Field mapping: `ts`, `level`, `subcommand`, `rc`, `duration_ms`, `dry_run`, `agent_id` (from env if set), `pid`. All testable without goroutine races.
+
+## [ ] Wire pkg/security/secrets scanner into helix CLI — `helix secrets scan <path>`
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §13.2 (Secrets Scanning) + specs/cross-component-wiring.md
+- **Model:** direct write — Go CLI addition
+- **Files:** cmd/helix/secrets.go (NEW), cmd/helix/secrets_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:**
+  1. `helix secrets scan <path>` walks the path (file or directory), runs pkg/security/secrets.Scanner on every file, prints findings as table by default / `--json` machine-readable, exits 0 if clean / 1 if any findings.
+  2. `helix secrets scan` honours `--exclude <glob>` (repeatable) and `--min-severity <low|med|high|critical>` flags.
+  3. `cmd/helix` coverage maintained ≥92%; total new tests ≥15.
+  4. `go build ./...` clean, full suite 42+ packages green, lint clean, GitReins Tier 1 all 6 guards PASS.
+- **Logic:** pkg/security/secrets.Scanner is the existing core scanner used by GitReins pre-commit hook. Wire a thin CLI wrapper that walks files, filters by exclude/min-severity, renders findings. Default output: filepath:line  rule_id  severity  redacted_match (e.g., `sk-or-v1-...abc`). JSON mode: structured array with all fields. Skip binary files (look at first 512 bytes for null bytes per the canonical detection). Excludes `.git/`, `node_modules/`, `vendor/` by default; user can override with `--exclude`. Tests cover: clean file, single finding, multiple findings in one file, exclude pattern matching, JSON shape, subdirectory traversal, binary-file skip.
