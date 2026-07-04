@@ -31,13 +31,41 @@ func TestNewAuditLogger(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid_path", func(t *testing.T) {
+	t.Run("auto_creates_missing_parent_dir", func(t *testing.T) {
+		// NewAuditLogger now ensures the parent directory exists (mkdir -p
+		// semantics). Previously this returned an error; the auto-create
+		// behavior matches what auditLogPath() callers expect in CI.
 		dir := t.TempDir()
 		path := filepath.Join(dir, "nonexistent", "subdir", "audit.jsonl")
 
+		logger, err := NewAuditLogger(path)
+		if err != nil {
+			t.Fatalf("NewAuditLogger should auto-create parent dir, got: %v", err)
+		}
+		defer logger.Close()
+
+		if _, statErr := os.Stat(filepath.Dir(path)); statErr != nil {
+			t.Errorf("parent directory not created: %v", statErr)
+		}
+		if _, statErr := os.Stat(path); statErr != nil {
+			t.Errorf("audit log file not created: %v", statErr)
+		}
+	})
+
+	t.Run("rejects_unwritable_parent_dir", func(t *testing.T) {
+		// NewAuditLogger returns an error when the parent path is not
+		// a directory (e.g., a regular file is in the way). This guards
+		// against silent fallback if AuditPath points at something bogus.
+		dir := t.TempDir()
+		blocker := filepath.Join(dir, "blocker")
+		if err := os.WriteFile(blocker, []byte("not a dir"), 0o644); err != nil {
+			t.Fatalf("WriteFile: %v", err)
+		}
+		path := filepath.Join(blocker, "audit.jsonl")
+
 		_, err := NewAuditLogger(path)
 		if err == nil {
-			t.Fatal("NewAuditLogger for invalid path should return error")
+			t.Fatal("NewAuditLogger should return error when parent is a regular file")
 		}
 	})
 
