@@ -1178,12 +1178,13 @@
 
 # Next Batch (2026-07-04) — Spec gaps from §6.5, §7.8, §12.4, §8.6, cross-component wiring
 
-## [ ] Wire co-approval gate into helix CLI — `helix coapproval check`
+## [x] Wire co-approval gate into helix CLI — `helix coapproval check`
 - **Priority:** high
 - **Spec:** specs/SPECIFICATION.md §7.8 (Co-Approval Gate) + specs/cross-component-wiring.md
 - **Model:** direct write — Go CLI addition, consumes existing pkg/coapproval
 - **Files:** cmd/helix/coapproval.go (NEW), cmd/helix/coapproval_test.go (NEW), cmd/helix/main.go (register subcommand)
 - **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; coverage on cmd/helix ≥80%; `helix coapproval check <pr-number>` runs the existing coapproval.Gate logic and prints the decision (ALLOWED/BLOCKED/ESCALATED) with per-checker results. Reviewer evidence read from JSON fixture (CLI accepts `--human-approvals file.json --agent-approvals file.json --pr-changes json --trust-scores json`).
+- **Result:** [x] `helix coapproval check` (ALLOWED/BLOCKED/NEEDS_HUMAN/NEEDS_AGENT) + `helix coapproval status` (thresholds) wired through pkg/coapproval.CoApprovalGate. 17 new tests, 83.2% cmd/helix coverage (above 80% AC). Full suite 40/40 packages pass. GitReins Tier 1 PASS. Committed at `f6a721a`.
 - **Logic:** Wire the already-implemented pkg/coapproval.Gate to the helix CLI. The package implements §7.8 fully (1 human + 1 trusted agent approval, trust ≥ 70 short-circuit, veto override at trust ≥ 90, 24h approval expiry, invalidation on new push) but nothing consumes it from the CLI. New subcommand `helix coapproval <sub>` with `check` (evaluate one PR) and `status` (print config + thresholds). Decisions rendered as Forgejo-comment-style markdown for easy integration.
 
 ## [ ] Wire adversarial scenario pack into helix CLI — `helix adversarial run-all`
