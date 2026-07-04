@@ -1262,17 +1262,22 @@
 - **Logic:** Most of these are small, mechanical test additions. Lock tests: write a fake pid file with a current PID + a stale pid, verify acquireLock detects both correctly. Plan/Run: httptest server that returns 500 on the relevant endpoint, verify graceful error. cost_guard: budget=0 vs budget=infinite vs budget<request. The dispatcher loop is already extensively tested but a few edge-case branches remain — typically 5-15 line tests each.
 - **Verify:** `go test ./pkg/dispatcher/... -count=1 -cover -timeout 30s` — confirm ≥92%. Then `go test ./... -short -timeout 120s` — confirm full suite still green.
 
-## [ ] Cover pkg/identity syncer fail paths + permissions edge cases
+## [x] Cover pkg/identity syncer fail paths + permissions edge cases
 - **Priority:** medium
 - **Model:** direct write — Go test-only
-- **Files:** pkg/identity/syncer_test.go, pkg/identity/permissions_test.go (append)
+- **Files:** pkg/identity/extra_coverage_test.go (NEW), pkg/identity/syncer_test.go (tweak), pkg/identity/types_test.go (tweak)
+- **Result:** [x] `pkg/identity` coverage 86.8% → 92.8% (exceeds 90% AC). 25 new tests across 3 categories: (1) permissions (tierRank 66.7%→100%, CanPerformAction/ComputeDelta/HandleTransition edge cases); (2) KeyGenOnly success + chmod-555 read-only-dir failure (66.7%→100%); (3) httptest-driven Sync/provisionAgent/ProvisionOne/DeprovisionOne: existing-account (carry-forward state), 409-conflict downgrade, RegisterKey/CreateToken/RevokeToken 500 paths, all-fail-no-success partial error, all-pass with state file written, saveState failure via parent-dir chmod 555. Per-function: Sync 63.4%→92.7%, provisionAgent 46.2%→81.5%, deprovisionAgent 84.2%→94.7%, ProvisionOne 62.5%→87.5%, DeprovisionOne 62.5%→87.5%, KeyGenOnly 66.7%→100%, tierRank 66.7%→100%. Full suite 41/41 packages pass, lint clean, GitReins Tier 1 all 6 guards PASS. Committed at `b447f10`. Helper `newHttptestSyncer(t, handler)` builds a non-dry-run Syncer pointed at an httptest server with `s.prov.retry` overridden to MaxAttempts=1 (default 4 would burn 30s of backoff per failure).
+- **Logic:** Most gaps were httptest-backed Forgejo API mocks. provisionAgent: 4 branches (existing-account, 409-conflict, RegisterKey 500, CreateToken 500). DeprovisionOne: not-in-state (skip), RevokeToken 500, RevokeToken 204 (success). Sync: per-agent-failure (PartialError), saveState failure (chmod parent dir to 0o555), all-fail-no-success (first-error picked), all-pass (state file on disk). permissions: tierRank monotonic ordering + unknown-tier fallback (-1), CanPerformAction + Can (action aliases + case-insensitivity + unknown-action), ComputeDelta (no-change / grant / revoke / promotion / demotion), HandleTransition (promotion + demotion branches).
+
+## [ ] Cover cmd/helix coapproval + adversarial fail paths + status subsystems (low-coverage cmd/helix)
+- **Priority:** medium
+- **Model:** direct write — Go test-only
+- **Files:** cmd/helix/coapproval_test.go, cmd/helix/adversarial_test.go, cmd/helix/status_test.go (append)
 - **AC:**
-  1. `pkg/identity` coverage ≥ 90.0% (currently 86.8%)
-  2. `Sync` 63.4% → ≥80% (missing-target + per-agent-failure branches)
-  3. `provisionAgent` 46.2% → ≥75% (keygen error, forgejo API error branches)
-  4. `ProvisionOne` 62.5% → ≥80% (already-exists branch)
-  5. `DeprovisionOne` 62.5% → ≥80% (not-found branch)
-  6. `KeyGenOnly` 66.7% → ≥80% (output-write error branch)
-  7. `tierRank` 66.7% → ≥80% (unknown tier branch)
-- **Logic:** Most gaps are httptest-backed Forgejo API mocks. ProvisionAgent: mock the user-create endpoint to return 500, verify graceful error + state rollback. ProvisionOne: mock to return 409 (already exists) and verify idempotent handling. Syncer.Sync: cover the per-agent loop error path with mixed success/failure forgejo responses. tierRank: pass an unknown tier string, verify default-tier return. permissions: tier transitions + CanPerformAction role checks for cross-tier scenarios.
-- **Verify:** `go test ./pkg/identity/... -count=1 -cover -timeout 60s` — confirm ≥90%.
+  1. `cmd/helix` coverage ≥ 92.0% (currently 89.5%)
+  2. Each of these zero/partial-coverage branches gets tested:
+     - `runCoapproval` parse-error / non-existent PR / malformed approvals JSON
+     - `runAdversarial` panic recovery when a scenario panics
+     - `runStatus` JSON output path + degraded-subsystem display
+  3. `go build ./...` clean, full suite 41/41 packages green, lint clean, GitReins Tier 1 all 6 guards PASS.
+- **Logic:** cmd/helix is at 89.5% with the remaining ~10.5pp in render*JSON marshal-error branches (unreachable on current types), main()/Execute (uncallable — they call os.Exit), and the new fail paths above. The new tests should focus on the runXxx-with-bad-input branches which ARE reachable. Pattern: feed malformed JSON via t.TempDir fixtures, verify errExit with code=2 surfaces correctly. For `runStatus`, use a stub PlatformHealthAggregator that returns known subsystem health states; verify the dashboard renders them all.
