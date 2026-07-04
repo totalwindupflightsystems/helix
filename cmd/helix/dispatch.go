@@ -130,37 +130,24 @@ func parseDispatchFlags(args []string, stdout, stderr io.Writer) (dispatchFlags,
 	return f, false, nil
 }
 
-// runDispatchWithIO wraps runDispatch and returns an error for non-zero
-// exit codes. main.go's dispatcher route uses this; tests use runDispatch
-// directly with captured I/O.
-func runDispatchWithIO(args []string, stdout, stderr io.Writer) error {
-	rc := runDispatch(args, stdout, stderr)
+// runDispatchWithDryRun is the variant invoked by the unified `helix` CLI
+// when the user passes the GLOBAL --dry-run flag (which is consumed by
+// main.go's parser before the dispatch sub-handler sees it). The flag is
+// threaded through explicitly so dispatch's own --dry-run flag isn't
+// shadowed.
+func runDispatchWithDryRun(args []string, stdout, stderr io.Writer, globalDryRun bool) error {
+	rc := runDispatchDryRun(args, stdout, stderr, globalDryRun)
 	if rc != 0 {
 		return errExit{code: rc}
 	}
 	return nil
 }
 
-// errExit lets us return a non-zero exit code from runDispatchWithIO
-// without using os.Exit directly.
-type errExit struct{ code int }
-
-func (e errExit) Error() string { return fmt.Sprintf("dispatch exit %d", e.code) }
-
-// runDispatch is the cmd/helix dispatch subcommand entry point.
-//
-// Flow:
-//  1. Parse flags + env.
-//  2. Build a ForgejoLoop with either a real *forgejo.Client (live) or
-//     nil (dry-run).
-//  3. Run the loop with a 60s timeout (the Forgejo API is fast — any
-//     call that takes longer is a sign of network problems we want to
-//     surface, not paper over).
-//  4. Marshal the DispatchOutcome to JSON and write to stdout.
-//  5. Exit non-zero on error.
-//
-// Exposed for unit tests in dispatch_test.go.
-func runDispatch(args []string, stdout, stderr io.Writer) int {
+// runDispatchDryRun is runDispatch with an externally-injected dry-run
+// override. The flag.FS in runDispatch still allows --dry-run to be passed
+// explicitly to the dispatch command, but if main.go's global parser
+// already consumed the flag we honour the global value.
+func runDispatchDryRun(args []string, stdout, stderr io.Writer, globalDryRun bool) int {
 	flags, showHelp, err := parseDispatchFlags(args, stdout, stderr)
 	if showHelp {
 		return 0
@@ -171,6 +158,41 @@ func runDispatch(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
+	// Global wins: if main.go set --dry-run (or if both are set).
+	if globalDryRun {
+		flags.dryRun = true
+	}
+
+	return runDispatchWithFlags(flags, stdout, stderr)
+}
+
+// errExit lets us return a non-zero exit code from runDispatchWithIO
+// without using os.Exit directly.
+type errExit struct{ code int }
+
+func (e errExit) Error() string { return fmt.Sprintf("dispatch exit %d", e.code) }
+
+// runDispatch is the cmd/helix dispatch subcommand entry point. It only
+// parses flags — the actual pipeline run lives in runDispatchWithFlags
+// so dry-run-aware variants (runDispatchDryRun) can plug in extra
+// behaviour without re-parsing.
+func runDispatch(args []string, stdout, stderr io.Writer) int {
+	flags, showHelp, err := parseDispatchFlags(args, stdout, stderr)
+	if showHelp {
+		return 0
+	}
+	if err != nil {
+		fmt.Fprintln(stderr, "helix dispatch: parse:", err)
+		printDispatchUsage(stderr)
+		return 2
+	}
+	return runDispatchWithFlags(flags, stdout, stderr)
+}
+
+// runDispatchWithFlags runs the dispatch pipeline with already-parsed
+// flags. Used by both runDispatch (the testable binary entry point) and
+// runDispatchDryRun (which overrides flags.dryRun before calling).
+func runDispatchWithFlags(flags dispatchFlags, stdout, stderr io.Writer) int {
 	if flags.spec == "" {
 		fmt.Fprintln(stderr, "helix dispatch: --spec is required")
 		printDispatchUsage(stderr)
