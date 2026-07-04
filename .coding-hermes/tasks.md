@@ -1269,9 +1269,10 @@
 - **Result:** [x] `pkg/identity` coverage 86.8% → 92.8% (exceeds 90% AC). 25 new tests across 3 categories: (1) permissions (tierRank 66.7%→100%, CanPerformAction/ComputeDelta/HandleTransition edge cases); (2) KeyGenOnly success + chmod-555 read-only-dir failure (66.7%→100%); (3) httptest-driven Sync/provisionAgent/ProvisionOne/DeprovisionOne: existing-account (carry-forward state), 409-conflict downgrade, RegisterKey/CreateToken/RevokeToken 500 paths, all-fail-no-success partial error, all-pass with state file written, saveState failure via parent-dir chmod 555. Per-function: Sync 63.4%→92.7%, provisionAgent 46.2%→81.5%, deprovisionAgent 84.2%→94.7%, ProvisionOne 62.5%→87.5%, DeprovisionOne 62.5%→87.5%, KeyGenOnly 66.7%→100%, tierRank 66.7%→100%. Full suite 41/41 packages pass, lint clean, GitReins Tier 1 all 6 guards PASS. Committed at `b447f10`. Helper `newHttptestSyncer(t, handler)` builds a non-dry-run Syncer pointed at an httptest server with `s.prov.retry` overridden to MaxAttempts=1 (default 4 would burn 30s of backoff per failure).
 - **Logic:** Most gaps were httptest-backed Forgejo API mocks. provisionAgent: 4 branches (existing-account, 409-conflict, RegisterKey 500, CreateToken 500). DeprovisionOne: not-in-state (skip), RevokeToken 500, RevokeToken 204 (success). Sync: per-agent-failure (PartialError), saveState failure (chmod parent dir to 0o555), all-fail-no-success (first-error picked), all-pass (state file on disk). permissions: tierRank monotonic ordering + unknown-tier fallback (-1), CanPerformAction + Can (action aliases + case-insensitivity + unknown-action), ComputeDelta (no-change / grant / revoke / promotion / demotion), HandleTransition (promotion + demotion branches).
 
-## [ ] Cover cmd/helix coapproval + adversarial fail paths + status subsystems (low-coverage cmd/helix)
+## [~] Cover cmd/helix coapproval + adversarial fail paths + status subsystems (low-coverage cmd/helix)
 - **Priority:** medium
 - **Model:** direct write — Go test-only
+- **Status:** in-progress (started 2026-07-04)
 - **Files:** cmd/helix/coapproval_test.go, cmd/helix/adversarial_test.go, cmd/helix/status_test.go (append)
 - **AC:**
   1. `cmd/helix` coverage ≥ 92.0% (currently 89.5%)
