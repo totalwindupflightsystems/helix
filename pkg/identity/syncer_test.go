@@ -23,7 +23,9 @@ import (
 func validDryRunConfig(t *testing.T) ProvisionerConfig {
 	t.Helper()
 	cfg := DefaultProvisionerConfig()
-	cfg.ForgejoURL = "https://forgejo.example.com"
+	// Use a closed localhost port so real-transport tests fail fast
+	// with connection-refused (no DNS retry delay).
+	cfg.ForgejoURL = "http://127.0.0.1:1"
 	cfg.AdminToken = "tok"
 	cfg.KnownFriendsPath = filepath.Join(t.TempDir(), "known-friends.json")
 	cfg.SSHKeyDir = filepath.Join(t.TempDir(), "keys")
