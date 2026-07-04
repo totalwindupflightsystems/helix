@@ -288,6 +288,58 @@ func TestChimeraClient_Formations_ServerError(t *testing.T) {
 	}
 }
 
+func TestChimeraClient_Formations_RateLimited(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer srv.Close()
+
+	c := NewChimeraAdapterClient(srv.URL, "")
+	_, err := c.Formations()
+	if err != ErrChimeraRateLimited {
+		t.Errorf("err = %v, want ErrChimeraRateLimited", err)
+	}
+}
+
+func TestChimeraClient_Formations_MalformedJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{not valid json`))
+	}))
+	defer srv.Close()
+
+	c := NewChimeraAdapterClient(srv.URL, "")
+	_, err := c.Formations()
+	if err == nil {
+		t.Fatal("err = nil, want malformed-JSON error")
+	}
+}
+
+func TestChimeraClient_Models_RateLimited(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer srv.Close()
+
+	c := NewChimeraAdapterClient(srv.URL, "")
+	_, err := c.Models()
+	if err != ErrChimeraRateLimited {
+		t.Errorf("err = %v, want ErrChimeraRateLimited", err)
+	}
+}
+
+func TestChimeraClient_Models_MalformedJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`garbage payload`))
+	}))
+	defer srv.Close()
+
+	c := NewChimeraAdapterClient(srv.URL, "")
+	_, err := c.Models()
+	if err == nil {
+		t.Fatal("err = nil, want malformed-JSON error")
+	}
+}
+
 func TestChimeraClient_Models_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v1/models" {
