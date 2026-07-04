@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -441,5 +442,160 @@ func TestKeygenCmd_MissingArg(t *testing.T) {
 	err := rootCmd.Execute()
 	if err == nil {
 		t.Error("keygen with missing arg should error")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// runSync handler — minimal dry-run coverage (no forgejo call)
+// ---------------------------------------------------------------------------
+
+func writeMinimalFriendsFile(t *testing.T, dir string) string {
+	t.Helper()
+	path := filepath.Join(dir, "known-friends.json")
+	// One active agent; OpenRouter key is a test stub the secrets scanner
+	// will accept because the test runs go test, not git commit.
+	content := `{"version":1,"updated_at":"2026-06-20T00:00:00Z","agents":{"alice":{"display_name":"Alice","status":"active","tier":"pro","openrouter_key":"fake-or-key-00000000000000000000000000000000","coolify_service_uuid":"a1b2c3d4-e5f6-7890-abcd-ef1234567890"}}}`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// withRootFlags sets rootFlags to a safe dry-run state, runs fn, and restores.
+func withRootFlags(t *testing.T, fn func()) {
+	t.Helper()
+	orig := *rootFlags
+	t.Cleanup(func() { *rootFlags = orig })
+
+	dir := t.TempDir()
+	rootFlags.forgejoURL = "https://forgejo.example.com"
+	rootFlags.adminToken = "tok"
+	rootFlags.adminUser = "admin"
+	rootFlags.adminPassword = "adminpw"
+	rootFlags.knownFriends = writeMinimalFriendsFile(t, dir)
+	rootFlags.sshKeyDir = filepath.Join(dir, "keys")
+	rootFlags.statePath = filepath.Join(dir, "state.json")
+	rootFlags.dryRun = true
+	rootFlags.verbose = false
+	fn()
+}
+
+func TestRunSync_DryRun(t *testing.T) {
+	var out string
+	withRootFlags(t, func() {
+		out = captureOutput(func() {
+			cmd := &cobra.Command{Use: "sync"}
+			if err := runSync(cmd, nil); err != nil {
+				t.Errorf("runSync error: %v", err)
+			}
+		})
+	})
+	if !strings.Contains(out, "DRY RUN") && !strings.Contains(out, "alice") {
+		t.Errorf("expected DRY RUN output mentioning alice, got:\n%s", out)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// runProvision handler
+// ---------------------------------------------------------------------------
+
+func TestRunProvision_AgentNotFound(t *testing.T) {
+	withRootFlags(t, func() {
+		cmd := &cobra.Command{Use: "provision"}
+		err := runProvision(cmd, []string{"ghost"})
+		if err == nil {
+			t.Fatal("expected error for unknown agent")
+		}
+		if !strings.Contains(err.Error(), "not found") {
+			t.Errorf("error should mention 'not found', got: %v", err)
+		}
+	})
+}
+
+func TestRunProvision_DryRun_Success(t *testing.T) {
+	var out string
+	withRootFlags(t, func() {
+		out = captureOutput(func() {
+			cmd := &cobra.Command{Use: "provision"}
+			if err := runProvision(cmd, []string{"alice"}); err != nil {
+				t.Errorf("runProvision error: %v", err)
+			}
+		})
+	})
+	// Dry-run should produce some output (table or DRY RUN marker)
+	if out == "" {
+		t.Error("expected output from dry-run provision")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// runDeprovision handler
+// ---------------------------------------------------------------------------
+
+func TestRunDeprovision_DryRun_Success(t *testing.T) {
+	var out string
+	withRootFlags(t, func() {
+		out = captureOutput(func() {
+			cmd := &cobra.Command{Use: "deprovision"}
+			if err := runDeprovision(cmd, []string{"alice"}); err != nil {
+				t.Errorf("runDeprovision error: %v", err)
+			}
+		})
+	})
+	if out == "" {
+		t.Error("expected output from dry-run deprovision")
+	}
+}
+
+func TestRunDeprovision_UnknownAgent_StillProceeds(t *testing.T) {
+	// runDeprovision allows unknown agents (state file is source of truth).
+	var out string
+	withRootFlags(t, func() {
+		out = captureOutput(func() {
+			cmd := &cobra.Command{Use: "deprovision"}
+			if err := runDeprovision(cmd, []string{"ghost"}); err != nil {
+				t.Errorf("runDeprovision should not error for unknown agent (dry-run), got: %v", err)
+			}
+		})
+	})
+	_ = out // output content depends on path; existence is enough
+}
+
+// ---------------------------------------------------------------------------
+// runStatus handler
+// ---------------------------------------------------------------------------
+
+func TestRunStatus_DryRun(t *testing.T) {
+	var out string
+	withRootFlags(t, func() {
+		out = captureOutput(func() {
+			cmd := &cobra.Command{Use: "status"}
+			if err := runStatus(cmd, nil); err != nil {
+				t.Errorf("runStatus error: %v", err)
+			}
+		})
+	})
+	// renderStateTable prints header row "AGENT" or empty table — either is fine
+	if out == "" {
+		t.Error("expected status table output")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// runKeygen handler
+// ---------------------------------------------------------------------------
+
+func TestRunKeygen_DryRun_Success(t *testing.T) {
+	var out string
+	withRootFlags(t, func() {
+		out = captureOutput(func() {
+			cmd := &cobra.Command{Use: "keygen"}
+			if err := runKeygen(cmd, []string{"newagent"}); err != nil {
+				t.Errorf("runKeygen error: %v", err)
+			}
+		})
+	})
+	if out == "" {
+		t.Error("expected keygen output")
 	}
 }

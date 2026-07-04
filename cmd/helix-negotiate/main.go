@@ -28,6 +28,11 @@ import (
 	"github.com/totalwindupflightsystems/helix/pkg/negotiate"
 )
 
+// exitProcess is the process-exit hook used by the CLI's os.Exit calls.
+// Tests override it to a no-op so dry-run paths can be exercised without
+// killing the test binary.
+var exitProcess = os.Exit
+
 func main() {
 	if err := newRootCmd().Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
@@ -151,7 +156,8 @@ func runDebate(opts *debateOptions, prURL string) error {
 			opts.maxRounds, opts.timeout)
 		fmt.Fprintf(os.Stdout, "Chimera URL: %s\n", opts.chimeraURL)
 		fmt.Fprintf(os.Stdout, "Audit log would be written to: %s\n", auditLogPath(prNumber))
-		os.Exit(10)
+		exitProcess(10)
+		return nil
 	}
 
 	// Set up audit log
@@ -279,7 +285,8 @@ func runResolve(opts *resolveOptions, prURL string) error {
 	verdict, err := arbiter.Deliberate(prompt)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "CHIMERA_UNAVAILABLE: %v\n", err)
-		os.Exit(2)
+		exitProcess(2)
+		return err
 	}
 
 	fmt.Fprintln(os.Stdout, "\nCHIMERA TIE-BREAK RESULT:")
