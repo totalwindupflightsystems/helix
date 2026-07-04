@@ -1195,7 +1195,7 @@
 - **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix adversarial run-all` returns exit code 0 if every scenario passes, non-zero if any scenario fails or panics; output is a structured table (role, severity, name, outcome, error). Supports `--role filter`, `--severity min`, `--output json` flags.
 - **Result:** [x] `helix adversarial run-all`, `helix adversarial run`, `helix adversarial list` wired through pkg/adversarial.Library. Live verification: all 5 default scenarios pass (gate-bypass, key-leak, budget-exhaustion, network-isolation-bypass, ralph-lock-race). 83.4% cmd/helix coverage. Panic recovery wraps RunAll. Full suite 40/40 packages pass. GitReins Tier 1 PASS. Committed at `d849ad0`.
 
-## [ ] Wire PlatformHealthAggregator into `helix status`
+## [~] Wire PlatformHealthAggregator into `helix status`
 - **Priority:** medium
 - **Spec:** specs/SPECIFICATION.md §10.5 + §14 (Operations)
 - **Model:** direct write — Go CLI addition, consumes existing pkg/health
