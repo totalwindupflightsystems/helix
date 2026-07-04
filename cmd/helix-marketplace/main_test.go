@@ -1183,12 +1183,12 @@ func TestRunRate_NoAuthor_UsesCurrentUser(t *testing.T) {
 
 	// Set USER env so currentUser() returns it
 	oldUser := os.Getenv("USER")
-	os.Setenv("USER", "test-user")
+	_ = os.Setenv("USER", "test-user")
 	defer func() {
 		if oldUser != "" {
-			os.Setenv("USER", oldUser)
+			_ = os.Setenv("USER", oldUser)
 		} else {
-			os.Unsetenv("USER")
+			_ = os.Unsetenv("USER")
 		}
 	}()
 
