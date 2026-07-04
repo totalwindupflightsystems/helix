@@ -1195,13 +1195,13 @@
 - **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix adversarial run-all` returns exit code 0 if every scenario passes, non-zero if any scenario fails or panics; output is a structured table (role, severity, name, outcome, error). Supports `--role filter`, `--severity min`, `--output json` flags.
 - **Result:** [x] `helix adversarial run-all`, `helix adversarial run`, `helix adversarial list` wired through pkg/adversarial.Library. Live verification: all 5 default scenarios pass (gate-bypass, key-leak, budget-exhaustion, network-isolation-bypass, ralph-lock-race). 83.4% cmd/helix coverage. Panic recovery wraps RunAll. Full suite 40/40 packages pass. GitReins Tier 1 PASS. Committed at `d849ad0`.
 
-## [~] Wire PlatformHealthAggregator into `helix status`
+## [x] Wire PlatformHealthAggregator into `helix status`
 - **Priority:** medium
 - **Spec:** specs/SPECIFICATION.md §10.5 + §14 (Operations)
 - **Model:** direct write — Go CLI addition, consumes existing pkg/health
 - **Files:** cmd/helix/status.go (NEW), cmd/helix/status_test.go (NEW), cmd/helix/doctor.go (trim ad-hoc health checks), cmd/helix/main.go (wire `status` subcommand)
 - **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix status` invokes pkg/health.PlatformHealthAggregator, collects health from all 6 subsystems (trust, review, negotiate, verify, marketplace, estimate), and renders the existing DashboardReport. Supports `--json` for machine-readable output.
-- **Logic:** Currently cmd/helix/doctor.go has 200+ lines of hand-rolled health checks. Replace with a thin wrapper around the existing pkg/health.PlatformHealthAggregator (100% coverage, 55 tests). Keep the ad-hoc checks as fallback for `--legacy` flag. Wire the new aggregator into the existing `helix status` subcommand path so it's the default output.
+- **Result:** [x] `helix status` now invokes pkg/health.PlatformHealthAggregator with 8 default subsystems (forgejo, chimera, negotiate, trust, review, verify, marketplace, estimate). Live smoke confirms structured output: forgejo=degraded, others=down → exit code 2 (CRITICAL). 84.0% cmd/helix coverage. Full suite 40/40 packages pass. GitReins Tier 1 PASS. Committed at `7583c26`. Legacy `helix doctor` preserved as a hand-rolled fallback.
 
 ## [ ] Implement prompt-test runner wired to helix CI — specs/SPECIFICATION.md §10 PromptFoo bridge
 - **Priority:** medium
