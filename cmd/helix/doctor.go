@@ -125,12 +125,17 @@ func (r *DoctorReport) Summary() string {
 // ============================================================================
 
 // runDoctorWithConfig executes the diagnostic with the given config.
-func runDoctorWithConfig(cfg DoctorConfig) error {
+// The stdout parameter lets callers (and tests) capture the report instead
+// of writing to os.Stdout. Pass nil to default to os.Stdout.
+func runDoctorWithConfig(cfg DoctorConfig, stdout io.Writer) error {
+	if stdout == nil {
+		stdout = os.Stdout
+	}
 	report := runAllChecks(cfg)
 
-	fmt.Println("Helix Platform Doctor")
-	fmt.Println("====================")
-	fmt.Println()
+	fmt.Fprintln(stdout, "Helix Platform Doctor")
+	fmt.Fprintln(stdout, "====================")
+	fmt.Fprintln(stdout)
 
 	for _, r := range report.Results {
 		icon := "✓"
@@ -139,16 +144,16 @@ func runDoctorWithConfig(cfg DoctorConfig) error {
 		} else if r.Status == "WARN" {
 			icon = "⚠"
 		}
-		fmt.Printf("%s %-25s %s (%.3fs)\n", icon, r.Name, r.Detail, r.Duration.Seconds())
+		fmt.Fprintf(stdout, "%s %-25s %s (%.3fs)\n", icon, r.Name, r.Detail, r.Duration.Seconds())
 	}
 
-	fmt.Println()
+	fmt.Fprintln(stdout)
 	if report.AllPassed() {
-		fmt.Printf("✓ %s\n", report.Summary())
+		fmt.Fprintf(stdout, "✓ %s\n", report.Summary())
 		return nil
 	}
 
-	fmt.Printf("✗ %s\n", report.Summary())
+	fmt.Fprintf(stdout, "✗ %s\n", report.Summary())
 	return fmt.Errorf("doctor checks failed: %d of %d checks failed", report.Fail, len(report.Results))
 }
 

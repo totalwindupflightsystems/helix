@@ -330,3 +330,165 @@ func writeJT(w http.ResponseWriter, status int, v any) {
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
 }
+
+// ============================================================================
+// Unified CLI dry-run wrapper coverage (runDispatchWithDryRun, runDispatchDryRun)
+// ============================================================================
+//
+// These wrappers convert the dispatch subcommand's exit code into the unified
+// CLI's error contract: rc=0 → nil, rc≠0 → errExit{code: rc}. They also let
+// main.go's global --dry-run flag override dispatch's own --dry-run.
+//
+// The 0%-coverage gap existed because no test exercised the wrapper layer
+// directly — every existing test called runDispatch instead.
+
+// TestRunDispatchDryRun_DryRunOverridesGlobal — globalDryRun=true forces dry-run
+// even when the dispatch subcommand doesn't get --dry-run.
+func TestRunDispatchDryRun_DryRunOverridesGlobal(t *testing.T) {
+	specPath := writeSpec(t)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	rc := runDispatchDryRun(
+		[]string{
+			"--spec", specPath,
+			"--agent", "test-agent",
+			"--forgejo-url", "http://forgejo.test",
+		},
+		stdout, stderr, true, // globalDryRun=true
+	)
+	require.Equalf(t, 0, rc, "global --dry-run must enable dry-run mode; stderr=%s", stderr.String())
+
+	var outcome map[string]any
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &outcome))
+	assert.Equal(t, "test-agent", outcome["agent"])
+}
+
+// TestRunDispatchDryRun_GlobalFalse_PropagatesToDispatch — globalDryRun=false
+// delegates to runDispatch which will try the live path and exit with parse
+// error (rc=2) since no --forgejo-url was passed; that means --spec but no
+// agent and no --dry-run.
+func TestRunDispatchDryRun_GlobalFalse_PropagatesToDispatch(t *testing.T) {
+	specPath := writeSpec(t)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	// Missing --agent → runDispatch parses, hits --agent required check, returns 2.
+	rc := runDispatchDryRun(
+		[]string{
+			"--spec", specPath,
+			"--forgejo-url", "http://forgejo.test",
+		},
+		stdout, stderr, false,
+	)
+	assert.Equal(t, 2, rc, "missing --agent must surface as rc=2; stderr=%s", stderr.String())
+	assert.Contains(t, stderr.String(), "--agent")
+}
+
+// TestRunDispatchDryRun_ParseError — bad flag returns rc=2 (exit 2 from
+// runDispatch → bubbles up unchanged through runDispatchDryRun).
+func TestRunDispatchDryRun_ParseError(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	rc := runDispatchDryRun([]string{"--no-such-flag"}, stdout, stderr, false)
+	assert.Equal(t, 2, rc, "unknown flag must rc=2; stderr=%s", stderr.String())
+}
+
+// TestRunDispatchDryRun_HelpFlag — --help is detected early by parseDispatchFlags
+// and returns rc=0 before any pipeline work.
+func TestRunDispatchDryRun_HelpFlag(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	rc := runDispatchDryRun([]string{"--help"}, stdout, stderr, false)
+	assert.Equal(t, 0, rc)
+	assert.Contains(t, stdout.String(), "--spec")
+}
+
+// TestRunDispatchWithDryRun_SuccessPath — wraps runDispatchDryRun's rc=0 into
+// nil (no errExit). Exercised via the unified CLI's happy path.
+func TestRunDispatchWithDryRun_SuccessPath(t *testing.T) {
+	specPath := writeSpec(t)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	err := runDispatchWithDryRun(
+		[]string{
+			"--spec", specPath,
+			"--agent", "test-agent",
+			"--dry-run",
+			"--forgejo-url", "http://forgejo.test",
+		},
+		stdout, stderr, true,
+	)
+	require.NoError(t, err, "dry-run success must return nil; stderr=%s", stderr.String())
+}
+
+// TestRunDispatchWithDryRun_ParseFailure — wrap rc=2 → errExit{code:2}.
+func TestRunDispatchWithDryRun_ParseFailure(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	err := runDispatchWithDryRun([]string{"--no-such-flag"}, stdout, stderr, false)
+	require.Error(t, err, "rc=2 must surface as errExit")
+	var exitErr errExit
+	require.ErrorAs(t, err, &exitErr)
+	assert.Equal(t, 2, exitErr.code)
+}
+
+// TestErrExit_Error — the errExit type's Error() method is part of the
+// error contract; every error.Is/As path depends on it producing a stable
+// string with the exit code.
+func TestErrExit_Error(t *testing.T) {
+	e := errExit{code: 7}
+	assert.Equal(t, "dispatch exit 7", e.Error())
+}
+
+// ============================================================================
+// runDispatch entry-point coverage — fill remaining branches
+// ============================================================================
+
+// TestRunDispatch_VerboseFlag — verbose=true adds a stderr log line.
+func TestRunDispatch_VerboseFlag(t *testing.T) {
+	specPath := writeSpec(t)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	rc := runDispatch(
+		[]string{
+			"--spec", specPath,
+			"--agent", "verbose-agent",
+			"--dry-run",
+			"--forgejo-url", "http://forgejo.test",
+			"--verbose",
+		},
+		stdout, stderr,
+	)
+	require.Equalf(t, 0, rc, "dry-run verbose must succeed; stderr=%s", stderr.String())
+	assert.Contains(t, stderr.String(), "[dispatch]")
+}
+
+// TestRunDispatch_UnexpectedPositionalArgs — passing a positional arg after
+// all flags triggers parseDispatchFlags' "unexpected positional arguments"
+// branch.
+func TestRunDispatch_UnexpectedPositionalArgs(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	rc := runDispatch([]string{"extra-positional-arg"}, stdout, stderr)
+	assert.Equal(t, 2, rc, "unexpected positional must rc=2; stderr=%s", stderr.String())
+	assert.Contains(t, stderr.String(), "positional")
+}
+
+// TestRunDispatch_LiveMode_MissingPassword — live mode requires admin password.
+// (Existing test TestRunDispatch_LiveMode_MissingPassword covers this; this
+// is a redundant smoke check that uses runDispatchWithDryRun for symmetry.)
+func TestRunDispatch_LiveMode_MissingPassword_DryRunWrapper(t *testing.T) {
+	specPath := writeSpec(t)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	rc := runDispatchDryRun(
+		[]string{
+			"--spec", specPath,
+			"--agent", "live-agent",
+			"--repo", "helix",
+			// No --dry-run; will try live mode.
+		},
+		stdout, stderr, false,
+	)
+	// rc=2 because --admin-password is required in live mode.
+	assert.Equal(t, 2, rc, "live mode without password must rc=2; stderr=%s", stderr.String())
+}
