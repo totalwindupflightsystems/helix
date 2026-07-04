@@ -1,5 +1,14 @@
 # Helix Coding Tasks — Foreman Queue
 
+## [x] Fix CI: Helix CI — TestRunResolveWithPositions_HappyPath (audit log not found in CI)
+- **Priority:** high
+- **CI Run:** https://github.com/totalwindupflightsystems/helix/actions/runs/28697093686
+- **Error:** `runResolveWithPositions error: open audit log "/home/runner/.helix/negotiations/99-..." no such file or directory`. Test expects a pre-existing negotiation audit log at `/home/runner/.helix/negotiations/` that is not present in the CI runner. Fix: either create the required directory/file in the test setup, or use `os.MkdirTemp`/`t.TempDir()` with a configurable audit log path, or `Skip` the test when the dir doesn't exist.
+- **Regression:** 2 prior CI runs passed; this started failing on latest push.
+- **Root cause:** `runResolveWithPositions` (cmd/helix-negotiate/main.go:304) constructs the audit path via `auditLogPath(prNumber)` → `/home/runner/.helix/negotiations/99-<ts>.jsonl` but does NOT call `os.MkdirAll` on the parent before `NewNegotiatorFromConfig` → `NewAuditLogger` → `os.OpenFile`. The older `runResolve` path (line 165) does call `os.MkdirAll` but `runResolveWithPositions` was added without it. In CI the `/home/runner/.helix/negotiations/` directory simply does not exist. Local machines happen to have it (it's where real negotiation logs land) so the test passes locally — purely environmental.
+- **Fix:** two-layer defense. (1) cmd/helix-negotiate/main.go:runResolveWithPositions now mirrors runResolve's `os.MkdirAll(filepath.Dir(auditPath), 0o755)` before constructing the Negotiator. (2) pkg/negotiate/audit.go:NewAuditLogger now auto-creates the parent directory itself (mkdir -p semantics), so any future caller benefits. (3) cmd/helix-negotiate/main_test.go:TestRunResolveWithPositions_HappyPath redirects HOME to t.TempDir() so the test actually exercises the missing-parent-dir case (previously passed locally for the wrong reason). (4) pkg/negotiate/audit_test.go replaces `invalid_path` with `auto_creates_missing_parent_dir` + `rejects_unwritable_parent_dir`.
+- **Result:** [x] Test reproduces the exact CI error before the fix (`open audit log ".../.helix/negotiations/99-...jsonl": no such file or directory`) and passes after. 4 files changed, 52 insertions, 5 deletions. Full suite: 40 packages all green. Lint clean. GitReins Tier 1 all 6 guards PASS. Committed at `2aab8f3`.
+
 ## [x] Implement trust scoring engine — pkg/trust/
 - **Priority:** high
 - **Spec:** specs/trust-model.md
@@ -1133,3 +1142,30 @@
 - **AC:** `go test -short -count=1 ./...` passes; `make test` passes; `make lint` passes; `.gitreins/pre-commit` runs tests successfully on a sample staged change
 - **Logic:** /tmp on the host is a 30G tmpfs at 80%+ utilization (24G used). Six pkg/trust integration tests use t.TempDir() and fail with "disk quota exceeded" writing to /tmp/TestXxxx/trust.jsonl. Fix per coding-hermes skill: (1) `go env -w GOCACHE=/home/kara/.cache/go-build GOTMPDIR=/home/kara/.cache/go-tmp` (persistent), (2) `export TMPDIR=/home/kara/.cache/go-tmp` in pre-commit hook (the linker uses TMPDIR, not GOTMPDIR), (3) propagate TMPDIR via Makefile for `make test`/`make lint` targets. Without TMPDIR, the hook's `go test ./...` would still fail.
 - **Result:** [x] All 6 trust tests pass (TestProcessBatch_PartialError, TestProcessResult_LedgerReplayDeterministic, TestProcessResult_MultiplePenaltiesAccumulate, TestTotalScoreReduction, TestMostAffectedAgent, TestVerifyDecrease_AllDecreased). Full suite: 41 packages, all green with TMPDIR set. Coverage: 86-100% across packages (avg ~92%). Lint clean. Pre-commit hook validated with a staged change.
+## [ ] Cover CLI run handlers (cmd/helix-prompt) — push coverage to >80%
+- **Priority:** medium
+- **Model:** direct write — Go CLI test additions
+- **Files:** cmd/helix-prompt/main_test.go (NEW)
+- **AC:** `go test -short -count=1 ./cmd/helix-prompt/...` passes; coverage on cmd/helix-prompt ≥80% (currently 55.2%)
+- **Logic:** Per `go tool cover -func`, three run* handlers are at 0% (runRegister 25%, runAttest 15%, runVerify 9.8%). Test pattern mirrors cmd/helix-negotiate's existing runXxx tests: stub exitProcess, redirect HOME to t.TempDir, exercise each run function with httptest/PromptFoo fixtures where appropriate, verify stdout contains expected output. Read cmd/helix-prompt/main.go to learn the function signatures before writing tests.
+
+## [ ] Cover CLI run handlers (cmd/helix-marketplace) — push coverage to >80%
+- **Priority:** medium
+- **Model:** direct write — Go CLI test additions
+- **Files:** cmd/helix-marketplace/main_test.go (NEW)
+- **AC:** `go test -short -count=1 ./cmd/helix-marketplace/...` passes; coverage on cmd/helix-marketplace ≥80% (currently 61.3%)
+- **Logic:** Per `go tool cover -func`, four run* handlers are at 0% (runList, runShow, runSearch, runRate, runReview). Test pattern: stub exitProcess, redirect HOME to t.TempDir, populate a known-friends/registry fixture, exercise handlers, verify output. Mirror cmd/helix-negotiate's existing patterns for shape.
+
+## [ ] Cover CLI run handlers (cmd/helix-estimate) — push coverage to >80%
+- **Priority:** medium
+- **Model:** direct write — Go CLI test additions
+- **Files:** cmd/helix-estimate/main_test.go (NEW)
+- **AC:** `go test -short -count=1 ./cmd/helix-estimate/...` passes; coverage on cmd/helix-estimate ≥80% (currently 63.6%)
+- **Logic:** Per `go tool cover -func`, three functions are at 0% (runEstimate, runCheck, loadPricing). Test pattern: stub exitProcess, redirect HOME to t.TempDir with fixture pricing.yaml + known-friends.json, exercise both `helix-estimate estimate <task>` and `helix-estimate check <model>` commands, verify stdout contains expected cost line. Mirror cmd/helix-negotiate's existing patterns.
+
+## [ ] Cover CLI run handlers (cmd/helix-identity) — push coverage to >85%
+- **Priority:** medium
+- **Model:** direct write — Go CLI test additions
+- **Files:** cmd/helix-identity/main_test.go (extend)
+- **AC:** `go test -short -count=1 ./cmd/helix-identity/...` passes; coverage on cmd/helix-identity ≥85% (currently 78.1%)
+- **Logic:** Existing tests cover runSync/runProvision/runDeprovision/runStatus/runKeygen (already [x] WI). Add tests for any remaining 0% run handlers. Verify which functions are still at 0% via `go test ./cmd/helix-identity/ -coverprofile=<path> && go tool cover -func=<path> | awk '$NF == "0.0%"'` and write targeted tests. Ensure each test uses a hermetic t.TempDir + minimal known-friends.json fixture.
