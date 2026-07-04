@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -639,4 +640,595 @@ func TestLoadRegistryInvalidPathDoesNotReturn(t *testing.T) {
 	// loadRegistry calls os.Exit on error — can't test without forking.
 	// This is documented as untestable in-process.
 	t.Skip("loadRegistry calls os.Exit on error — untestable in-process")
+}
+
+// ---------------------------------------------------------------------------
+// runList direct-call tests (spec §10)
+// ---------------------------------------------------------------------------
+
+// itoa converts an int to a string without importing strconv in the test file.
+func itoa(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	negative := false
+	if n < 0 {
+		negative = true
+		n = -n
+	}
+	var digits []byte
+	for n > 0 {
+		digits = append([]byte{byte('0' + n%10)}, digits...)
+		n /= 10
+	}
+	if negative {
+		return "-" + string(digits)
+	}
+	return string(digits)
+}
+
+// writeTestAgentYAML writes a minimal agent manifest YAML for use in registry tests.
+func writeTestAgentYAML(t *testing.T, dir, name string, trust int, tier marketplace.Tier, caps []string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Join(dir, "agents"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	yaml := `name: "` + name + `"
+status: "active"
+tier: "` + string(tier) + `"
+trust_score: ` + itoa(trust) + `
+capabilities:
+`
+	for _, c := range caps {
+		yaml += "  - " + c + "\n"
+	}
+	yaml += `budget:
+  weekly_limit: 10.00
+  average_task_cost: 0.12
+  cost_profile: "medium"
+performance:
+  tasks_completed: 100
+  pr_acceptance_rate: 0.95
+  budget_adherence: 0.97
+ratings:
+  average: 4.5
+  count: 5
+created_at: "2026-06-01T00:00:00Z"
+updated_at: "2026-06-20T00:00:00Z"
+`
+	path := filepath.Join(dir, "agents", name+".yaml")
+	if err := os.WriteFile(path, []byte(yaml), 0644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// withRedirectedStdout runs fn with os.Stdout pointing at a pipe and returns the output.
+func withRedirectedStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := os.Stdout
+	os.Stdout = w
+	done := make(chan string)
+	go func() {
+		var buf bytes.Buffer
+		_, _ = buf.ReadFrom(r)
+		done <- buf.String()
+	}()
+	fn()
+	w.Close()
+	os.Stdout = old
+	return <-done
+}
+
+func TestRunList_EmptyRegistry(t *testing.T) {
+	dir := t.TempDir()
+
+	opts := &listOptions{
+		marketplace: dir,
+		status:      "all",
+		format:      "table",
+		sortBy:      "trust",
+	}
+
+	out := withRedirectedStdout(t, func() {
+		_ = runList(opts)
+	})
+
+	if !strings.Contains(out, "0 agents listed") {
+		t.Errorf("expected '0 agents listed' in output: %s", out)
+	}
+}
+
+func TestRunList_WithAgents(t *testing.T) {
+	dir := t.TempDir()
+	writeTestAgentYAML(t, dir, "alpha-agent", 80, marketplace.TierPro, []string{"go", "code-review"})
+	writeTestAgentYAML(t, dir, "beta-agent", 60, marketplace.TierFlash, []string{"python"})
+
+	opts := &listOptions{
+		marketplace: dir,
+		status:      "all",
+		format:      "table",
+		sortBy:      "trust",
+	}
+
+	out := withRedirectedStdout(t, func() {
+		_ = runList(opts)
+	})
+
+	if !strings.Contains(out, "alpha-agent") {
+		t.Errorf("output missing alpha-agent: %s", out)
+	}
+	if !strings.Contains(out, "beta-agent") {
+		t.Errorf("output missing beta-agent: %s", out)
+	}
+	if !strings.Contains(out, "2 agents listed") {
+		t.Errorf("output missing '2 agents listed': %s", out)
+	}
+}
+
+func TestRunList_JSONFormat(t *testing.T) {
+	dir := t.TempDir()
+	writeTestAgentYAML(t, dir, "json-test", 70, marketplace.TierPro, []string{"go"})
+
+	opts := &listOptions{
+		marketplace: dir,
+		status:      "all",
+		format:      "json",
+		sortBy:      "trust",
+	}
+
+	out := withRedirectedStdout(t, func() {
+		_ = runList(opts)
+	})
+
+	if !strings.Contains(out, "json-test") {
+		t.Errorf("JSON output missing agent name: %s", out)
+	}
+	if !strings.Contains(out, "[") {
+		t.Errorf("JSON output should start with '[': %s", out)
+	}
+}
+
+func TestRunList_FilterByStatus(t *testing.T) {
+	dir := t.TempDir()
+	writeTestAgentYAML(t, dir, "active-agent", 80, marketplace.TierPro, []string{"go"})
+
+	opts := &listOptions{
+		marketplace: dir,
+		status:      "deprecated", // no deprecated agents → empty result
+		format:      "table",
+		sortBy:      "trust",
+	}
+
+	out := withRedirectedStdout(t, func() {
+		_ = runList(opts)
+	})
+
+	if !strings.Contains(out, "0 agents listed") {
+		t.Errorf("deprecated filter should yield 0 results: %s", out)
+	}
+}
+
+func TestRunList_FilterByCapability(t *testing.T) {
+	dir := t.TempDir()
+	writeTestAgentYAML(t, dir, "go-agent", 80, marketplace.TierPro, []string{"go"})
+	writeTestAgentYAML(t, dir, "py-agent", 70, marketplace.TierFlash, []string{"python"})
+
+	opts := &listOptions{
+		marketplace:  dir,
+		capabilities: []string{"python"},
+		status:       "all",
+		format:       "table",
+		sortBy:       "trust",
+	}
+
+	out := withRedirectedStdout(t, func() {
+		_ = runList(opts)
+	})
+
+	if !strings.Contains(out, "py-agent") {
+		t.Errorf("python filter should include py-agent: %s", out)
+	}
+	if strings.Contains(out, "go-agent") {
+		t.Errorf("python filter should NOT include go-agent: %s", out)
+	}
+}
+
+func TestRunList_FilterByMinTrust(t *testing.T) {
+	dir := t.TempDir()
+	writeTestAgentYAML(t, dir, "high-trust", 90, marketplace.TierPro, []string{"go"})
+	writeTestAgentYAML(t, dir, "low-trust", 30, marketplace.TierFlash, []string{"go"})
+
+	opts := &listOptions{
+		marketplace: dir,
+		minTrust:    50,
+		status:      "all",
+		format:      "table",
+		sortBy:      "trust",
+	}
+
+	out := withRedirectedStdout(t, func() {
+		_ = runList(opts)
+	})
+
+	if !strings.Contains(out, "high-trust") {
+		t.Errorf("min-trust 50 should include high-trust: %s", out)
+	}
+	if strings.Contains(out, "low-trust") {
+		t.Errorf("min-trust 50 should NOT include low-trust: %s", out)
+	}
+}
+
+func TestRunList_SortBy(t *testing.T) {
+	dir := t.TempDir()
+	writeTestAgentYAML(t, dir, "first-agent", 90, marketplace.TierPro, []string{"go"})
+	writeTestAgentYAML(t, dir, "second-agent", 50, marketplace.TierFlash, []string{"go"})
+
+	opts := &listOptions{
+		marketplace: dir,
+		status:      "all",
+		format:      "table",
+		sortBy:      "cost",
+	}
+
+	out := withRedirectedStdout(t, func() {
+		_ = runList(opts)
+	})
+
+	if !strings.Contains(out, "2 agents listed") {
+		t.Errorf("cost sort should list both agents: %s", out)
+	}
+}
+
+func TestRunList_Verbose(t *testing.T) {
+	dir := t.TempDir()
+	writeTestAgentYAML(t, dir, "verbose-agent", 80, marketplace.TierPro, []string{"go"})
+
+	opts := &listOptions{
+		marketplace: dir,
+		status:      "all",
+		format:      "table",
+		sortBy:      "trust",
+		verbose:     true,
+	}
+
+	// Capture stderr separately
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+	withRedirectedStdout(t, func() {
+		_ = runList(opts)
+	})
+	w.Close()
+	os.Stderr = oldStderr
+
+	var errBuf bytes.Buffer
+	_, _ = errBuf.ReadFrom(r)
+
+	if !strings.Contains(errBuf.String(), "operation=LIST") {
+		t.Errorf("verbose mode should log to stderr: %s", errBuf.String())
+	}
+}
+
+// ---------------------------------------------------------------------------
+// runShow direct-call tests (spec §11)
+// ---------------------------------------------------------------------------
+
+func TestRunShow_HappyPath(t *testing.T) {
+	dir := t.TempDir()
+	writeTestAgentYAML(t, dir, "show-agent", 80, marketplace.TierPro, []string{"go"})
+
+	opts := &showOptions{
+		full:        false,
+		format:      "table",
+		marketplace: dir,
+	}
+
+	out := withRedirectedStdout(t, func() {
+		_ = runShow(opts, "show-agent")
+	})
+
+	if !strings.Contains(out, "AGENT: show-agent") {
+		t.Errorf("output should contain agent name: %s", out)
+	}
+	if !strings.Contains(out, "TRUST:") {
+		t.Errorf("output should contain TRUST line: %s", out)
+	}
+}
+
+func TestRunShow_JSONFormat(t *testing.T) {
+	dir := t.TempDir()
+	writeTestAgentYAML(t, dir, "json-show", 80, marketplace.TierPro, []string{"go"})
+
+	opts := &showOptions{
+		format:      "json",
+		marketplace: dir,
+	}
+
+	out := withRedirectedStdout(t, func() {
+		_ = runShow(opts, "json-show")
+	})
+
+	if !strings.Contains(out, "json-show") {
+		t.Errorf("JSON output should contain agent name: %s", out)
+	}
+}
+
+func TestRunShow_YAMLFormat(t *testing.T) {
+	dir := t.TempDir()
+	writeTestAgentYAML(t, dir, "yaml-show", 80, marketplace.TierPro, []string{"go"})
+
+	opts := &showOptions{
+		format:      "yaml",
+		marketplace: dir,
+	}
+
+	out := withRedirectedStdout(t, func() {
+		_ = runShow(opts, "yaml-show")
+	})
+
+	if !strings.Contains(out, "yaml-show") {
+		t.Errorf("YAML output should contain agent name: %s", out)
+	}
+}
+
+func TestRunShow_LowTrust(t *testing.T) {
+	dir := t.TempDir()
+	writeTestAgentYAML(t, dir, "low-trust-show", 10, marketplace.TierFlash, []string{"go"})
+
+	opts := &showOptions{
+		format:      "table",
+		marketplace: dir,
+	}
+
+	out := withRedirectedStdout(t, func() {
+		_ = runShow(opts, "low-trust-show")
+	})
+
+	// Trust score < 30 should show warning emoji
+	if !strings.Contains(out, "⚠️") {
+		t.Errorf("low trust should show warning emoji: %s", out)
+	}
+}
+
+func TestRunShow_Verbose(t *testing.T) {
+	dir := t.TempDir()
+	writeTestAgentYAML(t, dir, "verbose-show", 80, marketplace.TierPro, []string{"go"})
+
+	opts := &showOptions{
+		format:      "table",
+		marketplace: dir,
+		verbose:     true,
+	}
+
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+	withRedirectedStdout(t, func() {
+		_ = runShow(opts, "verbose-show")
+	})
+	w.Close()
+	os.Stderr = oldStderr
+
+	var errBuf bytes.Buffer
+	_, _ = errBuf.ReadFrom(r)
+
+	if !strings.Contains(errBuf.String(), "operation=SHOW") {
+		t.Errorf("verbose mode should log to stderr: %s", errBuf.String())
+	}
+}
+
+// ---------------------------------------------------------------------------
+// runSearch direct-call tests (spec §12)
+// ---------------------------------------------------------------------------
+
+func TestRunSearch_Empty(t *testing.T) {
+	dir := t.TempDir()
+
+	opts := &searchOptions{
+		marketplace: dir,
+		limit:       10,
+	}
+
+	out := withRedirectedStdout(t, func() {
+		_ = runSearch(opts)
+	})
+
+	if !strings.Contains(out, "No agents found.") {
+		t.Errorf("empty search should report no agents: %s", out)
+	}
+}
+
+func TestRunSearch_Found(t *testing.T) {
+	dir := t.TempDir()
+	writeTestAgentYAML(t, dir, "search-agent-1", 80, marketplace.TierPro, []string{"go"})
+	writeTestAgentYAML(t, dir, "search-agent-2", 60, marketplace.TierFlash, []string{"go"})
+
+	opts := &searchOptions{
+		marketplace: dir,
+		limit:       10,
+	}
+
+	out := withRedirectedStdout(t, func() {
+		_ = runSearch(opts)
+	})
+
+	if !strings.Contains(out, "search-agent-1") {
+		t.Errorf("search should include first agent: %s", out)
+	}
+	if !strings.Contains(out, "2 agent(s) found") {
+		t.Errorf("search should report 2 found: %s", out)
+	}
+}
+
+func TestRunSearch_WithCapabilities(t *testing.T) {
+	dir := t.TempDir()
+	writeTestAgentYAML(t, dir, "go-agent-search", 80, marketplace.TierPro, []string{"go"})
+	writeTestAgentYAML(t, dir, "py-agent-search", 70, marketplace.TierFlash, []string{"python"})
+
+	opts := &searchOptions{
+		marketplace:  dir,
+		capabilities: []string{"python"},
+		limit:        10,
+	}
+
+	out := withRedirectedStdout(t, func() {
+		_ = runSearch(opts)
+	})
+
+	if !strings.Contains(out, "py-agent-search") {
+		t.Errorf("python search should include py-agent: %s", out)
+	}
+	if strings.Contains(out, "go-agent-search") {
+		t.Errorf("python search should NOT include go-agent: %s", out)
+	}
+}
+
+func TestRunSearch_MinTrustFilter(t *testing.T) {
+	dir := t.TempDir()
+	writeTestAgentYAML(t, dir, "trust-90", 90, marketplace.TierPro, []string{"go"})
+	writeTestAgentYAML(t, dir, "trust-20", 20, marketplace.TierFlash, []string{"go"})
+
+	opts := &searchOptions{
+		marketplace: dir,
+		minTrust:    50,
+		limit:       10,
+	}
+
+	out := withRedirectedStdout(t, func() {
+		_ = runSearch(opts)
+	})
+
+	if !strings.Contains(out, "trust-90") {
+		t.Errorf("min-trust 50 should include trust-90: %s", out)
+	}
+	if strings.Contains(out, "trust-20") {
+		t.Errorf("min-trust 50 should NOT include trust-20: %s", out)
+	}
+}
+
+func TestRunSearch_Verbose(t *testing.T) {
+	dir := t.TempDir()
+	writeTestAgentYAML(t, dir, "v-search", 80, marketplace.TierPro, []string{"go"})
+
+	opts := &searchOptions{
+		marketplace: dir,
+		limit:       10,
+		verbose:     true,
+	}
+
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+	withRedirectedStdout(t, func() {
+		_ = runSearch(opts)
+	})
+	w.Close()
+	os.Stderr = oldStderr
+
+	var errBuf bytes.Buffer
+	_, _ = errBuf.ReadFrom(r)
+
+	if !strings.Contains(errBuf.String(), "operation=SEARCH") {
+		t.Errorf("verbose search should log to stderr: %s", errBuf.String())
+	}
+}
+
+// ---------------------------------------------------------------------------
+// runRate / runReview direct-call tests (spec §9.1, §9.2)
+// ---------------------------------------------------------------------------
+
+func TestRunRate_InvalidRating(t *testing.T) {
+	// runRate calls os.Exit(ExitInvalidRating) on any rating string that fails
+	// strconv.Atoi or falls outside [1,5]. Both branches terminate the test
+	// process, so the validation logic is documented here but not exercised
+	// in-process. The exit codes are validated by integration tests instead.
+	t.Skip("runRate calls os.Exit on invalid rating — untestable in-process")
+}
+
+func TestRunRate_HappyPath(t *testing.T) {
+	dir := t.TempDir()
+	writeTestAgentYAML(t, dir, "rate-target", 80, marketplace.TierPro, []string{"go"})
+
+	opts := &rateOptions{
+		author:      "human-tester",
+		comment:     "great work",
+		marketplace: dir,
+	}
+
+	out := withRedirectedStdout(t, func() {
+		_ = runRate(opts, "rate-target", "5")
+	})
+
+	if !strings.Contains(out, "RATING SUBMITTED:") {
+		t.Errorf("output should contain RATING SUBMITTED: %s", out)
+	}
+	if !strings.Contains(out, "rate-target") {
+		t.Errorf("output should contain agent name: %s", out)
+	}
+	if !strings.Contains(out, "human-tester") {
+		t.Errorf("output should contain author: %s", out)
+	}
+	if !strings.Contains(out, "great work") {
+		t.Errorf("output should contain comment: %s", out)
+	}
+}
+
+func TestRunRate_NoAuthor_UsesCurrentUser(t *testing.T) {
+	dir := t.TempDir()
+	writeTestAgentYAML(t, dir, "rate-default-user", 80, marketplace.TierPro, []string{"go"})
+
+	// Set USER env so currentUser() returns it
+	oldUser := os.Getenv("USER")
+	os.Setenv("USER", "test-user")
+	defer func() {
+		if oldUser != "" {
+			os.Setenv("USER", oldUser)
+		} else {
+			os.Unsetenv("USER")
+		}
+	}()
+
+	opts := &rateOptions{
+		author:      "", // empty → use currentUser()
+		marketplace: dir,
+	}
+
+	out := withRedirectedStdout(t, func() {
+		_ = runRate(opts, "rate-default-user", "4")
+	})
+
+	if !strings.Contains(out, "test-user") {
+		t.Errorf("output should show current user: %s", out)
+	}
+}
+
+func TestRunRate_AgentAuthor(t *testing.T) {
+	// runRate calls os.Exit(ExitUnauthorized) when the author is not a verified
+	// human (anything starting with "agent-"). The branch terminates the test
+	// process, so we skip this in-process. Exit code is validated by integration tests.
+	t.Skip("runRate calls os.Exit on agent-* author — untestable in-process")
+}
+
+func TestRunReview_HappyPath(t *testing.T) {
+	dir := t.TempDir()
+	writeTestAgentYAML(t, dir, "review-target", 80, marketplace.TierPro, []string{"go"})
+
+	opts := &rateOptions{
+		author:      "human-reviewer",
+		comment:     "thorough review",
+		marketplace: dir,
+	}
+
+	// review is an alias for rate (shares runRate implementation)
+	out := withRedirectedStdout(t, func() {
+		_ = runRate(opts, "review-target", "4")
+	})
+
+	if !strings.Contains(out, "RATING SUBMITTED:") {
+		t.Errorf("review output should contain RATING SUBMITTED: %s", out)
+	}
 }
