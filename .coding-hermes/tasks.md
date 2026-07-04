@@ -1232,3 +1232,45 @@
 - **Result:** [x] 13 new test cases across 4 files (dispatch_test.go +7, coapproval_test.go +3, adversarial_test.go +3, doctor_test.go +3, plus 3 dispatch-coverage bonus tests). Refactored `runDoctorWithConfig(cfg DoctorConfig)` → `runDoctorWithConfig(cfg DoctorConfig, stdout io.Writer) error` — nil writer falls back to os.Stdout, preserves call site in main.go. 7 files changed, 414 insertions, 9 deletions. Committed at `e9c7530`.
 - **Logic:** Add targeted tests for the unified-CLI dry-run wrappers (4) and the doctor entry point (1). `run*WithDryRun(args, stdout, stderr, globalDryRun) error` is a thin wrapper around `run*(args, stdout, stderr) int` that converts a non-zero rc into `errExit{code: rc}`. Test patterns: (a) success path → nil error, (b) parse-error path → errExit with code=2. `runDispatchDryRun` adds globalDryRun → forces flags.dryRun=true. Test both with globalDryRun=true (dry-run mode) and false (delegates to runDispatch). `errExit.Error()` returns "dispatch exit N" — easy string assertion. `runDoctorWithConfig(cfg)` calls runAllChecks + prints to stdout/stderr — capture stdout with a bytes.Buffer by passing it via cfg's Printer? No — runDoctorWithConfig uses fmt.Println directly. Refactor to accept io.Writer for testability, OR add a printer indirection. Cleanest: change signature to `runDoctorWithConfig(cfg DoctorConfig, stdout io.Writer) error` and update the only caller (runDoctor in main.go) to pass cmd.OutOrStdout(). That requires no test mocking — just a small refactor. Doctor's AllPassed()/Fail path is testable by populating cfg with httptest servers pointing to localhost and unreachable ports.
 - **Verify:** `go test ./cmd/helix/... -count=1 -cover -timeout 30s` — confirm ≥95%. Then `go test ./... -short -timeout 120s` — confirm full suite still green.
+
+## [ ] Cover pkg/integration WithConscientiousnessHTTPClient + boost coverage 80.3% → 88%+
+- **Priority:** medium
+- **Model:** direct write — Go test-only
+- **Files:** pkg/integration/conscientiousness_client_test.go (likely NEW)
+- **AC:**
+  1. `WithConscientiousnessHTTPClient` moves from 0% to ≥80% (functional test verifying it accepts an http.Client and the resulting Evaluator uses that client)
+  2. `pkg/integration` package coverage ≥ 88.0% (currently 80.3%)
+  3. All client methods (Run/Cmd/Status/ListWorkItems on Axiom; Formations/Models on Chimera; Evaluate on Conscientiousness; Guard on GitReins) reach ≥85% individually
+- **Logic:** The `conscientiousness_client.go:34` WithConscientiousnessHTTPClient is a constructor option that lets callers inject an `*http.Client`. Currently untested. Test: (1) default constructor uses default timeout, (2) WithConscientiousnessHTTPClient swaps in the provided client and the Evaluate path uses it (verify via httptest server that records the request). For Axiom client: 4 methods at 85-89% — remaining gaps are error paths (malformed JSON, 5xx, ctx timeout). For Chimera: 2 methods at 86.7% — Formations/Models error paths. For GitReins: Guard at 89.3% — error-path on bad command output.
+- **Verify:** `go test ./pkg/integration/... -count=1 -cover -timeout 30s` — confirm ≥88%.
+
+## [ ] Cover pkg/dispatcher loop + cost_guard + Plan/Run fail paths
+- **Priority:** medium
+- **Model:** direct write — Go test-only
+- **Files:** pkg/dispatcher/loop_test.go, pkg/dispatcher/cost_guard_test.go, pkg/dispatcher/forgejo_loop_test.go (append)
+- **AC:**
+  1. `pkg/dispatcher` coverage ≥ 92.0% (currently 89.1%)
+  2. `releaseLock` 66.7% → 100% (lock file already removed branch)
+  3. `commitWork` 80% → 100% (commit error branch)
+  4. `executeStep` 80% → 100% (step-not-found branch)
+  5. `acquireLock` 84.6% → 100% (lock-taken branch with running pid)
+  6. `Plan` (forgejo_loop) 81.8% → 100% (spec-parse-error branch)
+  7. `Run` (forgejo_loop) 78.0% → 100% (forgejo API error branch)
+  8. `Check` (cost_guard) 65.0% → 100% (budget-exceeded branch + missing-budget branch)
+- **Logic:** Most of these are small, mechanical test additions. Lock tests: write a fake pid file with a current PID + a stale pid, verify acquireLock detects both correctly. Plan/Run: httptest server that returns 500 on the relevant endpoint, verify graceful error. cost_guard: budget=0 vs budget=infinite vs budget<request. The dispatcher loop is already extensively tested but a few edge-case branches remain — typically 5-15 line tests each.
+- **Verify:** `go test ./pkg/dispatcher/... -count=1 -cover -timeout 30s` — confirm ≥92%.
+
+## [ ] Cover pkg/identity syncer fail paths + permissions edge cases
+- **Priority:** medium
+- **Model:** direct write — Go test-only
+- **Files:** pkg/identity/syncer_test.go, pkg/identity/permissions_test.go (append)
+- **AC:**
+  1. `pkg/identity` coverage ≥ 90.0% (currently 86.8%)
+  2. `Sync` 63.4% → ≥80% (missing-target + per-agent-failure branches)
+  3. `provisionAgent` 46.2% → ≥75% (keygen error, forgejo API error branches)
+  4. `ProvisionOne` 62.5% → ≥80% (already-exists branch)
+  5. `DeprovisionOne` 62.5% → ≥80% (not-found branch)
+  6. `KeyGenOnly` 66.7% → ≥80% (output-write error branch)
+  7. `tierRank` 66.7% → ≥80% (unknown tier branch)
+- **Logic:** Most gaps are httptest-backed Forgejo API mocks. ProvisionAgent: mock the user-create endpoint to return 500, verify graceful error + state rollback. ProvisionOne: mock to return 409 (already exists) and verify idempotent handling. Syncer.Sync: cover the per-agent loop error path with mixed success/failure forgejo responses. tierRank: pass an unknown tier string, verify default-tier return. permissions: tier transitions + CanPerformAction role checks for cross-tier scenarios.
+- **Verify:** `go test ./pkg/identity/... -count=1 -cover -timeout 60s` — confirm ≥90%.
