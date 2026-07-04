@@ -1142,12 +1142,12 @@
 - **AC:** `go test -short -count=1 ./...` passes; `make test` passes; `make lint` passes; `.gitreins/pre-commit` runs tests successfully on a sample staged change
 - **Logic:** /tmp on the host is a 30G tmpfs at 80%+ utilization (24G used). Six pkg/trust integration tests use t.TempDir() and fail with "disk quota exceeded" writing to /tmp/TestXxxx/trust.jsonl. Fix per coding-hermes skill: (1) `go env -w GOCACHE=/home/kara/.cache/go-build GOTMPDIR=/home/kara/.cache/go-tmp` (persistent), (2) `export TMPDIR=/home/kara/.cache/go-tmp` in pre-commit hook (the linker uses TMPDIR, not GOTMPDIR), (3) propagate TMPDIR via Makefile for `make test`/`make lint` targets. Without TMPDIR, the hook's `go test ./...` would still fail.
 - **Result:** [x] All 6 trust tests pass (TestProcessBatch_PartialError, TestProcessResult_LedgerReplayDeterministic, TestProcessResult_MultiplePenaltiesAccumulate, TestTotalScoreReduction, TestMostAffectedAgent, TestVerifyDecrease_AllDecreased). Full suite: 41 packages, all green with TMPDIR set. Coverage: 86-100% across packages (avg ~92%). Lint clean. Pre-commit hook validated with a staged change.
-## [ ] Cover CLI run handlers (cmd/helix-prompt) — push coverage to >80%
+## [~] Cover CLI run handlers (cmd/helix-prompt) — push coverage to >80%
 - **Priority:** medium
 - **Model:** direct write — Go CLI test additions
-- **Files:** cmd/helix-prompt/main_test.go (NEW)
+- **Files:** cmd/helix-prompt/main_test.go (extend)
 - **AC:** `go test -short -count=1 ./cmd/helix-prompt/...` passes; coverage on cmd/helix-prompt ≥80% (currently 55.2%)
-- **Logic:** Per `go tool cover -func`, three run* handlers are at 0% (runRegister 25%, runAttest 15%, runVerify 9.8%). Test pattern mirrors cmd/helix-negotiate's existing runXxx tests: stub exitProcess, redirect HOME to t.TempDir, exercise each run function with httptest/PromptFoo fixtures where appropriate, verify stdout contains expected output. Read cmd/helix-prompt/main.go to learn the function signatures before writing tests.
+- **Logic:** Per `go tool cover -func`, three run* handlers are at low coverage (runRegister 25%, runAttest 15%, runVerify 9.8%). Test pattern mirrors cmd/helix-negotiate's existing runXxx tests: stub exitProcess, redirect HOME to t.TempDir, exercise each run function with httptest/PromptFoo fixtures where appropriate, verify stdout contains expected output. Read cmd/helix-prompt/main.go to learn the function signatures before writing tests.
 
 ## [ ] Cover CLI run handlers (cmd/helix-marketplace) — push coverage to >80%
 - **Priority:** medium
