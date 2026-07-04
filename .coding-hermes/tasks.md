@@ -1080,3 +1080,43 @@
 - **AC:** `go build ./... && go test ./cmd/helix-negotiate/... ./cmd/helix-identity/... -count=1` passes; coverage on both packages ≥70%
 - **Logic:** Add tests for the user-facing runXxx handlers (runDebate, runResolve, runResolveWithPositions, runSync, runProvision, runDeprovision, runStatus, runKeygen). Two changes were required to make them testable: (1) cmd/helix-negotiate extracted `os.Exit` calls into a package-level `exitProcess` var that tests stub; (2) cmd/helix-identity already had a rootFlags singleton so tests just point it at t.TempDir() + minimal known-friends.json. Coverage went from 35.7% → 70.1% (negotiate) and 47.1% → 78.1% (identity).
 - **Result:** [x] 16 new tests (9 negotiate + 7 identity), 0.05s suite total. cmd/helix-negotiate: TestRunDebate_MissingAgents, TestRunDebate_BadPRURL, TestRunDebate_NoConflict, TestRunDebate_DryRunConflict, TestRunResolve_PreSetVerdict, TestRunResolve_PositionsFileMissing, TestRunResolve_PositionsFileInvalidJSON, TestRunResolve_PositionsTooFew, TestRunResolveWithPositions_HappyPath (with httptest Chimera mock matching real chimeraResponse shape). cmd/helix-identity: TestRunSync_DryRun, TestRunProvision_AgentNotFound, TestRunProvision_DryRun_Success, TestRunDeprovision_DryRun_Success, TestRunDeprovision_UnknownAgent_StillProceeds, TestRunStatus_DryRun, TestRunKeygen_DryRun_Success. Full suite 36/36 packages still pass. GitReins Tier 1: secrets clean, go_build OK, go_lint OK, go_tests OK.
+## [x] Implement systemd unit template generator — pkg/deploy/systemd/
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §9.4 (systemd Units)
+- **Model:** direct write — Go package, declarative templates
+- **Files:** pkg/deploy/systemd/unit.go (NEW), pkg/deploy/systemd/unit_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/deploy/systemd/... -count=1 -cover` passes with >85% coverage
+- **Logic:** Encode spec §9.4 systemd unit templates as Go data: helix-platform.service (Type=oneshot, RemainAfterExit, docker compose up/down), helix-backup.service (Type=oneshot, ExecStart=backup-forgejo.sh), helix-backup.timer (OnCalendar=daily, Persistent=true). Unit struct with Name, Description, Service config, Install section. Service with Type, WorkingDirectory, ExecStart/Stop/Reload, StandardOutput/Error, Requires, After. Timer with OnCalendar, Persistent. Render() emits valid systemd unit syntax. ValidateUnit checks required fields (Description, ExecStart). ValidateTimer checks OnCalendar present. Multi-unit registry (Register/Get/List) keyed by service name. FormatUnit + FormatTimer for CLI output. Constants matching spec verbatim.
+- **Result:** [x] 27 tests, 98.1% coverage. All 3 spec units encoded verbatim: helix-platform.service (Requires=docker.service, After=docker.service network-online.target, WorkingDirectory=/opt/helix, ExecStart=/usr/bin/docker compose up -d --remove-orphans), helix-backup.service (ExecStart=/opt/helix/scripts/backup-forgejo.sh), helix-backup.timer (OnCalendar=daily, Persistent=true, WantedBy=timers.target). DefaultRegistry returns all 3. FormatRegistry joins with blank line. Full suite passes, lint clean.
+
+## [ ] Implement per-agent container template generator — pkg/deploy/agent/
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §9.5 (Agent Container Template)
+- **Model:** direct write — Go package, YAML template generation
+- **Files:** pkg/deploy/agent/template.go (NEW), pkg/deploy/agent/template_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/deploy/agent/... -count=1 -cover` passes with >85% coverage
+- **Logic:** Per-agent container template generator per spec §9.5. AgentSpec struct (name, tier, budget_monthly_usd, mem_limit, cpus, network_mode, vpn_required). ComposeService rendering: image (hermes-agent:latest), container_name, env vars (HERMES_PROFILE, OPENROUTER_API_KEY, FORGEJO_URL/TOKEN, HIVEMIND_URL, CHIMERA_URL, LANGFUSE_PUBLIC/SECRET_KEY, AGENT_UUID, AGENT_TIER, BUDGET_MONTHLY_USD), volumes (worktrees, cache), network_mode=service:gluetun-<id> when VPN required, security_opt (no-new-privileges:true), read_only=true, tmpfs=/tmp:512M, mem_limit, cpus. RenderYAML emits docker-compose service fragment. Validate enforces name uniqueness, tier whitelist (flash/standard/pro/enterprise), budget > 0. AgentRegistry keyed by name. FormatService for human-readable CLI output.
+
+## [ ] Implement graceful degradation policy pack — pkg/degradation/
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §14.2 (Graceful Degradation) + §10.5 (Incident Response)
+- **Model:** direct write — Go package, policy-based decision tables
+- **Files:** pkg/degradation/policy.go (NEW), pkg/degradation/policy_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/degradation/... -count=1 -cover` passes with >85% coverage
+- **Logic:** DegradationPolicy encodes spec §14.2 graceful degradation matrix. For each dependent service (Forgejo, Chimera, GitReins, LangFuse, DuckBrain, Hivemind, Muster, Conscientiousness), specify: HealthCheck(ping/prompt/health endpoint), DegradedAction (continue-with-cache/use-fallback/fail-fast), FallbackComponent (which alternative to use), UserNotification level. ServiceHealth enum (Healthy/Degraded/Unhealthy/Unknown). PolicyLookup returns action per service. ApplyPolicy composes overall behavior. PolicyReport with FormatReport/DegradedServices/HealthyServices. PolicyRegistry for in-memory registration. Coverage: 7+ services x 4 health states = 28+ test cases.
+
+## [ ] Implement adversarial test scenario pack — pkg/adversarial/
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §12.4 (Adversarial Testing)
+- **Model:** direct write — Go package, scenario fixtures
+- **Files:** pkg/adversarial/scenario.go (NEW), pkg/adversarial/scenario_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/adversarial/... -count=1 -cover` passes with >85% coverage
+- **Logic:** Adversarial scenarios per spec §12.4 — Gate bypass attempt, Budget exhaustion, Key leak simulation, Network isolation, Race condition (Ralph Loop lock). Each Scenario struct: ID, Name, Description, ExpectedOutcome (Blocked/Allowed/PassThrough), AgentRole (@assumption-buster/@devils-advocate/@redteam/@whitehat/@chaos-engineer/@finops-cost), RunFunction stub, Assertion. ScenarioRegistry keyed by ID. RunAll executes all scenarios against the actual helix components (gate via pkg/coapproval.Gate, budget via pkg/estimate.BudgetTracker, secrets via pkg/security/secrets.Scanner, network via pkg/sandbox, lock via pkg/dispatcher.RalphLoop). ScenarioReport with PassCount/FailCount/PassRate per role. FormatReport for CI output.
+
+## [ ] Write CHANGELOG.md covering 124 completed tasks
+- **Priority:** low
+- **Spec:** N/A — release notes best practice
+- **Model:** direct write — Markdown
+- **Files:** CHANGELOG.md (NEW)
+- **AC:** CHANGELOG.md committed with sections per release (v0.1.0 through current), each section listing the implemented tasks with commit SHAs. Document key milestones: 124 tasks completed, 30 packages, 80%+ coverage everywhere, full GitReins Tier 1 PASS, all 7 CLI tools build.
+- **Logic:** Conventional Commits style. Sections: Unreleased (current state), v0.1.0 (initial scaffolding), v0.2.0 (security model), v0.3.0 (trust + adversarial review), v0.4.0 (production verification), v0.5.0 (audit + co-approval), v0.6.0 (memory + observability), v0.7.0 (CLI hardening + recent batch). Each entry: task title, package, commit SHA, brief description. References the 8 spec families (trust-model, adversarial-review, production-verification, agent-identity, cost-estimator, pr-negotiation, prompt-registry, agent-marketplace). Include spec coverage matrix.
