@@ -1173,3 +1173,47 @@
 - **AC:** `go test -short -count=1 ./cmd/helix-identity/...` passes; coverage on cmd/helix-identity ≥85% (currently 78.1%)
 - **Logic:** Existing tests cover runSync/runProvision/runDeprovision/runStatus/runKeygen (already [x] WI). Add tests for any remaining 0% run handlers. Verify which functions are still at 0% via `go test ./cmd/helix-identity/ -coverprofile=<path> && go tool cover -func=<path> | awk '$NF == "0.0%"'` and write targeted tests. Ensure each test uses a hermetic t.TempDir + minimal known-friends.json fixture.
 - **Result:** [x] Coverage 78.1% → 85.0% (meets 85% AC). Resumed 225-line uncommitted WIP from prior tick, extended with 6 new tests (renderStateTable_LongSSHFingerprint / _MissingPAT / _MultipleAgentsSorted, mustJSON_InvalidInput, runProvision_AgentNil / _MalformedJSON, runDeprovision_MalformedJSON, runStatus_MalformedJSON). Fixed TestMustJSON to match actual graceful behavior (returns `<marshal error: ...>` placeholder rather than panicking). All run* functions now 81-92% (only `main()` entry point remains untestable). 370 lines added. Full suite 40/40 pass. GitReins Tier 1 all 6 guards PASS. Lint clean. Committed at `84dc161`.
+
+---
+
+# Next Batch (2026-07-04) — Spec gaps from §6.5, §7.8, §12.4, §8.6, cross-component wiring
+
+## [ ] Wire co-approval gate into helix CLI — `helix coapproval check`
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §7.8 (Co-Approval Gate) + specs/cross-component-wiring.md
+- **Model:** direct write — Go CLI addition, consumes existing pkg/coapproval
+- **Files:** cmd/helix/coapproval.go (NEW), cmd/helix/coapproval_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; coverage on cmd/helix ≥80%; `helix coapproval check <pr-number>` runs the existing coapproval.Gate logic and prints the decision (ALLOWED/BLOCKED/ESCALATED) with per-checker results. Reviewer evidence read from JSON fixture (CLI accepts `--human-approvals file.json --agent-approvals file.json --pr-changes json --trust-scores json`).
+- **Logic:** Wire the already-implemented pkg/coapproval.Gate to the helix CLI. The package implements §7.8 fully (1 human + 1 trusted agent approval, trust ≥ 70 short-circuit, veto override at trust ≥ 90, 24h approval expiry, invalidation on new push) but nothing consumes it from the CLI. New subcommand `helix coapproval <sub>` with `check` (evaluate one PR) and `status` (print config + thresholds). Decisions rendered as Forgejo-comment-style markdown for easy integration.
+
+## [ ] Wire adversarial scenario pack into helix CLI — `helix adversarial run-all`
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §12.4 (Adversarial Testing)
+- **Model:** direct write — Go CLI addition, consumes existing pkg/adversarial
+- **Files:** cmd/helix/adversarial.go (NEW), cmd/helix/adversarial_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix adversarial run-all` returns exit code 0 if every scenario passes, non-zero if any scenario fails or panics; output is a structured table (role, severity, name, outcome, error). Supports `--role filter`, `--severity min`, `--output json` flags.
+- **Logic:** pkg/adversarial already implements §12.4's 6-role scenario pack (@assumption-buster, @redteam, @chaos-engineer, @cost-auditor, @spec-violator, @compliance-checker) with per-scenario Run funcs. CLI exposes them as `helix adversarial run-all`, `helix adversarial run <role>`, `helix adversarial list`. Capture per-scenario output (PASS/FAIL/SKIP/ERROR) and aggregate into a JSON/table report. Per spec: adversarial tests are NOT CI-gated, run on schedule (daily) or pre-release.
+
+## [ ] Wire PlatformHealthAggregator into `helix status`
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §10.5 + §14 (Operations)
+- **Model:** direct write — Go CLI addition, consumes existing pkg/health
+- **Files:** cmd/helix/status.go (NEW), cmd/helix/status_test.go (NEW), cmd/helix/doctor.go (trim ad-hoc health checks), cmd/helix/main.go (wire `status` subcommand)
+- **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix status` invokes pkg/health.PlatformHealthAggregator, collects health from all 6 subsystems (trust, review, negotiate, verify, marketplace, estimate), and renders the existing DashboardReport. Supports `--json` for machine-readable output.
+- **Logic:** Currently cmd/helix/doctor.go has 200+ lines of hand-rolled health checks. Replace with a thin wrapper around the existing pkg/health.PlatformHealthAggregator (100% coverage, 55 tests). Keep the ad-hoc checks as fallback for `--legacy` flag. Wire the new aggregator into the existing `helix status` subcommand path so it's the default output.
+
+## [ ] Implement prompt-test runner wired to helix CI — specs/SPECIFICATION.md §10 PromptFoo bridge
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §10 (PromptFoo integration) + specs/prompt-registry.md §Attestation
+- **Model:** direct write — Go package, integrates with existing pkg/prompt + .promptfoo.yaml
+- **Files:** pkg/prompt/runner.go (NEW), pkg/prompt/runner_test.go (NEW), cmd/helix/prompt_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/prompt/... ./cmd/helix-prompt/... -count=1 -cover` passes with >85% coverage; `helix-prompt test <name>` reads `.promptfoo.yaml`, locates the named prompt's test cases, runs them against the registry's current hash, and returns PASS/FAIL with per-test-case evidence.
+- **Logic:** The repository has `.promptfoo.yaml` with 4 test suites but no Go-side runner. Implement a Go-based runner that parses .promptfoo.yaml, finds the prompt by name, runs the configured test assertions (regex match, JSON schema, semantic similarity via existing hasher), and returns a structured TestRunReport. Used by CI to verify prompt hashes before deploy.
+
+## [ ] Implement DuckBrain memory schema validation — specs/SPECIFICATION.md §8.5
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §8.5 (DuckBrain Memory Schema) + specs/cross-component-wiring.md
+- **Model:** direct write — Go package, schema validator
+- **Files:** pkg/memory/schema_validator.go (NEW), pkg/memory/schema_validator_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/memory/... -count=1 -cover` passes with >85% coverage; the validator checks every Memory record against the spec §8.5 schema (required fields, type constraints, content hash format, embedding dimensions match VSS index).
+- **Logic:** pkg/memory currently has schema.go (data types) and lifecycle.go (CRUD) but no validation layer between them. Build a ValidateMemory(m Memory) error that enforces all spec §8.5 constraints: id format (helix://memory/<sha256>), required fields (id, content, agent_id, created_at, namespace, schema_version), content_hash = sha256(content), embedding length matches configured VSS index (default 1536 for text-embedding-3-small), no PII patterns (email, SSN, credit card). Returns ValidationReport with per-field errors for batch processing.
