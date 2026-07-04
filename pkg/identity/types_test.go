@@ -1241,7 +1241,9 @@ func TestProvisioner_Stubs(t *testing.T) {
 	newProv := func(t *testing.T, dryRun bool) *Provisioner {
 		t.Helper()
 		cfg := DefaultProvisionerConfig()
-		cfg.ForgejoURL = "https://forgejo.example.com"
+		// Use a closed localhost port so real-transport tests fail fast
+		// with connection-refused (no DNS retry delay).
+		cfg.ForgejoURL = "http://127.0.0.1:1"
 		cfg.AdminToken = "tok"
 		cfg.KnownFriendsPath = "/tmp/kf.json"
 		cfg.DryRun = dryRun
