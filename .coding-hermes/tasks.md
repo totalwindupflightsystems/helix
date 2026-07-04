@@ -1187,7 +1187,7 @@
 - **Result:** [x] `helix coapproval check` (ALLOWED/BLOCKED/NEEDS_HUMAN/NEEDS_AGENT) + `helix coapproval status` (thresholds) wired through pkg/coapproval.CoApprovalGate. 17 new tests, 83.2% cmd/helix coverage (above 80% AC). Full suite 40/40 packages pass. GitReins Tier 1 PASS. Committed at `f6a721a`.
 - **Logic:** Wire the already-implemented pkg/coapproval.Gate to the helix CLI. The package implements §7.8 fully (1 human + 1 trusted agent approval, trust ≥ 70 short-circuit, veto override at trust ≥ 90, 24h approval expiry, invalidation on new push) but nothing consumes it from the CLI. New subcommand `helix coapproval <sub>` with `check` (evaluate one PR) and `status` (print config + thresholds). Decisions rendered as Forgejo-comment-style markdown for easy integration.
 
-## [ ] Wire adversarial scenario pack into helix CLI — `helix adversarial run-all`
+## [~] Wire adversarial scenario pack into helix CLI — `helix adversarial run-all`
 - **Priority:** high
 - **Spec:** specs/SPECIFICATION.md §12.4 (Adversarial Testing)
 - **Model:** direct write — Go CLI addition, consumes existing pkg/adversarial
