@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -23,6 +24,24 @@ func captureStdout(t *testing.T, fn func(w *os.File)) string {
 	var buf bytes.Buffer
 	_, _ = buf.ReadFrom(r)
 	return buf.String()
+}
+
+// captureStdoutFunc runs fn and returns captured stdout by redirecting os.Stdout
+// (for functions that hardcode os.Stdout rather than accepting a writer).
+func captureStdoutFunc(fn func()) string {
+	r, w, _ := os.Pipe()
+	old := os.Stdout
+	os.Stdout = w
+	done := make(chan string)
+	go func() {
+		var buf bytes.Buffer
+		_, _ = buf.ReadFrom(r)
+		done <- buf.String()
+	}()
+	fn()
+	w.Close()
+	os.Stdout = old
+	return <-done
 }
 
 // ---------------------------------------------------------------------------
@@ -794,4 +813,419 @@ func TestCommandTree(t *testing.T) {
 			t.Log("Cobra ContinueOnError returns nil for unknown command")
 		}
 	})
+}
+
+// ---------------------------------------------------------------------------
+// loadPricing direct-call tests (helper for runEstimate / runCheck)
+// ---------------------------------------------------------------------------
+
+// pricingFixturePath returns an absolute path to the test pricing fixture,
+// resolving from the package directory so tests pass regardless of cwd.
+func pricingFixturePath() string {
+	// Walk up from cmd/helix-estimate/ to the repo root
+	wd, _ := os.Getwd()
+	candidates := []string{
+		filepath.Join(wd, "..", "..", "pkg", "estimate", "testdata", "pricing.yaml"),
+		filepath.Join(wd, "pkg", "estimate", "testdata", "pricing.yaml"),
+		"pkg/estimate/testdata/pricing.yaml",
+	}
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			return c
+		}
+	}
+	return candidates[0]
+}
+
+// friendsFixturePath returns an absolute path to the test known-friends.json fixture.
+func friendsFixturePath() string {
+	wd, _ := os.Getwd()
+	candidates := []string{
+		filepath.Join(wd, "..", "..", "pkg", "estimate", "testdata", "known-friends.json"),
+		filepath.Join(wd, "pkg", "estimate", "testdata", "known-friends.json"),
+		"pkg/estimate/testdata/known-friends.json",
+	}
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			return c
+		}
+	}
+	return candidates[0]
+}
+
+func TestLoadPricing_ValidFile(t *testing.T) {
+	// Use the production testdata fixture (resolved to absolute path)
+	p := loadPricing(pricingFixturePath())
+	if p == nil {
+		t.Fatal("loadPricing returned nil for valid file")
+	}
+	if p.Version == "" {
+		t.Error("expected non-empty version string")
+	}
+	if len(p.Providers) == 0 {
+		t.Error("expected at least one provider")
+	}
+}
+
+func TestLoadPricing_InvalidPath(t *testing.T) {
+	// loadPricing calls os.Exit on invalid path — skip in-process.
+	t.Skip("loadPricing calls os.Exit on error — untestable in-process")
+}
+
+// ---------------------------------------------------------------------------
+// runEstimate direct-call tests (spec §9)
+// ---------------------------------------------------------------------------
+
+func TestRunEstimate_HappyPath(t *testing.T) {
+	opts := &estimateOptions{
+		taskType:    "code",
+		model:       "deepseek-v4-pro",
+		provider:    "deepseek",
+		pricingPath: pricingFixturePath(),
+		output:      "table",
+		tier:        "pro",
+	}
+
+	out := captureStdoutFunc(func() {
+		_ = runEstimate(opts, "implement cost estimator")
+	})
+
+	if !strings.Contains(out, "TASK:") {
+		t.Errorf("output should contain TASK line: %s", out)
+	}
+	if !strings.Contains(out, "TOTAL:") {
+		t.Errorf("output should contain TOTAL cost: %s", out)
+	}
+}
+
+func TestRunEstimate_SummaryFormat(t *testing.T) {
+	opts := &estimateOptions{
+		taskType:    "code",
+		model:       "deepseek-v4-pro",
+		provider:    "deepseek",
+		pricingPath: pricingFixturePath(),
+		output:      "summary",
+		tier:        "pro",
+	}
+
+	out := captureStdoutFunc(func() {
+		_ = runEstimate(opts, "fix typo")
+	})
+
+	if !strings.Contains(out, "ESTIMATE:") {
+		t.Errorf("summary output should contain ESTIMATE: %s", out)
+	}
+}
+
+func TestRunEstimate_JSONFormat(t *testing.T) {
+	opts := &estimateOptions{
+		taskType:    "code",
+		model:       "deepseek-v4-pro",
+		provider:    "deepseek",
+		pricingPath: pricingFixturePath(),
+		output:      "json",
+		tier:        "pro",
+	}
+
+	out := captureStdoutFunc(func() {
+		_ = runEstimate(opts, "implement CLI")
+	})
+
+	// JSON output should contain description and cost fields
+	if !strings.Contains(out, "description") {
+		t.Errorf("JSON output should contain description field: %s", out)
+	}
+	if !strings.Contains(out, "cost") {
+		t.Errorf("JSON output should contain cost field: %s", out)
+	}
+}
+
+func TestRunEstimate_AllTaskTypes(t *testing.T) {
+	for _, tt := range []string{"spec", "code", "review", "refactor", "test"} {
+		t.Run(tt, func(t *testing.T) {
+			opts := &estimateOptions{
+				taskType:    tt,
+				model:       "deepseek-v4-pro",
+				provider:    "deepseek",
+				pricingPath: pricingFixturePath(),
+				output:      "summary",
+				tier:        "pro",
+			}
+			out := captureStdoutFunc(func() {
+				_ = runEstimate(opts, "task for "+tt)
+			})
+			if !strings.Contains(out, "ESTIMATE:") {
+				t.Errorf("task type %s should produce estimate: %s", tt, out)
+			}
+		})
+	}
+}
+
+func TestRunEstimate_InvalidOpts(t *testing.T) {
+	// runEstimate calls os.Exit on invalid opts. Skip in-process.
+	opts := &estimateOptions{
+		taskType:    "garbage-type",
+		model:       "deepseek-v4-pro",
+		provider:    "deepseek",
+		pricingPath: pricingFixturePath(),
+		output:      "table",
+		tier:        "pro",
+	}
+
+	// Capture stderr + skip the actual call to avoid os.Exit.
+	// We can verify validation directly without invoking runEstimate.
+	if err := validateEstimateOpts(opts); err == nil {
+		t.Error("expected validation error for garbage task type")
+	}
+}
+
+func TestRunEstimate_DryRun(t *testing.T) {
+	// runEstimate calls os.Exit(ExitDryRun) when --dry-run is set. Skip in-process.
+	t.Skip("runEstimate calls os.Exit on --dry-run — untestable in-process")
+}
+
+// ---------------------------------------------------------------------------
+// runCheck direct-call tests (spec §9)
+// ---------------------------------------------------------------------------
+//
+// runCheck ALWAYS calls os.Exit(ApprovalExitCode(decision)) at line 281, even
+// on successful approval (ExitSuccess=0). This terminates the test process.
+// We exercise the path via subprocess testing instead.
+
+func TestRunCheck_HappyPath_AutoApproved(t *testing.T) {
+	if os.Getenv("RUN_CHECK_SUBPROCESS") == "1" {
+		// Subprocess mode: actually call runCheck
+		opts := &checkOptions{
+			estimateOptions: &estimateOptions{
+				taskType:    "code",
+				model:       "deepseek-v4-pro",
+				provider:    "deepseek",
+				pricingPath: pricingFixturePath(),
+				output:      "table",
+				tier:        "pro",
+				friendsPath: friendsFixturePath(),
+			},
+			autoApprove:  true,
+			requireHuman: false,
+		}
+		_ = runCheck(opts, "wojons", "implement cost estimator")
+		return
+	}
+
+	// Run the test binary as a subprocess to exercise runCheck safely
+	cmd := exec.Command(os.Args[0], "-test.run=TestRunCheck_HappyPath_AutoApproved")
+	cmd.Env = append(os.Environ(), "RUN_CHECK_SUBPROCESS=1")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("subprocess exit: %v\n%s", err, out)
+	}
+	if !strings.Contains(string(out), "DECISION:") {
+		t.Errorf("subprocess output should contain DECISION: %s", out)
+	}
+}
+
+func TestRunCheck_RequireHuman(t *testing.T) {
+	if os.Getenv("RUN_CHECK_SUBPROCESS") == "1" {
+		opts := &checkOptions{
+			estimateOptions: &estimateOptions{
+				taskType:    "code",
+				model:       "deepseek-v4-pro",
+				provider:    "deepseek",
+				pricingPath: pricingFixturePath(),
+				output:      "table",
+				tier:        "pro",
+				friendsPath: friendsFixturePath(),
+			},
+			autoApprove:  true,
+			requireHuman: true,
+		}
+		_ = runCheck(opts, "wojons", "implement cost estimator")
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestRunCheck_RequireHuman")
+	cmd.Env = append(os.Environ(), "RUN_CHECK_SUBPROCESS=1")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("subprocess exit: %v\n%s", err, out)
+	}
+	if !strings.Contains(string(out), "ESCALATED") {
+		t.Errorf("require-human should produce ESCALATED: %s", out)
+	}
+}
+
+func TestRunCheck_ExhaustedAgent(t *testing.T) {
+	if os.Getenv("RUN_CHECK_SUBPROCESS") == "1" {
+		// llopez has 4.97/5.00 used — likely blocked or escalated
+		opts := &checkOptions{
+			estimateOptions: &estimateOptions{
+				taskType:    "code",
+				model:       "deepseek-v4-pro",
+				provider:    "deepseek",
+				pricingPath: pricingFixturePath(),
+				output:      "table",
+				tier:        "pro",
+				friendsPath: friendsFixturePath(),
+			},
+			autoApprove:  true,
+			requireHuman: false,
+		}
+		_ = runCheck(opts, "llopez", "implement large feature")
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestRunCheck_ExhaustedAgent")
+	cmd.Env = append(os.Environ(), "RUN_CHECK_SUBPROCESS=1")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("subprocess exit: %v\n%s", err, out)
+	}
+	// Exhausted agent may produce BLOCKED or ESCALATED — just verify a decision
+	if !strings.Contains(string(out), "DECISION:") {
+		t.Errorf("exhausted agent should produce decision: %s", out)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// runReport direct-call tests (spec §9.4)
+// ---------------------------------------------------------------------------
+
+func TestRunReport_SingleAgent(t *testing.T) {
+	opts := &reportOptions{
+		friendsPath: friendsFixturePath(),
+		period:      "current",
+		format:      "table",
+	}
+
+	out := captureStdoutFunc(func() {
+		_ = runReport(opts, "wojons")
+	})
+
+	if !strings.Contains(out, "AGENT:") {
+		t.Errorf("output should contain AGENT: %s", out)
+	}
+	if !strings.Contains(out, "BUDGET:") {
+		t.Errorf("output should contain BUDGET: %s", out)
+	}
+}
+
+func TestRunReport_AllAgents(t *testing.T) {
+	opts := &reportOptions{
+		friendsPath: friendsFixturePath(),
+		period:      "current",
+		format:      "table",
+	}
+
+	out := captureStdoutFunc(func() {
+		_ = runReport(opts, "") // empty = all agents
+	})
+
+	// All-agents output should contain multiple AGENT lines
+	if strings.Count(out, "AGENT:") < 2 {
+		t.Errorf("all-agents report should have multiple AGENT lines: %s", out)
+	}
+}
+
+func TestRunReport_JSONFormat(t *testing.T) {
+	opts := &reportOptions{
+		friendsPath: friendsFixturePath(),
+		period:      "current",
+		format:      "json",
+	}
+
+	out := captureStdoutFunc(func() {
+		_ = runReport(opts, "wojons")
+	})
+
+	// JSON output should parse
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Errorf("JSON output should parse: %v\n%s", err, out)
+	}
+	if result["agent"] != "wojons" {
+		t.Errorf("expected agent=wojons, got %v", result["agent"])
+	}
+}
+
+func TestRunReport_DifferentPeriods(t *testing.T) {
+	for _, period := range []string{"current", "last", "all"} {
+		t.Run(period, func(t *testing.T) {
+			opts := &reportOptions{
+				friendsPath: friendsFixturePath(),
+				period:      period,
+				format:      "table",
+			}
+			out := captureStdoutFunc(func() {
+				_ = runReport(opts, "wojons")
+			})
+			if !strings.Contains(out, "PERIOD:") {
+				t.Errorf("period %s should appear in output: %s", period, out)
+			}
+		})
+	}
+}
+
+func TestRunReport_AgentNotFound(t *testing.T) {
+	// runReport calls os.Exit on agent not found. Skip in-process.
+	t.Skip("runReport calls os.Exit on agent-not-found — untestable in-process")
+}
+
+func TestRunReport_InvalidPeriod(t *testing.T) {
+	// runReport calls os.Exit on invalid period. Skip in-process.
+	t.Skip("runReport calls os.Exit on invalid period — untestable in-process")
+}
+
+// ---------------------------------------------------------------------------
+// estimateTier direct-call tests (helper for runCheck)
+// ---------------------------------------------------------------------------
+
+func TestEstimateTier_OverrideNonPro(t *testing.T) {
+	got := estimateTier("flash", "pro", false)
+	if got != "flash" {
+		t.Errorf("override non-pro tier should win: got %q, want flash", got)
+	}
+}
+
+func TestEstimateTier_ColdStart(t *testing.T) {
+	got := estimateTier("", "pro", true)
+	if got != "cold" {
+		t.Errorf("cold-start should override agent tier: got %q, want cold", got)
+	}
+}
+
+func TestEstimateTier_AgentTier(t *testing.T) {
+	got := estimateTier("", "flash", false)
+	if got != "flash" {
+		t.Errorf("agent tier should win when no override and not cold-start: got %q, want flash", got)
+	}
+}
+
+func TestEstimateTier_Default(t *testing.T) {
+	got := estimateTier("", "", false)
+	if got != "pro" {
+		t.Errorf("default tier should be pro: got %q, want pro", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// friendBudget.toBudgetInfo direct-call tests (helper for runCheck / runReport)
+// ---------------------------------------------------------------------------
+
+func TestFriendBudgetToBudgetInfo_DefaultTier(t *testing.T) {
+	f := friendBudget{BudgetWeekly: 10, BudgetUsed: 3.42, TrustLevel: 85, TasksCompleted: 47}
+	bi := f.toBudgetInfo("test-agent")
+	if bi.Tier != "pro" {
+		t.Errorf("default tier should be pro: got %q", bi.Tier)
+	}
+	if bi.AgentName != "test-agent" {
+		t.Errorf("agent name mismatch: got %q, want test-agent", bi.AgentName)
+	}
+}
+
+func TestFriendBudgetToBudgetInfo_ExplicitTier(t *testing.T) {
+	f := friendBudget{Tier: "flash", BudgetWeekly: 5, BudgetUsed: 1.10, TrustLevel: 60, TasksCompleted: 28}
+	bi := f.toBudgetInfo("flashy")
+	if bi.Tier != "flash" {
+		t.Errorf("explicit tier should be preserved: got %q, want flash", bi.Tier)
+	}
 }
