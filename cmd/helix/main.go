@@ -151,7 +151,11 @@ func (d *dispatcher) dispatch(args []string) error {
 	case "doctor":
 		return runDoctorWithConfig(parseDoctorFlags(rest))
 	case "dispatch":
-		return runDispatchWithIO(rest, os.Stdout, os.Stderr)
+		// The global --dry-run flag (parsed in dispatch() above) is
+		// honoured by every subcommand. Thread it into the dispatch
+		// handler explicitly so dispatch's --dry-run flag isn't shadowed
+		// by the global parser.
+		return runDispatchWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 	}
 
 	// Delegate to subcommand binary
