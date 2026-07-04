@@ -1245,7 +1245,7 @@
 - **Logic:** The `conscientiousness_client.go:34` WithConscientiousnessHTTPClient is a constructor option that lets callers inject an `*http.Client`. Currently untested. Test: (1) default constructor uses default timeout, (2) WithConscientiousnessHTTPClient swaps in the provided client and the Evaluate path uses it (verify via httptest server that records the request). For Axiom client: 4 methods at 85-89% — remaining gaps are error paths (malformed JSON, 5xx, ctx timeout). For Chimera: 2 methods at 86.7% — Formations/Models error paths. For GitReins: Guard at 89.3% — error-path on bad command output.
 - **Verify:** `go test ./pkg/integration/... -count=1 -cover -timeout 30s` — confirm ≥88%. Then `go test ./... -short -timeout 120s` — confirm full suite still green.
 
-## [ ] Cover pkg/dispatcher loop + cost_guard + Plan/Run fail paths
+## [x] Cover pkg/dispatcher loop + cost_guard + Plan/Run fail paths
 - **Priority:** medium
 - **Model:** direct write — Go test-only
 - **Files:** pkg/dispatcher/loop_test.go, pkg/dispatcher/cost_guard_test.go, pkg/dispatcher/forgejo_loop_test.go (append)
@@ -1258,8 +1258,9 @@
   6. `Plan` (forgejo_loop) 81.8% → 100% (spec-parse-error branch)
   7. `Run` (forgejo_loop) 78.0% → 100% (forgejo API error branch)
   8. `Check` (cost_guard) 65.0% → 100% (budget-exceeded branch + missing-budget branch)
+- **Result:** [x] 1 new file `pkg/dispatcher/extra_coverage_test.go` (423 lines, 21 new tests). `pkg/dispatcher` coverage 89.1% → 92.1% (meets ≥92% AC). Per-function: releaseLock 66.7%→100%, executeStep 80%→100%, commitWork 80%→100%, acquireLock 84.6%→92.3%, cost_guard.Check 65%→90%. Tests: releaseLock (already-missing, permission-denied), executeStep (write-fails), commitWork (happy contract + write-fails), acquireLock (stale-overwrite with PID 999_999, live-blocks self-PID, mkdir-fails, concurrent-writers race), cost_guard.Check (estimator-error→ESCALATED, Veteran-unlimited heuristic, Provisional-blocked heuristic, Provisional-warn-zone heuristic), Plan (empty-tasks → ErrDecomposeFailed, missing-spec → DecomposeSpec error), Run_Live (CreateBranch 500, CreateBranch-201+CreatePR-500). Full suite 41/41 packages pass, lint clean, GitReins Tier 1 all 6 guards PASS. Committed at `7a1091c`.
 - **Logic:** Most of these are small, mechanical test additions. Lock tests: write a fake pid file with a current PID + a stale pid, verify acquireLock detects both correctly. Plan/Run: httptest server that returns 500 on the relevant endpoint, verify graceful error. cost_guard: budget=0 vs budget=infinite vs budget<request. The dispatcher loop is already extensively tested but a few edge-case branches remain — typically 5-15 line tests each.
-- **Verify:** `go test ./pkg/dispatcher/... -count=1 -cover -timeout 30s` — confirm ≥92%.
+- **Verify:** `go test ./pkg/dispatcher/... -count=1 -cover -timeout 30s` — confirm ≥92%. Then `go test ./... -short -timeout 120s` — confirm full suite still green.
 
 ## [ ] Cover pkg/identity syncer fail paths + permissions edge cases
 - **Priority:** medium
