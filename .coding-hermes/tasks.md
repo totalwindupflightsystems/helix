@@ -1158,12 +1158,13 @@
 - **Logic:** Per `go tool cover -func`, four run* handlers are at 0% (runList, runShow, runSearch, runRate, runReview). Test pattern: stub exitProcess, redirect HOME to t.TempDir with fixture pricing.yaml + known-friends.json, exercise both `helix-estimate estimate <task>` and `helix-estimate check <model>` commands, verify stdout contains expected cost line. Mirror cmd/helix-negotiate's existing patterns.
 - **Result:** [x] Coverage 61.3% → 85.5% (exceeds 80% AC). runList 0% → 80.8%, runShow 0% → 80.0%, runSearch 0% → 78.6%, runRate 0% → 69.6%. Added 18 new test functions + 3 helpers (writeTestAgentYAML, withRedirectedStdout, itoa). Patterns: real YAML fixtures in t.TempDir/agents/, bypass cobra arg parsing via direct function calls. runRate's ExitInvalidRating and ExitUnauthorized paths skipped (os.Exit terminates process). All 41 packages pass. GitReins Tier 1 all 6 guards PASS. Lint clean. Committed at `14c7716`.
 
-## [ ] Cover CLI run handlers (cmd/helix-estimate) — push coverage to >80%
+## [x] Cover CLI run handlers (cmd/helix-estimate) — push coverage to >80%
 - **Priority:** medium
 - **Model:** direct write — Go CLI test additions
-- **Files:** cmd/helix-estimate/main_test.go (NEW)
+- **Files:** cmd/helix-estimate/main_test.go (extend)
 - **AC:** `go test -short -count=1 ./cmd/helix-estimate/...` passes; coverage on cmd/helix-estimate ≥80% (currently 63.6%)
 - **Logic:** Per `go tool cover -func`, three functions are at 0% (runEstimate, runCheck, loadPricing). Test pattern: stub exitProcess, redirect HOME to t.TempDir with fixture pricing.yaml + known-friends.json, exercise both `helix-estimate estimate <task>` and `helix-estimate check <model>` commands, verify stdout contains expected cost line. Mirror cmd/helix-negotiate's existing patterns.
+- **Result:** [x] Coverage 63.6% → 84.8% (exceeds 80% AC). runEstimate 0% → 58.8%, runCheck 0% → 73.9% (subprocess test for ApprovalExitCode os.Exit), runReport 0% → 72.7%, loadPricing 0% → 60.0%. Added 17 new test functions + 3 helpers (pricingFixturePath, friendsFixturePath, captureStdoutFunc). Patterns: os.Stdout redirect via goroutine drain (runEstimate/runReport hardcode os.Stdout), subprocess test for runCheck to bypass os.Exit. All 41 packages pass. GitReins Tier 1 all 6 guards PASS. Lint clean. Committed at `e615fc0`.
 
 ## [ ] Cover CLI run handlers (cmd/helix-identity) — push coverage to >85%
 - **Priority:** medium
