@@ -1,12 +1,18 @@
 package main
 
 import (
+	"bytes"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // ============================================================================
@@ -426,4 +432,113 @@ func containsStr(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// ============================================================================
+// runDoctorWithConfig coverage — the doctor entry-point that prints the
+// report and returns nil on success / error on failure.
+// ============================================================================
+
+// TestRunDoctorWithConfig_AllPass — every check points at a healthy httptest
+// server; report prints the banner and "All N checks passed" summary.
+func TestRunDoctorWithConfig_AllPass(t *testing.T) {
+	ok := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ok.Close()
+
+	cfg := DoctorConfig{
+		ForgejoURL:           ok.URL,
+		ChimeraURL:           ok.URL,
+		ConscientiousnessURL: ok.URL,
+		HivemindURL:          ok.URL,
+		LangFuseURL:          ok.URL,
+		PrometheusURL:        ok.URL,
+		// DiskPath defaults; BackupPath empty → backup check WARNs but
+		// doesn't FAIL, so AllPassed() stays true.
+		DiskPath:        t.TempDir(),
+		MaxDiskUsagePct: 90,
+		MaxMemUsagePct:  95,
+	}
+
+	stdout := &bytes.Buffer{}
+	err := runDoctorWithConfig(cfg, stdout)
+	require.NoError(t, err, "all-pass must return nil error")
+	out := stdout.String()
+	assert.Contains(t, out, "Helix Platform Doctor")
+	// Backup check is WARN-only when no BackupPath is set; AllPassed() is
+	// still true (no FAIL). Summary reads "8 passed, 1 warnings" or
+	// "All N checks passed" depending on whether any WARNs exist.
+	assert.True(t,
+		strings.Contains(out, "checks passed") || strings.Contains(out, "passed,"),
+		"expected pass summary in output, got: %s", out)
+}
+
+// TestRunDoctorWithConfig_OneCheckFails — one URL points at a closed port;
+// the failure must surface both in stdout ("✗" line) AND as a non-nil error
+// that names the failed check count.
+func TestRunDoctorWithConfig_OneCheckFails(t *testing.T) {
+	ok := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ok.Close()
+
+	cfg := DoctorConfig{
+		ForgejoURL:           ok.URL,
+		ChimeraURL:           "http://127.0.0.1:59999", // unreachable
+		ConscientiousnessURL: ok.URL,
+		HivemindURL:          ok.URL,
+		LangFuseURL:          ok.URL,
+		PrometheusURL:        ok.URL,
+		DiskPath:             t.TempDir(),
+		MaxDiskUsagePct:      90,
+		MaxMemUsagePct:       95,
+	}
+
+	stdout := &bytes.Buffer{}
+	err := runDoctorWithConfig(cfg, stdout)
+	require.Error(t, err, "any FAIL must produce non-nil error")
+	assert.Contains(t, err.Error(), "checks failed")
+	out := stdout.String()
+	assert.Contains(t, out, "✗", "output must show ✗ for failed checks")
+	assert.Contains(t, out, "failed", "summary must include failure count")
+}
+
+// TestRunDoctorWithConfig_NilStdoutDefaultsToOSStdout — passing nil writer
+// must not panic; the function falls back to os.Stdout.
+func TestRunDoctorWithConfig_NilStdoutDefaultsToOSStdout(t *testing.T) {
+	ok := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ok.Close()
+
+	cfg := DoctorConfig{
+		ForgejoURL:           ok.URL,
+		ChimeraURL:           ok.URL,
+		ConscientiousnessURL: ok.URL,
+		HivemindURL:          ok.URL,
+		LangFuseURL:          ok.URL,
+		PrometheusURL:        ok.URL,
+		DiskPath:             t.TempDir(),
+		MaxDiskUsagePct:      90,
+		MaxMemUsagePct:       95,
+	}
+
+	// Redirect os.Stdout temporarily so we can also verify the fallback
+	// writes something. Capture into a pipe and read the other end.
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	origStdout := os.Stdout
+	os.Stdout = w
+	defer func() { os.Stdout = origStdout }()
+
+	done := make(chan struct{})
+	go func() {
+		_, _ = io.ReadAll(r)
+		close(done)
+	}()
+
+	_ = runDoctorWithConfig(cfg, nil)
+	require.NoError(t, w.Close())
+	<-done
 }

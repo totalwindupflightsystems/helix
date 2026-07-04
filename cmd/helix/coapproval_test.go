@@ -532,3 +532,61 @@ func TestCoapprovalCheck_RendererSubstringsSafe(t *testing.T) {
 		strings.Contains(out, "NEEDS_HUMAN") || strings.Contains(out, "BLOCKED"),
 		"expected NEEDS_HUMAN or BLOCKED in output, got: %s", out)
 }
+
+// ============================================================================
+// Unified CLI dry-run wrapper coverage (runCoapprovalWithDryRun)
+// ============================================================================
+//
+// runCoapprovalWithDryRun is the variant invoked by the unified `helix` CLI
+// when --dry-run is parsed globally by main.go. It wraps runCoapproval's
+// int exit code into errExit (or nil) so the unified entry point can
+// route any non-zero exit through its error contract.
+
+// TestRunCoapprovalWithDryRun_SuccessPath — happy path through runCoapproval
+// (rc=0) must return nil (no errExit).
+func TestRunCoapprovalWithDryRun_SuccessPath(t *testing.T) {
+	const sha = "ff-coap-1"
+	humanFile := writeApprovalsFixture(t, []coapproval.Approval{
+		makeHumanApproval(t, "alice", sha),
+	})
+	agentFile := writeApprovalsFixture(t, []coapproval.Approval{
+		makeAgentApproval(t, "agent-bot", 75, sha),
+	})
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	err := runCoapprovalWithDryRun([]string{
+		"check", "--pr", "200", "--commit-sha", sha,
+		"--human-approvals", humanFile, "--agent-approvals", agentFile,
+	}, stdout, stderr, false)
+	require.NoError(t, err, "rc=0 must produce nil error; stderr=%s", stderr.String())
+}
+
+// TestRunCoapprovalWithDryRun_FailurePath — rc≠0 (parse error or BLOCKED)
+// must return errExit{code: rc}.
+func TestRunCoapprovalWithDryRun_FailurePath(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	// Missing required --pr → runCoapproval returns rc=2.
+	err := runCoapprovalWithDryRun([]string{"check"}, stdout, stderr, false)
+	require.Error(t, err, "rc=2 must surface as errExit")
+	var exitErr errExit
+	require.ErrorAs(t, err, &exitErr)
+	assert.Equal(t, 2, exitErr.code)
+}
+
+// TestRunCoapprovalWithDryRun_GlobalDryRunIgnored — coapproval doesn't currently
+// honour a global dry-run mode (it's purely a check command), but the wrapper
+// accepts the flag for signature uniformity. The flag value must not change
+// behaviour beyond signature compatibility.
+func TestRunCoapprovalWithDryRun_GlobalDryRunIgnored(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	// Parse failure regardless of globalDryRun — proves the global flag
+	// doesn't mask missing required args.
+	err := runCoapprovalWithDryRun([]string{"check"}, stdout, stderr, true)
+	require.Error(t, err)
+	var exitErr errExit
+	require.ErrorAs(t, err, &exitErr)
+	assert.Equal(t, 2, exitErr.code)
+}

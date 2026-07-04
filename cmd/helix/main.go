@@ -147,7 +147,7 @@ func (d *dispatcher) dispatch(args []string) error {
 	case "status":
 		return runStatusWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 	case "doctor":
-		return runDoctorWithConfig(parseDoctorFlags(rest))
+		return runDoctorWithConfig(parseDoctorFlags(rest), os.Stdout)
 	case "dispatch":
 		// The global --dry-run flag (parsed in dispatch() above) is
 		// honoured by every subcommand. Thread it into the dispatch

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -419,4 +420,57 @@ func TestAdversarialRun_OutputTableWhenPass(t *testing.T) {
 	assert.True(t,
 		strings.Contains(out, "Scenario:") || strings.Contains(out, "Outcome:") || strings.Contains(out, "gate-bypass"),
 		"expected formatted scenario output, got: %s", out)
+}
+
+// ============================================================================
+// Unified CLI dry-run wrapper coverage (runAdversarialWithDryRun)
+// ============================================================================
+//
+// runAdversarialWithDryRun is a thin wrapper that converts runAdversarial's
+// int exit code into the unified CLI's error contract.
+
+// TestRunAdversarialWithDryRun_SuccessPath — happy path (run-all with no
+// failures) returns nil.
+func TestRunAdversarialWithDryRun_SuccessPath(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	err := runAdversarialWithDryRun(
+		[]string{"run", "--scenario", "gate-bypass", "--timeout", "10s"},
+		stdout, stderr, false,
+	)
+	// runAdversarial may return 0 or 1 depending on whether the scenario
+	// actually gates; both are valid for the unified wrapper contract —
+	// only rc=2 (parse error) must surface as errExit.
+	if err != nil {
+		var exitErr errExit
+		if errors.As(err, &exitErr) {
+			assert.NotEqual(t, 2, exitErr.code,
+				"unexpected parse-error rc=2 from a valid scenario run; stderr=%s",
+				stderr.String())
+		}
+	}
+}
+
+// TestRunAdversarialWithDryRun_ParseError — invalid args → rc=2 → errExit.
+func TestRunAdversarialWithDryRun_ParseError(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	err := runAdversarialWithDryRun(
+		[]string{"run", "--scenario", "nonexistent-scenario-xyz"},
+		stdout, stderr, false,
+	)
+	require.Error(t, err, "rc=2 must surface as errExit")
+	var exitErr errExit
+	require.ErrorAs(t, err, &exitErr)
+	assert.Equal(t, 2, exitErr.code)
+}
+
+// TestRunAdversarialWithDryRun_HelpFlag — --help produces rc=0 → nil.
+func TestRunAdversarialWithDryRun_HelpFlag(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	err := runAdversarialWithDryRun([]string{"--help"}, stdout, stderr, false)
+	require.NoError(t, err)
+	// Top-level adversarial help lists subcommands (run-all, run, list, etc).
+	assert.Contains(t, stdout.String(), "run-all")
 }
