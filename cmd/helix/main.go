@@ -232,6 +232,17 @@ func (d *dispatcher) dispatch(args []string) error {
 			}
 			return nil
 		})
+	case "webhook":
+		// `helix webhook <serve>` starts the Forgejo webhook ingestion
+		// server (see pkg/webhook). The global --dry-run flag is
+		// ignored — there's nothing to dry-run for an HTTP listener.
+		return RunWithObs("webhook", func() error {
+			rc := runWebhook(rest, os.Stdout, os.Stderr)
+			if rc != 0 {
+				return errExit{code: rc}
+			}
+			return nil
+		})
 	}
 
 	// Delegate to subcommand binary
