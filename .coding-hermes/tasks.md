@@ -1514,16 +1514,18 @@
 - **Logic:** LangFuseTrace currently has flat fields (Input, Output, Model). Spec §8.2 defines a richer structure: trace has sessionId, tags[], generations[] (each with name, model, input, output, usage, cost, duration_ms), observations[] (each with name, type SPAN/EVENT, input, output, duration_ms). Add SessionID, Tags, Generations, Observations fields to LangFuseTrace. Add LangFuseGeneration and LangFuseObservation types. Update IngestTrace to serialize the full spec §8.2 structure. Update parseLangFuseTrace to deserialize. Existing flat fields remain for backward compat (mapped to trace-level input/output). New tests for round-trip serialization with generations + observations.
 - **Result:** [x] LangFuseTrace enriched with UserID, SessionID, Tags, Generations[], Observations[]. LangFuseGeneration (name, model, input, output, usage, cost, duration_ms) and LangFuseObservation (name, type, input, output, duration_ms) types added. IngestTrace serializes full spec §8.2 structure (tags, generations with promptTokens/completionTokens, observations with SPAN/EVENT type). parseLangFuseTrace deserializes all new fields. 5 new tests: spec §8.2 full trace ingest (verifies all fields server-side), spec §8.2 full trace parse (round-trip), empty arrays, generation/observation type smoke test. 88.7% pkg/integration coverage. Full suite 48/48 packages pass. Lint clean.
 
-## [ ] Add `helix backup` CLI subcommand — wire pkg/backup.BackupManager
+## [x] Add `helix backup` CLI subcommand — wire pkg/backup.BackupManager
 - **Priority:** medium
 - **Spec:** specs/SPECIFICATION.md §10.1 (Backup Strategy)
 - **Model:** direct write — Go CLI wrapper
 - **Files:** cmd/helix/backup.go (NEW), cmd/helix/backup_test.go (NEW), cmd/helix/main.go (register subcommand)
 - **AC:** `go build ./... && go test ./cmd/helix/... -count=1 -cover` passes; `helix backup status` prints backup targets + freshness; `helix backup validate` checks last-backup timestamps; `--json` emits structured report; full suite green, lint clean, gitreins guard PASS.
+- **Result:** [x] `helix backup <status|validate|help>` CLI. Status prints all spec §10.1 backup targets (8 targets: forgejo, .env, conscience.db, hivemind.db, memory, postgres, prometheus, duckbrain) in table or JSON format. Validate checks path existence + freshness via BackupManager.Validate. 14 tests. cmd/helix 83.9% coverage. Full suite 48/48 pass. Lint clean.
 
-## [ ] Add `helix degradation` CLI subcommand — wire pkg/degradation.Registry
+## [x] Add `helix degradation` CLI subcommand — wire pkg/degradation.Registry
 - **Priority:** medium
 - **Spec:** specs/SPECIFICATION.md §14.2 (Graceful Degradation)
 - **Model:** direct write — Go CLI wrapper
 - **Files:** cmd/helix/degradation.go (NEW), cmd/helix/degradation_test.go (NEW), cmd/helix/main.go (register subcommand)
 - **AC:** `go build ./... && go test ./cmd/helix/... -count=1 -cover` passes; `helix degradation list` prints all degradation policies; `helix degradation check <service> <state>` shows the applicable policy; `--json` emits structured report; full suite green, lint clean, gitreins guard PASS.
+- **Result:** [x] `helix degradation <list|check|help>` CLI. List prints all spec §14.2 graceful degradation policies by service (9 services × 3 states). Check takes positional args `<service> <state>` and shows the applicable policy via ApplyPolicy — table or JSON. 14 tests. cmd/helix 83.9% coverage. Full suite 48/48 pass. Lint clean.
