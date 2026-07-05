@@ -158,6 +158,8 @@ func (d *dispatcher) dispatch(args []string) error {
 		return runCoapprovalWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 	case "adversarial":
 		return runAdversarialWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+	case "secrets":
+		return runSecretsWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 	}
 
 	// Delegate to subcommand binary
