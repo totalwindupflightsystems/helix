@@ -47,6 +47,7 @@ var (
 	verbose bool
 	cfgFile string
 	dryRun  bool
+	logFmt  string // --log-format flag (defaults to HELIX_LOG_FORMAT or "text")
 )
 
 // ---------------------------------------------------------------------------
@@ -69,6 +70,14 @@ var subcommands = map[string]string{
 
 func main() {
 	_ = cfgFile // reserved for --config flag in Phase 2
+
+	// Set up structured observability BEFORE any work runs. The logger
+	// is process-global so every subcommand dispatch emits exactly one
+	// final structured log line.
+	if _, err := initHelixLog(logFmt); err != nil {
+		fmt.Fprintf(os.Stderr, "helix: failed to initialise logger: %v\n", err)
+		os.Exit(2)
+	}
 
 	if err := rootCmd().Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -120,6 +129,13 @@ func (d *dispatcher) dispatch(args []string) error {
 			}
 		case "--dry-run":
 			dryRun = true
+		case "--log-format":
+			if i+1 < len(args) {
+				logFmt = args[i+1]
+				i++
+			} else {
+				return fmt.Errorf("--log-format requires a value (text|json)")
+			}
 		case "--help", "-h":
 			d.usage()
 			return nil
@@ -145,21 +161,37 @@ func (d *dispatcher) dispatch(args []string) error {
 		printVersion()
 		return nil
 	case "status":
-		return runStatusWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		return RunWithObs("status", func() error {
+			return runStatusWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	case "doctor":
-		return runDoctorWithConfig(parseDoctorFlags(rest), os.Stdout)
+		return RunWithObs("doctor", func() error {
+			ec := runDoctorWithConfig(parseDoctorFlags(rest), os.Stdout)
+			if ec != nil {
+				return errExit{code: 1}
+			}
+			return nil
+		})
 	case "dispatch":
 		// The global --dry-run flag (parsed in dispatch() above) is
 		// honoured by every subcommand. Thread it into the dispatch
 		// handler explicitly so dispatch's --dry-run flag isn't shadowed
 		// by the global parser.
-		return runDispatchWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		return RunWithObs("dispatch", func() error {
+			return runDispatchWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	case "coapproval":
-		return runCoapprovalWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		return RunWithObs("coapproval", func() error {
+			return runCoapprovalWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	case "adversarial":
-		return runAdversarialWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		return RunWithObs("adversarial", func() error {
+			return runAdversarialWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	case "secrets":
-		return runSecretsWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		return RunWithObs("secrets", func() error {
+			return runSecretsWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	}
 
 	// Delegate to subcommand binary
