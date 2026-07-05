@@ -409,6 +409,11 @@ type RemediationReport struct {
 // DoctorReport is defined in cmd/helix/doctor.go and uses string status
 // values "PASS"/"FAIL"/"WARN". Only FAIL and WARN produce remediations;
 // PASS checks are skipped (no operator action needed).
+//
+// The function also overrides rem.Check with the actual check name
+// from the lookup key. This guards against registry entries that
+// forget to set Check explicitly — the remediation block always
+// identifies the failure by its doctor name, never blank.
 func BuildRemediationReport(reg *RemediationRegistry, checks []CheckOutcome) RemediationReport {
 	rep := RemediationReport{}
 	for _, c := range checks {
@@ -420,6 +425,11 @@ func BuildRemediationReport(reg *RemediationRegistry, checks []CheckOutcome) Rem
 			rep.Unknown = append(rep.Unknown, c.Name)
 			continue
 		}
+		// Force rem.Check to match the lookup key. The registry
+		// stores each Remediation under its check name, so the
+		// canonical source of truth is c.Name — not whatever
+		// rem.Check was set to when the entry was registered.
+		rem.Check = c.Name
 		// Override reason with the actual detail if available.
 		if c.Detail != "" {
 			rem.Reason = c.Detail + " — " + rem.Reason

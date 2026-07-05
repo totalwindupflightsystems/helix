@@ -176,6 +176,33 @@ func TestCheckOutcome_IsFailing(t *testing.T) {
 	}
 }
 
+func TestBuildRemediationReport_FailingKnown_ChecksRegistryEntryWithoutCheckField(t *testing.T) {
+	// Regression: in production, the populate() chain builds entries
+	// like `Add("Forgejo reachable", Remediation{Reason: "...", ...})`
+	// without setting Check. Without the BuildRemediationReport
+	// override, the rendered block prints "✗  — high" with a blank
+	// check name. This test asserts the override restores the lookup
+	// key as Check.
+	reg := NewRemediationRegistry().
+		Add("Forgejo reachable", Remediation{
+			// intentionally no Check field set
+			Reason:   "base reason",
+			Severity: SeverityHigh,
+		})
+
+	checks := []CheckOutcome{
+		{Name: "Forgejo reachable", Status: "FAIL"},
+	}
+	rep := BuildRemediationReport(reg, checks)
+	if len(rep.Remediations) != 1 {
+		t.Fatalf("expected 1 remediation, got %d", len(rep.Remediations))
+	}
+	got := rep.Remediations[0]
+	if got.Check != "Forgejo reachable" {
+		t.Errorf("expected rem.Check to be populated from lookup key, got %q", got.Check)
+	}
+}
+
 func TestBuildRemediationReport_AllPass(t *testing.T) {
 	reg := NewRemediationRegistry()
 	checks := []CheckOutcome{
@@ -211,6 +238,9 @@ func TestBuildRemediationReport_FailingKnown(t *testing.T) {
 		t.Fatalf("expected 1 remediation, got %d", len(rep.Remediations))
 	}
 	got := rep.Remediations[0]
+	if got.Check != "Forgejo reachable" {
+		t.Errorf("expected Check=Forgejo reachable, got %q", got.Check)
+	}
 	if !strings.Contains(got.Reason, "503 Service Unavailable") {
 		t.Errorf("expected reason to include detail, got %q", got.Reason)
 	}
