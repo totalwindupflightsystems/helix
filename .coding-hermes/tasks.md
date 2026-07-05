@@ -1457,4 +1457,45 @@
 - **Files:** pkg/banner/banner.go (NEW), pkg/banner/banner_test.go (NEW), cmd/helix/banner.go (NEW), cmd/helix/banner_test.go (NEW), cmd/helix/main.go (register subcommand + opt-in flag on root)
 - **Result:** [x] 20 new tests. pkg/banner 100% coverage (ASCII-only invariant enforced), cmd/helix 84.6%. Render (7-line HELIX box art) + RenderCompact (5-line tight variant). `helix banner` + `helix banner --compact` subcommands. `--banner` root flag prepends the banner to any subcommand invocation. Opt-in (not default) so CI scripts stay grep-able. Full suite 54/54 packages green. Lint clean. gitreins guard PASS. Committed at `415621e`.
 
-# Next Batch (2026-07-05) — TBD after spec re-read
+# Next Batch (2026-07-05) — Spec §6.7 incident CLI, §9.6 env-check CLI, §8.4 alert notifier, §14.1/14.3 retry self-check
+
+## [x] Add `helix incident` CLI subcommand — wire `pkg/security.IncidentResponseEngine`
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §6.7 (Incident Response — SEV-0/1/2/3 procedures) + §10.5 (Incident Response checklist)
+- **Model:** direct write — Go CLI wrapper around existing `pkg/security/incident.go` engine
+- **Files:** pkg/security/incident_store.go (NEW), pkg/security/incident_store_test.go (NEW), cmd/helix/incident.go (NEW), cmd/helix/incident_test.go (NEW), cmd/helix/main.go (register subcommand + extend usage), pkg/security/incident.go (untouched)
+- **AC:** ✅ `go build ./...` clean. ✅ Full suite 48/48 packages pass. ✅ `pkg/security` coverage 90.7%, `cmd/helix` coverage 82.7%. ✅ `golangci-lint run ./cmd/... ./pkg/security/...` clean.
+- **Result:** [x] 25 new tests (13 in `pkg/security`, 12 in `cmd/helix` — plus the existing incident tests). Wired `helix incident <declare|list|show|update|stats>` with common flags (--store, --json, --verbose) usable anywhere in the arg list. JSONL persistence at `~/.helix/incidents.jsonl` (mode 0o600) via `security.NewIncidentFileStore`. Subcommands:
+  - `declare --severity SEV-N --title TEXT [--description D] [--agent ID] [--id ID]` — appends record, prints ID
+  - `list [--severity SEV] [--status STATUS] [--all]` — table by default, sorted by severity desc then time desc
+  - `show <id>` — full record + spec response procedure (e.g. SEV-0 SEV-1 SEV-2 SEV-3 with 5-6 response steps)
+  - `update <id> --status <open|in_progress|escalated|resolved>` — appends a new record preserving history
+  - `stats` — uses existing `pkg/security.IncidentStats` + `FormatStats`
+  Common flags accepted BEFORE the subcommand keyword too (e.g. `helix incident --json declare ...`). Edge cases covered: invalid severity, missing required fields, ID collision (file mode 0o600), malformed JSONL lines skipped on LoadAll, concurrent appends serialised via mutex, writer-only store for tests. End-to-end smoke verified: `helix incident declare --severity SEV-1 --title "Test e2e" --store /tmp/test.jsonl` → declared + list shows it + stats reports Total: 1.
+
+## [ ] Add `helix config env-check` CLI subcommand — wire `pkg/config.EnvInventory`
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §9.6 (Env Var Inventory — 10 variables across OPENROUTER/FORGEJO/LANGFUSE/GRAFANA/GITHUB) + §4.10 (cross-component verification)
+- **Model:** direct write — Go CLI wrapper around existing `pkg/config/envvars.go` engine
+- **Files:** cmd/helix/env_check.go (NEW), cmd/helix/env_check_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:** `go build ./... && go test ./cmd/helix/... -count=1 -cover` passes; `helix config env-check --help` lists options; `helix config env-check --env-file /opt/helix/.env` reads the file, validates all 10 spec §9.6 vars, exits 0 if all present + non-empty (after redaction), exits 1 with a missing-vars list otherwise; `--json` emits structured `{missing, present, sources}` report; `--strict` treats empty-string values as missing (default also strict); full suite green, lint clean, gitreins guard PASS.
+- **Logic:** Wire `config.NewEnvInventory()` to a new `helix config env-check` subcommand. Source precedence: (1) explicit `--env-file PATH`, (2) `HELIX_ENV_FILE` env var, (3) `/opt/helix/.env`, (4) `$HOME/.helix/.env`, (5) process env. `--strict` flag: empty values count as missing. `--json` flag: structured report. `--source <platform>` filter: only check vars with matching EnvSource (e.g. `--source forgejo` only checks FORGEJO_RUNNER_TOKEN). Redact secret values in any output (use `redactIfSecret` pattern already in `pkg/config/envvars.go`). Exit codes: 0 = all required present, 1 = missing required, 2 = invalid env-file path.
+- **Why now:** Spec §9.6 lists 10 required env vars but operators currently have no automated check. `helix doctor` only checks service reachability, not env completeness. This closes the loop: `helix config env-check` validates config, `helix doctor` validates reachability.
+
+## [ ] Add alert notifier + `helix alerts notify` CLI — wire `pkg/health.AlertEngine` with pluggable channels
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §8.4 (Prometheus Metrics — 5 alert rules + thresholds)
+- **Model:** direct write — Go notifier package + CLI subcommand
+- **Files:** pkg/health/notifier.go (NEW), pkg/health/notifier_test.go (NEW), cmd/helix/alerts.go (NEW), cmd/helix/alerts_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:** `go build ./... && go test ./pkg/health/... ./cmd/helix/... -count=1 -cover` passes; `Notifier` interface with `Stdout`, `File`, `Multi`, and `Telegram` implementations; `helix alerts notify --metrics-file PATH` reads a JSON metrics snapshot, evaluates via existing `AlertEngine`, fans out firing alerts to all configured notifiers, exits 0 if no critical alerts, exits 1 if any critical firing; `--dry-run` evaluates but only prints what would have been sent; full suite green, lint clean, gitreins guard PASS.
+- **Logic:** `Notifier` interface `{ Name() string; Send(ctx, Alert) error }`. `StdoutNotifier` (default, JSON-line per alert to stderr). `FileNotifier` (append JSONL to `~/.helix/alerts.jsonl`, mode 0o600). `MultiNotifier` (fan-out, partial-success tolerant — fails fast if any required channel errors). `TelegramNotifier` (stub: requires `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` env vars, calls `https://api.telegram.org/bot{token}/sendMessage` with Markdown — fail-fast on 4xx, retry-once on 5xx, 10s timeout). The CLI reads a metrics JSON snapshot (matching `MetricsSnapshot` struct), runs the existing `AlertEngine.Evaluate(snapshot)`, then calls `notifier.Send(ctx, alert)` for each firing alert. Output: human-readable table by default, JSON via `--json`. Reuses spec §8.4 alert names verbatim: `HighCostAgent`, `GateFailureSpike`, `PRStuck`, `AgentDown`, `CostAnomaly`.
+- **Why now:** `pkg/health/alerts.go` evaluates 5 spec §8.4 alerts but currently only `FormatSummary()` is exposed. The spec calls for routing alerts to operators; this completes that loop without adding new evaluation logic.
+
+## [ ] Add `helix retry status` CLI — wrap `pkg/retry` with self-check + chaos-mode
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §14.1 (Component Failure Matrix — circuit breakers + retry policies) + §14.3 (Retry Policies — 4-attempt exponential, 5-failure-in-60s circuit breaker)
+- **Model:** direct write — Go CLI status report + chaos-mode toggle
+- **Files:** pkg/retry/status.go (NEW), pkg/retry/status_test.go (NEW), cmd/helix/retry.go (NEW), cmd/helix/retry_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:** `go build ./... && go test ./pkg/retry/... ./cmd/helix/... -count=1 -cover` passes; `helix retry status` prints a table of all registered retry policies + their circuit-breaker state (closed/open/half-open), total attempts, success/failure counts, last-error; `--json` emits structured `{policies: [...], circuit_breakers: [...]}` report; `helix retry chaos --policy <name> --failure-rate 0.3` simulates failures for 60s (gated by `HELIX_CHAOS_ENABLED=1` env var); `--reset` clears accumulated stats; full suite green, lint clean, gitreins guard PASS.
+- **Logic:** Extend `pkg/retry` with a `Registry` that tracks named `RetryPolicy` instances + `CircuitBreaker` state per policy. Each `RetryPolicy` records `Attempts`, `Successes`, `Failures`, `LastError`, `LastAttemptAt` (thread-safe via mutex). `Registry.Status()` returns all stats. `Registry.RecordResult(name, err)` is called by callers (e.g. `pkg/integration` adapters) to update stats. `chaos` mode: `ChaosInjector` injects synthetic failures into a policy's `Do()` execution for a configurable duration/failure-rate. Gated on `HELIX_CHAOS_ENABLED=1` to prevent accidental prod damage. CLI: `helix retry status [--json]`, `helix retry chaos --policy NAME [--failure-rate 0.5] [--duration 60s]`, `helix retry reset`.
+- **Why now:** Spec §14.1 + §14.3 define retry policies and circuit breakers but `pkg/retry/retry.go` has no observability layer. Operators currently can't see if circuit breakers are tripping, can't simulate failures, and can't reset accumulated state. This CLI turns the silent retry layer into an inspectable component.

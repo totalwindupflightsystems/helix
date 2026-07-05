@@ -269,6 +269,16 @@ func (d *dispatcher) dispatch(args []string) error {
 			}
 			return nil
 		})
+	case "incident":
+		// `helix incident <declare|list|show|update|stats>` exposes
+		// pkg/security.IncidentResponseEngine to operators (spec §6.7).
+		return RunWithObs("incident", func() error {
+			rc := runIncident(rest, os.Stdout, os.Stderr)
+			if rc != 0 {
+				return errExit{code: rc}
+			}
+			return nil
+		})
 	}
 
 	// Delegate to subcommand binary
@@ -378,7 +388,16 @@ Subcommands:
   marketplace Search and discover agents
   sandbox     Run commands in a sandboxed environment
   version     Print version information
+  banner      Print the HELIX ASCII art banner
   status      Check all component health
+  doctor      Run platform diagnostic checks
+  dispatch    Dispatch a spec to an agent for execution
+  coapproval  Run human+agent co-approval protocol
+  adversarial Run adversarial review
+  secrets     Inspect and rotate secrets
+  pipeline    Run PR lifecycle coordinator
+  webhook     Run Forgejo webhook ingestion server
+  incident    Declare, list, and resolve incidents (spec §6.7)
 
 Global Flags:
   --verbose   Enable verbose output
