@@ -71,14 +71,6 @@ var subcommands = map[string]string{
 func main() {
 	_ = cfgFile // reserved for --config flag in Phase 2
 
-	// Set up structured observability BEFORE any work runs. The logger
-	// is process-global so every subcommand dispatch emits exactly one
-	// final structured log line.
-	if _, err := initHelixLog(logFmt); err != nil {
-		fmt.Fprintf(os.Stderr, "helix: failed to initialise logger: %v\n", err)
-		os.Exit(2)
-	}
-
 	if err := rootCmd().Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -150,6 +142,20 @@ func (d *dispatcher) dispatch(args []string) error {
 	if len(filtered) == 0 {
 		d.usage()
 		return nil
+	}
+
+	// Set up structured observability AFTER the global flags have been
+	// parsed (not in main()) so the --log-format flag actually takes
+	// effect. We do this before any subcommand dispatch so every
+	// invocation emits exactly one final structured log line.
+	// Idempotent across dispatch() calls — first call wins; subsequent
+	// calls are no-ops so a re-entrant dispatch (e.g. from tests)
+	// doesn't reset the logger.
+	if helixLog == nil {
+		if _, err := initHelixLog(logFmt); err != nil {
+			fmt.Fprintf(os.Stderr, "helix: failed to initialise logger: %v\n", err)
+			return err
+		}
 	}
 
 	name := filtered[0]
