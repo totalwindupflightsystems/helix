@@ -279,6 +279,19 @@ func (d *dispatcher) dispatch(args []string) error {
 			}
 			return nil
 		})
+	case "config":
+		// `helix config <env-check|...>` exposes configuration-validation
+		// utilities. Currently only `env-check` (spec §9.6) is wired.
+		// The global --dry-run flag has no separate effect — env-check
+		// is itself a read-only validator and dry-run semantics apply
+		// implicitly.
+		return RunWithObs("config", func() error {
+			rc := runConfig(rest, os.Stdout, os.Stderr)
+			if rc != 0 {
+				return errExit{code: rc}
+			}
+			return nil
+		})
 	}
 
 	// Delegate to subcommand binary
@@ -398,6 +411,7 @@ Subcommands:
   pipeline    Run PR lifecycle coordinator
   webhook     Run Forgejo webhook ingestion server
   incident    Declare, list, and resolve incidents (spec §6.7)
+  config      Validate configuration (env-check)
 
 Global Flags:
   --verbose   Enable verbose output
