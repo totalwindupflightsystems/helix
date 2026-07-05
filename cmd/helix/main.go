@@ -300,6 +300,14 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("alerts", func() error {
 			return runAlertsWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "retry":
+		// `helix retry <status|chaos|reset>` exposes the retry layer's
+		// circuit breaker state and chaos injection (spec §14.1/§14.3).
+		// The global --dry-run flag has no separate effect on status/reset
+		// (both are read-only); chaos mode requires HELIX_CHAOS_ENABLED=1.
+		return RunWithObs("retry", func() error {
+			return runRetryWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	}
 
 	// Delegate to subcommand binary
