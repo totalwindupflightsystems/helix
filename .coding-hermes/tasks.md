@@ -1529,3 +1529,47 @@
 - **Files:** cmd/helix/degradation.go (NEW), cmd/helix/degradation_test.go (NEW), cmd/helix/main.go (register subcommand)
 - **AC:** `go build ./... && go test ./cmd/helix/... -count=1 -cover` passes; `helix degradation list` prints all degradation policies; `helix degradation check <service> <state>` shows the applicable policy; `--json` emits structured report; full suite green, lint clean, gitreins guard PASS.
 - **Result:** [x] `helix degradation <list|check|help>` CLI. List prints all spec §14.2 graceful degradation policies by service (9 services × 3 states). Check takes positional args `<service> <state>` and shows the applicable policy via ApplyPolicy — table or JSON. 14 tests. cmd/helix 83.9% coverage. Full suite 48/48 pass. Lint clean.
+
+---
+
+# Next Batch (2026-07-05c) — Audit trace CLI, key rotation CLI, API contract server, Forgejo test CI workflow
+
+## [ ] Wire 12-step audit chain trace CLI — `helix audit trace <pr-url>`
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §6.5 (Audit Trail Requirements — 12-step audit chain)
+- **Model:** direct write — Go CLI addition, consumes existing pkg/audit
+- **Files:** cmd/helix/audit.go (NEW), cmd/helix/audit_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix audit trace --evidence-file <path>` reads a JSON file of AuditEvidence, runs the existing pkg/audit.Checker.Check(), and prints per-step PASS/FAIL with evidence details; `--json` emits structured AuditReport; `helix audit steps` lists all 12 steps with their descriptions; `helix audit validate --evidence-file <path>` checks evidence completeness without running step checks; full suite green, lint clean, gitreins guard PASS.
+- **Logic:** pkg/audit has Checker, AuditEvidence, AuditReport, and all 12 step definitions but no CLI surface. Wire `helix audit <trace|steps|validate>` subcommand. `trace` reads a JSON file containing AuditEvidence (12-step evidence for a PR), runs Checker.Check() which validates all 12 steps, and renders the AuditReport as a table (step name, status, evidence summary) or JSON. `steps` prints the 12 step IDs with descriptions from StepDescription(). `validate` checks IsComplete() without running per-step checks (structural completeness only). The evidence file path is the input — in production, an integration layer would query Forgejo/LangFuse/etc. to build the evidence; the CLI just consumes the assembled evidence file.
+
+## [ ] Wire key rotation CLI — `helix identity rotate-keys`
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §5.5 (Key Rotation Lifecycle) + §6.7 (Incident Response SEV-0 step 2)
+- **Model:** direct write — Go CLI addition, consumes existing pkg/identity/key_rotation.go
+- **Files:** cmd/helix/rotate_keys.go (NEW), cmd/helix/rotate_keys_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix identity rotate-keys --state-file <path>` reads a JSON file of KeyInfo entries, runs KeyRotator.GeneratePlan(), and prints the rotation plan (which keys need rotation, why, and the recommended action); `--json` emits structured RotationPlan; `helix identity rotate-keys --execute` generates the plan AND outputs executable shell commands (does NOT execute them — just prints); full suite green, lint clean, gitreins guard PASS.
+- **Logic:** pkg/identity/key_rotation.go has KeyRotator with GeneratePlan() that produces a RotationPlan with RotationAction entries. No CLI consumes it. Wire `helix identity rotate-keys` as a subcommand of the `helix identity` group (or standalone `helix rotate-keys`). Input: JSON state file with KeyInfo entries per agent. Output: human-readable table of keys needing rotation (agent, key type, current status, reason, recommended action) or JSON. `--execute` flag: print the shell commands that would perform the rotation (e.g., `helix-identity keygen <agent>`, `openrouter key create ...`) — does NOT run them, just outputs the plan as executable commands. This matches spec §5.5 where the rotator "produces a RotationPlan that the caller (CLI, cron) executes."
+
+## [ ] Implement Forgejo Actions test CI workflow — `.forgejo/workflows/test.yml`
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §12.5 (Test Infrastructure — CI Pipeline) + §7.3 (GitReins Tier 1)
+- **Model:** direct write — YAML workflow + Go workflow generator
+- **Files:** .forgejo/workflows/test.yml (NEW), pkg/ci/workflow.go (NEW), pkg/ci/workflow_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/ci/... -count=1 -cover` passes with >85% coverage; `.forgejo/workflows/test.yml` matches spec §12.5 structure (on: push+PR, unit job with go test + coverage gate at 85%, integration job with Forgejo service container); `pkg/ci` package provides a Go API for generating and validating Forgejo Actions workflow YAML
+- **Logic:** Spec §12.5 defines the CI pipeline with a unit job (go test, coverage gate) and an integration job (Forgejo service container). The repo has gitreins.yaml, chimera-review.yaml, promptfoo.yaml, prompt-eval.yml but NOT the core test.yml. Create .forgejo/workflows/test.yml matching the spec example. Also create pkg/ci/workflow.go with a Go API: TestWorkflow struct with UnitJob and IntegrationJob, GenerateYAML() that produces the workflow YAML, Validate() that checks required fields. This mirrors the pattern established by pkg/prompt/ci/workflow.go for the prompt-eval workflow.
+
+## [ ] Implement API contract HTTP server — `helix api serve`
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §15 (API Contracts) — all 5 services
+- **Model:** direct write — Go HTTP server + CLI subcommand
+- **Files:** pkg/api/server.go (NEW), pkg/api/server_test.go (NEW), cmd/helix/api.go (NEW), cmd/helix/api_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:** `go build ./... && go test ./pkg/api/... ./cmd/helix/... -count=1 -cover` passes with >85% coverage; `helix api serve --addr :9096` starts an HTTP server that exposes the 5 service contract endpoints (Forgejo, Chimera, Conscientiousness, Hivemind, Muster) as REST endpoints returning the typed contract schemas; `helix api contracts` lists all service contracts; `helix api validate <service> <endpoint>` validates a request JSON against the contract; full suite green, lint clean, gitreins guard PASS
+- **Logic:** pkg/api/contracts.go defines all 5 services' API contracts as typed Go structs with validation. But there's no HTTP server that serves them and no CLI to interact with them. Create a read-only HTTP server that exposes: GET /api/v1/contracts (list all service contracts), GET /api/v1/contracts/{service} (one service's contract), POST /api/v1/validate/{service}/{endpoint} (validate a request body against the contract). This is a development/debugging tool — it doesn't proxy to the real services, it just serves the contract schemas and validates requests against them. CLI: `helix api <serve|contracts|validate>` subcommand.
+
+## [ ] Implement integration test runner CLI — `helix integration test`
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §12.3 (Per-Component Test Strategy) + §4 (Integration Contracts)
+- **Model:** direct write — Go CLI addition, consumes existing pkg/integration
+- **Files:** cmd/helix/integration.go (NEW), cmd/helix/integration_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix integration test` runs the IntegrationTestSuite from pkg/integration (skips if services unreachable — uses sync.Once skip guard); `helix integration list` lists all integration test scenarios with their target services; `--json` emits structured results; `--service <name>` filters tests by target service; full suite green, lint clean, gitreins guard PASS
+- **Logic:** pkg/integration has IntegrationTestSuite with Setup/Teardown and test scenarios, but it's only usable from `go test`. Create a CLI wrapper that can run the integration tests on-demand. Uses the sync.Once skip guard pattern (from coding-hermes Go integration testing reference) — if Forgejo/Chimera are unreachable, skip with a clear message instead of hanging. `helix integration test` runs all scenarios, `--service forgejo` runs only Forgejo-related tests. Output: table of scenario name, target service, result (PASS/FAIL/SKIP), duration. `--json` for structured output. This is the CLI equivalent of `make test-integration` but with per-service filtering and structured output for CI integration.
