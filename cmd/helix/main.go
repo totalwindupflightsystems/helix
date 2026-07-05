@@ -320,6 +320,12 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("degradation", func() error {
 			return runDegradationWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "audit":
+		// `helix audit <trace|steps|validate>` exposes the 12-step audit
+		// chain checker (spec §6.5).
+		return RunWithObs("audit", func() error {
+			return runAuditWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	}
 
 	// Delegate to subcommand binary
