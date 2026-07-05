@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/totalwindupflightsystems/helix/internal/observability"
 	"github.com/totalwindupflightsystems/helix/pkg/negotiate"
 )
 
@@ -694,5 +695,49 @@ func TestRunResolveWithPositions_HappyPath(t *testing.T) {
 	}
 	if !strings.Contains(out, "NEGOTIATION RESULT") {
 		t.Errorf("expected NEGOTIATION RESULT in output:\n%s", out)
+	}
+}
+
+// TestRunRootWithObs_EmitsLogLine verifies that the observability wrapper
+// emits exactly one "subcommand_complete" log entry when runRootWithObs()
+// is invoked. Without this test, runRootWithObs is uncovered and the
+// observability integration is untested at the CLI layer.
+func TestRunRootWithObs_EmitsLogLine(t *testing.T) {
+	// Capture stderr so the observability log line doesn't pollute test
+	// output and so we can assert on it.
+	origStderr := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	os.Stderr = w
+	t.Cleanup(func() { os.Stderr = origStderr })
+
+	// Init() reads the env / process state at call time. Pass "" format
+	// so it defers to defaults (text, stderr).
+	if _, err := observability.Init(observability.Options{
+		App:    "helix-negotiate",
+		Format: "json",
+		Sink:   w,
+	}); err != nil {
+		t.Fatalf("observability.Init: %v", err)
+	}
+
+	// Invoke the wrapped runRootWithObs with no args. Cobra returns an
+	// error from Execute() when no subcommand is provided; the wrapper
+	// surfaces it but still emits the log line.
+	_ = runRootWithObs()
+
+	// Close the pipe and read the captured stderr.
+	_ = w.Close()
+	buf := make([]byte, 4096)
+	n, _ := r.Read(buf)
+	output := string(buf[:n])
+
+	if !strings.Contains(output, "subcommand_complete") {
+		t.Errorf("expected subcommand_complete in observability output:\n%s", output)
+	}
+	if !strings.Contains(output, `"app":"helix-negotiate"`) {
+		t.Errorf("expected app=helix-negotiate in observability output:\n%s", output)
 	}
 }

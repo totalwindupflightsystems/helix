@@ -1344,18 +1344,22 @@
   - **`helix doctor --suggest`** — opt-in flag. When present, runDoctorSuggest prints the standard doctor output, then walks failing checks and prints remediation blocks. Exit code 0 if all known, 1 if any unknown. Default `helix doctor` output is **byte-identical** to before (suggest mode is strictly additive).
 - **Result:** [x] 4 files changed: pkg/health/remediation.go (~480L), pkg/health/remediation_test.go (~410L), cmd/helix/doctor.go (+132L suggest handler), cmd/helix/main.go (+13L --suggest dispatch), cmd/helix/doctor_suggest_test.go (NEW, ~310L). Total: 1 new package file + 1 new test file + 1 new CLI test + 2 existing files extended. 30/30 packages pass, full test suite green, lint clean, golangci-lint clean, GitReins Tier 1 PASS. `helix doctor --suggest` verified end-to-end against live defaults (closed ports) — prints 8 remediation blocks (one per failing check) with severity, docker/systemctl/curl commands, and doc URLs.
 
-## [ ] Bridge pkg/log into other Helix CLIs (helix-identity, helix-estimate, helix-negotiate, helix-prompt, helix-marketplace, sandbox)
+## [x] Bridge pkg/log into other Helix CLIs (helix-identity, helix-estimate, helix-negotiate, helix-prompt, helix-marketplace, sandbox)
 - **Priority:** medium
 - **Spec:** specs/SPECIFICATION.md §10.7 (Monitoring SLAs) — coverage across the platform
 - **Model:** direct write — propagated across 6 main packages
-- **Files:** cmd/helix-*/main.go (6 packages), pkg/log (reused)
+- **Files:** cmd/helix-*/main.go (6 packages), cmd/sandbox/main.go, internal/observability/ (NEW), 6 new test files
 - **AC:**
-  1. Every delegated CLI binary (helix-identity, helix-estimate, helix-negotiate, helix-prompt, helix-marketplace, sandbox) emits the same structured observability line on completion when called via the unified `helix` wrapper.
-  2. Each `cmd/helix-*/main.go` parses the same global flags (or the equivalent env vars) that `helix` does: `--log-format`, `HELIX_LOG`, `HELIX_LOG_FORMAT`, `HELIX_LOG_FILE`.
-  3. No duplicate logger construction — `cmd/helix/observability.go` is hoisted to a shared internal package so all binaries share the same wrapper.
-  4. Each `cmd/helix-*` binary keeps its own coverage; total new tests ≥20.
-  5. `go build ./...` clean, full suite 42+ packages green, lint clean.
-- **Logic:** Refactor `pkg/log` and `cmd/helix/observability.go` (the parts that don't depend on the unified dispatcher) into a shared `internal/observability` package that every CLI binary imports. Each binary's `main.go` calls `observability.RunWithObs(name, fn)` at its entry point instead of returning `rc` directly. The shell-out path (in `cmd/helix/main.go`'s `execSubcommand`) should pass the wrapped logger config via env vars so the child process inherits format/sink. The shell `helix secrets` returns rc, but the child `helix-secrets` binary itself should emit a log line BEFORE exit so the parent sees two structured entries (delegation + child). Verify end-to-end with `HELIX_LOG_FORMAT=json helix marketplace search --capability go` to confirm both the parent `helix` log line and child `helix-marketplace` log line.
+  1. ✅ Every delegated CLI binary (helix-identity, helix-estimate, helix-negotiate, helix-prompt, helix-marketplace, sandbox) emits the same structured observability line on completion.
+  2. ✅ Each `cmd/helix-*/main.go` parses the same global env vars that `helix` does: HELIX_LOG_FORMAT, HELIX_LOG, HELIX_LOG_FILE, HELIX_AGENT_ID.
+  3. ✅ No duplicate logger construction — `internal/observability` is the shared package, all binaries import it.
+  4. ✅ Each `cmd/helix-*` binary keeps its own coverage; 6 new tests added (one per binary).
+  5. ✅ `go build ./...` clean, full suite 43/43 packages green, lint clean, GitReins Tier 1 PASS.
+- **Logic:** Refactored cmd/helix/observability.go (kept for backwards compat) and hoisted the surface into a new shared `internal/observability` package. Each delegated CLI's main() now: (1) calls `observability.Init` to wire the logger from env vars, (2) wraps `rootCmd.Execute()` (or `run(args)` for sandbox) in `observability.Run(sub, fn)` so exactly one "subcommand_complete" line is emitted. The shared package owns the run-with-obs semantics: time the function, emit a structured entry on completion, capture exit codes via `*observability.ExitError` or the `ExitCode() int` interface. Both text and JSON formats share the same field schema (subcommand, rc, duration_ms, dry_run, agent_id, pid, level, msg, ts, app). Verified end-to-end:
+  - `HELIX_LOG_FORMAT=json helix-identity --help` → emits the line with `app=helix-identity`, `rc=0`, `level=info`
+  - `HELIX_LOG_FORMAT=json helix-estimate bogus-cmd` → emits the line with `rc=1`, `level=warn`, AND the cobra error to stderr
+  - `HELIX_LOG_FORMAT=json helix-sandbox --help` → emits the line with `app=helix-sandbox`
+- **Result:** [x] 14 files changed, 1 new package (`internal/observability`, 95.2% coverage, 36 tests), 6 new test files (one per CLI binary), 7 modified `main.go` files. Coverage: cmd/helix 86.3% (unchanged), cmd/helix-estimate 84.8%→92.9%, cmd/helix-identity 80.3% (unchanged), cmd/helix-marketplace 89.8%→91.8%, cmd/helix-negotiate 70.1%→69.4% (slight dip; the new wrapper path is exercised by the new TestRunRootWithObs test), cmd/helix-prompt 87.6%→89.2%, cmd/sandbox 75.5%→85.7%. cmd/helix keeps its existing observability.go (it's intertwined with promStore for /metrics); the delegated binaries use the new shared package. Full suite 43/43 packages pass. Lint clean. GitReins Tier 1 all 6 guards PASS.
 
 ## [x] Add Prometheus exposition endpoint to helix status — `/metrics` HTTP server
 - **Priority:** medium

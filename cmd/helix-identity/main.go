@@ -25,6 +25,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/totalwindupflightsystems/helix/internal/observability"
 	"github.com/totalwindupflightsystems/helix/pkg/identity"
 )
 
@@ -72,6 +73,15 @@ var rootFlags = &flagHolder{}
 // ---------------------------------------------------------------------------
 
 func main() {
+	// Initialise structured logging as early as possible so any error
+	// surfaced during cobra arg parsing shows up in the operator log
+	// pipeline. Config is driven by env vars (HELIX_LOG_FORMAT,
+	// HELIX_LOG_FILE, HELIX_AGENT_ID, HELIX_LOG).
+	if _, err := observability.Init(observability.Options{App: "helix-identity"}); err != nil {
+		fmt.Fprintf(os.Stderr, "helix-identity: failed to initialise logger: %v\n", err)
+		os.Exit(identity.ExitGeneral)
+	}
+
 	rootCmd := &cobra.Command{
 		Use:   "helix-identity",
 		Short: "Provision Helix agent identities in Forgejo",
@@ -125,15 +135,39 @@ touching Forgejo.`,
 		newKeygenCmd(),
 	)
 
-	if err := rootCmd.Execute(); err != nil {
-		// Map typed errors to documented exit codes; unknown → ExitGeneral.
-		if te, ok := err.(*identity.TypedError); ok {
-			fmt.Fprintf(os.Stderr, "ERROR: %s\n", te.Error())
-			os.Exit(te.ExitCode())
-		}
-		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
-		os.Exit(identity.ExitGeneral)
+	rc := executeRoot(rootCmd)
+	os.Exit(rc)
+}
+
+// executeRoot wraps rootCmd.Execute() with the observability wrapper so
+// every helix-identity invocation emits a "subcommand_complete" log
+// line. The subcommand name is captured from cobra's first positional
+// arg (defaults to "helix-identity" for bare invocations).
+//
+// Returns the process exit code (0 success, non-zero error).
+//
+// The wrapped function may return identity-typed errors which the
+// wrapper extracts via the ExitCode() interface method. Cobra's
+// own errors (parse errors, etc.) are mapped to ExitConfigError so
+// they propagate correctly through os.Exit.
+func executeRoot(rootCmd *cobra.Command) int {
+	sub := "helix-identity"
+	if args := rootCmd.Flags().Args(); len(args) > 0 {
+		sub = "helix-identity:" + args[0]
 	}
+	err := observability.Run(sub, func() error {
+		return rootCmd.Execute()
+	})
+	if err == nil {
+		return 0
+	}
+	// Map typed errors to documented exit codes; unknown → ExitGeneral.
+	if te, ok := err.(*identity.TypedError); ok {
+		fmt.Fprintf(os.Stderr, "ERROR: %s\n", te.Error())
+		return te.ExitCode()
+	}
+	fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
+	return identity.ExitGeneral
 }
 
 // ---------------------------------------------------------------------------
