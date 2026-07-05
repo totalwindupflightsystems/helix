@@ -436,7 +436,7 @@ func TestRunDispatchWithDryRun_ParseFailure(t *testing.T) {
 // string with the exit code.
 func TestErrExit_Error(t *testing.T) {
 	e := errExit{code: 7}
-	assert.Equal(t, "dispatch exit 7", e.Error())
+	assert.Equal(t, "subcommand exit 7", e.Error())
 }
 
 // ============================================================================

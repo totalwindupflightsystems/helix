@@ -166,11 +166,13 @@ func runDispatchDryRun(args []string, stdout, stderr io.Writer, globalDryRun boo
 	return runDispatchWithFlags(flags, stdout, stderr)
 }
 
-// errExit lets us return a non-zero exit code from runDispatchWithIO
-// without using os.Exit directly.
+// errExit lets us return a non-zero exit code from any run* helper
+// without using os.Exit directly. The Error() string includes the
+// numeric code so main.go's "Error: ..." output is informative
+// regardless of which subcommand produced the error.
 type errExit struct{ code int }
 
-func (e errExit) Error() string { return fmt.Sprintf("dispatch exit %d", e.code) }
+func (e errExit) Error() string { return fmt.Sprintf("subcommand exit %d", e.code) }
 
 // runDispatch is the cmd/helix dispatch subcommand entry point. It only
 // parses flags — the actual pipeline run lives in runDispatchWithFlags
