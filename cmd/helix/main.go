@@ -219,6 +219,19 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("secrets", func() error {
 			return runSecretsWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "pipeline":
+		// `helix pipeline <run|show|validate>` wires the unified CLI to
+		// pkg/coordinator.PRLifecycleCoordinator. The global --dry-run flag
+		// is honoured for the `run` subcommand by runPipeline itself (it
+		// defaults to stub subsystems, so dry-run has no separate effect
+		// — both modes skip downstream services).
+		return RunWithObs("pipeline", func() error {
+			rc := runPipeline(rest, os.Stdout, os.Stderr)
+			if rc != 0 {
+				return errExit{code: rc}
+			}
+			return nil
+		})
 	}
 
 	// Delegate to subcommand binary
