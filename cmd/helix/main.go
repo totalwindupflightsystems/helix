@@ -171,6 +171,19 @@ func (d *dispatcher) dispatch(args []string) error {
 			return runStatusWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
 	case "doctor":
+		// The --suggest flag is opt-in. With it, every failing check
+		// gets operator-facing remediation hints from
+		// pkg/health.RemediationRegistry. Exit code is 0 if all known,
+		// 1 if any failing check has no known remediation (ambiguous).
+		if hasDoctorSuggest(rest) {
+			return RunWithObs("doctor-suggest", func() error {
+				rc := runDoctorSuggest(parseDoctorSuggestFlags(rest), os.Stdout, os.Stderr)
+				if rc != 0 {
+					return errExit{code: rc}
+				}
+				return nil
+			})
+		}
 		return RunWithObs("doctor", func() error {
 			ec := runDoctorWithConfig(parseDoctorFlags(rest), os.Stdout)
 			if ec != nil {

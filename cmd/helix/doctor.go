@@ -28,6 +28,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/totalwindupflightsystems/helix/pkg/health"
 )
 
 // ============================================================================
@@ -539,4 +541,145 @@ func formatJSONReport(report *DoctorReport) string {
 	}
 	b, _ := json.MarshalIndent(data, "", "  ")
 	return string(b)
+}
+
+// ============================================================================
+// --suggest mode
+// ============================================================================
+//
+// `helix doctor --suggest` extends the default doctor output with
+// operator-facing remediation hints for every failing check. When a
+// check has a known fix (e.g., "start the Forgejo container"), the
+// --suggest block lists ordered shell steps the operator can paste
+// without leaving the terminal. Checks with no known remediation
+// fall back to a "see Doc for guidance" message.
+//
+// Exit code semantics (per task spec):
+//
+//	0 — All checks pass, OR every failing check has a known remediation
+//	1 — At least one failing check has NO known remediation (ambiguous)
+//
+// --suggest is opt-in. Default `helix doctor` output is identical.
+//
+// Implementation uses pkg/health.RemediationRegistry (see
+// pkg/health/remediation.go) — no business logic lives here, just the
+// CLI shim.
+
+// runDoctorSuggest runs doctor with --suggest semantics.
+//
+// args is the post-`--suggest` argument list (other flags supported
+// before/after --suggest). stdout/stderr let tests capture output.
+// Pass nil for either to default to os.Stdout / os.Stderr.
+//
+// Exit code follows the task spec: 0 if remediation is complete, 1
+// if any failing check has no known remediation.
+func runDoctorSuggest(args []string, stdout, stderr io.Writer) int {
+	if stdout == nil {
+		stdout = os.Stdout
+	}
+	if stderr == nil {
+		stderr = os.Stderr
+	}
+
+	cfg := parseDoctorFlags(args)
+	if cfg == (DoctorConfig{}) {
+		// DefaultDoctorConfig() returns a zero-overridden-but-not-zero
+		// struct. If parseDoctorFlags ever returns zero, that's a bug —
+		// fall back to defaults so we never silently run a misconfigured
+		// doctor.
+		cfg = DefaultDoctorConfig()
+	}
+
+	report := runAllChecks(cfg)
+	registry := health.Default()
+
+	checkOutcomes := make([]health.CheckOutcome, 0, len(report.Results))
+	for _, r := range report.Results {
+		checkOutcomes = append(checkOutcomes, health.CheckOutcome{
+			Name:   r.Name,
+			Status: r.Status,
+			Detail: r.Detail,
+		})
+	}
+	remReport := health.BuildRemediationReport(registry, checkOutcomes)
+
+	// Print the standard report first so the operator sees the same
+	// data as `helix doctor` (consistency: --suggest augments, doesn't
+	// replace).
+	fmt.Fprintln(stdout, "Helix Platform Doctor (with suggestions)")
+	fmt.Fprintln(stdout, "==========================================")
+	fmt.Fprintln(stdout)
+	for _, r := range report.Results {
+		icon := "✓"
+		if r.Status == "FAIL" {
+			icon = "✗"
+		} else if r.Status == "WARN" {
+			icon = "⚠"
+		}
+		fmt.Fprintf(stdout, "%s %-25s %s (%.3fs)\n", icon, r.Name, r.Detail, r.Duration.Seconds())
+	}
+	fmt.Fprintln(stdout)
+
+	switch {
+	case report.AllPassed() && !report.HasWarnings():
+		fmt.Fprintln(stdout, "✓ All checks passed. No remediation needed.")
+		return 0
+
+	case !remReport.HasAny && len(remReport.Unknown) == 0:
+		// Everything passed/warned, no failing checks needed remediation.
+		fmt.Fprintln(stdout, "✓ All checks passed (warnings present but no remediations required).")
+		return 0
+
+	case remReport.HasAny && len(remReport.Unknown) == 0:
+		// Failing checks, all have known remediation → exit 0.
+		fmt.Fprintf(stdout, "✗ %s. Suggested fixes below:\n\n", report.Summary())
+		for _, rem := range remReport.Remediations {
+			health.FormatRemediation(rem, stdout)
+		}
+		fmt.Fprintln(stdout, "Tip: each command above is descriptive — review before pasting.")
+		return 0
+
+	default:
+		// Mixed: some remediations known, some unknown.
+		fmt.Fprintf(stdout, "✗ %s. Suggested fixes (partial):\n\n", report.Summary())
+		for _, rem := range remReport.Remediations {
+			health.FormatRemediation(rem, stdout)
+		}
+		if len(remReport.Unknown) > 0 {
+			fmt.Fprintln(stdout, "  Checks with no known remediation (manual review required):")
+			for _, name := range remReport.Unknown {
+				fmt.Fprintf(stdout, "    - %s\n", name)
+			}
+			fmt.Fprintln(stdout)
+			fmt.Fprintln(stdout, "  These failures need human triage — see specs/SPECIFICATION.md §10.5.")
+			fmt.Fprintf(stderr, "helix doctor --suggest: %d failing check(s) without known remediation\n", len(remReport.Unknown))
+		}
+		return 1
+	}
+}
+
+// parseDoctorSuggestFlags is a thin wrapper over parseDoctorFlags that
+// strips `--suggest` from the arg list before delegating. Kept separate
+// so future flags (e.g., `--suggest-json`) can be added without churn.
+func parseDoctorSuggestFlags(args []string) []string {
+	out := make([]string, 0, len(args))
+	for _, a := range args {
+		if a == "--suggest" || a == "--suggest=true" || a == "--suggest=false" {
+			continue
+		}
+		out = append(out, a)
+	}
+	return out
+}
+
+// hasDoctorSuggest reports whether the --suggest flag is in args.
+// Supports "--suggest", "--suggest=true", "--suggest=false" (false
+// is treated as absent for cleanliness).
+func hasDoctorSuggest(args []string) bool {
+	for _, a := range args {
+		if a == "--suggest" || a == "--suggest=true" {
+			return true
+		}
+	}
+	return false
 }
