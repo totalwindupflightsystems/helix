@@ -1534,13 +1534,14 @@
 
 # Next Batch (2026-07-05c) — Audit trace CLI, key rotation CLI, API contract server, Forgejo test CI workflow
 
-## [ ] Wire 12-step audit chain trace CLI — `helix audit trace <pr-url>`
+## [x] Wire 12-step audit chain trace CLI — `helix audit trace <pr-url>`
 - **Priority:** high
 - **Spec:** specs/SPECIFICATION.md §6.5 (Audit Trail Requirements — 12-step audit chain)
 - **Model:** direct write — Go CLI addition, consumes existing pkg/audit
 - **Files:** cmd/helix/audit.go (NEW), cmd/helix/audit_test.go (NEW), cmd/helix/main.go (register subcommand)
 - **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix audit trace --evidence-file <path>` reads a JSON file of AuditEvidence, runs the existing pkg/audit.Checker.Check(), and prints per-step PASS/FAIL with evidence details; `--json` emits structured AuditReport; `helix audit steps` lists all 12 steps with their descriptions; `helix audit validate --evidence-file <path>` checks evidence completeness without running step checks; full suite green, lint clean, gitreins guard PASS.
 - **Logic:** pkg/audit has Checker, AuditEvidence, AuditReport, and all 12 step definitions but no CLI surface. Wire `helix audit <trace|steps|validate>` subcommand. `trace` reads a JSON file containing AuditEvidence (12-step evidence for a PR), runs Checker.Check() which validates all 12 steps, and renders the AuditReport as a table (step name, status, evidence summary) or JSON. `steps` prints the 12 step IDs with descriptions from StepDescription(). `validate` checks IsComplete() without running per-step checks (structural completeness only). The evidence file path is the input — in production, an integration layer would query Forgejo/LangFuse/etc. to build the evidence; the CLI just consumes the assembled evidence file.
+- **Result:** [x] 3 files changed: cmd/helix/audit.go (NEW, 277L), cmd/helix/audit_test.go (NEW, 27 tests), cmd/helix/main.go (+6L register subcommand), pkg/audit/chain.go (+59L StepDescription + AuditEvidence.IsComplete/CompletedSteps). `helix audit <trace|steps|validate|help>` CLI. trace reads JSON evidence file → runs Checker.Check() → renders AuditReport (table or JSON). steps lists all 12 steps with descriptions. validate checks structural completeness (IsComplete) without per-step validation. Exit codes: 0=pass, 1=audit fail, 2=invocation error, 3=file not found. 27 tests covering all subcommands, flag parsing, happy/fail paths, JSON output, missing file, malformed JSON, partial evidence, invalid values. cmd/helix 84.1% coverage. Full suite 48/48 packages pass. Lint clean. Smoke verified: `helix audit steps` prints all 12 steps with descriptions.
 
 ## [ ] Wire key rotation CLI — `helix identity rotate-keys`
 - **Priority:** high

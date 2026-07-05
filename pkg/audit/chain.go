@@ -79,6 +79,29 @@ func AllSteps() []StepID {
 	}
 }
 
+// StepDescription returns a brief description of what evidence a step requires,
+// matching the spec §6.5 12-step audit chain.
+func StepDescription(id StepID) string {
+	descs := map[StepID]string{
+		StepForgejoIssue:      "Forgejo issue URL + creator + timestamp",
+		StepAxiomWorkItem:     "plan.yaml ref + agent assignments + run_id",
+		StepRalphLoop:         "lock_id + worktree_path + lock_acquired_at",
+		StepOpenCodeSession:   "session_id + model + tokens + cost (LangFuse trace)",
+		StepGitCommit:         "SHA + attestation trailer (prompt-hash, model, context-hash)",
+		StepGitReinsVerdict:   "Tier 1 guard results + Tier 2 verdict (COMPLETE/INCOMPLETE)",
+		StepPRMetadata:        "pr_index + linked issue + spec ref + evidence bundle",
+		StepChimeraReview:     "trace_id + formation + worker models + verdict + findings",
+		StepConscientiousness: "report_id + attack vectors + verdict (DEFENSIBLE/VULNERABLE)",
+		StepPromptFooCI:       "test results (pass/fail per test case) + Forgejo Actions run ID",
+		StepCoApprovals:       "human approval (user + timestamp) + agent approval (agent + confidence)",
+		StepMerge:             "merge SHA + strategy + timestamp + Pages URL + LangFuse trace ID",
+	}
+	if d, ok := descs[id]; ok {
+		return d
+	}
+	return fmt.Sprintf("Step %d", id)
+}
+
 // =============================================================================
 // Evidence Types — One Per Step
 // =============================================================================
@@ -291,6 +314,64 @@ func (a *AuditEvidence) StepEvidence(id StepID) interface{} {
 	default:
 		return nil
 	}
+}
+
+// IsComplete returns true if all 12 steps have evidence present.
+func (a *AuditEvidence) IsComplete() bool {
+	return a.ForgejoIssue != nil &&
+		a.AxiomWorkItem != nil &&
+		a.RalphLoop != nil &&
+		a.OpenCodeSession != nil &&
+		a.GitCommit != nil &&
+		a.GitReinsVerdict != nil &&
+		a.PRMetadata != nil &&
+		a.ChimeraReview != nil &&
+		a.Conscientiousness != nil &&
+		a.PromptFooCI != nil &&
+		a.CoApprovals != nil &&
+		a.Merge != nil
+}
+
+// CompletedSteps returns the IDs of steps that have evidence present.
+func (a *AuditEvidence) CompletedSteps() []StepID {
+	var steps []StepID
+	if a.ForgejoIssue != nil {
+		steps = append(steps, StepForgejoIssue)
+	}
+	if a.AxiomWorkItem != nil {
+		steps = append(steps, StepAxiomWorkItem)
+	}
+	if a.RalphLoop != nil {
+		steps = append(steps, StepRalphLoop)
+	}
+	if a.OpenCodeSession != nil {
+		steps = append(steps, StepOpenCodeSession)
+	}
+	if a.GitCommit != nil {
+		steps = append(steps, StepGitCommit)
+	}
+	if a.GitReinsVerdict != nil {
+		steps = append(steps, StepGitReinsVerdict)
+	}
+	if a.PRMetadata != nil {
+		steps = append(steps, StepPRMetadata)
+	}
+	if a.ChimeraReview != nil {
+		steps = append(steps, StepChimeraReview)
+	}
+	if a.Conscientiousness != nil {
+		steps = append(steps, StepConscientiousness)
+	}
+	if a.PromptFooCI != nil {
+		steps = append(steps, StepPromptFooCI)
+	}
+	if a.CoApprovals != nil {
+		steps = append(steps, StepCoApprovals)
+	}
+	if a.Merge != nil {
+		steps = append(steps, StepMerge)
+	}
+	return steps
 }
 
 // =============================================================================
