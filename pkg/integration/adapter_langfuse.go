@@ -26,19 +26,44 @@ type LangFuseAdapter interface {
 	Health() (*LangFuseHealth, error)
 }
 
-// LangFuseTrace represents a single LLM interaction trace.
+// LangFuseTrace represents a single LLM interaction trace per spec §8.2.
 type LangFuseTrace struct {
-	ID        string
-	Name      string
-	Project   string
-	Input     string // Prompt text
-	Output    string // Completion text
-	Model     string
-	Provider  string
-	Usage     LangFuseUsage
-	Cost      float64
-	Metadata  map[string]string
-	Timestamp string
+	ID           string
+	Name         string
+	Project      string
+	UserID       string // spec §8.2: userId (e.g. "agent-sandbox-7@helix")
+	SessionID    string // spec §8.2: sessionId (e.g. "pr-1842")
+	Input        string // Prompt text (trace-level, backward compat)
+	Output       string // Completion text (trace-level, backward compat)
+	Model        string
+	Provider     string
+	Usage        LangFuseUsage
+	Cost         float64
+	Metadata     map[string]string
+	Tags         []string              // spec §8.2: tags (e.g. ["implementation", "go"])
+	Generations  []LangFuseGeneration  // spec §8.2: generations[]
+	Observations []LangFuseObservation // spec §8.2: observations[]
+	Timestamp    string
+}
+
+// LangFuseGeneration represents a single LLM generation within a trace (spec §8.2).
+type LangFuseGeneration struct {
+	Name       string
+	Model      string
+	Input      string
+	Output     string
+	Usage      LangFuseUsage
+	Cost       float64
+	DurationMs int64
+}
+
+// LangFuseObservation represents a non-LLM observation within a trace (spec §8.2).
+type LangFuseObservation struct {
+	Name       string
+	Type       string // "SPAN" or "EVENT"
+	Input      string
+	Output     string
+	DurationMs int64
 }
 
 // LangFuseUsage breaks down token usage for a trace.

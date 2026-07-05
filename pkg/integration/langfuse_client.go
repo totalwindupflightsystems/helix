@@ -63,13 +63,15 @@ func NewLangFuseClient(baseURL, publicKey, secretKey string, opts ...LangFuseCli
 // IngestTrace posts a trace to the LangFuse ingestion endpoint.
 func (c *LangFuseClient) IngestTrace(trace LangFuseTrace) (*LangFuseIngestResult, error) {
 	body := map[string]interface{}{
-		"id":       trace.ID,
-		"name":     trace.Name,
-		"project":  trace.Project,
-		"input":    trace.Input,
-		"output":   trace.Output,
-		"model":    trace.Model,
-		"provider": trace.Provider,
+		"id":        trace.ID,
+		"name":      trace.Name,
+		"project":   trace.Project,
+		"userId":    trace.UserID,
+		"sessionId": trace.SessionID,
+		"input":     trace.Input,
+		"output":    trace.Output,
+		"model":     trace.Model,
+		"provider":  trace.Provider,
 		"usage": map[string]int{
 			"input":      trace.Usage.InputTokens,
 			"output":     trace.Usage.OutputTokens,
@@ -80,6 +82,43 @@ func (c *LangFuseClient) IngestTrace(trace LangFuseTrace) (*LangFuseIngestResult
 		"cost":      trace.Cost,
 		"metadata":  trace.Metadata,
 		"timestamp": trace.Timestamp,
+	}
+	if len(trace.Tags) > 0 {
+		body["tags"] = trace.Tags
+	}
+	if len(trace.Generations) > 0 {
+		gens := make([]map[string]interface{}, 0, len(trace.Generations))
+		for _, g := range trace.Generations {
+			gen := map[string]interface{}{
+				"name":   g.Name,
+				"model":  g.Model,
+				"input":  g.Input,
+				"output": g.Output,
+				"usage": map[string]int{
+					"promptTokens":     g.Usage.InputTokens,
+					"completionTokens": g.Usage.OutputTokens,
+					"totalTokens":      g.Usage.TotalTokens,
+				},
+				"cost":        g.Cost,
+				"duration_ms": g.DurationMs,
+			}
+			gens = append(gens, gen)
+		}
+		body["generations"] = gens
+	}
+	if len(trace.Observations) > 0 {
+		obs := make([]map[string]interface{}, 0, len(trace.Observations))
+		for _, o := range trace.Observations {
+			ob := map[string]interface{}{
+				"name":        o.Name,
+				"type":        o.Type,
+				"input":       o.Input,
+				"output":      o.Output,
+				"duration_ms": o.DurationMs,
+			}
+			obs = append(obs, ob)
+		}
+		body["observations"] = obs
 	}
 
 	data, err := json.Marshal(body)
@@ -247,6 +286,12 @@ func parseLangFuseTrace(raw map[string]interface{}) *LangFuseTrace {
 	if v, ok := raw["project"].(string); ok {
 		trace.Project = v
 	}
+	if v, ok := raw["userId"].(string); ok {
+		trace.UserID = v
+	}
+	if v, ok := raw["sessionId"].(string); ok {
+		trace.SessionID = v
+	}
 	if v, ok := raw["input"].(string); ok {
 		trace.Input = v
 	}
@@ -288,6 +333,77 @@ func parseLangFuseTrace(raw map[string]interface{}) *LangFuseTrace {
 			if s, ok := v.(string); ok {
 				trace.Metadata[k] = s
 			}
+		}
+	}
+	if tags, ok := raw["tags"].([]interface{}); ok {
+		for _, t := range tags {
+			if s, ok := t.(string); ok {
+				trace.Tags = append(trace.Tags, s)
+			}
+		}
+	}
+	if gens, ok := raw["generations"].([]interface{}); ok {
+		for _, g := range gens {
+			genMap, ok := g.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			gen := LangFuseGeneration{}
+			if v, ok := genMap["name"].(string); ok {
+				gen.Name = v
+			}
+			if v, ok := genMap["model"].(string); ok {
+				gen.Model = v
+			}
+			if v, ok := genMap["input"].(string); ok {
+				gen.Input = v
+			}
+			if v, ok := genMap["output"].(string); ok {
+				gen.Output = v
+			}
+			if v, ok := genMap["cost"].(float64); ok {
+				gen.Cost = v
+			}
+			if v, ok := genMap["duration_ms"].(float64); ok {
+				gen.DurationMs = int64(v)
+			}
+			if u, ok := genMap["usage"].(map[string]interface{}); ok {
+				if v, ok := u["promptTokens"].(float64); ok {
+					gen.Usage.InputTokens = int(v)
+				}
+				if v, ok := u["completionTokens"].(float64); ok {
+					gen.Usage.OutputTokens = int(v)
+				}
+				if v, ok := u["totalTokens"].(float64); ok {
+					gen.Usage.TotalTokens = int(v)
+				}
+			}
+			trace.Generations = append(trace.Generations, gen)
+		}
+	}
+	if obsList, ok := raw["observations"].([]interface{}); ok {
+		for _, o := range obsList {
+			obMap, ok := o.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			ob := LangFuseObservation{}
+			if v, ok := obMap["name"].(string); ok {
+				ob.Name = v
+			}
+			if v, ok := obMap["type"].(string); ok {
+				ob.Type = v
+			}
+			if v, ok := obMap["input"].(string); ok {
+				ob.Input = v
+			}
+			if v, ok := obMap["output"].(string); ok {
+				ob.Output = v
+			}
+			if v, ok := obMap["duration_ms"].(float64); ok {
+				ob.DurationMs = int64(v)
+			}
+			trace.Observations = append(trace.Observations, ob)
 		}
 	}
 	return trace

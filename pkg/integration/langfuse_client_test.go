@@ -332,3 +332,254 @@ func TestParseLangFuseTrace_Empty(t *testing.T) {
 		t.Error("empty map should produce zero tokens")
 	}
 }
+
+func TestLangFuseClient_IngestTrace_Spec82_FullTrace(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+
+		// Verify spec §8.2 fields
+		if body["userId"] != "agent-sandbox-7@helix" {
+			t.Errorf("expected userId agent-sandbox-7@helix, got %v", body["userId"])
+		}
+		if body["sessionId"] != "pr-1842" {
+			t.Errorf("expected sessionId pr-1842, got %v", body["sessionId"])
+		}
+
+		tags, ok := body["tags"].([]interface{})
+		if !ok || len(tags) != 2 {
+			t.Fatalf("expected 2 tags, got %v", body["tags"])
+		}
+		if tags[0] != "implementation" || tags[1] != "go" {
+			t.Errorf("expected [implementation, go], got %v", tags)
+		}
+
+		gens, ok := body["generations"].([]interface{})
+		if !ok || len(gens) != 1 {
+			t.Fatalf("expected 1 generation, got %v", body["generations"])
+		}
+		gen := gens[0].(map[string]interface{})
+		if gen["name"] != "llm-call-1" {
+			t.Errorf("expected generation name llm-call-1, got %v", gen["name"])
+		}
+		if gen["model"] != "deepseek-v4-pro" {
+			t.Errorf("expected model deepseek-v4-pro, got %v", gen["model"])
+		}
+		genUsage := gen["usage"].(map[string]interface{})
+		if genUsage["promptTokens"] != float64(45000) {
+			t.Errorf("expected promptTokens 45000, got %v", genUsage["promptTokens"])
+		}
+		if gen["cost"] != 0.1064 {
+			t.Errorf("expected cost 0.1064, got %v", gen["cost"])
+		}
+		if gen["duration_ms"] != float64(34200) {
+			t.Errorf("expected duration_ms 34200, got %v", gen["duration_ms"])
+		}
+
+		obs, ok := body["observations"].([]interface{})
+		if !ok || len(obs) != 1 {
+			t.Fatalf("expected 1 observation, got %v", body["observations"])
+		}
+		ob := obs[0].(map[string]interface{})
+		if ob["name"] != "file-write" {
+			t.Errorf("expected observation name file-write, got %v", ob["name"])
+		}
+		if ob["type"] != "SPAN" {
+			t.Errorf("expected type SPAN, got %v", ob["type"])
+		}
+		if ob["duration_ms"] != float64(120) {
+			t.Errorf("expected duration_ms 120, got %v", ob["duration_ms"])
+		}
+
+		if err := json.NewEncoder(w).Encode(map[string]string{
+			"id":     "trace-spec82",
+			"status": "accepted",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}))
+	defer server.Close()
+
+	client := NewLangFuseClient(server.URL, "pk-test", "sk-test")
+	result, err := client.IngestTrace(LangFuseTrace{
+		ID:        "trace-spec82",
+		Name:      "agent-implement",
+		Project:   "helix",
+		UserID:    "agent-sandbox-7@helix",
+		SessionID: "pr-1842",
+		Model:     "deepseek-v4-pro",
+		Tags:      []string{"implementation", "go"},
+		Generations: []LangFuseGeneration{
+			{
+				Name:       "llm-call-1",
+				Model:      "deepseek-v4-pro",
+				Input:      "...",
+				Output:     "...",
+				Usage:      LangFuseUsage{InputTokens: 45000, OutputTokens: 8200, TotalTokens: 53200},
+				Cost:       0.1064,
+				DurationMs: 34200,
+			},
+		},
+		Observations: []LangFuseObservation{
+			{
+				Name:       "file-write",
+				Type:       "SPAN",
+				Input:      "pkg/identity/provisioner.go",
+				Output:     "182 lines written",
+				DurationMs: 120,
+			},
+		},
+		Metadata: map[string]string{
+			"repo":           "totalwindupflightsystems/helix",
+			"pr":             "1842",
+			"prompt_version": "agent-identity/v3",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Status != "accepted" {
+		t.Errorf("expected status accepted, got %s", result.Status)
+	}
+}
+
+func TestParseLangFuseTrace_Spec82_FullTrace(t *testing.T) {
+	raw := map[string]interface{}{
+		"id":        "helix-pr-1842-agent-7",
+		"name":      "agent-implement",
+		"userId":    "agent-sandbox-7@helix",
+		"sessionId": "pr-1842",
+		"model":     "deepseek-v4-pro",
+		"tags":      []interface{}{"implementation", "go", "agent-identity"},
+		"generations": []interface{}{
+			map[string]interface{}{
+				"name":  "llm-call-1",
+				"model": "deepseek-v4-pro",
+				"input": "long prompt...",
+				"usage": map[string]interface{}{
+					"promptTokens":     float64(45000),
+					"completionTokens": float64(8200),
+					"totalTokens":      float64(53200),
+				},
+				"cost":        float64(0.1064),
+				"duration_ms": float64(34200),
+			},
+		},
+		"observations": []interface{}{
+			map[string]interface{}{
+				"name":        "file-write",
+				"type":        "SPAN",
+				"input":       "pkg/identity/provisioner.go",
+				"output":      "182 lines written",
+				"duration_ms": float64(120),
+			},
+		},
+		"metadata": map[string]interface{}{
+			"repo":           "totalwindupflightsystems/helix",
+			"pr":             "1842",
+			"prompt_version": "agent-identity/v3",
+			"context_window": "131072",
+		},
+	}
+
+	trace := parseLangFuseTrace(raw)
+
+	if trace.UserID != "agent-sandbox-7@helix" {
+		t.Errorf("expected UserID agent-sandbox-7@helix, got %s", trace.UserID)
+	}
+	if trace.SessionID != "pr-1842" {
+		t.Errorf("expected SessionID pr-1842, got %s", trace.SessionID)
+	}
+	if len(trace.Tags) != 3 {
+		t.Fatalf("expected 3 tags, got %d", len(trace.Tags))
+	}
+	if trace.Tags[0] != "implementation" {
+		t.Errorf("expected first tag implementation, got %s", trace.Tags[0])
+	}
+	if len(trace.Generations) != 1 {
+		t.Fatalf("expected 1 generation, got %d", len(trace.Generations))
+	}
+	gen := trace.Generations[0]
+	if gen.Name != "llm-call-1" {
+		t.Errorf("expected gen name llm-call-1, got %s", gen.Name)
+	}
+	if gen.Usage.InputTokens != 45000 {
+		t.Errorf("expected promptTokens 45000, got %d", gen.Usage.InputTokens)
+	}
+	if gen.Usage.OutputTokens != 8200 {
+		t.Errorf("expected completionTokens 8200, got %d", gen.Usage.OutputTokens)
+	}
+	if gen.Cost != 0.1064 {
+		t.Errorf("expected cost 0.1064, got %f", gen.Cost)
+	}
+	if gen.DurationMs != 34200 {
+		t.Errorf("expected duration_ms 34200, got %d", gen.DurationMs)
+	}
+	if len(trace.Observations) != 1 {
+		t.Fatalf("expected 1 observation, got %d", len(trace.Observations))
+	}
+	ob := trace.Observations[0]
+	if ob.Name != "file-write" {
+		t.Errorf("expected obs name file-write, got %s", ob.Name)
+	}
+	if ob.Type != "SPAN" {
+		t.Errorf("expected type SPAN, got %s", ob.Type)
+	}
+	if ob.DurationMs != 120 {
+		t.Errorf("expected duration_ms 120, got %d", ob.DurationMs)
+	}
+	if trace.Metadata["context_window"] != "131072" {
+		t.Errorf("expected context_window 131072, got %s", trace.Metadata["context_window"])
+	}
+}
+
+func TestParseLangFuseTrace_Spec82_EmptyArrays(t *testing.T) {
+	raw := map[string]interface{}{
+		"id":           "trace-empty",
+		"tags":         []interface{}{},
+		"generations":  []interface{}{},
+		"observations": []interface{}{},
+	}
+	trace := parseLangFuseTrace(raw)
+	if len(trace.Tags) != 0 {
+		t.Errorf("expected 0 tags, got %d", len(trace.Tags))
+	}
+	if len(trace.Generations) != 0 {
+		t.Errorf("expected 0 generations, got %d", len(trace.Generations))
+	}
+	if len(trace.Observations) != 0 {
+		t.Errorf("expected 0 observations, got %d", len(trace.Observations))
+	}
+}
+
+func TestLangFuseGeneration_Observation_Types(t *testing.T) {
+	gen := LangFuseGeneration{
+		Name:       "gen-1",
+		Model:      "test-model",
+		Usage:      LangFuseUsage{InputTokens: 100, OutputTokens: 50, TotalTokens: 150},
+		Cost:       0.01,
+		DurationMs: 5000,
+	}
+	if gen.Name != "gen-1" {
+		t.Error("generation name mismatch")
+	}
+	if gen.Usage.TotalTokens != 150 {
+		t.Error("usage mismatch")
+	}
+
+	ob := LangFuseObservation{
+		Name:       "file-read",
+		Type:       "EVENT",
+		Input:      "main.go",
+		Output:     "200 lines",
+		DurationMs: 15,
+	}
+	if ob.Type != "EVENT" {
+		t.Error("observation type mismatch")
+	}
+	if ob.DurationMs != 15 {
+		t.Error("duration mismatch")
+	}
+}

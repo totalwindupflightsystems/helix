@@ -1502,3 +1502,28 @@
 - **Logic:** Extend `pkg/retry` with a `Registry` that tracks named `RetryPolicy` instances + `CircuitBreaker` state per policy. Each `RetryPolicy` records `Attempts`, `Successes`, `Failures`, `LastError`, `LastAttemptAt` (thread-safe via mutex). `Registry.Status()` returns all stats. `Registry.RecordResult(name, err)` is called by callers (e.g. `pkg/integration` adapters) to update stats. `chaos` mode: `ChaosInjector` injects synthetic failures into a policy's `Do()` execution for a configurable duration/failure-rate. Gated on `HELIX_CHAOS_ENABLED=1` to prevent accidental prod damage. CLI: `helix retry status [--json]`, `helix retry chaos --policy NAME [--failure-rate 0.5] [--duration 60s]`, `helix retry reset`.
 - **Why now:** Spec §14.1 + §14.3 define retry policies and circuit breakers but `pkg/retry/retry.go` has no observability layer. Operators currently can't see if circuit breakers are tripping, can't simulate failures, and can't reset accumulated state. This CLI turns the silent retry layer into an inspectable component.
 - **Result:** [x] Registry tracking named retry policies with circuit breaker state (closed/open/half-open). PolicyStats with thread-safe RecordResult, rolling 60s failure window, automatic circuit opening on threshold (5 failures), half-open recovery probes. PolicyStatsSnapshot for lock-free reads. ChaosInjector gated on HELIX_CHAOS_ENABLED=1 with configurable failure-rate + duration. `helix retry <status|chaos|reset|help>` CLI with --json, --policy, --failure-rate, --duration flags. 45 tests (25 pkg/retry + 20 cmd/helix). Full suite 48/48 packages pass. Lint clean. gitreins guard PASS.
+
+# Next Batch (2026-07-05b) — LangFuse trace spec compliance, backup CLI, degradation CLI
+
+## [x] Enrich LangFuse trace types to match spec §8.2 — pkg/integration/
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §8.2 (LangFuse Trace Format)
+- **Model:** direct write — Go package, extend existing types
+- **Files:** pkg/integration/adapter_langfuse.go (MODIFIED), pkg/integration/langfuse_client.go (MODIFIED), pkg/integration/langfuse_client_test.go (MODIFIED)
+- **AC:** `go build ./... && go test ./pkg/integration/... -count=1 -cover` passes with ≥85% coverage
+- **Logic:** LangFuseTrace currently has flat fields (Input, Output, Model). Spec §8.2 defines a richer structure: trace has sessionId, tags[], generations[] (each with name, model, input, output, usage, cost, duration_ms), observations[] (each with name, type SPAN/EVENT, input, output, duration_ms). Add SessionID, Tags, Generations, Observations fields to LangFuseTrace. Add LangFuseGeneration and LangFuseObservation types. Update IngestTrace to serialize the full spec §8.2 structure. Update parseLangFuseTrace to deserialize. Existing flat fields remain for backward compat (mapped to trace-level input/output). New tests for round-trip serialization with generations + observations.
+- **Result:** [x] LangFuseTrace enriched with UserID, SessionID, Tags, Generations[], Observations[]. LangFuseGeneration (name, model, input, output, usage, cost, duration_ms) and LangFuseObservation (name, type, input, output, duration_ms) types added. IngestTrace serializes full spec §8.2 structure (tags, generations with promptTokens/completionTokens, observations with SPAN/EVENT type). parseLangFuseTrace deserializes all new fields. 5 new tests: spec §8.2 full trace ingest (verifies all fields server-side), spec §8.2 full trace parse (round-trip), empty arrays, generation/observation type smoke test. 88.7% pkg/integration coverage. Full suite 48/48 packages pass. Lint clean.
+
+## [ ] Add `helix backup` CLI subcommand — wire pkg/backup.BackupManager
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §10.1 (Backup Strategy)
+- **Model:** direct write — Go CLI wrapper
+- **Files:** cmd/helix/backup.go (NEW), cmd/helix/backup_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:** `go build ./... && go test ./cmd/helix/... -count=1 -cover` passes; `helix backup status` prints backup targets + freshness; `helix backup validate` checks last-backup timestamps; `--json` emits structured report; full suite green, lint clean, gitreins guard PASS.
+
+## [ ] Add `helix degradation` CLI subcommand — wire pkg/degradation.Registry
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §14.2 (Graceful Degradation)
+- **Model:** direct write — Go CLI wrapper
+- **Files:** cmd/helix/degradation.go (NEW), cmd/helix/degradation_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:** `go build ./... && go test ./cmd/helix/... -count=1 -cover` passes; `helix degradation list` prints all degradation policies; `helix degradation check <service> <state>` shows the applicable policy; `--json` emits structured report; full suite green, lint clean, gitreins guard PASS.
