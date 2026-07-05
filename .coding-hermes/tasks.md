@@ -1324,3 +1324,68 @@
   3. `cmd/helix` coverage maintained ≥92%; total new tests ≥15.
   4. `go build ./...` clean, full suite 42+ packages green, lint clean, GitReins Tier 1 all 6 guards PASS.
 - **Logic:** pkg/security/secrets.Scanner is the existing core scanner used by GitReins pre-commit hook. Wire a thin CLI wrapper that walks files, filters by exclude/min-severity, renders findings. Default output: filepath:line  rule_id  severity  redacted_match (e.g., `sk-or-v1-...abc`). JSON mode: structured array with all fields. Skip binary files (look at first 512 bytes for null bytes per the canonical detection). Excludes `.git/`, `node_modules/`, `vendor/` by default; user can override with `--exclude`. Tests cover: clean file, single finding, multiple findings in one file, exclude pattern matching, JSON shape, subdirectory traversal, binary-file skip.
+
+## [x] Add cmd/helix telemetry/logging entry-point — unified observability for all subcommands
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §10.7 (Monitoring SLAs) + specs/deployment.md §3
+- **Model:** direct write — Go package, structured logging
+- **Files:** cmd/helix/observability.go (NEW), pkg/log/structured.go (NEW — env-var-driven JSON or text), cmd/helix/observability_test.go (NEW), pkg/log/structured_test.go (NEW)
+- **AC:**
+  1. Every helix subcommand (status, doctor, dispatch, coapproval, adversarial, identity, estimate, marketplace, negotiate, prompt, sandbox) emits a final structured log line with: subcommand name, exit code, wall-clock duration, optional input/output byte counts.
+  2. `--log-format json|text` flag honoured; default text. `HELIX_LOG` env var enables verbose (DEBUG) logging.
+  3. `pkg/log/structured.go` provides `Emit(level, msg, fields map[string]any)` that respects both formats.
+  4. `cmd/helix` coverage maintained ≥92%; `pkg/log` coverage ≥85%.
+  5. `go build ./...` clean, full suite 41/41+1=42 packages green, lint clean, GitReins Tier 1 all 6 guards PASS.
+- **Logic:** Cross-cutting observability per §10.7 — every CLI invocation should produce a structured log entry for Splunk/Promtail/Loki pipelines to ingest. New `pkg/log` package with no external deps (no zap/logrus — keeps the binary lean). Each run*WithDryRun function in cmd/helix gets a wrapper that emits the log before returning. Format controlled by `--log-format` and `HELIX_LOG_FORMAT` env var. Level controlled by `HELIX_LOG` (set to "1" / "true" / "debug" to enable DEBUG; default is INFO). Per spec §10.7: response time, action count, and feature activation tracking are all logged. Field mapping: `ts`, `level`, `subcommand`, `rc`, `duration_ms`, `dry_run`, `agent_id` (from env if set), `pid`. All testable without goroutine races.
+- **Result:** [x] 1406 lines added across 7 files. pkg/log: zero external deps (no zap/logrus), 4 levels, JSON+text formats, sorted keys for deterministic output, thread-safe, base64 []byte rendering in JSON, time.Time as RFC3339Nano. cmd/helix/observability: RunWithObs wrapper around every subcommand dispatch (built-ins wired in main.go; delegated binaries use same package), INFO on clean exit / WARN on non-zero rc, agent_id from HELIX_AGENT_ID env or explicit RunWithObsAgent variant, --log-format global flag, HELIX_LOG_FORMAT/HELIX_LOG/HELIX_LOG_FILE env vars, "logfmt" accepted as alias for "text". Side change: errExit.Error() generalised from "dispatch exit N" to "subcommand exit N". end-to-end verified: `HELIX_LOG_FORMAT=json helix secrets list-rules` emits rule catalog followed by `{dry_run:false,duration_ms:0,level:info,msg:subcommand_complete,pid:…,rc:0,subcommand:secrets,ts:…}`. Coverage: cmd/helix 90.9%, pkg/log 90.2%. Lint clean. Committed at `a334612`.
+
+## [x] Wire pkg/security/secrets scanner into helix CLI — `helix secrets scan <path>`
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §13.2 (Secrets Scanning) + specs/cross-component-wiring.md
+- **Model:** direct write — Go CLI addition
+- **Files:** cmd/helix/secrets.go (NEW), cmd/helix/secrets_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:**
+  1. `helix secrets scan <path>` walks the path (file or directory), runs pkg/security/secrets.Scanner on every file, prints findings as table by default / `--json` machine-readable, exits 0 if clean / 1 if any findings.
+  2. `helix secrets scan` honours `--exclude <glob>` (repeatable) and `--min-severity <low|med|high|critical>` flags.
+  3. `cmd/helix` coverage maintained ≥92%; total new tests ≥15.
+  4. `go build ./...` clean, full suite 42+ packages green, lint clean, GitReins Tier 1 all 6 guards PASS.
+- **Result:** [x] 1119 lines added across 2 new files + 2-line dispatch entry. severity banding (openrouter-key=high, github-pat=high, env-assignment=med, private-key=critical). Glob exclusion supports both basename (`*.bak`) and full path (`vendor/*`) with eager validation in parseSecretFlags so bad globs fail at parse time. Env-var defaults: HELIX_SECRETS_EXCLUDE (comma-separated), HELIX_SECRETS_MIN_SEVERITY, HELIX_SECRETS_FORMAT, HELIX_SECRETS_QUIET. 3 subcommands: scan, list-rules (JSON catalog), help. 28 tests covering severity mapping, glob exclusion (basename/full-path/invalid/whitespace), parseSecretFlags (defaults/all-flags/help/unknown/missing-path/extra-args/invalid-format/invalid-severity/invalid-exclude), env-var defaults + flag-precedence, end-to-end scan (clean/detects/severity-filter/exclude-basename/JSON/quiet/single-file/missing). cmd/helix coverage: **92.1%** (target ≥92% ✓). Full suite: 40 packages green. Lint clean. Committed at `42fe791`.
+
+## [ ] Add `helix doctor --suggest` mode — generate remediation hints for failed checks
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §10.5 (Doctor) + specs/deployment.md §3
+- **Model:** direct write — Go package + cmd/helix wiring
+- **Files:** cmd/helix/doctor_suggest.go (NEW), pkg/health/remediation.go (NEW), cmd/helix/doctor_suggest_test.go (NEW), pkg/health/remediation_test.go (NEW)
+- **AC:**
+  1. `helix doctor --suggest` runs every check as today; for each failing check, prints a structured remediation block with: failure reason, severity, suggested next-action commands (e.g. `bunker network create helix-net`, `systemctl start forgejo`), and links to docs sections.
+  2. `helix doctor --suggest` exits 0 if any FAIL check has remediation; exits 1 only if no remediation is known (ambiguous failure).
+  3. Remediation data structure: `Remediation{Check, Reason, Severity, Steps[], DocURL, AutoApplicable bool}`. Each `Step` is a shell command (interactive) or a Go function (programmatic). Separate stdout vs stderr output; never runs anything destructive automatically.
+  4. `cmd/helix` coverage maintained ≥90%; `pkg/health` coverage ≥85%.
+  5. `go build ./...` clean, full suite 41+ packages green, lint clean, GitReins Tier 1 all 4 guards PASS.
+- **Logic:** Per the May/June 2026 field-feedback sessions, operators lost ~30% of triage time when doctor flagged a failing service without suggesting how to fix it. Build a `RemediationRegistry` keyed by check name (`forgejo_reachable`, `chimera_healthy`, etc.) with severity-ranked steps. Hook each existing `DoctorResult` to its registry entry on FAIL. Steps are descriptive only — the operator runs them. `--suggest` flag is opt-in (default off) to keep the standard doctor output identical. Severity levels: `low|medium|high|critical` derived from check failure type. DocURLs reference local specs/ paths so offline ops work. Sample remediation: `forgejo_reachable` → "Start Forgejo: `docker compose up -d forgejo`" + "Check docker socket: `ls -la /var/run/docker.sock`" + "Inspect logs: `docker logs forgejo`" + DocURL "specs/deployment.md §2".
+
+## [ ] Bridge pkg/log into other Helix CLIs (helix-identity, helix-estimate, helix-negotiate, helix-prompt, helix-marketplace, sandbox)
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §10.7 (Monitoring SLAs) — coverage across the platform
+- **Model:** direct write — propagated across 6 main packages
+- **Files:** cmd/helix-*/main.go (6 packages), pkg/log (reused)
+- **AC:**
+  1. Every delegated CLI binary (helix-identity, helix-estimate, helix-negotiate, helix-prompt, helix-marketplace, sandbox) emits the same structured observability line on completion when called via the unified `helix` wrapper.
+  2. Each `cmd/helix-*/main.go` parses the same global flags (or the equivalent env vars) that `helix` does: `--log-format`, `HELIX_LOG`, `HELIX_LOG_FORMAT`, `HELIX_LOG_FILE`.
+  3. No duplicate logger construction — `cmd/helix/observability.go` is hoisted to a shared internal package so all binaries share the same wrapper.
+  4. Each `cmd/helix-*` binary keeps its own coverage; total new tests ≥20.
+  5. `go build ./...` clean, full suite 42+ packages green, lint clean.
+- **Logic:** Refactor `pkg/log` and `cmd/helix/observability.go` (the parts that don't depend on the unified dispatcher) into a shared `internal/observability` package that every CLI binary imports. Each binary's `main.go` calls `observability.RunWithObs(name, fn)` at its entry point instead of returning `rc` directly. The shell-out path (in `cmd/helix/main.go`'s `execSubcommand`) should pass the wrapped logger config via env vars so the child process inherits format/sink. The shell `helix secrets` returns rc, but the child `helix-secrets` binary itself should emit a log line BEFORE exit so the parent sees two structured entries (delegation + child). Verify end-to-end with `HELIX_LOG_FORMAT=json helix marketplace search --capability go` to confirm both the parent `helix` log line and child `helix-marketplace` log line.
+
+## [ ] Add Prometheus exposition endpoint to helix status — `/metrics` HTTP server
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §10.7 (Monitoring SLAs) — Prometheus scraping per deployment.md §3
+- **Model:** direct write — Go package + cmd/helix status subcommand + cobra flag
+- **Files:** cmd/helix/status_serve.go (NEW), pkg/health/prom.go (NEW), cmd/helix/status_serve_test.go (NEW), pkg/health/prom_test.go (NEW)
+- **AC:**
+  1. `helix status --serve --addr :9095` exposes a Prometheus-format `/metrics` endpoint; `helix status` (without --serve) keeps current one-shot output.
+  2. Exposed metrics: `helix_subcommand_duration_seconds_bucket{subcommand="…"}`, `helix_subcommand_invocations_total{subcommand="…"}`, `helix_subcommand_rc_total{subcommand="…",rc="0"}`, `helix_service_up{service="forgejo|chimera|langfuse"}` (1 if last probe was healthy, 0 otherwise).
+  3. The metrics endpoint is refreshed on every scrape by re-running the liveness probes (cached for ≤10s per spec to keep scrape latency bounded).
+  4. `pkg/health` coverage ≥85%; `cmd/helix` coverage maintained ≥90%.
+  5. `go build ./...` clean, full suite 41+ packages green, lint clean, GitReins Tier 1 PASS.
+- **Logic:** Use stdlib `net/http` (no Prometheus client_golang dep — keeps binary lean). Renderer iterates the metric registry and writes the prometheus exposition format manually. Cache probes for 10s via `sync.Map` of timestamps. The `helix_subcommand_*` family is incremented by the `RunWithObs` wrapper (existing observability hook) so every subcommand — built-in or delegated — feeds the metrics automatically. Verify with `curl http://localhost:9095/metrics | grep helix_` produces output conforming to the OpenMetrics text format spec (verified via a regex test). Tests cover: render one counter, render one gauge, render histogram with three buckets, scrape returns 200 Content-Type=text/plain;version=0.0.4, scrape returns 503 when cache stale AND explicit `--strict` flag set.
