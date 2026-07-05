@@ -1391,13 +1391,13 @@
 
 # Next Batch (2026-07-04r3) — Force-merge audit, Caddyfile gen, vuln scan runner, PromptFoo CI
 
-## [ ] Implement force-merge audit package — pkg/forcemerge/
+## [x] Implement force-merge audit package — pkg/forcemerge/
 - **Priority:** high
 - **Spec:** specs/SPECIFICATION.md §5.4 (Override Protocol) + §6.6 (force-merge label review)
 - **Model:** direct write — Go package, structured audit log + Conscientiousness bridge
 - **Files:** pkg/forcemerge/audit.go (NEW), pkg/forcemerge/audit_test.go (NEW)
 - **AC:** `go build ./... && go test ./pkg/forcemerge/... -count=1 -cover` passes with >85% coverage
-- **Logic:** Implements the spec §5.4 force-merge audit trail: every PR merge that used the `force-merge` label is recorded with human identity, justification comment, merge timestamp, and the post-merge Conscientiousness review verdict. ForceMergeAuditEntry with PR URL, human identity (from Forgejo PR comment author), justification text (≥20 chars — enforced), merge SHA, timestamp, post-review status (PENDING/PASSED/FAILED). ValidateJustification rejects empty/short strings. AuditStore appends to JSONL at `~/.helix/forcemerge-audit.jsonl`. ReviewPostMerge submits the merge context to Conscientiousness and records the verdict. AuditReport aggregates by month with PENDING/PASSED/FAILED counts and the list of human identities that used force-merge (used by the monthly review). HasForceMergeLabel helper for scanning PR comment labels.
+- **Result:** [x] AuditEntry (PRURL, HumanIdentity, Justification, MergeSHA, Timestamp, Repo) + ReviewEntry (Reviewer, Status, Reason, Confidence, Timestamp). ValidateAuditEntry/ValidateReviewEntry enforce required fields (justification ≥20 chars, ≤2000 chars; confidence 0-100; RFC3339Nano timestamps). AuditStore with NewWriterStore (caller-owned io.Writer) and NewFileStore (appends JSONL at 0o600 to ~/.helix/forcemerge-audit.jsonl). ExpandPath handles "~/" prefixes. RecordAudit/RecordReview validate-then-append with thread-safe mutex. BuildAuditReport does a two-pass scan (reviews first, then audits) so JSONL record order doesn't matter; aggregates by month with Merges/PassedReviews/FailedReviews/PendingReviews per month + HumansByMonth sorted by count desc + PendingReviewCount + FailedReviewCount top-level. HasForceMergeLabel with case-insensitive whitespace-tolerant matching. FormatReport renders the operator-friendly monthly review. End-to-end smoke test writes 3 audits + 2 reviews, reopens the file, builds the report, and verifies the full aggregation. 93.2% coverage. Full suite 44/44 packages pass. Lint clean.
 
 ## [ ] Implement Caddy reverse-proxy config generator — pkg/deploy/caddy/
 - **Priority:** medium
