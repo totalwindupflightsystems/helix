@@ -5,34 +5,26 @@
 // structured log line with subcommand name, exit code, wall-clock
 // duration, optional dry_run / agent_id / pid fields.
 //
+// This file remains the cmd/helix implementation. The shared package
+// internal/observability carries the same semantics for the delegated
+// binaries (helix-identity, helix-estimate, helix-negotiate,
+// helix-prompt, helix-marketplace, sandbox). The two implementations
+// produce identical JSON output — operators get the same schema
+// regardless of which binary emitted the line.
+//
 // Configuration is driven by:
 //
 //	--log-format text|json        Global flag (also via HELIX_LOG_FORMAT env)
-//	HELIX_LOG=1                   Enable DEBUG-level entries (currently unused
-//	                              by builtins, but exposed for consistency)
+//	HELIX_LOG=1                   Enable DEBUG-level entries
 //	HELIX_LOG_FORMAT=text|json    Same as --log-format
-//	HELIX_LOG_FILE=path           Override stderr with a file (created with
-//	                              0600 permissions; append mode by default)
+//	HELIX_LOG_FILE=path           Override stderr with a file
 //
-// The logger is process-global (one *log.Logger instance in the helix
-// binary); wrapping is intentional so every Emit shares the same mutex
-// and the same format. If you need a different sink for one subcommand,
-// construct a local Logger and pass it explicitly.
-//
-// Wrapping strategy:
-//
-//	runWithObs(name, run) calls run() (a function returning errExit-or-
-//	nil). On return, it emits exactly one "subcommand_complete" entry at
-//	INFO and returns the original error so main.go can choose the right
-//	exit code.
-//
-// Tests: every run*WithDryRun in cmd/helix should be replaced by a call
-// to runWithObs so the wrapper is applied uniformly. The wrapper is
-// exported (capital R) so it can be unit-tested standalone without
-// running a real subcommand.
+// The helix binary additionally feeds pkg/health.PromStore (so the
+// /metrics endpoint sees every invocation).
 package main
 
 import (
+	"errors"
 	"io"
 	"os"
 	"strings"
@@ -111,7 +103,7 @@ func openLogFile(path string) (*os.File, error) {
 // =============================================================================
 
 // helixLog is the package-level logger set up in main(). It is nil
-// until initHelixLog() has run. runWithObs treats a nil logger as a
+// until initHelixLog() has run. RunWithObs treats a nil logger as a
 // no-op so subcommands can be invoked without observability in tests.
 //
 // Modifying helixLog after init is permitted but unusual — the helper
@@ -142,8 +134,8 @@ func initHelixLog(logFormatFlag string) (*log.Logger, error) {
 	if err != nil {
 		return nil, err
 	}
-	helixLog = l
-	return l.WithApp(AppName), nil
+	helixLog = l.WithApp(AppName)
+	return helixLog, nil
 }
 
 // =============================================================================
@@ -181,8 +173,9 @@ func runWithObsInternal(name, agentID string, run func() error) error {
 	duration := time.Since(start)
 
 	rc := 0
-	if e, ok := err.(errExit); ok {
-		rc = e.code
+	var ee errExit
+	if errors.As(err, &ee) {
+		rc = ee.code
 	}
 
 	// Record metrics on the global prom store (if installed). Skipped

@@ -22,16 +22,36 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/totalwindupflightsystems/helix/internal/observability"
 	"github.com/totalwindupflightsystems/helix/pkg/estimate"
 )
 
 func main() {
-	if err := newRootCmd().Execute(); err != nil {
+	if _, err := observability.Init(observability.Options{App: "helix-estimate"}); err != nil {
+		fmt.Fprintf(os.Stderr, "helix-estimate: failed to initialise logger: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := runRootWithObs(); err != nil {
 		// Errors that should map to specific exit codes are handled inside the
 		// command RunE via os.Exit; anything reaching here is a generic failure.
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
+}
+
+// runRootWithObs wraps cobra Execute() with the shared observability
+// wrapper so every helix-estimate invocation emits a "subcommand_complete"
+// log line. The subcommand name is captured from cobra's positional args.
+func runRootWithObs() error {
+	root := newRootCmd()
+	sub := "helix-estimate"
+	if args := root.Flags().Args(); len(args) > 0 {
+		sub = "helix-estimate:" + args[0]
+	}
+	return observability.Run(sub, func() error {
+		return root.Execute()
+	})
 }
 
 // ---------------------------------------------------------------------------

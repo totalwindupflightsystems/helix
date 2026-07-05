@@ -24,14 +24,35 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/totalwindupflightsystems/helix/internal/observability"
 	"github.com/totalwindupflightsystems/helix/pkg/prompt"
 )
 
 func main() {
-	if err := newRootCmd().Execute(); err != nil {
+	if _, err := observability.Init(observability.Options{App: "helix-prompt"}); err != nil {
+		fmt.Fprintf(os.Stderr, "helix-prompt: failed to initialise logger: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := runRootWithObs(); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
+}
+
+// runRootWithObs wraps cobra Execute() with the shared observability
+// wrapper so every helix-prompt invocation emits a
+// "subcommand_complete" log line. The subcommand name is captured from
+// cobra's positional args.
+func runRootWithObs() error {
+	root := newRootCmd()
+	sub := "helix-prompt"
+	if args := root.Flags().Args(); len(args) > 0 {
+		sub = "helix-prompt:" + args[0]
+	}
+	return observability.Run(sub, func() error {
+		return root.Execute()
+	})
 }
 
 // ---------------------------------------------------------------------------

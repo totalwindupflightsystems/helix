@@ -26,11 +26,43 @@ import (
 	"os"
 	"strings"
 
+	"github.com/totalwindupflightsystems/helix/internal/observability"
 	"github.com/totalwindupflightsystems/helix/pkg/sandbox"
 )
 
 func main() {
-	os.Exit(run(os.Args[1:]))
+	if _, err := observability.Init(observability.Options{App: "helix-sandbox"}); err != nil {
+		fmt.Fprintf(os.Stderr, "helix-sandbox: failed to initialise logger: %v\n", err)
+		os.Exit(sandbox.ExitConfigError)
+	}
+
+	os.Exit(runWithObs(os.Args[1:]))
+}
+
+// runWithObs wraps run() with the shared observability wrapper so every
+// helix-sandbox invocation emits a "subcommand_complete" log line. The
+// subcommand name is captured from the first positional arg.
+func runWithObs(args []string) int {
+	sub := "helix-sandbox"
+	if len(args) > 0 {
+		sub = "helix-sandbox:" + args[0]
+	}
+	rc := sandbox.ExitOK
+	err := observability.Run(sub, func() error {
+		rc = run(args)
+		// Convert non-zero rc to an error so the wrapper logs WARN.
+		if rc != sandbox.ExitOK {
+			return observability.NewExitError(rc, "sandbox subcommand failed")
+		}
+		return nil
+	})
+	// observability.Run only returns the wrapped error; we already
+	// captured the rc inside the closure. If Run surfaces an error
+	// (e.g. Init failed), fall back to ExitConfigError.
+	if err != nil && rc == sandbox.ExitOK {
+		return sandbox.ExitConfigError
+	}
+	return rc
 }
 
 // run parses arguments, builds the config, and executes the sandbox. It returns
