@@ -308,6 +308,18 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("retry", func() error {
 			return runRetryWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "backup":
+		// `helix backup <status|validate>` exposes the backup strategy
+		// targets and compliance checks (spec §10.1).
+		return RunWithObs("backup", func() error {
+			return runBackupWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
+	case "degradation":
+		// `helix degradation <list|check>` exposes the graceful degradation
+		// policy registry (spec §14.2).
+		return RunWithObs("degradation", func() error {
+			return runDegradationWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	}
 
 	// Delegate to subcommand binary
