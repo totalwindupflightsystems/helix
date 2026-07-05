@@ -185,6 +185,12 @@ func runWithObsInternal(name, agentID string, run func() error) error {
 		rc = e.code
 	}
 
+	// Record metrics on the global prom store (if installed). Skipped
+	// in tests that don't set a store — keeps the wrapper safe.
+	if promStore != nil {
+		promStore.RecordInvocation(name, rc, duration)
+	}
+
 	if helixLog != nil {
 		fields := map[string]any{
 			"subcommand":  name,

@@ -167,6 +167,14 @@ func (d *dispatcher) dispatch(args []string) error {
 		printVersion()
 		return nil
 	case "status":
+		// `helix status --serve [--addr :9095]` starts the long-running
+		// HTTP /metrics server. Detect the flag before delegating to the
+		// one-shot status runner.
+		if hasStatusServeFlag(rest) {
+			return RunWithObs("status-serve", func() error {
+				return runStatusServeCLI(rest, os.Stdout, os.Stderr)
+			})
+		}
 		return RunWithObs("status", func() error {
 			return runStatusWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
