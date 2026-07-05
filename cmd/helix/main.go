@@ -29,6 +29,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	bannerPkg "github.com/totalwindupflightsystems/helix/pkg/banner"
 )
 
 const (
@@ -44,10 +46,11 @@ const (
 // ---------------------------------------------------------------------------
 
 var (
-	verbose bool
-	cfgFile string
-	dryRun  bool
-	logFmt  string // --log-format flag (defaults to HELIX_LOG_FORMAT or "text")
+	verbose    bool
+	cfgFile    string
+	dryRun     bool
+	logFmt     string // --log-format flag (defaults to HELIX_LOG_FORMAT or "text")
+	showBanner bool   // --banner flag, opt-in to print the ASCII banner before subcommand
 )
 
 // ---------------------------------------------------------------------------
@@ -128,6 +131,12 @@ func (d *dispatcher) dispatch(args []string) error {
 			} else {
 				return fmt.Errorf("--log-format requires a value (text|json)")
 			}
+		case "--banner":
+			// Opt-in: print the ASCII art banner to stdout before the
+			// subcommand dispatches. Most CI scripts shouldn't see the
+			// banner (it adds noise to grep-able output), so this is
+			// explicitly NOT on by default.
+			showBanner = true
 		case "--help", "-h":
 			d.usage()
 			return nil
@@ -161,11 +170,28 @@ func (d *dispatcher) dispatch(args []string) error {
 	name := filtered[0]
 	rest := filtered[1:]
 
+	// If --banner was set, emit the ASCII art banner to stdout before
+	// dispatching the subcommand. Done here (not in the subcommand
+	// handlers) so the banner prefixes every invocation uniformly.
+	if showBanner {
+		fmt.Fprint(os.Stdout, bannerPkg.Render(Version))
+	}
+
 	// Handle built-in commands
 	switch name {
 	case "version":
 		printVersion()
 		return nil
+	case "banner":
+		// The `helix banner` subcommand itself. Delegates to the
+		// banner handler so `--compact` etc. work uniformly.
+		return RunWithObs("banner", func() error {
+			rc := runBanner(rest, os.Stdout, os.Stderr)
+			if rc != 0 {
+				return errExit{code: rc}
+			}
+			return nil
+		})
 	case "status":
 		// `helix status --serve [--addr :9095]` starts the long-running
 		// HTTP /metrics server. Detect the flag before delegating to the
