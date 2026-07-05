@@ -292,6 +292,14 @@ func (d *dispatcher) dispatch(args []string) error {
 			}
 			return nil
 		})
+	case "alerts":
+		// `helix alerts <notify|list-rules|help>` wires the
+		// pkg/health.AlertEngine + Notifier pipeline (spec §8.4).
+		// The global --dry-run flag is threaded through so operators
+		// can preview alert evaluations without dispatching.
+		return RunWithObs("alerts", func() error {
+			return runAlertsWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	}
 
 	// Delegate to subcommand binary
