@@ -1418,10 +1418,65 @@
 - **Logic:** Wraps the three spec scanners as Go subcommands with unified VulnerabilityReport output. DetectLanguage identifies the project language from file extensions (Go: go.mod, TS/JS: package.json, Python: pyproject.toml/requirements.txt). RunGo runs `govulncheck ./...` with 60s timeout. RunJS runs `npm audit --json`. RunPython runs `pip-audit --format json`. ParseGoVulnCheck / ParseNPMAudit / ParsePipAudit convert scanner-specific JSON to a unified Vulnerability struct (CVE, package, severity, fixed-in version, advisory URL). ScanResult aggregates findings by severity. ExitCodePer spec §6.6: high/critical → 1, medium → 2, low → 0. Scan walks a t.TempDir (or supplied path), invokes the right scanner via exec.CommandContext, parses stdout, returns the unified report.
 - **Result:** [x] 43 tests, 86.7% pkg/vuln coverage. Scanner struct with pluggable Executor (defaults to exec.CommandContext; SetTestExecutor disables the LookPath gate so unit tests inject canned output without resolving the real binary). Severity { low/medium/high/critical } + ParseSeverity + Weight. Language { go/js/python/unknown } + DetectLanguage with Go>Python>JS precedence (directory entries named go.mod are correctly ignored). govulncheck parser: dedupes by OSV id, derives severity from CVSS_V3 score (≥9.0 critical, ≥7.0 high, ≥4.0 medium, else low; default medium when no CVSS), pulls first fixed version + first WEB reference. npm audit parser: surfaces first advisory object per `via` list, falls back to package-level severity when `via` is a bare string. pip-audit parser: one finding per (package, advisory) pair, resolves CVE alias. Findings sorted (severity desc, package asc, CVE asc) for deterministic CLI output. Report with ScannerStatus (ok/unavailable/timeout/error), HighestSeverity, CountBySeverity, ExitCode per spec §6.6 (critical/high→1, medium→2, low/empty→0), FormatSummary. Full suite 48/48 packages green. Lint clean. gitreins guard PASS (all 6 gates). Committed at `412e00a`.
 
-## [~] Implement PromptFoo CI workflow spec + `.forgejo/workflows/prompt-eval.yml` — pkg/prompt/ci/
+## [x] Implement PromptFoo CI workflow spec + `.forgejo/workflows/prompt-eval.yml` — pkg/prompt/ci/
 - **Priority:** medium
 - **Spec:** specs/SPECIFICATION.md §7.7 (PromptFoo Regression Testing) + specs/prompt-registry-v2.md §11
 - **Model:** direct write — Go package + workflow YAML generator
 - **Files:** pkg/prompt/ci/workflow.go (NEW), pkg/prompt/ci/workflow_test.go (NEW), .forgejo/workflows/prompt-eval.yml (NEW)
 - **AC:** `go build ./... && go test ./pkg/prompt/ci/... -count=1 -cover` passes with >85% coverage; `.forgejo/workflows/prompt-eval.yml` validates against the spec §7.7 example (on-push trigger when prompts/ changes, 2-minute timeout, two providers, fail-on-error)
 - **Logic:** Workflow struct (Name, On triggers, Jobs map). TriggerRule with path filter (`prompts/**`). Job with runs-on image, steps, env vars. Step with name + run command + optional timeout. GenerateForgejoYaml produces Forgejo Actions YAML (similar syntax to GitHub Actions). Validate checks required fields (name, on.paths, jobs.<name>.steps). Defaults: image=node:20-bookworm, providers=openrouter:anthropic/claude-sonnet-4 + openrouter:google/gemini-2.5-flash-lite. The .forgejo/workflows/prompt-eval.yml is the materialized output for the helix repo itself — generated once via `go run ./cmd/prompt-ci generate`, then committed. Tests verify the generated YAML matches the spec example structure.
+- **Result:** [x] 25 tests, 98.2% pkg/prompt/ci coverage. Workflow + Trigger + TriggerRule + Job + Step schema mirrors Forgejo Actions. Validate() catches the 3 AC violations (empty name, empty trigger paths, job with zero steps) via wrapped sentinels (errors.Is). Marshal() emits deterministic YAML with leading header comment; post-marshal byte replace strips yaml.v3's `"on":` quoting so output uses the canonical `on:` spelling (regression-guarded by TestMarshal_OnKeyIsUnquoted). Parse() is the inverse of Marshal for round-trip. Defaults match spec §7.7: node:20-bookworm image, ubuntu-latest runs-on, 5 steps (checkout → setup-node → install promptfoo → run eval → upload artifact), `prompts/**` + `.promptfoo.yaml` + `.promptfoo/**` paths filter. DefaultProviders / DefaultTimeoutMinutes / DefaultImage / DefaultPromptPaths / DefaultJobName exported as constants so callers stay aligned with the canonical example. Materialized `.forgejo/workflows/prompt-eval.yml` is the spec example shape with unquoted `on:`. Full suite 49/49 packages green. Lint clean. gitreins guard PASS (all 6 gates). Committed at `356d9f4`.
+
+# Next Batch (2026-07-05) — Coordinator CLI, Audit JSON, Forgejo Webhook Handler, Helix Banner
+
+## [ ] Wire `pkg/coordinator.PRLifecycleCoordinator` to `helix pipeline run` CLI subcommand
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §1.5 (12-Step Flow) + §2.2 (Step-by-Step State Transitions) + specs/cross-component-wiring.md §6
+- **Model:** direct write — Go CLI addition
+- **Files:** cmd/helix/pipeline.go (NEW), cmd/helix/pipeline_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:**
+  1. `helix pipeline run --spec <file> --pr <n>` invokes coordinator.NewPRLifecycleCoordinator + Execute, returns LifecycleResult as JSON or human-readable table.
+  2. `helix pipeline show <state-file>` reads a PipelineStateMachine JSON dump and prints the current step + history.
+  3. `helix pipeline validate --spec <file>` dry-runs the state machine against a spec without executing downstream stages (cost / review / merge gates return stub values).
+  4. cmd/helix coverage maintained ≥85%.
+  5. `go build ./...` clean, full suite 49/49+ packages green, lint clean, GitReins Tier 1 all 6 guards PASS.
+- **Logic:** The PRLifecycleCoordinator exists (pkg/coordinator/lifecycle.go, 651 lines, 6 stages) but is never wired to a CLI. Add a `helix pipeline` subcommand tree: `run`, `show`, `validate`. Run composes the coordinator from a spec file (JSON or YAML), executes the 6 stages, and prints the LifecycleResult.Summary + per-stage elapsed. Show reads a PipelineStateMachine JSON dump (see next task) and prints current step + transition history. Validate is a dry-run that exercises the state machine's CanTransition logic only — no downstream side effects.
+
+## [ ] Add JSON marshaling + JSONL persistence for `pkg/audit.AuditEvidence` and `pkg/audit.builder.Builder`
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §6.5 (Audit Trail Requirements) + §2.2 (Step-by-Step State Transitions and Data Contracts)
+- **Model:** direct write — Go package extension
+- **Files:** pkg/audit/json.go (NEW), pkg/audit/json_test.go (NEW), pkg/audit/builder/persist.go (NEW), pkg/audit/builder/persist_test.go (NEW)
+- **AC:**
+  1. `audit.MarshalEvidence(*AuditEvidence) ([]byte, error)` and `audit.UnmarshalEvidence([]byte) (*AuditEvidence, error)` round-trip every evidence variant (ForgejoIssue, AxiomWorkItem, RalphLoop, OpenCodeSession, GitCommit, GitReinsVerdict, PRMetadata, ChimeraReview, Conscientiousness, PromptFooCI, CoApprovals, Merge).
+  2. `builder.WriteToFile(*audit.AuditEvidence, path) error` writes JSONL (one event per line if the evidence spans multiple stages; otherwise single JSON object).
+  3. `builder.ReadFromFile(path) (*audit.AuditEvidence, error)` reverses the write.
+  4. `pkg/audit` coverage maintained ≥85%; new `persist` package ≥90%.
+  5. `go build ./...` clean, full suite 49/49+ packages green, lint clean, GitReins Tier 1 all 6 guards PASS.
+- **Logic:** The audit chain (pkg/audit/chain.go) and builder (pkg/audit/builder/) both produce AuditEvidence structs but neither has JSON marshaling. Without persistence the evidence is in-memory only — operators can't audit a past run. Add explicit Marshal/Unmarshal for each evidence variant (use a `kind` discriminator field to round-trip polymorphic evidence), plus a JSONL writer that streams evidence as it accumulates. Use os.OpenFile with O_APPEND for crash-safe writes. Validate the JSON on read (defensive — refuse to load malformed audit trails).
+
+## [ ] Implement Forgejo webhook handler for PR events — pkg/webhook/
+- **Priority:** medium
+- **Spec:** specs/cross-component-wiring.md §2.1 (Forgejo → Chimera) + §6.1 (Axiom → Forgejo Work Item Lifecycle)
+- **Model:** direct write — Go package + cmd/helix CLI subcommand
+- **Files:** pkg/webhook/forgejo.go (NEW), pkg/webhook/forgejo_test.go (NEW), pkg/webhook/signature.go (NEW), pkg/webhook/signature_test.go (NEW), cmd/helix/webhook.go (NEW), cmd/helix/webhook_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:**
+  1. `pkg/webhook.VerifySignature(payload []byte, signatureHeader string, secret []byte) bool` implements Forgejo's HMAC-SHA256 webhook signature scheme.
+  2. `pkg/webhook.ParsePullRequestEvent([]byte) (*PullRequestEvent, error)` decodes the 5 event types Forgejo emits (opened, synchronize, closed, reviewed, labeled).
+  3. `helix webhook serve --addr :9090 --secret-file ~/.helix/webhook-secret` starts an HTTP server that verifies + parses incoming PR events and prints them as JSON to stdout.
+  4. `pkg/webhook` coverage ≥90%; cmd/helix coverage maintained ≥85%.
+  5. `go build ./...` clean, full suite 49/49+ packages green, lint clean, GitReins Tier 1 all 6 guards PASS.
+- **Logic:** Wire the Forgejo → Chimera/Axiom direction end-to-end. Forgejo emits webhooks on PR lifecycle events; the Helix coordinator needs to ingest these to trigger review and merge-gate stages. Implement HMAC-SHA256 signature verification (constant-time compare), polymorphic event parsing (5 event types), and a minimal HTTP server that prints parsed events as JSON. No side effects yet — this task is the ingestion half; the action half lives in a future task that wires parsed events into coordinator.Execute.
+
+## [ ] Add `helix banner` subcommand + ASCII art startup banner for the unified CLI
+- **Priority:** low
+- **Spec:** specs/SPECIFICATION.md §1.1 (Thesis) + project-onboarding UX
+- **Model:** direct write — Go package + cmd/helix CLI subcommand
+- **Files:** pkg/banner/banner.go (NEW), pkg/banner/banner_test.go (NEW), cmd/helix/banner.go (NEW), cmd/helix/banner_test.go (NEW), cmd/helix/main.go (register subcommand + opt-in flag on root)
+- **AC:**
+  1. `pkg/banner.Render()` emits a fixed 7-line ASCII art banner for "HELIX" with the version string on line 8.
+  2. `pkg/banner.RenderCompact()` emits a 3-line compact variant for tight terminals.
+  3. `helix banner` prints the full banner; `helix banner --compact` prints the compact variant; `helix --banner` is a root-flag opt-in that prints the full banner before subcommand dispatch.
+  4. `pkg/banner` coverage ≥85%; cmd/helix coverage maintained ≥85%.
+  5. `go build ./...` clean, full suite 49/49+ packages green, lint clean, GitReins Tier 1 all 6 guards PASS.
+- **Logic:** Small UX polish — when operators run `helix` interactively they should see what they're running. Render uses only ASCII (no box-drawing chars) so the output survives copy-paste into tickets and chat. The banner is opt-in via `--banner` (default off, since CI scripts shouldn't print it). Includes the version string (read from the existing Version const) so users immediately know which build they're on. Compact variant is for `helix status` / `helix doctor` output where a 7-line banner would dominate.
