@@ -1388,3 +1388,37 @@
   - `--strict` returns HTTP 503 when probes are stale
   - 30+ integration tests cover render-empty/one/three-bucket, scrape→200, scrape→405 on POST, scrape→503 with --strict + stale cache, httptest full-cycle
 - **Result:** [x] 6 files: pkg/health/prom.go (NEW, ~410L), pkg/health/prom_test.go (NEW, ~480L), cmd/helix/status_serve.go (NEW, ~380L), cmd/helix/status_serve_test.go (NEW, ~480L), cmd/helix/observability.go (+6L feed PromStore), cmd/helix/main.go (+8L dispatch --serve). 30/30 packages pass, full suite green, lint clean, golangci-lint clean, GitReins Tier 1 PASS. End-to-end: `helix status --serve` listens, `curl /metrics` returns 4 metric families with deterministic 0.0.4 text exposition.
+
+# Next Batch (2026-07-04r3) — Force-merge audit, Caddyfile gen, vuln scan runner, PromptFoo CI
+
+## [ ] Implement force-merge audit package — pkg/forcemerge/
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §5.4 (Override Protocol) + §6.6 (force-merge label review)
+- **Model:** direct write — Go package, structured audit log + Conscientiousness bridge
+- **Files:** pkg/forcemerge/audit.go (NEW), pkg/forcemerge/audit_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/forcemerge/... -count=1 -cover` passes with >85% coverage
+- **Logic:** Implements the spec §5.4 force-merge audit trail: every PR merge that used the `force-merge` label is recorded with human identity, justification comment, merge timestamp, and the post-merge Conscientiousness review verdict. ForceMergeAuditEntry with PR URL, human identity (from Forgejo PR comment author), justification text (≥20 chars — enforced), merge SHA, timestamp, post-review status (PENDING/PASSED/FAILED). ValidateJustification rejects empty/short strings. AuditStore appends to JSONL at `~/.helix/forcemerge-audit.jsonl`. ReviewPostMerge submits the merge context to Conscientiousness and records the verdict. AuditReport aggregates by month with PENDING/PASSED/FAILED counts and the list of human identities that used force-merge (used by the monthly review). HasForceMergeLabel helper for scanning PR comment labels.
+
+## [ ] Implement Caddy reverse-proxy config generator — pkg/deploy/caddy/
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §9.3 (Caddy Reverse Proxy) + specs/deployment.md
+- **Model:** direct write — Go package, Caddyfile template generation
+- **Files:** pkg/deploy/caddy/caddyfile.go (NEW), pkg/deploy/caddy/caddyfile_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/deploy/caddy/... -count=1 -cover` passes with >85% coverage
+- **Logic:** Encodes the spec §9.3 Caddyfile as Go data: 5 vhosts (helixloop.dev→forgejo, chimera.helixloop.dev→chimera, conscience.helixloop.dev→conscientiousness, hivemind.helixloop.dev→hivemind, traces.helixloop.dev→langfuse, monitor.helixloop.dev→grafana) plus optional TLS config. Each vhost: domain, backend URL, optional path rewrites, optional auth (basic_auth), optional rate limiting. Render() emits valid Caddyfile syntax. Validate() checks domain format and backend URL parses. Multi-vhost registry keyed by name (forgejo/chimera/etc.). DefaultRegistry() returns the 6 spec vhosts. FormatVhost for human-readable CLI output. FormatRegistry joins with blank lines. Integration: a `helix caddy generate` CLI subcommand that reads deploy/config.yaml and writes the Caddyfile to stdout (covered by a CLI smoke test in cmd/helix/caddy_test.go).
+
+## [ ] Implement dependency vulnerability scan runner — pkg/vuln/
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §6.6 (Dependency vulnerability scan — govulncheck / npm audit / pip-audit)
+- **Model:** direct write — Go package, language-aware scanner wrapper
+- **Files:** pkg/vuln/scanner.go (NEW), pkg/vuln/scanner_test.go (NEW)
+- **AC:** `go build ./... && go test ./pkg/vuln/... -count=1 -cover` passes with >85% coverage
+- **Logic:** Wraps the three spec scanners as Go subcommands with unified VulnerabilityReport output. DetectLanguage identifies the project language from file extensions (Go: go.mod, TS/JS: package.json, Python: pyproject.toml/requirements.txt). RunGo runs `govulncheck ./...` with 60s timeout. RunJS runs `npm audit --json`. RunPython runs `pip-audit --format json`. ParseGoVulnCheck / ParseNPMAudit / ParsePipAudit convert scanner-specific JSON to a unified Vulnerability struct (CVE, package, severity, fixed-in version, advisory URL). ScanResult aggregates findings by severity. ExitCodePer spec §6.6: high/critical → 1, medium → 2, low → 0. Scan walks a t.TempDir (or supplied path), invokes the right scanner via exec.CommandContext, parses stdout, returns the unified report.
+
+## [ ] Implement PromptFoo CI workflow spec + `.forgejo/workflows/prompt-eval.yml` — pkg/prompt/ci/
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §7.7 (PromptFoo Regression Testing) + specs/prompt-registry-v2.md §11
+- **Model:** direct write — Go package + workflow YAML generator
+- **Files:** pkg/prompt/ci/workflow.go (NEW), pkg/prompt/ci/workflow_test.go (NEW), .forgejo/workflows/prompt-eval.yml (NEW)
+- **AC:** `go build ./... && go test ./pkg/prompt/ci/... -count=1 -cover` passes with >85% coverage; `.forgejo/workflows/prompt-eval.yml` validates against the spec §7.7 example (on-push trigger when prompts/ changes, 2-minute timeout, two providers, fail-on-error)
+- **Logic:** Workflow struct (Name, On triggers, Jobs map). TriggerRule with path filter (`prompts/**`). Job with runs-on image, steps, env vars. Step with name + run command + optional timeout. GenerateForgejoYaml produces Forgejo Actions YAML (similar syntax to GitHub Actions). Validate checks required fields (name, on.paths, jobs.<name>.steps). Defaults: image=node:20-bookworm, providers=openrouter:anthropic/claude-sonnet-4 + openrouter:google/gemini-2.5-flash-lite. The .forgejo/workflows/prompt-eval.yml is the materialized output for the helix repo itself — generated once via `go run ./cmd/prompt-ci generate`, then committed. Tests verify the generated YAML matches the spec example structure.
