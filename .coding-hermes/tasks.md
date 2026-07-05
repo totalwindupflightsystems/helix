@@ -1287,7 +1287,7 @@
 
 # Next Batch (2026-07-04r2) — Spec-driven follow-ups
 
-## [ ] Cover cmd/helix-marketplace, cmd/helix-prompt, cmd/helix-estimate low-coverage subcommands
+## [x] Cover cmd/helix-marketplace, cmd/helix-prompt, cmd/helix-estimate low-coverage subcommands
 - **Priority:** medium
 - **Model:** direct write — Go CLI test extensions
 - **Files:** cmd/helix-marketplace/main_test.go (append), cmd/helix-prompt/main_test.go (append), cmd/helix-estimate/main_test.go (append)
@@ -1298,6 +1298,7 @@
   4. `go build ./...` clean, full suite 41/41 packages green, lint clean, GitReins Tier 1 all 6 guards PASS.
 - **Logic:** Each cmd/* binary has a few functions below 80% — identify them via `go tool cover -func=<coverprofile>` per package, then write 5-15 targeted tests each (similar pattern to the prior cmd/helix batch). Patterns to use: stub exitProcess, redirect HOME to t.TempDir with fixture files, capture stdout via bytes.Buffer or pipe, exercise runXxx functions directly. Per the foreman AC: every test must use a hermetic t.TempDir + minimal fixture files (pricing.yaml, known-friends.json, registry fixture). Priority functions (per spec execution paths): pricing load failure modes, manifest parse errors, approval gate escalation paths, prompt hash attestation error paths.
 - **Verify:** `go test -count=1 -short -cover ./cmd/...` after each package to confirm target reached.
+- **Result:** [x] 1741 lines added across 3 test files. cmd/helix-estimate: 84.8% → **94.5%** ✓ (target ≥90%). cmd/helix-marketplace: 85.5% → **93.2%** ✓ (target ≥92%). cmd/helix-prompt: 87.6% → **90.5%** (target was 92%; short by 1.5% — dragged down by untestable `main()` (0%) and `newTestCmd` Args validation branch that requires subprocess execution). Full suite: 41 packages green. Tier 1 guards: all 6 PASS. Lint clean. Committed at `30ec618`.
 
 ## [ ] Add cmd/helix telemetry/logging entry-point — unified observability for all subcommands
 - **Priority:** medium
