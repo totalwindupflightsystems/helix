@@ -228,6 +228,34 @@ func TestRunLifecycleWithDryRun_PropagatesError(t *testing.T) {
 	assert.Equal(t, lcExitError, extractExitCode(t, err))
 }
 
+func TestRunLifecycleWithDryRun_GlobalDryRunInjected(t *testing.T) {
+	// When globalDryRun=true and the user did not pass --dry-run, the wrapper
+	// injects --dry-run so the subcommand's own handler activates. Verify by
+	// running "stages" with globalDryRun=true and checking for [DRY RUN] text.
+	// Note: "stages" doesn't read --dry-run; "run" does. Use "run --stages cost".
+	var out bytes.Buffer
+	err := runLifecycleWithDryRun([]string{"run", "--pr-url", "http://x", "--stages", "cost"}, &out, &out, true)
+	assert.NoError(t, err)
+	assert.Contains(t, out.String(), "[DRY RUN]")
+}
+
+func TestRunLifecycleWithDryRun_UserDryRunNotDuplicated(t *testing.T) {
+	// User explicitly passed --dry-run; wrapper should not inject a second one.
+	var out bytes.Buffer
+	err := runLifecycleWithDryRun([]string{"run", "--pr-url", "http://x", "--stages", "cost", "--dry-run"}, &out, &out, true)
+	assert.NoError(t, err)
+	// Single [DRY RUN] header, not duplicated.
+	assert.Equal(t, 1, strings.Count(out.String(), "[DRY RUN]"))
+}
+
+func TestHasLifecycleDryRun(t *testing.T) {
+	assert.True(t, hasLifecycleDryRun([]string{"--dry-run"}))
+	assert.True(t, hasLifecycleDryRun([]string{"run", "--dry-run", "--repo", "r"}))
+	assert.False(t, hasLifecycleDryRun([]string{"run", "--repo", "r"}))
+	assert.False(t, hasLifecycleDryRun(nil))
+	assert.False(t, hasLifecycleDryRun([]string{}))
+}
+
 // extractExitCode returns the code embedded in errExit.
 func extractExitCode(t *testing.T, err error) int {
 	t.Helper()

@@ -403,9 +403,25 @@ func runLifecycleStages(flags lcFlags, stdout io.Writer) int {
 
 // runLifecycleWithDryRun wraps runLifecycle with the global --dry-run flag.
 func runLifecycleWithDryRun(args []string, stdout, stderr io.Writer, globalDryRun bool) error {
+	// If the global --dry-run flag was set but the user didn't already pass
+	// --dry-run to the lifecycle subcommand itself, inject it so the
+	// subcommand's own dry-run handler picks it up.
+	if globalDryRun && !hasLifecycleDryRun(args) {
+		args = append([]string{"--dry-run"}, args...)
+	}
 	rc := runLifecycle(args, stdout, stderr)
 	if rc != 0 && rc != lcExitFail {
 		return errExit{code: rc}
 	}
 	return nil
+}
+
+// hasLifecycleDryRun reports whether --dry-run appears in the args slice.
+func hasLifecycleDryRun(args []string) bool {
+	for _, a := range args {
+		if a == "--dry-run" {
+			return true
+		}
+	}
+	return false
 }
