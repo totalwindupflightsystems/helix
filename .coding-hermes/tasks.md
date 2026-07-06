@@ -1617,3 +1617,26 @@
 - **Model:** direct write — Go CLI addition, consumes existing pkg/security
 - **Files:** cmd/helix/security.go (NEW), cmd/helix/security_test.go (NEW), cmd/helix/main.go (register subcommand)
 - **Result:** [x] 23 tests. cmd/helix 83.0% coverage. Full suite 49/49 packages pass. Lint clean. gitreins guard PASS. Committed at `b39a65c`.
+
+# Next Batch (2026-07-06) — Three more CLI wires + dispatcher/sprawl
+
+## [ ] Wire `helix dispatcher` CLI — pkg/dispatcher
+- **Priority:** high (dispatcher is the platform spine per AGENTS.md wiring rule)
+- **Spec:** specs/cross-component-wiring.md §6 (Ralph Loop engine)
+- **Files:** cmd/helix/dispatch.go (NEW), cmd/helix/dispatch_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix dispatcher <status|tick|list-tasks|help>` subcommands; pkg/dispatcher loop + task decomposition exposed via cobra-style dispatcher; full suite green, lint clean, gitreins guard PASS
+- **Logic:** pkg/dispatcher already implements the Ralph Loop engine (task decomposition + agent assignment). No CLI exists. Wire `helix dispatcher` as a top-level dispatcher subcommand.
+
+## [ ] Wire `helix review` adversarial review CLI — pkg/review
+- **Priority:** medium
+- **Spec:** specs/adversarial-review.md (multi-model review + bias stripping + FP tracking)
+- **Files:** cmd/helix/review.go (NEW), cmd/helix/review_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix review <strip-bias|fp-stats|evidence> [--input <file>]`; full suite green, lint clean, gitreins guard PASS
+- **Logic:** pkg/review has BiasStripper, FalsePositiveTracker, EvidenceBundler. No CLI consumes them. Wire `helix review` as a dispatcher for all three.
+
+## [ ] Wire `helix forgejo` agent CLI — pkg/forgejo
+- **Priority:** medium
+- **Spec:** specs/cross-component-wiring.md §2 (Forgejo REST adapter)
+- **Files:** cmd/helix/forgejo.go (NEW), cmd/helix/forgejo_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix forgejo <repo-info|user-list|create-issue> --url <forgejo-url>`; full suite green, lint clean, gitreins guard PASS
+- **Logic:** pkg/forgejo wraps the REST API client. Wire a thin read-mostly CLI for operator inspection of the connected Forgejo instance.
