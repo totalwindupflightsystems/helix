@@ -353,6 +353,13 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("trust", func() error {
 			return runTrustWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "mergegate":
+		// `helix mergegate <check|checks>` runs the pre-merge validation
+		// gate composing all 5 Helix quality checks (spec adversarial-review.md,
+		// production-verification.md, trust-model.md).
+		return RunWithObs("mergegate", func() error {
+			return runMergeGateWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	}
 
 	// Delegate to subcommand binary
