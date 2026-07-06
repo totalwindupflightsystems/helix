@@ -1642,3 +1642,54 @@
 - **Result:** [x] Implemented `helix forgejo <ping|user-list|user-info|pr-list|branch-list|help>` (NEW cmd/helix/forgejo.go, ~520 lines) — thin read-mostly CLI that exposes pkg/forgejo.NewClient, GetUser, ListPRs via both REST adapter and raw HTTP for endpoints the package doesn't yet expose. Subcommands: ping (GET /api/v1/version), user-list (admin auth via env, BasicAuth), user-info (single lookup, no admin auth), pr-list (state-filtered repo PRs, sorted by number), branch-list (raw endpoint). Env-var precedence: --url > $FORGEJO_URL, --user > $FORGEJO_ADMIN_USER, --owner > $FORGEJO_OWNER, --password > $FORGEJO_ADMIN_PASSWORD. --state validated open|closed|all. Distinct exit codes: 0=OK, 1=network/auth/not-found, 2=invocation. ~30 tests in cmd/helix/forgejo_test.go using httptest.NewServer fixture (forgejoFixture). cmd/helix/main.go registers `forgejo` case + help text. Full suite + lint clean, gitreins guard PASS. Committed at next hash.
 - **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix forgejo <repo-info|user-list|create-issue> --url <forgejo-url>`; full suite green, lint clean, gitreins guard PASS
 - **Logic:** pkg/forgejo wraps the REST API client. Wire a thin read-mostly CLI for operator inspection of the connected Forgejo instance.
+
+# Next Batch (2026-07-06b) — Continued wiring per AGENTS.md wiring-first rule
+
+## [ ] Wire `helix trust` CLI — pkg/trust (check if existing, else NEW FILE)
+- **Priority:** high
+- **Spec:** specs/trust-model.md
+- **Files:** check existing cmd/helix/trust.go (already exists per prior batch); extend subcommands if needed
+- **Status:** review cmd/helix/trust.go to confirm it covers Scorer/Ledger/Replay. If so, mark done by referencing prior commit. Else create trust_cli.go with replay/breakdown/tier-list/leaderboard subcommands.
+
+## [ ] Wire `helix health` CLI — pkg/health (check if existing)
+- **Priority:** high
+- **Files:** check existing cmd/helix/health*.go. If gap, add health_cli.go with probe/list-services/list-sl/report subcommands wrapping pkg/health.Checker + SLARecorder + AlertEngine (spec §11 SLAs, §8.4 alerts).
+- **Status:** VERIFY status.go + status_serve.go coverage first.
+
+## [ ] Wire `helix audit` — pkg/audit (already wired in prior batch)
+- **Files:** already in cmd/helix/audit.go (prior 2026-07-05c batch). Confirm AuditReport rendering + 12-step emission works.
+- **Status:** [x] already done — confirm via `git log --oneline -- cmd/helix/audit.go`.
+
+## [ ] Wire `helix verify` — pkg/verify (already wired)
+- **Status:** [x] already done in prior batch. Confirm.
+
+## [ ] Wire `helix mergegate` — pkg/mergegate (already wired)
+- **Status:** [x] already done in prior batch. Confirm.
+
+## [ ] Wire `helix security` — pkg/security (already wired)
+- **Status:** [x] already done in prior batch. Confirm.
+
+## [ ] Wire remaining unwired packages — alphabetical pass
+- **Priority:** medium
+- **Candidates from AGENTS.md wiring check:**
+  - pkg/adversarial — multi-model review orchestrator
+  - pkg/api — API contract server (already wired in prior batch)
+  - pkg/banner — ASCII banner (trivial, may stay un-wired)
+  - pkg/ci — CI workflow generator (already wired)
+  - pkg/coapproval — human+agent co-approval
+  - pkg/config — config validation (already wired)
+  - pkg/coordinator — PR lifecycle coordinator (already wired)
+  - pkg/degradation — graceful degradation (already wired)
+  - pkg/deploy — deployment tooling
+  - pkg/forcemerge — force-merge operations
+  - pkg/incident — incident declarations (already wired)
+  - pkg/integration — adapter framework (already wired)
+  - pkg/log — structured logging
+  - pkg/memory — memory bank
+  - pkg/pipeline — pipeline runner (already wired)
+  - pkg/recovery — DR scenarios
+  - pkg/retry — retry policy (already wired)
+  - pkg/vuln — vulnerability scanner
+  - pkg/webhook — webhook ingestion (already wired)
+- **Approach:** investigate each unwired package's public API; if it has a meaningful inspection/operation surface that operators would reach for, write a wiring task. If the package is purely a library consumed by other packages, mark `[x]` with a one-line note that no operator CLI is needed.
+
