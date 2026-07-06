@@ -360,6 +360,24 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("mergegate", func() error {
 			return runMergeGateWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "lifecycle":
+		// `helix lifecycle <run|stages>` runs the PR lifecycle coordinator
+		// pipeline (spec cross-component-wiring.md §1-§5).
+		return RunWithObs("lifecycle", func() error {
+			return runLifecycleWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
+	case "verify":
+		// `helix verify <shadow|canary|contract>` covers production
+		// verification operations (spec production-verification.md).
+		return RunWithObs("verify", func() error {
+			return runVerifyWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
+	case "security":
+		// `helix security <check|checklist>` runs the deployment security
+		// hardening checklist (spec §6.6).
+		return RunWithObs("security", func() error {
+			return runSecurityWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	}
 
 	// Delegate to subcommand binary
