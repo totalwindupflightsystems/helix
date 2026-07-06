@@ -326,6 +326,15 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("audit", func() error {
 			return runAuditWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "identity":
+		// `helix identity rotate-keys` is a built-in — intercept before
+		// delegating to the external helix-identity binary. All other
+		// `helix identity <sub>` commands fall through to the binary.
+		if len(rest) > 0 && rest[0] == "rotate-keys" {
+			return RunWithObs("identity-rotate-keys", func() error {
+				return runRotateKeysWithDryRun(rest[1:], os.Stdout, os.Stderr, dryRun)
+			})
+		}
 	}
 
 	// Delegate to subcommand binary
