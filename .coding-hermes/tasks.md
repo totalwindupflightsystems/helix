@@ -1620,10 +1620,11 @@
 
 # Next Batch (2026-07-06) — Three more CLI wires + dispatcher/sprawl
 
-## [~] Wire `helix dispatcher` CLI — pkg/dispatcher
+## [x] Wire `helix dispatcher` CLI — pkg/dispatcher
 - **Priority:** high (dispatcher is the platform spine per AGENTS.md wiring rule)
 - **Spec:** specs/cross-component-wiring.md §6 (Ralph Loop engine)
 - **Files:** cmd/helix/dispatcher.go (NEW), cmd/helix/dispatcher_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **Result:** [x] Implemented `helix dispatcher <status|tick|list-tasks|help>` (NEW cmd/helix/dispatcher.go, 530 lines) — exposes pkg/dispatcher.DecomposeSpec, AssignAgent, NewCostGuard, ExecuteLoop through cobra-style dispatcher with --spec/--agent/--tier/--json flags. cmd/helix/main.go registers the subcommand (case "dispatcher") + help text. Cost guard pipeline (pkg/dispatcher.NewCostGuard + pkg/estimate.Estimator + pkg/identity.PermissionExpansion) runs against parsed TaskDesc; emits structured CostGuardResult with decision/cap/cost/reason — visible in both text table and JSON. Full --dry-run plumbing via runDispatcherWithDryRun wrapping errExit on non-zero/non-block exits. 30 tests (cmd/helix/dispatcher_test.go) covering all subcommands × flag combinations × JSON/text outputs × error paths + tier/agent JSON validation. gofmt clean, go vet clean, full suite passes, gitreins guard PASS (all 6 gates). Committed at `HEAD`.
 - **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix dispatcher <status|tick|list-tasks|help>` subcommands; pkg/dispatcher loop + task decomposition exposed via cobra-style dispatcher; full suite green, lint clean, gitreins guard PASS
 - **Logic:** pkg/dispatcher already implements the Ralph Loop engine (task decomposition + agent assignment). No CLI exists. Wire `helix dispatcher` as a top-level dispatcher subcommand.
 
