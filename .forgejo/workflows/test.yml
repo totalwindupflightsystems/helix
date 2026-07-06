@@ -1,0 +1,52 @@
+# .forgejo/workflows/test.yml — Core test pipeline
+# Based on specs/SPECIFICATION.md §12.5 (Test Infrastructure — CI Pipeline)
+#
+# Runs unit tests with coverage gate on every push and PR.
+# Runs integration tests with a Forgejo service container after unit passes.
+name: Test
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  unit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Run unit tests with coverage
+        run: go test ./... -short -cover -coverprofile=coverage.out
+      - name: Coverage gate (85%)
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Total coverage: ${COVERAGE}%"
+          if [ $(echo "$COVERAGE < 85" | bc -l) -eq 1 ]; then
+            echo "Coverage ${COVERAGE}% below 85% threshold"
+            exit 1
+          fi
+          echo "Coverage ${COVERAGE}% meets 85% threshold"
+
+  integration:
+    runs-on: ubuntu-24.04
+    needs: unit
+    services:
+      forgejo:
+        image: codeberg.org/forgejo/forgejo:9
+        env:
+          FORGEJO__security__INSTALL_LOCK: "true"
+          FORGEJO__server__HTTP_PORT: "3030"
+        ports:
+          - "3030:3030"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Run integration tests
+        run: go test ./pkg/integration/... -tags=integration -count=1 -timeout 120s
