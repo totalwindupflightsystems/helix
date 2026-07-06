@@ -1597,26 +1597,23 @@
 - **Logic:** pkg/mergegate/gate.go has MergeGate with Evaluate that composes 5 checks. No CLI exposes this. Wire `helix mergegate check|checks` subcommands. Input: --evidence JSON path, --contract YAML path, --trust tier string. Output: ALLOWED/BLOCKED/ESCALATED decision with per-check PASS/FAIL table.
 - **Result:** [x] 3 files: cmd/helix/mergegate.go (NEW, 345L), cmd/helix/mergegate_test.go (NEW, 24 tests), cmd/helix/main.go (+7L register subcommand). `helix mergegate check --evidence <path> --contract <path> --trust <tier>` runs all 5 MergeGate checks (evidence, consensus, contract, trust, cost). `helix mergegate checks` lists all 5 checks with descriptions. `--json` for structured output. `--skip-contract` / `--skip-cost` flags for partial runs. Exit codes: 0=ALLOWED, 1=BLOCKED/ESCALATED, 2=error. Human-readable report with emoji status icons + blockers. Full suite 48/48 pass. Lint clean.
 
-## [ ] Wire PR lifecycle coordinator CLI — `helix lifecycle run`
+## [x] Wire PR lifecycle coordinator CLI — `helix lifecycle run`
 - **Priority:** medium
 - **Spec:** specs/cross-component-wiring.md §1-§5 + specs/SPECIFICATION.md §2 (Data Flow)
 - **Model:** direct write — Go CLI addition, consumes existing pkg/coordinator
 - **Files:** cmd/helix/lifecycle.go (NEW), cmd/helix/lifecycle_test.go (NEW), cmd/helix/main.go (register subcommand)
-- **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix lifecycle run --repo <r> --pr <N> [--stages cost,review,negotiation,mergegate,shadow]` runs the PR lifecycle coordinator pipeline for the given PR, executing only the specified stages; `--dry-run` shows planned stages without executing; `--json` structured output with per-stage results; `helix lifecycle stages` lists all available stages; full suite green, lint clean, gitreins guard PASS
-- **Logic:** pkg/coordinator/lifecycle.go has PRLifecycleCoordinator with Execute. No CLI exposes this. Wire `helix lifecycle run|stages` subcommands. Input: --repo, --pr number, --stages comma-separated list. Output: per-stage PASS/FAIL/SKIP table with elapsed time, overall result.
+- **Result:** [x] 26 tests. cmd/helix 83.0% coverage. Full suite 49/49 packages pass. Lint clean. gitreins guard PASS (all 6 gates). Committed at `b39a65c`.
 
-## [ ] Wire production verification CLI — `helix verify shadow`
+## [x] Wire production verification CLI — `helix verify shadow`
 - **Priority:** medium
 - **Spec:** specs/production-verification.md §Shadow Verification + §Canary Promotion
 - **Model:** direct write — Go CLI addition, consumes existing pkg/verify
 - **Files:** cmd/helix/verify.go (NEW), cmd/helix/verify_test.go (NEW), cmd/helix/main.go (register subcommand)
-- **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix verify shadow --agent <name>` checks shadow deployment status; `helix verify canary --agent <name>` evaluates canary promotion readiness; `helix verify contract --path <yaml>` validates a behavior contract YAML; `--json` structured output; full suite green, lint clean, gitreins guard PASS
-- **Logic:** pkg/verify has ShadowDeployment, DriftDetector, CanaryPromoter, BehaviorContract. No CLI exposes these. Wire `helix verify shadow|canary|contract` subcommands. Input varies per subcommand. Output: status tables with metric comparisons and decision results.
+- **Result:** [x] 31 tests. cmd/helix 83.0% coverage. Full suite 49/49 packages pass. Lint clean. gitreins guard PASS. Committed at `b39a65c`.
 
-## [ ] Wire security hardening CLI — `helix security check`
+## [x] Wire security hardening CLI — `helix security check`
 - **Priority:** medium
 - **Spec:** specs/SPECIFICATION.md §6.6 (Security Hardening Checklist)
 - **Model:** direct write — Go CLI addition, consumes existing pkg/security
 - **Files:** cmd/helix/security.go (NEW), cmd/helix/security_test.go (NEW), cmd/helix/main.go (register subcommand)
-- **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix security check` runs the 15-item deployment hardening checklist (Forgejo password strength, TLS config, port bindings, Docker namespaces, etc.); `helix security checklist` lists all items with descriptions; `--json` structured output with per-check PASS/FAIL/NA; full suite green, lint clean, gitreins guard PASS
-- **Logic:** pkg/security/hardening.go has the checklist items and evaluator. No CLI exposes this. Wire `helix security check|checklist` subcommands. Output: table of 15 checks with status and remediation hints.
+- **Result:** [x] 23 tests. cmd/helix 83.0% coverage. Full suite 49/49 packages pass. Lint clean. gitreins guard PASS. Committed at `b39a65c`.
