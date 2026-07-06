@@ -335,6 +335,12 @@ func (d *dispatcher) dispatch(args []string) error {
 				return runRotateKeysWithDryRun(rest[1:], os.Stdout, os.Stderr, dryRun)
 			})
 		}
+	case "api":
+		// `helix api <serve|contracts|validate|services>` exposes the
+		// 5-service API contract schema (spec §15).
+		return RunWithObs("api", func() error {
+			return runAPIWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	}
 
 	// Delegate to subcommand binary
