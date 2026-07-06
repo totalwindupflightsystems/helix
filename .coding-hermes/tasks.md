@@ -1635,9 +1635,10 @@
 - **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix review <strip-bias|fp-stats|evidence> [--input <file>]`; full suite green, lint clean, gitreins guard PASS
 - **Logic:** pkg/review has BiasStripper, FalsePositiveTracker, EvidenceBundler. No CLI consumes them. Wire `helix review` as a dispatcher for all three.
 
-## [ ] Wire `helix forgejo` agent CLI — pkg/forgejo
+## [x] Wire `helix forgejo` agent CLI — pkg/forgejo
 - **Priority:** medium
 - **Spec:** specs/cross-component-wiring.md §2 (Forgejo REST adapter)
 - **Files:** cmd/helix/forgejo.go (NEW), cmd/helix/forgejo_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **Result:** [x] Implemented `helix forgejo <ping|user-list|user-info|pr-list|branch-list|help>` (NEW cmd/helix/forgejo.go, ~520 lines) — thin read-mostly CLI that exposes pkg/forgejo.NewClient, GetUser, ListPRs via both REST adapter and raw HTTP for endpoints the package doesn't yet expose. Subcommands: ping (GET /api/v1/version), user-list (admin auth via env, BasicAuth), user-info (single lookup, no admin auth), pr-list (state-filtered repo PRs, sorted by number), branch-list (raw endpoint). Env-var precedence: --url > $FORGEJO_URL, --user > $FORGEJO_ADMIN_USER, --owner > $FORGEJO_OWNER, --password > $FORGEJO_ADMIN_PASSWORD. --state validated open|closed|all. Distinct exit codes: 0=OK, 1=network/auth/not-found, 2=invocation. ~30 tests in cmd/helix/forgejo_test.go using httptest.NewServer fixture (forgejoFixture). cmd/helix/main.go registers `forgejo` case + help text. Full suite + lint clean, gitreins guard PASS. Committed at next hash.
 - **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix forgejo <repo-info|user-list|create-issue> --url <forgejo-url>`; full suite green, lint clean, gitreins guard PASS
 - **Logic:** pkg/forgejo wraps the REST API client. Wire a thin read-mostly CLI for operator inspection of the connected Forgejo instance.

@@ -353,6 +353,13 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("trust", func() error {
 			return runTrustWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "forgejo":
+		// `helix forgejo <ping|user-list|user-info|pr-list|branch-list>`
+		// exposes pkg/forgejo REST adapter for operator inspection
+		// (spec cross-component-wiring.md §2).
+		return RunWithObs("forgejo", func() error {
+			return runForgejoWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	case "review":
 		// `helix review <strip-bias|fp-stats|fp-record|evidence|custody>`
 		// exposes pkg/review BiasStripper, FPTracker, and EvidenceBundle
@@ -508,6 +515,7 @@ Subcommands:
   dispatch    Dispatch a spec to an agent for execution
   dispatcher  Inspect and drive the Ralph Loop engine (status/tick/list-tasks)
   review      Operate the adversarial review pipeline (strip-bias/fp-stats/evidence)
+  forgejo     Inspect the connected Forgejo instance (ping/user-list/pr-list/branch-list)
   coapproval  Run human+agent co-approval protocol
   adversarial Run adversarial review
   secrets     Inspect and rotate secrets
