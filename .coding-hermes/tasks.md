@@ -1588,13 +1588,14 @@
 - **Logic:** pkg/trust/snapshot.go has GetSnapshot, GetScoreBreakdown, GetTierHistory, ScoreTrendOver. No CLI consumes these. Wire `helix trust show|history|list` subcommands. Input: --ledger path to JSONL trust ledger file. Output: human-readable table (agent, score, tier, dimensions) or JSON.
 - **Result:** [x] 3 files: cmd/helix/trust.go (NEW, 320L), cmd/helix/trust_test.go (NEW, 24 tests), cmd/helix/main.go (+6L register subcommand). `helix trust show --ledger <path> --agent <name>` replays JSONL ledger → prints score, tier, 6-dimension breakdown, trend, tier history. `helix trust history --ledger <path> --agent <name>` shows tier transitions. `helix trust list --ledger <path>` lists all agents with scores. `--json` for structured output. `--days N` for recent events window. Exit codes: 0=OK, 1=no data, 2=invocation error, 3=ledger not found. 24 tests. Full suite 49/49 pass. Lint clean.
 
-## [ ] Wire merge gate CLI — `helix mergegate check`
+## [x] Wire merge gate CLI — `helix mergegate check`
 - **Priority:** high
 - **Spec:** specs/adversarial-review.md §Integration Points + specs/production-verification.md §Integration Points
 - **Model:** direct write — Go CLI addition, consumes existing pkg/mergegate
 - **Files:** cmd/helix/mergegate.go (NEW), cmd/helix/mergegate_test.go (NEW), cmd/helix/main.go (register subcommand)
 - **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix mergegate check --evidence <path> --contract <path> --trust <tier>` runs the MergeGate with the given evidence bundle, behavior contract, and trust tier, returning ALLOWED/BLOCKED/ESCALATED with per-check results; `--json` structured output; `helix mergegate checks` lists all 5 gate checks with descriptions; full suite green, lint clean, gitreins guard PASS
 - **Logic:** pkg/mergegate/gate.go has MergeGate with Evaluate that composes 5 checks. No CLI exposes this. Wire `helix mergegate check|checks` subcommands. Input: --evidence JSON path, --contract YAML path, --trust tier string. Output: ALLOWED/BLOCKED/ESCALATED decision with per-check PASS/FAIL table.
+- **Result:** [x] 3 files: cmd/helix/mergegate.go (NEW, 345L), cmd/helix/mergegate_test.go (NEW, 24 tests), cmd/helix/main.go (+7L register subcommand). `helix mergegate check --evidence <path> --contract <path> --trust <tier>` runs all 5 MergeGate checks (evidence, consensus, contract, trust, cost). `helix mergegate checks` lists all 5 checks with descriptions. `--json` for structured output. `--skip-contract` / `--skip-cost` flags for partial runs. Exit codes: 0=ALLOWED, 1=BLOCKED/ESCALATED, 2=error. Human-readable report with emoji status icons + blockers. Full suite 48/48 pass. Lint clean.
 
 ## [ ] Wire PR lifecycle coordinator CLI — `helix lifecycle run`
 - **Priority:** medium
