@@ -1628,7 +1628,7 @@
 - **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix dispatcher <status|tick|list-tasks|help>` subcommands; pkg/dispatcher loop + task decomposition exposed via cobra-style dispatcher; full suite green, lint clean, gitreins guard PASS
 - **Logic:** pkg/dispatcher already implements the Ralph Loop engine (task decomposition + agent assignment). No CLI exists. Wire `helix dispatcher` as a top-level dispatcher subcommand.
 
-## [ ] Wire `helix review` adversarial review CLI — pkg/review
+## [x] Wire `helix review` adversarial review CLI — pkg/review
 - **Priority:** medium
 - **Spec:** specs/adversarial-review.md (multi-model review + bias stripping + FP tracking)
 - **Files:** cmd/helix/review.go (NEW), cmd/helix/review_test.go (NEW), cmd/helix/main.go (register subcommand)

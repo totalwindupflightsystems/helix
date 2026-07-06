@@ -353,6 +353,13 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("trust", func() error {
 			return runTrustWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "review":
+		// `helix review <strip-bias|fp-stats|fp-record|evidence|custody>`
+		// exposes pkg/review BiasStripper, FPTracker, and EvidenceBundle
+		// subsystems (spec adversarial-review.md).
+		return RunWithObs("review", func() error {
+			return runReviewWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	case "dispatcher":
 		// `helix dispatcher <status|tick|list-tasks>` inspects and drives
 		// the pkg/dispatcher Ralph Loop engine (task decomposition,
@@ -500,6 +507,7 @@ Subcommands:
   doctor      Run platform diagnostic checks
   dispatch    Dispatch a spec to an agent for execution
   dispatcher  Inspect and drive the Ralph Loop engine (status/tick/list-tasks)
+  review      Operate the adversarial review pipeline (strip-bias/fp-stats/evidence)
   coapproval  Run human+agent co-approval protocol
   adversarial Run adversarial review
   secrets     Inspect and rotate secrets
