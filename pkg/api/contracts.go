@@ -436,6 +436,13 @@ func (v *ContractValidator) HasErrors() bool {
 	return len(v.errors) > 0
 }
 
+// ValidateFromJSON validates a JSON body against the given service endpoint.
+// It dispatches to the appropriate typed validator based on the service and
+// endpoint name. This is the public entry point for external callers (e.g., CLI).
+func (v *ContractValidator) ValidateFromJSON(svc ServiceID, endpointName string, body []byte) {
+	validateEndpointDispatch(v, svc, endpointName, body)
+}
+
 // AllEndpoints returns all endpoints across all services.
 func AllEndpoints() []EndpointDef {
 	var all []EndpointDef
