@@ -353,6 +353,14 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("trust", func() error {
 			return runTrustWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "dispatcher":
+		// `helix dispatcher <status|tick|list-tasks>` inspects and drives
+		// the pkg/dispatcher Ralph Loop engine (task decomposition,
+		// assignment, cost guard) — distinct from `helix dispatch` which
+		// runs the full spec→PR pipeline.
+		return RunWithObs("dispatcher", func() error {
+			return runDispatcherWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	case "mergegate":
 		// `helix mergegate <check|checks>` runs the pre-merge validation
 		// gate composing all 5 Helix quality checks (spec adversarial-review.md,
@@ -491,6 +499,7 @@ Subcommands:
   status      Check all component health
   doctor      Run platform diagnostic checks
   dispatch    Dispatch a spec to an agent for execution
+  dispatcher  Inspect and drive the Ralph Loop engine (status/tick/list-tasks)
   coapproval  Run human+agent co-approval protocol
   adversarial Run adversarial review
   secrets     Inspect and rotate secrets
