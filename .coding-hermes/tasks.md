@@ -1578,3 +1578,43 @@
 - **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix integration test` runs the IntegrationTestSuite from pkg/integration (skips if services unreachable — uses sync.Once skip guard); `helix integration list` lists all integration test scenarios with their target services; `--json` emits structured results; `--service <name>` filters tests by target service; full suite green, lint clean, gitreins guard PASS
 - **Logic:** pkg/integration has IntegrationTestSuite with Setup/Teardown and test scenarios, but it's only usable from `go test`. Create a CLI wrapper that can run the integration tests on-demand. Uses the sync.Once skip guard pattern (from coding-hermes Go integration testing reference) — if Forgejo/Chimera are unreachable, skip with a clear message instead of hanging. `helix integration test` runs all scenarios, `--service forgejo` runs only Forgejo-related tests. Output: table of scenario name, target service, result (PASS/FAIL/SKIP), duration. `--json` for structured output. This is the CLI equivalent of `make test-integration` but with per-service filtering and structured output for CI integration.
 - **Result:** [x] 3 files: cmd/helix/integration_cli.go (NEW, 350L), cmd/helix/integration_cli_test.go (NEW, 25 tests), cmd/helix/main.go (+6L register subcommand). `helix integration test` runs 3 scenarios (forgejo-connectivity, chimera-connectivity, full-loop) with service-reachability skip guards. Uses TCP port probe (2s timeout) to check if Forgejo/Chimera are reachable before running — if unreachable, all scenarios SKIP with clear message. `--service forgejo|chimera` filters by target service. `--json` structured output with per-scenario results, pass/fail/skip counts, reachability flag. `--timeout 30s` per-scenario deadline. `--forgejo-url`/`--chimera-url` override defaults. `helix integration list` lists all scenarios. Exit codes: 0=all pass/skip, 1=test failure, 2=invocation error. 25 tests. Full suite 50/50 pass. Lint clean.
+
+## [ ] Wire trust snapshot CLI — `helix trust show`
+- **Priority:** high
+- **Spec:** specs/trust-model.md §The Trust Ledger — "replay the ledger to verify any agent's current score"
+- **Model:** direct write — Go CLI addition, consumes existing pkg/trust
+- **Files:** cmd/helix/trust.go (NEW), cmd/helix/trust_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix trust show --ledger <path> --agent <name>` replays the JSONL trust ledger and prints the agent's current score, tier, breakdown, and recent events; `helix trust history --ledger <path> --agent <name>` shows tier transitions; `--json` structured output; `helix trust list --ledger <path>` lists all agents in the ledger with scores; full suite green, lint clean, gitreins guard PASS
+- **Logic:** pkg/trust/snapshot.go has GetSnapshot, GetScoreBreakdown, GetTierHistory, ScoreTrendOver. No CLI consumes these. Wire `helix trust show|history|list` subcommands. Input: --ledger path to JSONL trust ledger file. Output: human-readable table (agent, score, tier, dimensions) or JSON.
+
+## [ ] Wire merge gate CLI — `helix mergegate check`
+- **Priority:** high
+- **Spec:** specs/adversarial-review.md §Integration Points + specs/production-verification.md §Integration Points
+- **Model:** direct write — Go CLI addition, consumes existing pkg/mergegate
+- **Files:** cmd/helix/mergegate.go (NEW), cmd/helix/mergegate_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix mergegate check --evidence <path> --contract <path> --trust <tier>` runs the MergeGate with the given evidence bundle, behavior contract, and trust tier, returning ALLOWED/BLOCKED/ESCALATED with per-check results; `--json` structured output; `helix mergegate checks` lists all 5 gate checks with descriptions; full suite green, lint clean, gitreins guard PASS
+- **Logic:** pkg/mergegate/gate.go has MergeGate with Evaluate that composes 5 checks. No CLI exposes this. Wire `helix mergegate check|checks` subcommands. Input: --evidence JSON path, --contract YAML path, --trust tier string. Output: ALLOWED/BLOCKED/ESCALATED decision with per-check PASS/FAIL table.
+
+## [ ] Wire PR lifecycle coordinator CLI — `helix lifecycle run`
+- **Priority:** medium
+- **Spec:** specs/cross-component-wiring.md §1-§5 + specs/SPECIFICATION.md §2 (Data Flow)
+- **Model:** direct write — Go CLI addition, consumes existing pkg/coordinator
+- **Files:** cmd/helix/lifecycle.go (NEW), cmd/helix/lifecycle_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix lifecycle run --repo <r> --pr <N> [--stages cost,review,negotiation,mergegate,shadow]` runs the PR lifecycle coordinator pipeline for the given PR, executing only the specified stages; `--dry-run` shows planned stages without executing; `--json` structured output with per-stage results; `helix lifecycle stages` lists all available stages; full suite green, lint clean, gitreins guard PASS
+- **Logic:** pkg/coordinator/lifecycle.go has PRLifecycleCoordinator with Execute. No CLI exposes this. Wire `helix lifecycle run|stages` subcommands. Input: --repo, --pr number, --stages comma-separated list. Output: per-stage PASS/FAIL/SKIP table with elapsed time, overall result.
+
+## [ ] Wire production verification CLI — `helix verify shadow`
+- **Priority:** medium
+- **Spec:** specs/production-verification.md §Shadow Verification + §Canary Promotion
+- **Model:** direct write — Go CLI addition, consumes existing pkg/verify
+- **Files:** cmd/helix/verify.go (NEW), cmd/helix/verify_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix verify shadow --agent <name>` checks shadow deployment status; `helix verify canary --agent <name>` evaluates canary promotion readiness; `helix verify contract --path <yaml>` validates a behavior contract YAML; `--json` structured output; full suite green, lint clean, gitreins guard PASS
+- **Logic:** pkg/verify has ShadowDeployment, DriftDetector, CanaryPromoter, BehaviorContract. No CLI exposes these. Wire `helix verify shadow|canary|contract` subcommands. Input varies per subcommand. Output: status tables with metric comparisons and decision results.
+
+## [ ] Wire security hardening CLI — `helix security check`
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §6.6 (Security Hardening Checklist)
+- **Model:** direct write — Go CLI addition, consumes existing pkg/security
+- **Files:** cmd/helix/security.go (NEW), cmd/helix/security_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix security check` runs the 15-item deployment hardening checklist (Forgejo password strength, TLS config, port bindings, Docker namespaces, etc.); `helix security checklist` lists all items with descriptions; `--json` structured output with per-check PASS/FAIL/NA; full suite green, lint clean, gitreins guard PASS
+- **Logic:** pkg/security/hardening.go has the checklist items and evaluator. No CLI exposes this. Wire `helix security check|checklist` subcommands. Output: table of 15 checks with status and remediation hints.
