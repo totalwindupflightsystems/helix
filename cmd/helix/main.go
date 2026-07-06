@@ -341,6 +341,12 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("api", func() error {
 			return runAPIWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "integration":
+		// `helix integration <test|list>` runs integration tests
+		// with service-reachability skip guards (spec §12.3, §4).
+		return RunWithObs("integration", func() error {
+			return runIntegrationWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	}
 
 	// Delegate to subcommand binary
