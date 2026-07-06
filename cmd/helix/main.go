@@ -347,6 +347,12 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("integration", func() error {
 			return runIntegrationWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "trust":
+		// `helix trust <show|history|list>` queries the trust ledger
+		// for agent trust scores and tier history (spec trust-model.md).
+		return RunWithObs("trust", func() error {
+			return runTrustWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	}
 
 	// Delegate to subcommand binary
