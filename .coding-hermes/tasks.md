@@ -1620,10 +1620,10 @@
 
 # Next Batch (2026-07-06) — Three more CLI wires + dispatcher/sprawl
 
-## [ ] Wire `helix dispatcher` CLI — pkg/dispatcher
+## [~] Wire `helix dispatcher` CLI — pkg/dispatcher
 - **Priority:** high (dispatcher is the platform spine per AGENTS.md wiring rule)
 - **Spec:** specs/cross-component-wiring.md §6 (Ralph Loop engine)
-- **Files:** cmd/helix/dispatch.go (NEW), cmd/helix/dispatch_test.go (NEW), cmd/helix/main.go (register subcommand)
+- **Files:** cmd/helix/dispatcher.go (NEW), cmd/helix/dispatcher_test.go (NEW), cmd/helix/main.go (register subcommand)
 - **AC:** `go build ./... && go test -short -count=1 ./cmd/helix/... -cover` passes; `helix dispatcher <status|tick|list-tasks|help>` subcommands; pkg/dispatcher loop + task decomposition exposed via cobra-style dispatcher; full suite green, lint clean, gitreins guard PASS
 - **Logic:** pkg/dispatcher already implements the Ralph Loop engine (task decomposition + agent assignment). No CLI exists. Wire `helix dispatcher` as a top-level dispatcher subcommand.
 
