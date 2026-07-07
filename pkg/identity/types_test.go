@@ -3,6 +3,7 @@ package identity
 import (
 	"crypto/ed25519"
 	"errors"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -1177,6 +1178,29 @@ func TestProvisioner_Close(t *testing.T) {
 	// Close is idempotent — calling twice should also be fine.
 	if err := p.Close(); err != nil {
 		t.Errorf("second Close() = %v, want nil", err)
+	}
+	// Close must actually stop the background rate-limiter refill goroutine
+	// — leaking it would accumulate one goroutine per Provisioner instance
+	// and eventually exhaust the scheduler (proven during cmd/helix doctor
+	// audit, 2026-07-07). Verify by creating 100 provisioners and closing
+	// each; goroutine count must return to the pre-creation baseline.
+	baseline := runtime.NumGoroutine()
+	for i := 0; i < 100; i++ {
+		p, err := NewProvisioner(cfg)
+		if err != nil {
+			t.Fatalf("NewProvisioner[%d]: %v", i, err)
+		}
+		p.Close()
+	}
+	// Allow scheduler a moment to reap terminated goroutines.
+	for i := 0; i < 50; i++ {
+		if runtime.NumGoroutine() <= baseline+5 {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if got := runtime.NumGoroutine(); got > baseline+5 {
+		t.Errorf("goroutine leak: baseline=%d after=100 provisioners+%d remaining (limit baseline+5)", baseline, got)
 	}
 }
 
