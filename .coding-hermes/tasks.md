@@ -1744,3 +1744,17 @@
   - `helix memory <append|compile|run|index|list|inbox-status>` — Hivemind memory bank lifecycle (spec §8.6). `append` requires --agent --repo --event-type --summary (validates Inbox.Append contract). `run` exercises full Inbox→Compiler→PersistenceBridge→Index pipeline. 24 memory tests.
   - All three CLIs accept --json flag, --help short-circuit, follow the parseFlags(args, stdout, stderr) pattern (refactor — initial impl wrote to os.Stdout which broke test buffer capture).
 - **Result:** [x] 6 new files, 67 new tests, full suite 49 packages PASS (0 failures), gitreins guard PASS. cmd/helix package coverage 81.6%. Live verification: `/tmp/helix ci defaults`, `/tmp/helix recovery key-rotation`, `/tmp/helix memory inbox-status` all return spec-accurate output.
+
+## [x] Fix identity goroutine leak — Provisioner.Close stub
+- **Priority:** high
+- **Source:** Discovered during board-empty sweep. `go test ./pkg/identity/... -count=1` (without `-short`) hung at 60s. CI is green because it runs with `-short`, but local full-suite runs (the foreman's preferred verification path) failed.
+- **Root cause:** `pkg/identity/provisioner.go:755` `Provisioner.Close()` was a no-op stub (`return nil`). `NewProvisioner` spawns a `RateLimiter.refill` background goroutine that lived forever — every `Provisioner` instance leaked one goroutine. `TestProvisioner_Stubs` (16 sub-tests) leaked 16+ goroutines; with `Acquire()` blocking on a channel that's never refilled after the test process is busy, the test runner timed out.
+- **Fix:** (1) `pkg/identity/provisioner.go`: `Provisioner.Close()` now calls `p.limiter.Close()` to terminate the refill goroutine. (2) `pkg/identity/types_test.go`: `TestProvisioner_Close` extended with a 100-iteration goroutine-leak assertion (`runtime.NumGoroutine` must return to baseline + 5 after creating+closing 100 provisioners). Catches future regressions.
+- **Result:** [x] `go test ./pkg/identity/... -count=1` now passes in 63s (was timing out at 60s). `TestProvisioner_Stubs` passes in 35s. Full suite `go test ./... -count=1 -timeout 300s` → 49 packages pass, 0 fail. `gitreins guard` → all 6 PASS. Committed at `c45dd42`, pushed to master.
+
+## [x] Generate SKILL.md (Vercel Agent Skills compatible)
+- **Priority:** medium
+- **Source:** Per coding-hermes-cron Tick 0d. SKILL.md was missing from project root. Auto-generated.
+- **Files:** SKILL.md (NEW)
+- **Logic:** Frontmatter (name/description/author/version/language/coding-hermes/foreman) + Quick Start (build/test/lint commands) + 33-row subcommand surface table mapping every `helix <sub>` to its `cmd/helix/<name>.go` file and `pkg/<name>` package + Agent Context block (foreman name, quality gates, skills, task board, specs).
+- **Result:** [x] 101-line SKILL.md, GitReins guard passed all 6 checks. Committed at `b9869f7`, pushed to master.
