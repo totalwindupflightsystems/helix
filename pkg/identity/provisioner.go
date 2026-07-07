@@ -749,10 +749,16 @@ func (p *Provisioner) RevokeToken(agentName, adminUser, adminPassword string, to
 	}
 }
 
-// Close releases any resources held by the provisioner. In v1 it is a no-op
-// because there is no transport goroutine to stop. The method exists so
-// callers can defer it without conditional code.
-func (p *Provisioner) Close() error { return nil }
+// Close releases any resources held by the provisioner. It stops the
+// background RateLimiter refill goroutine. The method is idempotent —
+// calling it multiple times is safe (RateLimiter.Close uses sync.Once-style
+// guard via the closed-channel signal).
+func (p *Provisioner) Close() error {
+	if p.limiter != nil {
+		p.limiter.Close()
+	}
+	return nil
+}
 
 // ---------------------------------------------------------------------------
 // URL redaction helper
