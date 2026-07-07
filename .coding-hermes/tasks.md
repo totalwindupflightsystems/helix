@@ -1645,51 +1645,89 @@
 
 # Next Batch (2026-07-06b) — Continued wiring per AGENTS.md wiring-first rule
 
-## [ ] Wire `helix trust` CLI — pkg/trust (check if existing, else NEW FILE)
+## [x] Wire `helix trust` CLI — pkg/trust
 - **Priority:** high
 - **Spec:** specs/trust-model.md
-- **Files:** check existing cmd/helix/trust.go (already exists per prior batch); extend subcommands if needed
-- **Status:** review cmd/helix/trust.go to confirm it covers Scorer/Ledger/Replay. If so, mark done by referencing prior commit. Else create trust_cli.go with replay/breakdown/tier-list/leaderboard subcommands.
+- **Status:** [x] already wired in prior batch. `cmd/helix/trust.go` exposes show/history/list with `--ledger`, `--agent`, `--days`, `--json` flags. Covers Scorer/Ledger/Replay query surface.
 
-## [ ] Wire `helix health` CLI — pkg/health (check if existing)
+## [x] Wire `helix health` CLI — pkg/health
 - **Priority:** high
-- **Files:** check existing cmd/helix/health*.go. If gap, add health_cli.go with probe/list-services/list-sl/report subcommands wrapping pkg/health.Checker + SLARecorder + AlertEngine (spec §11 SLAs, §8.4 alerts).
-- **Status:** VERIFY status.go + status_serve.go coverage first.
+- **Files:** cmd/helix/status.go + cmd/helix/status_serve.go (status + serve), cmd/helix/alerts.go (alert ops), cmd/helix/observability.go (metrics).
+- **Status:** [x] wrapped across status/alerts/observability subcommands. Probe/list/report surface lives under `helix status` and `helix alerts` per the established grouping.
 
-## [ ] Wire `helix audit` — pkg/audit (already wired in prior batch)
-- **Files:** already in cmd/helix/audit.go (prior 2026-07-05c batch). Confirm AuditReport rendering + 12-step emission works.
-- **Status:** [x] already done — confirm via `git log --oneline -- cmd/helix/audit.go`.
+## [x] Wire `helix audit` — pkg/audit
+- **Files:** cmd/helix/audit.go (prior 2026-07-05c batch).
+- **Status:** [x] confirmed via `git log --oneline -- cmd/helix/audit.go`. AuditReport rendering + 12-step emission intact.
 
-## [ ] Wire `helix verify` — pkg/verify (already wired)
-- **Status:** [x] already done in prior batch. Confirm.
+## [x] Wire `helix verify` — pkg/verify
+- **Status:** [x] confirmed — `helix verify <shadow|canary|contract>` in cmd/helix/verify.go.
 
-## [ ] Wire `helix mergegate` — pkg/mergegate (already wired)
-- **Status:** [x] already done in prior batch. Confirm.
+## [x] Wire `helix mergegate` — pkg/mergegate
+- **Status:** [x] confirmed — `helix mergegate <check|checks>` in cmd/helix/mergegate.go.
 
-## [ ] Wire `helix security` — pkg/security (already wired)
-- **Status:** [x] already done in prior batch. Confirm.
+## [x] Wire `helix security` — pkg/security
+- **Status:** [x] confirmed — `helix security <check|checklist>` in cmd/helix/security.go.
 
-## [ ] Wire remaining unwired packages — alphabetical pass
+## [x] Wire `helix forcemerge` — pkg/forcemerge (NEW — 2026-07-06b)
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §5.4 + §6.6
+- **Files:** cmd/helix/forcemerge.go, cmd/helix/forcemerge_test.go
+- **Status:** [x] NEW. `helix forcemerge <record|review|report|path>` exposes the JSONL audit log writer, Conscientiousness verdict writer, monthly aggregation report, and canonical path lookup. Exits non-zero on pending or failed reviews so cron can flag action items. 17 tests.
+
+## [x] Wire `helix vuln` — pkg/vuln (NEW — 2026-07-06b)
 - **Priority:** medium
-- **Candidates from AGENTS.md wiring check:**
-  - pkg/adversarial — multi-model review orchestrator
-  - pkg/api — API contract server (already wired in prior batch)
-  - pkg/banner — ASCII banner (trivial, may stay un-wired)
-  - pkg/ci — CI workflow generator (already wired)
-  - pkg/coapproval — human+agent co-approval
-  - pkg/config — config validation (already wired)
-  - pkg/coordinator — PR lifecycle coordinator (already wired)
-  - pkg/degradation — graceful degradation (already wired)
-  - pkg/deploy — deployment tooling
-  - pkg/forcemerge — force-merge operations
-  - pkg/incident — incident declarations (already wired)
-  - pkg/integration — adapter framework (already wired)
-  - pkg/log — structured logging
-  - pkg/memory — memory bank
-  - pkg/pipeline — pipeline runner (already wired)
-  - pkg/recovery — DR scenarios
-  - pkg/retry — retry policy (already wired)
-  - pkg/vuln — vulnerability scanner
-  - pkg/webhook — webhook ingestion (already wired)
-- **Approach:** investigate each unwired package's public API; if it has a meaningful inspection/operation surface that operators would reach for, write a wiring task. If the package is purely a library consumed by other packages, mark `[x]` with a one-line note that no operator CLI is needed.
+- **Spec:** specs/SPECIFICATION.md §6.6
+- **Files:** cmd/helix/vuln.go, cmd/helix/vuln_test.go
+- **Status:** [x] NEW. `helix vuln <scan|parse|list>` wraps govulncheck/npm audit/pip-audit behind a unified operator surface. Auto-detects language, supports `--json`, `--dir`, `--language`, `--timeout`. Missing scanners report ScannerUnavailable (soft-fail convention). 19 tests.
+
+## [x] Wire `helix deploy` — pkg/deploy/* (NEW — 2026-07-06b)
+- **Priority:** medium
+- **Spec:** specs/SPECIFICATION.md §8
+- **Files:** cmd/helix/deploy.go, cmd/helix/deploy_test.go
+- **Status:** [x] NEW. `helix deploy <render|list|tiers>` exposes the three declarative registries — agent compose specs, caddy vhosts, systemd units — for operator inspection. Supports `--kind agent|caddy|systemd` filter and `--json`. 16 tests.
+
+## [x] Wire remaining unwired packages — alphabetical pass
+- **Priority:** medium
+- **Result:** All packages with operator-facing surfaces now wired. Library-only packages (no operator surface needed) confirmed and listed below.
+- **Confirmed wired (prior batches):**
+  - pkg/adversarial → cmd/helix/adversarial.go (multi-model review orchestrator)
+  - pkg/api → cmd/helix/api.go (REST adapter)
+  - pkg/audit → cmd/helix/audit.go (audit trail)
+  - pkg/backup → cmd/helix/backup.go (backup ops)
+  - pkg/banner → cmd/helix/banner.go (trivial, but wired)
+  - pkg/ci → cmd/helix/ (lifecycle hooks + integration)
+  - pkg/coapproval → cmd/helix/coapproval.go (co-approval protocol)
+  - pkg/config → cmd/helix/doctor.go + env_check.go (validation surface)
+  - pkg/coordinator → cmd/helix/lifecycle.go (PR lifecycle coordinator)
+  - pkg/degradation → cmd/helix/degradation.go
+  - pkg/deploy → cmd/helix/deploy.go (NEW 2026-07-06b)
+  - pkg/dispatcher → cmd/helix/dispatcher.go (Ralph Loop engine)
+  - pkg/doctor → cmd/helix/doctor.go
+  - pkg/forcemerge → cmd/helix/forcemerge.go (NEW 2026-07-06b)
+  - pkg/health → cmd/helix/status.go + alerts.go + observability.go
+  - pkg/incident → cmd/helix/incident.go
+  - pkg/integration → cmd/helix/integration_cli.go
+  - pkg/mergegate → cmd/helix/mergegate.go
+  - pkg/observability → cmd/helix/observability.go
+  - pkg/pipeline → cmd/helix/pipeline.go
+  - pkg/retry → cmd/helix/retry.go
+  - pkg/review → cmd/helix/review.go
+  - pkg/rotate_keys → cmd/helix/rotate_keys.go
+  - pkg/sandbox → cmd/sandbox/ (separate binary)
+  - pkg/secrets → cmd/helix/secrets.go
+  - pkg/security → cmd/helix/security.go
+  - pkg/trust → cmd/helix/trust.go
+  -pkg/verify → cmd/helix/verify.go
+  - pkg/vuln → cmd/helix/vuln.go (NEW 2026-07-06b)
+  - pkg/webhook → cmd/helix/webhook.go
+- **Library-only — no operator CLI surface needed:**
+  - pkg/log — structured logging primitives, consumed by all packages
+  - pkg/memory — in-process memory bank (not a runtime service)
+  - pkg/recovery — DR scenarios, consumed by sandbox/dispatcher
+- **Separate binary (legacy naming pattern, intentional):**
+  - pkg/identity → cmd/helix-identity/
+  - pkg/estimate → cmd/helix-estimate/
+  - pkg/negotiate → cmd/helix-negotiate/
+  - pkg/prompt → cmd/helix-prompt/
+  - pkg/marketplace → cmd/helix-marketplace/
 
