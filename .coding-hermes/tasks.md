@@ -1731,3 +1731,16 @@
   - pkg/prompt → cmd/helix-prompt/
   - pkg/marketplace → cmd/helix-marketplace/
 
+
+## [x] Wire pkg/ci, pkg/memory, pkg/recovery into unified helix CLI
+- **Priority:** high
+- **Spec:** specs/SPECIFICATION.md §12.5 (ci workflow), §8.6 (memory bank), §14.1 + §10.3 (recovery)
+- **Model:** direct write — Go cobra-style subcommands, follow existing CLI patterns (backup.go, recovery.go, etc.)
+- **Files:** cmd/helix/ci.go (NEW), cmd/helix/ci_test.go (NEW), cmd/helix/memory.go (NEW), cmd/helix/memory_test.go (NEW), cmd/helix/recovery.go (NEW), cmd/helix/recovery_test.go (NEW), cmd/helix/main.go (3 new case blocks + help banner)
+- **AC:** `go build ./... && go test ./... -count=1` passes; golangci-lint clean; gitreins guard PASS
+- **Logic:**
+  - `helix ci <render|validate|defaults>` — Forgejo Actions workflow generator/validator (spec §12.5). `render` outputs canonical YAML, `validate --path <file>` checks spec compliance (unit job mandatory, coverage gate present, integration job deps on unit, Forgejo service container), `defaults` shows spec-derived constants. 17 ci tests.
+  - `helix recovery <matrix|lookup|components|scenarios|key-rotation|scaling|severity>` — error-recovery runbook + DR scenario catalog. `lookup` supports --id FJ-NNN, --component name, --mode substring. `scaling` includes --cores/--cores-per-agent for capacity calc. 26 recovery tests.
+  - `helix memory <append|compile|run|index|list|inbox-status>` — Hivemind memory bank lifecycle (spec §8.6). `append` requires --agent --repo --event-type --summary (validates Inbox.Append contract). `run` exercises full Inbox→Compiler→PersistenceBridge→Index pipeline. 24 memory tests.
+  - All three CLIs accept --json flag, --help short-circuit, follow the parseFlags(args, stdout, stderr) pattern (refactor — initial impl wrote to os.Stdout which broke test buffer capture).
+- **Result:** [x] 6 new files, 67 new tests, full suite 49 packages PASS (0 failures), gitreins guard PASS. cmd/helix package coverage 81.6%. Live verification: `/tmp/helix ci defaults`, `/tmp/helix recovery key-rotation`, `/tmp/helix memory inbox-status` all return spec-accurate output.

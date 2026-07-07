@@ -422,6 +422,24 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("deploy", func() error {
 			return runDeployWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "ci":
+		// `helix ci <render|validate|defaults>` exposes the Forgejo Actions
+		// workflow generator/validator (spec §12.5).
+		return RunWithObs("ci", func() error {
+			return runCIWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
+	case "recovery":
+		// `helix recovery <matrix|lookup|components|scenarios|key-rotation|scaling|severity>`
+		// exposes pkg/recovery runbook registry + DR scenario catalog (spec §14.1, §10.3).
+		return RunWithObs("recovery", func() error {
+			return runRecoveryWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
+	case "memory":
+		// `helix memory <append|compile|run|index|list|inbox-status>` exposes
+		// the Hivemind memory bank lifecycle pipeline (spec §8.6).
+		return RunWithObs("memory", func() error {
+			return runMemoryWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	}
 
 	// Delegate to subcommand binary
@@ -548,6 +566,9 @@ Subcommands:
   forcemerge  Record and inspect force-merge override audit entries (spec §5.4)
   vuln        Run dependency vulnerability scanner (spec §6.6)
   deploy      Render deployment artifacts (agent compose / caddy / systemd)
+  ci          Generate/validate the Forgejo Actions test workflow (spec §12.5)
+  recovery    Browse the error-recovery runbook + DR scenario catalog (spec §14.1, §10.3)
+  memory      Operate the Hivemind memory bank lifecycle pipeline (spec §8.6)
 
 Global Flags:
   --verbose   Enable verbose output
