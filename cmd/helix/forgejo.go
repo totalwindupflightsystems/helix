@@ -431,7 +431,7 @@ func runForgejoBranchList(flags fgoFlags, stdout, stderr io.Writer) int {
 	_ = client // silence unused
 	var branches []struct {
 		Name   string `json:"name"`
-	 Commit struct {
+		Commit struct {
 			ID string `json:"id"`
 		} `json:"commit"`
 	}
