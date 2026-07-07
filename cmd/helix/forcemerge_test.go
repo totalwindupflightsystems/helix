@@ -328,8 +328,10 @@ func TestRunForceMerge_ReportMonthFilter(t *testing.T) {
 
 	var out, errOut bytes.Buffer
 	rc := runForceMerge([]string{"report", "--path", path, "--month", "2026-01", "--json"}, &out, &errOut)
-	if rc != fmExitFail {
-		// Jan entry has no review → pending → exit fail
+	// Jan entry has no review → pending → exit fmExitFail. Don't
+	// assert rc explicitly — verify via the parsed report below.
+	if rc != fmExitOK && rc != fmExitFail {
+		t.Errorf("unexpected rc=%d stderr=%s", rc, errOut.String())
 	}
 	var rep forcemerge.AuditReport
 	if err := json.Unmarshal(bytes.TrimSpace(out.Bytes()), &rep); err != nil {
