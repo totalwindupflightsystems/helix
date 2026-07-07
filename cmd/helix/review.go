@@ -313,10 +313,10 @@ func runReviewFPStats(flags revFlags, stdout, stderr io.Writer) int {
 		models := tracker.FlaggedModels()
 		sort.Strings(models)
 		type modelEntry struct {
-			Model         string `json:"model"`
-			Dismissals    int    `json:"dismissals"`
-			Flagged       bool   `json:"flagged"`
-			Removed       bool   `json:"removed"`
+			Model      string `json:"model"`
+			Dismissals int    `json:"dismissals"`
+			Flagged    bool   `json:"flagged"`
+			Removed    bool   `json:"removed"`
 		}
 		var entries []modelEntry
 		// Walk FlaggedModels + RemovedModels union (no API to enumerate all known).
@@ -337,9 +337,9 @@ func runReviewFPStats(flags revFlags, stdout, stderr io.Writer) int {
 		}
 		sort.Slice(entries, func(i, j int) bool { return entries[i].Model < entries[j].Model })
 		b, _ := json.MarshalIndent(map[string]any{
-			"models":        entries,
-			"summary":       tracker.Summary(),
-			"state_path":    flags.statePath,
+			"models":     entries,
+			"summary":    tracker.Summary(),
+			"state_path": flags.statePath,
 		}, "", "  ")
 		fmt.Fprintln(stdout, string(b))
 		return revExitOK
@@ -386,11 +386,11 @@ func runReviewFPRecord(flags revFlags, stdout, stderr io.Writer) int {
 	}
 
 	out := map[string]any{
-		"model":       flags.modelID,
-		"dismissals":  tracker.DismissalCount(flags.modelID),
-		"flagged":     tracker.IsFlagged(flags.modelID),
-		"removed":     tracker.IsRemoved(flags.modelID),
-		"state_path":  flags.statePath,
+		"model":      flags.modelID,
+		"dismissals": tracker.DismissalCount(flags.modelID),
+		"flagged":    tracker.IsFlagged(flags.modelID),
+		"removed":    tracker.IsRemoved(flags.modelID),
+		"state_path": flags.statePath,
 	}
 	if flags.jsonOut {
 		b, _ := json.MarshalIndent(out, "", "  ")
@@ -531,9 +531,9 @@ func runReviewEvidenceVerify(flags revFlags, stdout, stderr io.Writer) int {
 	}
 
 	out := map[string]any{
-		"pr_url":  bundle.PRURL,
-		"role":    flags.keyRole,
-		"valid":   ok,
+		"pr_url": bundle.PRURL,
+		"role":   flags.keyRole,
+		"valid":  ok,
 	}
 	b, _ := json.MarshalIndent(out, "", "  ")
 	fmt.Fprintln(stdout, string(b))
@@ -567,11 +567,11 @@ func runReviewCustody(flags revFlags, stdout, stderr io.Writer) int {
 	sigCount := signatureCount(bundle)
 	if flags.jsonOut {
 		type sealedFor struct {
-			PRURL          string `json:"pr_url"`
-			ReviewID       string `json:"review_id"`
-			Signed         bool   `json:"signed"`
-			Signatures     int    `json:"signatures"`
-			CustodySealed  bool   `json:"custody_sealed"`
+			PRURL         string `json:"pr_url"`
+			ReviewID      string `json:"review_id"`
+			Signed        bool   `json:"signed"`
+			Signatures    int    `json:"signatures"`
+			CustodySealed bool   `json:"custody_sealed"`
 		}
 		out := sealedFor{
 			PRURL:         bundle.PRURL,

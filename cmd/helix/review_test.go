@@ -315,7 +315,7 @@ func TestRunReview_FPStats_JSON(t *testing.T) {
 	dir := t.TempDir()
 	statePath := filepath.Join(dir, "state.json")
 	// Pre-populate state file.
-	os.WriteFile(statePath, []byte(`{"dismissals":{"gpt-4":5}}`), 0o644)
+	_ = os.WriteFile(statePath, []byte(`{"dismissals":{"gpt-4":5}}`), 0o644)
 	// Run fp-record once to make the tracker load + persist the state, so the
 	// FPTracker has flagged/removed entries that fp-stats can enumerate.
 	var so, se bytes.Buffer
@@ -644,7 +644,7 @@ func TestIsValidSignerRole(t *testing.T) {
 
 func TestReadPrivateKeyFile_BadLength(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "bad.key")
-	os.WriteFile(path, []byte("short"), 0o600)
+	_ = os.WriteFile(path, []byte("short"), 0o600)
 	_, err := readPrivateKeyFile(path)
 	if err == nil {
 		t.Fatal("expected error for short key file")
@@ -653,7 +653,7 @@ func TestReadPrivateKeyFile_BadLength(t *testing.T) {
 
 func TestReadPublicKeyFile_BadLength(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "bad.pub")
-	os.WriteFile(path, []byte("xx"), 0o644)
+	_ = os.WriteFile(path, []byte("xx"), 0o644)
 	_, err := readPublicKeyFile(path)
 	if err == nil {
 		t.Fatal("expected error for short pub key file")
