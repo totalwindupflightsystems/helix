@@ -400,6 +400,28 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("security", func() error {
 			return runSecurityWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "forcemerge":
+		// `helix forcemerge <record|review|report|path>` records and
+		// inspects force-merge override audit entries (spec SPECIFICATION.md
+		// §5.4 + §6.6). The override defeats the co-approval invariant so
+		// every use must be logged with a justification and reviewed.
+		return RunWithObs("forcemerge", func() error {
+			return runForceMergeWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
+	case "vuln":
+		// `helix vuln <scan|parse|list>` runs the dependency vulnerability
+		// scanner (spec SPECIFICATION.md §6.6). Wraps govulncheck, npm
+		// audit, and pip-audit behind a unified operator surface.
+		return RunWithObs("vuln", func() error {
+			return runVulnWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
+	case "deploy":
+		// `helix deploy <render|list|tiers>` exposes the declarative
+		// deployment registries (agent compose / caddy vhosts / systemd
+		// units) for operator inspection (spec §8).
+		return RunWithObs("deploy", func() error {
+			return runDeployWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	}
 
 	// Delegate to subcommand binary
@@ -523,6 +545,9 @@ Subcommands:
   webhook     Run Forgejo webhook ingestion server
   incident    Declare, list, and resolve incidents (spec §6.7)
   config      Validate configuration (env-check)
+  forcemerge  Record and inspect force-merge override audit entries (spec §5.4)
+  vuln        Run dependency vulnerability scanner (spec §6.6)
+  deploy      Render deployment artifacts (agent compose / caddy / systemd)
 
 Global Flags:
   --verbose   Enable verbose output
