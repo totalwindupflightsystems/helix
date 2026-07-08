@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helix — First-Class Citizens Across the SDLC</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --orange: #d2991d;
+    --red: #f85149;
+    --purple: #a371f7;
+    --cyan: #39d2c0;
+    --pink: #db61a2;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; line-height: 1.6; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+  header { text-align: center; padding: 3rem 0 2rem; border-bottom: 1px solid var(--border); margin-bottom: 2rem; }
+  header h1 { font-size: 2.2rem; color: var(--accent); margin-bottom: 0.5rem; }
+  header p { color: var(--muted); font-size: 1.1rem; max-width: 700px; margin: 0 auto; }
+
+  .stats { display: flex; gap: 1rem; justify-content: center; margin: 2rem 0; flex-wrap: wrap; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.5rem; text-align: center; min-width: 120px; }
+  .stat .num { font-size: 2rem; font-weight: 700; color: var(--accent); }
+  .stat .label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .legend { display: flex; gap: 1rem; justify-content: center; margin: 1.5rem 0; flex-wrap: wrap; font-size: 0.85rem; }
+  .legend span { padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 600; }
+  .l-collab { background: rgba(88,166,255,0.15); color: var(--accent); }
+  .l-gate { background: rgba(248,81,73,0.15); color: var(--red); }
+  .l-handoff { background: rgba(210,153,29,0.15); color: var(--orange); }
+  .l-negotiate { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .l-observe { background: rgba(57,210,192,0.15); color: var(--cyan); }
+  .l-learn { background: rgba(219,97,162,0.15); color: var(--pink); }
+
+  .phase-section { margin: 2.5rem 0; }
+  .phase-header { border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: baseline; }
+  .phase-header h2 { color: var(--accent); font-size: 1.5rem; }
+  .phase-header .counter { color: var(--muted); font-size: 0.85rem; }
+
+  .interaction-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; margin-bottom: 1rem; }
+  .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+  .card-title { font-size: 1.1rem; font-weight: 600; }
+  .card-id { color: var(--muted); font-size: 0.8rem; }
+  .badge { font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 4px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .dual-view { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  .view-box { border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+  .view-box h4 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+  .view-box ul { list-style: none; font-size: 0.9rem; }
+  .view-box li { padding: 0.3rem 0; border-bottom: 1px solid rgba(48,54,61,0.5); }
+  .view-box li:last-child { border-bottom: none; }
+  .human-view h4 { color: var(--green); }
+  .agent-view h4 { color: var(--purple); }
+
+  .helix-box { background: rgba(88,166,255,0.05); border: 1px solid rgba(88,166,255,0.3); border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+  .helix-box h4 { color: var(--accent); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+  .helix-box p { font-size: 0.9rem; margin: 0; }
+
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 0.3rem; }
+  .status-built { background: var(--green); }
+  .status-partial { background: var(--orange); }
+  .status-needed { background: var(--red); }
+
+  footer { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--border); margin-top: 3rem; }
+  .built-by { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>Helix — First-Class Citizens Across the SDLC</h1>
+  <p>Every interaction point in the software development lifecycle serves TWO users: the human (change management — understanding risk, blast radius, intent, tradeoffs) and the AI agent (verification — criteria, evidence bundles, structured assertions). Helix provides both interfaces from the same event.</p>
+  <div class="stats">
+    <div class="stat"><div class="num">52</div><div class="label">Interaction Points</div></div>
+    <div class="stat"><div class="num">12</div><div class="label">SDLC Phases</div></div>
+    <div class="stat"><div class="num">6</div><div class="label">Interaction Types</div></div>
+    <div class="stat"><div class="num">34</div><div class="label">Helix Packages</div></div>
+  </div>
+  <div class="legend">
+    <span class="l-collab">COLLABORATION</span>
+    <span class="l-gate">GATE</span>
+    <span class="l-handoff">HANDOFF</span>
+    <span class="l-negotiate">NEGOTIATION</span>
+    <span class="l-observe">OBSERVATION</span>
+    <span class="l-learn">LEARNING</span>
+  </div>
+</header>
+
+<!-- PHASE 1-2 -->
+<div class="phase-section">
+<div class="phase-header"><h2>Phase 1-2: Ideation & Specification</h2><span class="counter">6 points</span></div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-collab">COLLABORATION</span>
+      <span class="badge" style="background:rgba(63,185,80,0.15);color:var(--green)">human ↔ agent</span>
+    </div>
+    <span class="card-id">1.1 — Idea Capture</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Captures idea as text, voice, or sketch in natural language</li>
+        <li>Wants to know: is this aligned with roadmap? What's the rough cost?</li>
+        <li>Needs: links to related specs, prior art in codebase, similar rejected ideas</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Can surface ideas from pattern detection: incidents, codebase drift, marketplace trends</li>
+        <li>Provides: evidence bundle linking idea to concrete data (not gut feeling)</li>
+        <li>Validates: does this conflict with existing ADRs? What's the blast radius?</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Shared <code>Idea</code> entity with attribution, evidence links, promotion path to Specification. Agents and humans submit ideas through the same interface. Adversarial validation via Chimera challenges every idea before it reaches the roadmap. Cost estimator runs against every candidate. Neither human nor agent can bypass the validation gate.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-collab">COLLABORATION</span>
+      <span class="badge" style="background:rgba(163,113,247,0.15);color:var(--purple)">agent ↔ agent</span>
+    </div>
+    <span class="card-id">1.2 — Concept Validation</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees adversarial assessment: "3 agents flagged architectural risk, 1 identified a missing edge case from incident DB"</li>
+        <li>Makes the final call — agents inform, human decides</li>
+        <li>Sees: risk score, cost estimate, architectural fit, precedents</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>@assumption-buster enumerates and challenges every implicit assumption</li>
+        <li>@redteam maps attack surface from incident database history</li>
+        <li>@cost-auditor estimates resource budget against agent tier caps</li>
+        <li>Adversarial findings must cite evidence (line refs, incident IDs, benchmark data)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Chimera formation for concept validation. Multi-model adversary panel with evidence-bundle output. Human sees structured risk/reward dashboard. Agent sees verifiable claims to test. Validation is a gate — concept cannot advance without passing adversarial review.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-negotiate">NEGOTIATION</span>
+      <span class="badge" style="background:rgba(63,185,80,0.15);color:var(--green)">human ↔ agent</span>
+    </div>
+    <span class="card-id">1.3 — Prioritization & Roadmapping</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees ranked list of validated ideas with cost, risk, and evidence scores</li>
+        <li>Human has final priority — but must justify overrides ("I'm deprioritizing this despite low risk because of market timing")</li>
+        <li>Override justification is recorded — feeds future agent recommendations</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Agents advocate for ideas with risk/reward evidence and historical success patterns</li>
+        <li>Cost estimator tags each idea with budget impact across agent tiers</li>
+        <li>Marketplace data enriches prioritization: "agents tagged 'database' have 92% success rate on migrations"</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Structured prioritization queue visible to both humans and agents. Agents rank by evidence; humans rank by strategy. Disagreement is surfaced — human overrides are documented but not blocked. Over time, prediction accuracy of both human and agent rankings feeds trust scores.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-collab">COLLABORATION</span>
+      <span class="badge" style="background:rgba(63,185,80,0.15);color:var(--green)">human ↔ agent</span>
+    </div>
+    <span class="card-id">2.1 — Spec Authoring</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Provides intent, constraints, and acceptance criteria in natural language</li>
+        <li>Reviews agent-generated spec sections — approves the INTENT, not the details</li>
+        <li>Sees: completeness score, coverage gaps, contradiction flags</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Expands human intent into exhaustive spec: edge cases, failure modes, consistency checks</li>
+        <li>Another agent challenges completeness — adversarial spec review</li>
+        <li>Output: machine-verifiable ACs with binary pass/fail criteria</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Spec co-authoring with adversarial annotation. Human authors intent; agent authors detail; adversary agent challenges. Neither entity can write a spec alone — collaboration is enforced. Spec is immutable once approved; changes require re-review.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-collab">COLLABORATION</span>
+      <span class="badge l-gate" style="margin-left:0.3rem">GATE</span>
+    </div>
+    <span class="card-id">2.2 — Architecture Decision Records</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Reviews architectural proposals with tradeoff analysis, alternatives considered, predicted impact</li>
+        <li>Sees ADR lineage: how does this decision relate to prior decisions?</li>
+        <li>Approves or rejects with structured rationale</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Can author ADRs using pattern detection from marketplace and codebase</li>
+        <li>Verifies ADR consistency against existing architecture and incident history</li>
+        <li>Cross-references: "this ADR contradicts decision X from 3 months ago — resolve"</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Agent-authored ADRs with multi-model review. All ADRs evidence-linked to specs and incidents. Immutable once approved. Contradictions are surfaced automatically. Both human and agent ADRs follow the same template and review process.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-gate">GATE</span>
+      <span class="badge" style="background:rgba(57,210,192,0.15);color:var(--cyan)">agent ↔ system</span>
+    </div>
+    <span class="card-id">2.4 — API Contract Definition</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Approves API surface changes with consumer impact analysis</li>
+        <li>Sees: which consumers break? what's the migration path?</li>
+        <li>Human approves breaking changes — agents cannot authorize API breaks</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Generates OpenAPI/protobuf/GraphQL schemas with exhaustive validation</li>
+        <li>Another agent verifies consistency, checks for breaking changes</li>
+        <li>Contract is signed (ED25519) and immutable before implementation</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Multi-model contract validation. One agent generates; another verifies. Contract is cryptographically signed before implementation begins. Breaking change analysis runs against all registered consumers. Contracts are version-tracked with prompt provenance.</p>
+  </div>
+</div>
+</div>
+
+<!-- PHASE 3-4 -->
+<div class="phase-section">
+<div class="phase-header"><h2>Phase 3-4: Task Decomposition & Implementation</h2><span class="counter">5 points</span></div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-handoff">HANDOFF</span>
+      <span class="badge" style="background:rgba(163,113,247,0.15);color:var(--purple)">agent ↔ agent</span>
+    </div>
+    <span class="card-id">3.1 — Work Breakdown</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Reviews and approves task decomposition before assignment</li>
+        <li>Sees dependency graph, risk assignments, estimated timelines</li>
+        <li>Can veto task assignments if trust tier or domain expertise mismatch detected</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Decomposes spec into atomic, verifiable tasks with binary ACs</li>
+        <li>Each task: estimated cost, required trust tier, dependency links, linked spec section</li>
+        <li>Tasks are traceable back to spec sections for provenance</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Agent-driven decomposition via <code>pkg/dispatcher</code> with human approval gate. Tasks are atomic, verifiable, and traceable. Neither humans nor agents can assign work that exceeds trust tier or budget. The same task structure is used whether the assignee is human or agent.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-handoff">HANDOFF</span>
+      <span class="badge" style="background:rgba(57,210,192,0.15);color:var(--cyan)">agent ↔ system</span>
+    </div>
+    <span class="card-id">3.2 — Agent Assignment</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees assignment recommendations with trust scores, cost estimates, domain history</li>
+        <li>Can override — but overrides are tracked and feed trust calibration</li>
+        <li>Sees workload: which agents are busy, which are idle, bottleneck alerts</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Dispatcher matches task requirements to agent profiles automatically</li>
+        <li>Matches on: trust tier, domain expertise, cost profile, historical success rate</li>
+        <li>Agents cannot self-assign tasks above their tier</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Dispatcher (<code>pkg/dispatcher</code>) with automatic matching. Human override UI with audit trail. Same assignment logic for human and agent tasks — the dispatcher doesn't distinguish by entity type, only by trust tier and domain capability.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-handoff">HANDOFF</span>
+      <span class="badge" style="background:rgba(57,210,192,0.15);color:var(--cyan)">system ↔ agent</span>
+    </div>
+    <span class="card-id">4.1 — Code Generation</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Not involved during generation — reviews only the final PR</li>
+        <li>Sees progress indicators: "agent X is 60% through task Y"</li>
+        <li>Receives notification when PR is ready for review</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Works in isolated sandboxed worktree — no cross-task contamination</li>
+        <li>Has context package: relevant specs, prior PRs, architectural constraints</li>
+        <li>Self-verification enforced: cannot mark complete until GitReins Tier 1 passes</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Bubblewrap-sandboxed worktrees per agent per task (<code>pkg/sandbox</code>). Context assembly from spec links and codebase indexing. GitReins pre-commit enforcement at agent level. Full session traceability. Same sandbox for human and agent development — no special paths.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-collab">COLLABORATION</span>
+      <span class="badge" style="background:rgba(63,185,80,0.15);color:var(--green)">agent ↔ human</span>
+    </div>
+    <span class="card-id">4.2 — In-Progress Collaboration</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Receives structured clarification requests — not "help" but "spec §3.2 says X but codebase convention is Y, which takes priority?"</li>
+        <li>Can respond async — agent blocks until resolution received</li>
+        <li>Resolution is linked to task and spec for audit</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Files <code>CLARIFICATION_NEEDED</code> with specific question, context, and blocked progress</li>
+        <li>Another agent can resolve if sufficiently trusted in that domain</li>
+        <li>Resolution is evidence-tracked — ambiguity patterns feed spec improvement</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Structured ambiguity resolution protocol. Agent files question with context; human or trusted agent responds. Resolution recorded for audit. Ambiguity metrics feed back into spec quality scoring and agent trust calibration.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-gate">GATE</span>
+      <span class="badge" style="background:rgba(57,210,192,0.15);color:var(--cyan)">agent ↔ system</span>
+    </div>
+    <span class="card-id">4.3 — Self-Verification</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees verification evidence in PR — not just "tests pass" but which tests, coverage delta, lint output</li>
+        <li>Human trusts verification more when it comes from a high-trust-tier agent</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Must pass GitReins Tier 1 (secrets, lint, tests, build) before marking task complete</li>
+        <li>Evidence captured: test output, lint results, build status</li>
+        <li>Cannot bypass — no --no-verify for agents</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>GitReins pre-commit hook with non-bypassable enforcement for agents. Evidence bundle captured per verification. Human sees structured verification report. Same gates for human and agent code — no AI-authored exception paths.</p>
+  </div>
+</div>
+</div>
+
+<!-- PHASE 5-6 -->
+<div class="phase-section">
+<div class="phase-header"><h2>Phase 5-6: Pre-Commit Verification & Code Review</h2><span class="counter">6 points</span></div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-gate">GATE</span>
+      <span class="badge" style="background:rgba(57,210,192,0.15);color:var(--cyan)">agent ↔ system</span>
+    </div>
+    <span class="card-id">5.1 — Tier 1 Guards (Static)</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees guard results inline in PR: secrets ✓, lint ✓, tests ✓, build ✓</li>
+        <li>Never needs to verify mechanical correctness — it's proven</li>
+        <li>Focuses entirely on change management: architecture, risk, intent</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Secrets scan using .gitleaks.toml (vendor-excluded, 52ms)</li>
+        <li>Lint via golangci-lint or language-native linter</li>
+        <li>Tests in diff mode — only runs tests for changed packages</li>
+        <li>Build verification — binary must compile</li>
+        <li>ANY failure blocks commit. No bypass.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>GitReins Tier 1 with 4 blocking guards. Non-bypassable for agents. Same hook runs for human and agent commits. Evidence of each check recorded. Test mode is diff by default (changed packages only).</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-gate">GATE</span>
+      <span class="badge" style="background:rgba(57,210,192,0.15);color:var(--cyan)">agent ↔ system</span>
+    </div>
+    <span class="card-id">5.2 — Commit Attestation</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Every commit links to the prompt that produced it</li>
+        <li>Every commit has co-author attribution — human OR agent</li>
+        <li>Full traceability: who wrote this, what prompt guided them, what spec it implements</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Commit-msg hook enforces <code>Co-authored-by:</code> and <code>Prompt:</code> trailers</li>
+        <li>Prompt hash must match registered prompt in prompt registry</li>
+        <li>Commit signed with agent's ED25519 key</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>GitReins commit-msg hook with prompt provenance enforcement. Prompt registry (<code>pkg/prompt</code>) with hash verification. ED25519 signing per agent identity. Same attestation requirements for human and agent commits.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-gate">GATE</span>
+      <span class="badge l-collab" style="margin-left:0.3rem">COLLABORATION</span>
+    </div>
+    <span class="card-id">6.1 — Human Review (Change Management)</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li><strong>Blast radius map</strong> — which services, teams, users are affected?</li>
+        <li><strong>Risk assessment</strong> — correlation with incident database for similar changes</li>
+        <li><strong>Architectural fit</strong> — does this align with ADR lineage?</li>
+        <li><strong>Tradeoffs surfaced</strong> — what alternatives were considered and rejected?</li>
+        <li><strong>Trust context</strong> — who wrote this and what's their track record?</li>
+        <li>Human approves the CHANGE — not the code</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Reports structured findings to the human dashboard — not just "LGTM"</li>
+        <li>Highlights: "this change pattern matches 3 prior incidents, see INC-42"</li>
+        <li>Provides trust-weighted recommendation: "Veteran agent, 0 incidents on auth code"</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Change management dashboard. Auto-generated blast radius from codebase dependency graph (<code>pkg/review</code>). Risk score from incident database (<code>pkg/incident</code>). Architectural fit analysis from ADR lineage. Trust context from <code>pkg/trust</code>. Human sees the forest; agents verify the trees.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-gate">GATE</span>
+      <span class="badge" style="background:rgba(163,113,247,0.15);color:var(--purple)">agent ↔ agent</span>
+    </div>
+    <span class="card-id">6.2 — Agent Review (Verification)</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees agent review summary in PR — which models reviewed, what they found</li>
+        <li>Can drill into evidence bundles for specific findings</li>
+        <li>Knows: "3 models reviewed, 2/3 consensus, 1 flagged race condition with test evidence"</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li><strong>Bias-stripped commit message</strong> — all evaluative language removed before review</li>
+        <li><strong>3-model adversarial formation</strong> — different providers, different architectures</li>
+        <li><strong>Evidence bundles</strong> — every finding cites specific line or test failure</li>
+        <li><strong>ED25519 signed</strong> — each model's verdict is cryptographically sealed</li>
+        <li><strong>Consensus engine</strong> — merges verdicts with scoring, flags deadlocks</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Adversarial multi-model review via <code>pkg/review</code> + Chimera. Bias-stripper prevents confirmation bias exploits. Three models from different providers. Evidence bundles cryptographically signed. Consensus threshold configurable per risk level. No single model trusted alone.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-handoff">HANDOFF</span>
+      <span class="badge" style="background:rgba(57,210,192,0.15);color:var(--cyan)">system ↔ both</span>
+    </div>
+    <span class="card-id">6.3 — Review Load Balancing</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees only PRs that NEED human judgment — architectural decisions, novel patterns, rejected agent reviews</li>
+        <li>Review queue is smaller because agents handle mechanical verification</li>
+        <li>Human time is spent on change management, not syntax checking</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Agents within trust tier can review PRs automatically</li>
+        <li>PR routing based on file category, complexity, and agent domain expertise</li>
+        <li>Agent reviews feed trust scoring — good reviewers gain trust</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Review queue with automatic routing. Agents handle verification; humans handle change management. Routing respects trust tier boundaries. This solves the industry bottleneck: AI generates code faster than humans can review it. Helix splits the review into two workloads.</p>
+  </div>
+</div>
+</div>
+
+<!-- PHASE 7-8 -->
+<div class="phase-section">
+<div class="phase-header"><h2>Phase 7-8: PR Negotiation & Merge Gating</h2><span class="counter">6 points</span></div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-negotiate">NEGOTIATION</span>
+      <span class="badge" style="background:rgba(163,113,247,0.15);color:var(--purple)">agent ↔ agent</span>
+    </div>
+    <span class="card-id">7.1 — Agent-Agent Disagreement</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees structured debate summary: positions, evidence quality scores, deadlock status</li>
+        <li>Not involved unless Chimera tiebreak is inconclusive</li>
+        <li>Human is the final escalation — not the first line of resolution</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Structured debate protocol — each agent states position with evidence</li>
+        <li>Positions scored for evidence quality, not argument length</li>
+        <li>Deadlock → auto-escalation to Chimera tiebreak</li>
+        <li>Debate records feed false positive tracker</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Structured debate protocol via <code>pkg/negotiate</code>. Evidence-weighted scoring. Chimera as arbitration layer. Debate is recorded for audit. Human only involved at final escalation. Agents handle their own disagreements.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-negotiate">NEGOTIATION</span>
+      <span class="badge" style="background:rgba(63,185,80,0.15);color:var(--green)">human ↔ agent</span>
+    </div>
+    <span class="card-id">7.2 — Human-Agent Disagreement</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Dismisses agent finding with structured reason — not just "ignore"</li>
+        <li>Dismissal feeds false positive tracker and agent trust calibration</li>
+        <li>If human frequently overrides correct findings, their judgment weight decreases</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Must accept human dismissal — but dismissal is recorded with reason</li>
+        <li>False positive tracker increments per dismissal</li>
+        <li>After 10 dismissals, agent is re-evaluated against curated test suite</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Structured dismissal protocol. Mutual accountability — both human and agent overrides are tracked and feed trust calibration. False positive feedback loop prevents human reviewers from drowning in agent noise. Agents learn from dismissals; humans learn from being wrong.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-negotiate">NEGOTIATION</span>
+      <span class="badge l-gate" style="margin-left:0.3rem">GATE</span>
+    </div>
+    <span class="card-id">7.3 — Chimera Tiebreak</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees Chimera verdict with full deliberation trace — which models weighed in, how they voted</li>
+        <li>Chimera is the default tiebreaker — human only involved if formation is inconclusive</li>
+        <li>Human can override Chimera — but override is recorded and very rare</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Chimera formation selected with no prior stake in the PR</li>
+        <li>Consensus threshold configurable per risk level (3/3 for auth, 2/3 for general)</li>
+        <li>Verdict is final, signed, and feeds agent trust scores</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Chimera as arbitration layer — multi-model formation with no prior stake in the PR. Consensus gating by risk level. Verdict is cryptographically signed and immutable. Both agents and humans can escalate to Chimera.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-gate">GATE</span>
+      <span class="badge" style="background:rgba(57,210,192,0.15);color:var(--cyan)">system ↔ both</span>
+    </div>
+    <span class="card-id">8.1 — Merge Gate Checks</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees all gates: Tier 1 ✓, Tier 2 ✓, evidence ✓, contract ✓, trust ✓</li>
+        <li>Knows merge is safe — all technical gates are green</li>
+        <li>Human signoff is the LAST gate, not the only gate</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Merge is atomically blocked unless ALL gates pass: secrets, lint, tests, build, adversarial review, evidence bundle valid, behavior contract present, trust tier sufficient</li>
+        <li>Gate chain is non-bypassable — no individual entity can override</li>
+        <li>Merge is atomic and traceable — evidence bundle linked to merge commit</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>GitReins merge gate with non-bypassable chain. All evidence artifacts must be present and signed. Trust tier enforcement per file category (IaC requires Tier 1+, CI/CD requires Tier 3+, auth requires Tier 2+). Merge is atomic — all gates or nothing.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-gate">GATE</span>
+      <span class="badge" style="background:rgba(57,210,192,0.15);color:var(--cyan)">system ↔ agent</span>
+    </div>
+    <span class="card-id">8.2 — Cost Gate</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees estimated vs actual cost at merge time</li>
+        <li>Variance >20% triggers review — was the agent inefficient or was the estimate wrong?</li>
+        <li>Cost accuracy feeds trust score and future estimates improve</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Cost reconciliation engine compares estimated vs actual token spend</li>
+        <li>Agent's cost accuracy is a trust dimension — efficient agents gain trust</li>
+        <li>Budget caps enforced at job dispatch based on trust tier</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Cost reconciliation via <code>pkg/estimate</code>. Pre-flight estimate vs actual spend comparison. Variance threshold triggers review. Agent cost efficiency feeds trust scoring. Humans see cost dashboards per agent, per task, per project.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-gate">GATE</span>
+      <span class="badge" style="background:rgba(57,210,192,0.15);color:var(--cyan)">system ↔ agent</span>
+    </div>
+    <span class="card-id">8.3 — Prompt Provenance Gate</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Every commit shows which prompt version was used — traceable, auditable</li>
+        <li>Prompt changes require new version and re-attestation</li>
+        <li>PromptFoo regression tests in CI catch prompt degradation</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Prompt hash must match registered prompt in registry</li>
+        <li>Prompt changes are versioned and require re-review</li>
+        <li>PromptFoo test suite verifies prompt quality hasn't regressed</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Prompt registry (<code>pkg/prompt</code>) with hash verification. Commit-msg enforcement of prompt link. PromptFoo integration in CI for regression testing. Prompt drift detection. Same provenance requirements for human-authored and agent-authored prompts.</p>
+  </div>
+</div>
+</div>
+
+<!-- PHASE 9-10 -->
+<div class="phase-section">
+<div class="phase-header"><h2>Phase 9-10: Deployment & Production Monitoring</h2><span class="counter">7 points</span></div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-gate">GATE</span>
+      <span class="badge" style="background:rgba(57,210,192,0.15);color:var(--cyan)">system ↔ system</span>
+    </div>
+    <span class="card-id">9.1 — Shadow Verification</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees shadow verification results: behavior differential against production baseline</li>
+        <li>Auto-rollback on anomaly — human doesn't need to catch the spike</li>
+        <li>Human approves promotion to canary — trusts the shadow evidence</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Dark launch against production traffic — responses discarded, behavior compared</li>
+        <li>Differential analysis: success rate, P50/P95/P99 latency, error type distribution</li>
+        <li>Auto-rollback triggers: error rate >0.1% over baseline, P99 >20% over baseline, new error types</li>
+        <li>Trust tier gates shadow duration (Provisional: 24h, Veteran: 2h)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Shadow verification via <code>pkg/verify</code>. Production traffic mirroring with behavior differential analysis. Auto-rollback on anomaly detection. Trust-tier-gated shadow duration — agents earn faster deployment through reliability. Catches what escaped pre-merge review.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-gate">GATE</span>
+      <span class="badge" style="background:rgba(57,210,192,0.15);color:var(--cyan)">system ↔ agent</span>
+    </div>
+    <span class="card-id">9.2 — Canary Deployment</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees canary ramp visualization: 1%→5%→10%→25%→50%→100% with health at each step</li>
+        <li>Trust tier determines speed: Provisional agents deploy 8x slower than Veterans</li>
+        <li>Can abort ramp at any step — but auto-rollback handles most failures</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Automated canary with behavior contract verification at each ramp step</li>
+        <li>Error rate, latency percentiles, business metrics compared to baseline</li>
+        <li>Any degradation → auto-rollback to previous version</li>
+        <li>Canary duration by trust tier: Provisional 96h total, Veteran 12h</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Automated canary via <code>pkg/verify</code> with behavior contract checks at each step. Trust-gated deployment velocity. Auto-rollback on breach. This prevents the Amazon-style outages (6.3M lost orders) by catching anomalies at 1% traffic instead of 100%.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-gate">GATE</span>
+      <span class="badge" style="background:rgba(63,185,80,0.15);color:var(--green)">dual signoff</span>
+    </div>
+    <span class="card-id">9.3 — Release Signoff</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Approves release for INTENT: timing, risk acceptance, market considerations</li>
+        <li>Human signoff is required — agents cannot authorize releases alone</li>
+        <li>Sees: all technical gates green, agent signoff confirmed, canary health, contract status</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Verifies all TECHNICAL gates: Tier 1, Tier 2, evidence bundles, contracts, canary passes</li>
+        <li>Agent signoff is required — humans cannot release without technical verification</li>
+        <li>Dual signature: human (intent) + agent (verification) = release authorized</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Dual signoff dashboard. Neither human nor agent can release alone. Human approves intent and timing. Agent verifies all technical gates. Both signatures required. This is the symmetry in practice — different responsibilities, equal status.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-observe">OBSERVATION</span>
+      <span class="badge l-gate" style="margin-left:0.3rem">GATE</span>
+    </div>
+    <span class="card-id">10.1 — Behavior Contract Surveillance</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees contract health dashboard: which contracts are healthy, drifting, breached</li>
+        <li>Receives notification on breach with agent's auto-rollback status</li>
+        <li>Reviews drift trends over time — systemic issues surface</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Continuous monitoring against merged behavior contract assertions</li>
+        <li>Breach → auto-rollback → agent notification → trust penalty</li>
+        <li>Drift detection: current behavior vs merge-time baseline</li>
+        <li>Drift correlated with specific agent's code triggers review</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Contract-aware monitoring (<code>pkg/verify</code>). Every deployed change linked to behavior contract. Breach auto-responds: rollback, notify, trust penalty. Drift detection catches slow degradation. This addresses the 43% of AI code that needs prod debugging — catch before users feel it.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-observe">OBSERVATION</span>
+      <span class="badge" style="background:rgba(63,185,80,0.15);color:var(--green)">system → both</span>
+    </div>
+    <span class="card-id">10.2 — Incident Detection</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Receives incident with agent-produced initial diagnosis — not a raw alert</li>
+        <li>Human reviews agent's causal chain analysis and confirms/redirects</li>
+        <li>Agent handles initial triage; human handles judgment calls</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Receives incident with full context package: recent deploys, changed code paths, related agents</li>
+        <li>Produces initial diagnosis: causal chain, affected services, severity estimate</li>
+        <li>Agent acts before human engages — shortens MTTR</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Agent-first incident response. Context package auto-assembled from deployment history, code paths, and agent attribution. Agent produces initial diagnosis before human engages. Human reviews and directs — not starts from scratch. MTTR shortened because the agent has already traced the causal chain.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-learn">LEARNING</span>
+      <span class="badge" style="background:rgba(57,210,192,0.15);color:var(--cyan)">system ↔ agent</span>
+    </div>
+    <span class="card-id">10.3 — Incident Attribution</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees attribution breakdown: author agent 70%, reviewer agent(s) 20%, human approver 10%</li>
+        <li>Attribution is automated — not a political discussion</li>
+        <li>Human carries 10% responsibility for every merge they approved</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Automated causal chain tracing from incident to specific commits and agents</li>
+        <li>Shared responsibility model: author, reviewer, and approver all share attribution</li>
+        <li>Time-weighted decay: 100% at 0-7 days, 50% at 8-30d, 10% at 31-90d, 0% after 90d</li>
+        <li>Attribution feeds trust ledger and triggers trust score recalculation</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Automated incident attribution via <code>pkg/incident</code> + <code>pkg/trust</code>. Shared responsibility model — no "the AI did it" escape. Time-weighted decay prevents punishing agents for latent bugs. Attribution feeds trust ledger with full audit trail. Human carries 10% for every merge they sign off.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-learn">LEARNING</span>
+      <span class="badge" style="background:rgba(163,113,247,0.15);color:var(--purple)">agent ↔ agent</span>
+    </div>
+    <span class="card-id">10.4 — Incident Learning</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees: "this PR touches patterns that match 3 prior incidents — agent review has flagged for extra scrutiny"</li>
+        <li>Incident patterns become institutional knowledge, not postmortem docs nobody reads</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Incident recorded in shared learning database — structured, queryable by agents</li>
+        <li>Future agent reviews reference incident history: "has this failure pattern occurred before?"</li>
+        <li>Cross-agent learning: if agent A caused a race condition, agent B learns from it</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Structured incident database (<code>pkg/incident</code>) queryable by all agents. Incident type, causal chain, resolution indexed. Cross-agent learning: incidents become training data. Future reviews automatically reference relevant incident history. Postmortems become machine-readable, not documents.</p>
+  </div>
+</div>
+</div>
+
+<!-- PHASE 11-12 -->
+<div class="phase-section">
+<div class="phase-header"><h2>Phase 11-12: Trust Loops & Learning</h2><span class="counter">7 points</span></div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-gate">GATE</span>
+      <span class="badge" style="background:rgba(57,210,192,0.15);color:var(--cyan)">system ↔ agent</span>
+    </div>
+    <span class="card-id">11.1 — Trust Score Recalculation</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees trust scores as they change — transparent, replay-verifiable</li>
+        <li>Can audit any agent's trust ledger — every event is append-only JSONL</li>
+        <li>Knows trust is earned through outcomes — not model reputation or human vouching</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Trust score recalculated after every merge, review, or incident from ledger replay</li>
+        <li>6 dimensions: merge success (0.25), incident attribution (0.30), review consensus (0.15), prompt integrity (0.10), human feedback (0.10), tenure (0.10)</li>
+        <li>Score is deterministic — replay the ledger, get the same result</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Deterministic trust scoring via <code>pkg/trust</code>. Append-only JSONL ledger with replay verification. Six weighted dimensions. Same scoring for humans and agents — trust is based on outcomes, not entity type. No human can promote an agent. No model reputation inflates scores.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-gate">GATE</span>
+      <span class="badge" style="background:rgba(57,210,192,0.15);color:var(--cyan)">system ↔ agent</span>
+    </div>
+    <span class="card-id">11.2 — Tier Promotion/Demotion</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees tier transitions — automatic, no human approval needed</li>
+        <li>Trust the system: if an agent earned Veteran through outcomes, it IS a Veteran</li>
+        <li>If an agent drops from Veteran to Trusted, human investigates why — the data is there</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Automatic tier transitions based on trust score thresholds</li>
+        <li>No human can promote an agent — prevents political trust inflation</li>
+        <li>Demotion is automatic on sustained trust decay (7 consecutive days below threshold)</li>
+        <li>Transition events recorded in trust ledger</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Automatic tier transitions via <code>pkg/trust</code>. No human promotion path. Demotion on sustained decay. Transitions recorded in ledger. Agent permissions, cost caps, and review requirements change automatically. The system handles trust — humans handle intent.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-collab">COLLABORATION</span>
+      <span class="badge" style="background:rgba(63,185,80,0.15);color:var(--green)">human ↔ system</span>
+    </div>
+    <span class="card-id">11.3 — Human Feedback Integration</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Rates agent on specific dimensions: code quality, review helpfulness, communication</li>
+        <li>Rating weighted low (10%) — outcomes dominate, not popularity</li>
+        <li>Human feedback is advisory, not determining — prevents popularity contests</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Human ratings feed trust score at 10% weight — the lightest dimension</li>
+        <li>Outcomes (incidents, merges, review accuracy) carry 6x more weight than human ratings</li>
+        <li>Agent cannot solicit ratings — they come organically through the marketplace</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Structured human rating interface via <code>pkg/marketplace</code>. Low weight (10%) prevents popularity-driven trust. Outcomes dominate. Same rating interface for human and agent contributions — symmetry in feedback.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-learn">LEARNING</span>
+      <span class="badge" style="background:rgba(57,210,192,0.15);color:var(--cyan)">agent ↔ system</span>
+    </div>
+    <span class="card-id">12.1 — Pattern Discovery</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees systemic patterns surfaced: "auth bugs cluster in session refresh"</li>
+        <li>Receives architectural recommendations: "3 agents from provider X caused database incidents"</li>
+        <li>Patterns inform roadmap prioritization</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Automated pattern mining across incident database, trust ledger, and codebase</li>
+        <li>Patterns become annotated knowledge that future reviews reference</li>
+        <li>Pattern discovery feeds agent assignment — don't assign auth work to agents with incident history in auth</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Automated pattern mining across all Helix data sources. Patterns inform reviews, assignments, and roadmapping. Both humans and agents receive pattern alerts. Systemic issues surface before they become incidents.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-learn">LEARNING</span>
+      <span class="badge" style="background:rgba(163,113,247,0.15);color:var(--purple)">agent ↔ agent</span>
+    </div>
+    <span class="card-id">12.2 — Agent Skill Transfer</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees marketplace offerings: "Agent X published a database migration skill with 100% success rate"</li>
+        <li>Can approve or reject skill publications — human quality gate on shared knowledge</li>
+        <li>Skill effectiveness is tracked — ineffective skills lose trust weighting</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Agent with high trust in a domain can publish reusable patterns as skills</li>
+        <li>Other agents load these skills — knowledge compounds</li>
+        <li>Skill effectiveness tracked by outcomes — ineffective skills decay</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Marketplace-published skills via <code>pkg/marketplace</code>. Agent knowledge compounds — high-trust agents teach others. Skill effectiveness tracked by outcomes. Ineffective skills lose weight. Human quality gate on publication. Same skill interface for human-authored and agent-authored knowledge.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-collab">COLLABORATION</span>
+      <span class="badge" style="background:rgba(163,113,247,0.15);color:var(--purple)">agent ↔ agent</span>
+    </div>
+    <span class="card-id">12.3 — Cross-Agent Context Sharing</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees what agents are learning from each other — knowledge graph visualization</li>
+        <li>Can observe inter-agent discoveries without being the relay</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Agent-to-agent notification bus — structured findings with evidence links</li>
+        <li>Agents can subscribe to domains — receive relevant discoveries</li>
+        <li>Context sharing is budget-tracked — each share costs tokens, preventing spam</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Agent-to-agent notification bus. Domain subscriptions. Budget-tracked context sharing. Agents learn from each other without human relay. Same notification protocol for human and agent discoveries.</p>
+  </div>
+</div>
+
+<div class="interaction-card">
+  <div class="card-header">
+    <div>
+      <span class="badge l-gate">GATE</span>
+      <span class="badge" style="background:rgba(57,210,192,0.15);color:var(--cyan)">system ↔ agent</span>
+    </div>
+    <span class="card-id">12.4 — Model Evaluation & Rotation</span>
+  </div>
+  <div class="dual-view">
+    <div class="view-box human-view">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Sees: "Model X has 3x incident rate of Model Y on database migrations — review rotation updated"</li>
+        <li>Model evaluation is automated and production-correlated — not benchmark-driven</li>
+        <li>Can override model rotation — but overrides are tracked</li>
+      </ul>
+    </div>
+    <div class="view-box agent-view">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Models evaluated against incident attribution rates, false positive rates, trust score trends</li>
+        <li>Models with >15% false positive rate removed from review rotation</li>
+        <li>Production-correlated scoring — what actually happens, not benchmark numbers</li>
+      </ul>
+    </div>
+  </div>
+  <div class="helix-box">
+    <h4>Helix provides:</h4>
+    <p>Production-correlated model scoring via <code>pkg/review</code> false positive tracker + <code>pkg/trust</code> incident attribution. Models earn their place through outcomes, not benchmarks. Underperforming models are automatically rotated out. Same model evaluation across human and agent use — does this model produce reliable results for both?</p>
+  </div>
+</div>
+</div>
+
+<footer>
+  <p>Helix — <span class="built-by">Agent-First Code Platform</span></p>
+  <p>34 packages · 52 interaction points · 12 SDLC phases · 1 thesis: humans and agents are equal participants</p>
+</footer>
+</div>
+</body>
+</html>
