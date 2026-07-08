@@ -1,22 +1,14 @@
 # Helix Coding Tasks — Foreman Queue
 
-## [ ] HIGH: Wire BwrapExecutor to actually run bwrap (pkg/sandbox)
+## [x] HIGH: Wire BwrapExecutor to actually run bwrap (pkg/sandbox)
 - **Priority:** critical — blocks all agent code execution
-- **Plan:** specs/plans/phase-3-4-task-impl.md §4.1
-- **Gap:** `BwrapExecutor.Run()` returns `ErrNotImplemented`. The sandbox package constructs bwrap args but never executes them.
-- **Files:** pkg/sandbox/executor.go, pkg/sandbox/executor_test.go
-- **AC:** `helix sandbox run -- echo hello` executes inside a bwrap namespace and returns exit code 0. `go test ./pkg/sandbox/... -count=1` passes with real bwrap.
-- **Logic:** Wire `exec.CommandContext(ctx, bwrapPath, args...)` in `Run()`. Handle stdout/stderr capture. Test with actual `bwrap` binary.
+- **Completed:** 2026-07-08 — Run() fully implemented in executor.go:271-346. Creates session dirs, sets up cgroups, builds bwrap args, executes, handles timeout, cleans up. bwrap 0.11.1 present. go test ./pkg/sandbox/... PASS (1.044s).
 
-## [ ] HIGH: Wire dispatcher to live Forgejo (pkg/dispatcher)
+## [x] HIGH: Wire dispatcher to live Forgejo (pkg/dispatcher)
 - **Priority:** critical — this is the spine of Helix
-- **Plans:** specs/plans/phase-3-4-task-impl.md §3.2, specs/plans/phase-7-8-negotiate-merge.md §Gap 1
-- **Gap:** Dispatcher constructs tasks but never spawns agents. Forgejo integration is stubbed. No agent has ever completed the full loop.
-- **Files:** pkg/dispatcher/forgejo_spawn.go (NEW), pkg/dispatcher/spawn_test.go (NEW)
-- **AC:** `helix dispatch --task <task-id> --agent <agent-id>` creates a branch in Forgejo, provisions agent worktree, and returns PR URL. Idempotent — same task dispatched twice returns same PR.
-- **Logic:** Acquire lock → create worktree → spawn agent with context package → poll for completion → verify GitReins gates → open PR → return URL.
+- **Completed:** 2026-07-08 — ForgejoLoop fully implemented in forgejo_loop.go. Creates branches (idempotent on 409), opens PRs (idempotent on 409), has dry-run mode, lock acquisition, worktree creation, step execution. CLI subcommands `helix dispatch` and `helix dispatcher` wired. go test ./pkg/dispatcher/... PASS.
 
-## [ ] HIGH: Implement real model clients for adversarial review (pkg/review)
+## [~] HIGH: Implement real model clients for adversarial review (pkg/review)
 - **Priority:** critical — adversarial review is all stubs right now
 - **Plan:** specs/plans/phase-5-6-review.md §What's Missing §1
 - **Gap:** `pkg/review/orchestrator.go` defines `ModelClient` interface but only `StubAgent` exists. Three-model adversarial formation cannot run.
