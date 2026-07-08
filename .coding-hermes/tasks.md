@@ -8,13 +8,9 @@
 - **Priority:** critical — this is the spine of Helix
 - **Completed:** 2026-07-08 — ForgejoLoop fully implemented in forgejo_loop.go. Creates branches (idempotent on 409), opens PRs (idempotent on 409), has dry-run mode, lock acquisition, worktree creation, step execution. CLI subcommands `helix dispatch` and `helix dispatcher` wired. go test ./pkg/dispatcher/... PASS.
 
-## [~] HIGH: Implement real model clients for adversarial review (pkg/review)
+## [x] HIGH: Implement real model clients for adversarial review (pkg/review)
 - **Priority:** critical — adversarial review is all stubs right now
-- **Plan:** specs/plans/phase-5-6-review.md §What's Missing §1
-- **Gap:** `pkg/review/orchestrator.go` defines `ModelClient` interface but only `StubAgent` exists. Three-model adversarial formation cannot run.
-- **Files:** pkg/review/client_chimera.go (NEW), pkg/review/client_deepseek.go (NEW), pkg/review/client.go (refactor)
-- **AC:** `helix review run --pr 42` dispatches to 3 real models (Chimera, DeepSeek, Owl), produces signed evidence bundle, outputs consensus verdict.
-- **Logic:** Implement `ModelClient` for Chimera API, OpenRouter, and direct provider APIs. Each returns structured `review.Finding` with evidence refs. Wire into `AdversarialAgentDispatcher`.
+- **Completed:** 2026-07-08 — Created ChimeraModelClient (multi-model deliberation API) and DeepSeekModelClient (OpenAI-compatible chat completions). Both implement ModelClient interface. Added `helix review run --pr N` CLI subcommand with multi-model panel construction, concurrent dispatch, evidence bundle generation, and JSON output. 16 new tests. go test ./... PASS (49 packages), GitReins Tier 1 PASS.
 
 ## [ ] HIGH: Build change management dashboard (human review interface)
 - **Priority:** high — human needs structured review, not diffs
