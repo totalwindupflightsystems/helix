@@ -542,33 +542,45 @@ func printUsage() {
 Usage: %s [global-flags] <subcommand> [subcommand-args]
 
 Subcommands:
-  identity    Provision agent accounts in Forgejo
-  estimate    Estimate task cost before execution
-  negotiate   Negotiate task contracts between agents
-  prompt      Manage and attest prompt files
-  marketplace Search and discover agents
-  sandbox     Run commands in a sandboxed environment
-  version     Print version information
-  banner      Print the HELIX ASCII art banner
-  status      Check all component health
-  doctor      Run platform diagnostic checks
-  dispatch    Dispatch a spec to an agent for execution
-  dispatcher  Inspect and drive the Ralph Loop engine (status/tick/list-tasks)
-  review      Operate the adversarial review pipeline (strip-bias/fp-stats/evidence)
-  forgejo     Inspect the connected Forgejo instance (ping/user-list/pr-list/branch-list)
-  coapproval  Run human+agent co-approval protocol
-  adversarial Run adversarial review
-  secrets     Inspect and rotate secrets
-  pipeline    Run PR lifecycle coordinator
-  webhook     Run Forgejo webhook ingestion server
-  incident    Declare, list, and resolve incidents (spec §6.7)
-  config      Validate configuration (env-check)
-  forcemerge  Record and inspect force-merge override audit entries (spec §5.4)
-  vuln        Run dependency vulnerability scanner (spec §6.6)
-  deploy      Render deployment artifacts (agent compose / caddy / systemd)
-  ci          Generate/validate the Forgejo Actions test workflow (spec §12.5)
-  recovery    Browse the error-recovery runbook + DR scenario catalog (spec §14.1, §10.3)
-  memory      Operate the Hivemind memory bank lifecycle pipeline (spec §8.6)
+  identity     Provision agent accounts in Forgejo
+  estimate     Estimate task cost before execution
+  negotiate    Negotiate task contracts between agents
+  prompt       Manage and attest prompt files
+  marketplace  Search and discover agents
+  sandbox      Run commands in a sandboxed environment
+  version      Print version information
+  banner       Print the HELIX ASCII art banner
+  status       Check all component health
+  doctor       Run platform diagnostic checks
+  dispatch     Dispatch a spec to an agent for execution
+  dispatcher   Inspect and drive the Ralph Loop engine (status/tick/list-tasks)
+  review       Adversarial review + change management dashboard
+  verify       Production verification (shadow/canary/contract)
+  trust        Query trust ledger snapshots
+  mergegate    Pre-merge validation gate (5 quality checks)
+  security     Deployment security hardening checklist
+  forgejo      Inspect the connected Forgejo instance
+  coapproval   Run human+agent co-approval protocol
+  adversarial  Run adversarial review
+  secrets      Inspect and rotate secrets
+  pipeline     Run PR lifecycle coordinator
+  lifecycle    PR lifecycle coordinator stages
+  webhook      Run Forgejo webhook ingestion server
+  incident     Declare, list, and resolve incidents (spec §6.7)
+  config       Validate configuration (env-check)
+  alerts       Alert engine notify/list-rules
+  retry        Retry layer circuit breaker / chaos
+  backup       Backup strategy status/validate
+  degradation  Graceful degradation policy registry
+  audit        12-step audit chain checker
+  api          API contract schema surface
+  integration  Integration tests with skip guards
+  forcemerge   Force-merge override audit entries (spec §5.4)
+  vuln         Dependency vulnerability scanner (spec §6.6)
+  deploy       Render deployment artifacts (agent compose / caddy / systemd)
+  ci           Generate/validate Forgejo Actions workflow (spec §12.5)
+  recovery     Error-recovery runbook + DR scenarios (spec §14.1, §10.3)
+  memory       Hivemind memory bank lifecycle (spec §8.6)
 
 Global Flags:
   --verbose   Enable verbose output
@@ -581,6 +593,7 @@ Examples:
   %s identity sync
   %s estimate --task "Write a Go HTTP server"
   %s marketplace search --capability go
+  %s review dashboard --pr 42 --files pkg/trust/ledger.go --repo .
   %s status
-`, AppName, AppName, AppName, AppName, AppName, AppName)
+`, AppName, AppName, AppName, AppName, AppName, AppName, AppName)
 }
