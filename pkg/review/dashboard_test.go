@@ -138,9 +138,9 @@ func TestBuildDashboard_EndToEnd(t *testing.T) {
 		ChangedFiles: []string{
 			"pkg/auth/session.go",
 		},
-		RepoRoot:   root,
-		ADRDir:     filepath.Join(root, "docs/adr"),
-		TrustTier:  trust.TierObserved,
+		RepoRoot:  root,
+		ADRDir:    filepath.Join(root, "docs/adr"),
+		TrustTier: trust.TierObserved,
 		RelatedIncidents: []RelatedIncident{
 			{ID: "inc-9", Severity: "medium", Description: "session refresh race", Similarity: 0.8},
 		},
@@ -201,7 +201,7 @@ func TestBuildDashboard_InferCategory(t *testing.T) {
 	d, err := BuildDashboard(DashboardInput{
 		PR:           "7",
 		ChangedFiles: []string{"pkg/identity/keys.go"},
-		TrustTier:   trust.TierTrusted,
+		TrustTier:    trust.TierTrusted,
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -39,7 +39,7 @@ type ADRRef struct {
 	ID      string `json:"id"`
 	Path    string `json:"path"`
 	Title   string `json:"title,omitempty"`
-	Status  string `json:"status,omitempty"` // proposed|accepted|deprecated|superseded|unknown
+	Status  string `json:"status,omitempty"`  // proposed|accepted|deprecated|superseded|unknown
 	Matched string `json:"matched,omitempty"` // what term matched
 }
 
@@ -71,15 +71,15 @@ type DashboardInput struct {
 
 // RiskAssessment is the composite 0–100 risk score with a transparent breakdown.
 type RiskAssessment struct {
-	Score              int                `json:"score"` // 0–100
-	Level              string             `json:"level"` // low|medium|high|critical
-	CategoryWeight     int                `json:"category_weight"`
-	TierMultiplier     float64            `json:"tier_multiplier"`
-	IncidentBoost      int                `json:"incident_boost"`
-	Category           ChangeCategory     `json:"category"`
-	Tier               trust.TrustTier    `json:"tier"`
-	RelatedIncidents   []RelatedIncident  `json:"related_incidents,omitempty"`
-	Rationale          []string           `json:"rationale"`
+	Score            int               `json:"score"` // 0–100
+	Level            string            `json:"level"` // low|medium|high|critical
+	CategoryWeight   int               `json:"category_weight"`
+	TierMultiplier   float64           `json:"tier_multiplier"`
+	IncidentBoost    int               `json:"incident_boost"`
+	Category         ChangeCategory    `json:"category"`
+	Tier             trust.TrustTier   `json:"tier"`
+	RelatedIncidents []RelatedIncident `json:"related_incidents,omitempty"`
+	Rationale        []string          `json:"rationale"`
 }
 
 // ArchitectureFit summarizes ADR lineage alignment for the change.
@@ -92,27 +92,27 @@ type ArchitectureFit struct {
 
 // TrustContext is the agent track record surface for human reviewers.
 type TrustContext struct {
-	AgentID      string         `json:"agent_id"`
-	Tier         trust.TrustTier `json:"tier"`
-	Score        float64        `json:"score"`
-	TotalEvents  int            `json:"total_events"`
-	Trend        string         `json:"trend,omitempty"`
-	RecentCount  int            `json:"recent_event_count"`
-	LastActive   time.Time      `json:"last_active,omitempty"`
-	Source       string         `json:"source"` // ledger|override|unknown
-	Notes        []string       `json:"notes,omitempty"`
+	AgentID     string          `json:"agent_id"`
+	Tier        trust.TrustTier `json:"tier"`
+	Score       float64         `json:"score"`
+	TotalEvents int             `json:"total_events"`
+	Trend       string          `json:"trend,omitempty"`
+	RecentCount int             `json:"recent_event_count"`
+	LastActive  time.Time       `json:"last_active,omitempty"`
+	Source      string          `json:"source"` // ledger|override|unknown
+	Notes       []string        `json:"notes,omitempty"`
 }
 
 // ChangeDashboard is the full human change management view for one PR.
 type ChangeDashboard struct {
-	PR            string           `json:"pr"`
-	GeneratedAt   time.Time        `json:"generated_at"`
-	AgentID       string           `json:"agent_id,omitempty"`
-	BlastRadius   *BlastRadiusMap  `json:"blast_radius"`
-	Risk          RiskAssessment   `json:"risk"`
-	Architecture  ArchitectureFit  `json:"architecture"`
-	Trust         *TrustContext    `json:"trust,omitempty"`
-	Summary       string           `json:"summary"`
+	PR           string          `json:"pr"`
+	GeneratedAt  time.Time       `json:"generated_at"`
+	AgentID      string          `json:"agent_id,omitempty"`
+	BlastRadius  *BlastRadiusMap `json:"blast_radius"`
+	Risk         RiskAssessment  `json:"risk"`
+	Architecture ArchitectureFit `json:"architecture"`
+	Trust        *TrustContext   `json:"trust,omitempty"`
+	Summary      string          `json:"summary"`
 }
 
 // BuildDashboard computes the full change management dashboard.
