@@ -129,7 +129,7 @@ func TestRunReview_Help(t *testing.T) {
 	if rc != revExitOK {
 		t.Fatalf("sign rc=%d err=%q", rc, errBuf.String())
 	}
-	for _, want := range []string{"helix review", "strip-bias", "fp-stats", "fp-record", "evidence", "custody"} {
+	for _, want := range []string{"helix review", "strip-bias", "fp-stats", "fp-record", "evidence", "custody", "dashboard"} {
 		if !strings.Contains(out.String(), want) {
 			t.Fatalf("missing %q in help: %q", want, out.String())
 		}
@@ -691,5 +691,65 @@ func TestParseIntInRange(t *testing.T) {
 	}
 	if _, err := parseIntInRange("abc", 1, 10); err == nil {
 		t.Fatal("expected parse error")
+	}
+}
+
+func TestRunReview_Dashboard_TextAndJSON(t *testing.T) {
+	var out, errBuf bytes.Buffer
+	rc := runReview([]string{
+		"dashboard",
+		"--pr", "42",
+		"--files", "pkg/trust/ledger.go,pkg/review/dashboard.go",
+		"--tier", "observed",
+		"--category", "contract",
+		"--agent", "agent-alpha",
+	}, &out, &errBuf)
+	if rc != revExitOK {
+		t.Fatalf("dashboard rc=%d err=%q out=%q", rc, errBuf.String(), out.String())
+	}
+	text := out.String()
+	for _, want := range []string{"Change Management Dashboard", "Risk Assessment", "Blast Radius", "Architectural Fit", "Trust Context"} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("missing %q in dashboard output:\n%s", want, text)
+		}
+	}
+
+	out.Reset()
+	errBuf.Reset()
+	rc = runReview([]string{
+		"dashboard",
+		"--pr", "42",
+		"--files", "pkg/auth/session.go",
+		"--tier", "provisional",
+		"--json",
+	}, &out, &errBuf)
+	if rc != revExitOK {
+		t.Fatalf("dashboard json rc=%d err=%q", rc, errBuf.String())
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatalf("json: %v\n%s", err, out.String())
+	}
+	if payload["pr"] != "42" {
+		t.Errorf("pr = %v", payload["pr"])
+	}
+	risk, ok := payload["risk"].(map[string]any)
+	if !ok {
+		t.Fatalf("risk missing: %v", payload)
+	}
+	if risk["level"] == nil {
+		t.Errorf("risk.level missing: %v", risk)
+	}
+}
+
+func TestRunReview_Dashboard_MissingFlags(t *testing.T) {
+	var out, errBuf bytes.Buffer
+	rc := runReview([]string{"dashboard"}, &out, &errBuf)
+	if rc != revExitError {
+		t.Fatalf("expected error without --pr, got %d", rc)
+	}
+	rc = runReview([]string{"dashboard", "--pr", "1"}, &out, &errBuf)
+	if rc != revExitError {
+		t.Fatalf("expected error without --files, got %d", rc)
 	}
 }

@@ -12,13 +12,11 @@
 - **Priority:** critical — adversarial review is all stubs right now
 - **Completed:** 2026-07-08 — Created ChimeraModelClient (multi-model deliberation API) and DeepSeekModelClient (OpenAI-compatible chat completions). Both implement ModelClient interface. Added `helix review run --pr N` CLI subcommand with multi-model panel construction, concurrent dispatch, evidence bundle generation, and JSON output. 16 new tests. go test ./... PASS (49 packages), GitReins Tier 1 PASS.
 
-## [ ] HIGH: Build change management dashboard (human review interface)
+## [x] HIGH: Build change management dashboard (human review interface)
 - **Priority:** high — human needs structured review, not diffs
 - **Plans:** specs/plans/phase-5-6-review.md §6.1, specs/interaction-map.md §6.1
-- **Gap:** Human reviewers see raw diffs. Need blast radius map, risk assessment, architectural fit analysis, tradeoff surfacing.
-- **Files:** cmd/helix-review/main.go (NEW), pkg/review/dashboard.go (NEW), pkg/review/blast_radius.go (NEW)
-- **AC:** `helix review dashboard --pr 42` outputs: (1) Blast radius — which packages/services/teams are affected, (2) Risk score — correlation with incident DB for similar changes, (3) Architectural fit — ADR lineage comparison, (4) Trust context — agent track record. Output in terminal + JSON for CI.
-- **Logic:** Dependency graph traversal for blast radius. Incident DB query for risk correlation. ADR index for architecture fit. Trust ledger lookup for agent context.
+- **Completed:** 2026-07-09 — Implemented pkg/review/blast_radius.go (Go import-graph BFS via go/parser), pkg/review/dashboard.go (risk=category×tier+incident boost, ADR fit, trust context), wired `helix review dashboard --pr N --files ...` terminal+JSON. Root help lists verify/trust/mergegate/security. Tests pkg/review + cmd/helix PASS.
+- **AC met:** (1) Blast radius packages/services/teams, (2) Risk score 0–100 with rationale, (3) Architectural fit via --adr-dir, (4) Trust context via --ledger/--tier. CI-ready --json output.
 
 ## [ ] HIGH: Enforce merge gates at Git level (pre-receive hook)
 - **Priority:** high — merge gates exist in code but not in git

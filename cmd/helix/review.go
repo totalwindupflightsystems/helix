@@ -18,6 +18,8 @@
 //	              With --verify: read existing bundle and check signatures.
 //	custody       Print a custody summary for an evidence bundle (events +
 //	              tamper checks).
+//	dashboard     Human change management view for a PR: blast radius, risk
+//	              score, architectural fit (ADR lineage), trust context.
 //	help          Show this help.
 //
 // Flags:
@@ -31,6 +33,16 @@
 //	--key-role ROLE    Signer role for evidence sign (reviewer|arbitrator).
 //	--key-path PATH    Path to a 64-byte raw ed25519 private key.
 //	--state PATH       Persist FPTracker across runs (JSON file).
+//	--pr URL|N         PR identifier (dashboard / run).
+//	--files LIST       Comma-separated changed files (dashboard).
+//	--files-from PATH  File listing changed paths, one per line (dashboard).
+//	--repo PATH        Repo root for import-graph blast radius (dashboard).
+//	--agent NAME       Authoring agent ID (dashboard trust context).
+//	--ledger PATH      Trust ledger JSONL path (dashboard).
+//	--adr-dir PATH     Directory of ADR markdown files (dashboard).
+//	--tier TIER        Trust tier override: provisional|observed|trusted|veteran.
+//	--category CAT     Change category: contract|behavioral|resilience|cosmetic.
+//	--incidents PATH   JSON array of related incidents for risk correlation.
 //
 // All subcommands are local-only — they never hit Forgejo, Chimera, or any
 // networked service. The pipeline is exercised end-to-end through the CLI
@@ -49,9 +61,11 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/totalwindupflightsystems/helix/pkg/review"
+	"github.com/totalwindupflightsystems/helix/pkg/trust"
 )
 
 const (
@@ -65,7 +79,7 @@ const (
 // -----------------------------------------------------------------------------
 
 type revFlags struct {
-	subcommand  string // strip-bias, fp-stats, fp-record, evidence, custody, run, help
+	subcommand  string // strip-bias, fp-stats, fp-record, evidence, custody, run, dashboard, help
 	inputPath   string // --input PATH
 	outputPath  string // --output PATH
 	jsonOut     bool   // --json
@@ -76,7 +90,16 @@ type revFlags struct {
 	keyPath     string // --key-path PATH
 	statePath   string // --state PATH
 	evidenceCmd string // sign | verify (positional within evidence subcommand)
-	prURL       string // --pr URL (for review run)
+	prURL       string // --pr URL (for review run / dashboard)
+	filesCSV    string // --files a,b,c (dashboard)
+	filesFrom   string // --files-from PATH (dashboard)
+	repoRoot    string // --repo PATH (dashboard)
+	agentID     string // --agent NAME (dashboard)
+	ledgerPath  string // --ledger PATH (dashboard)
+	adrDir      string // --adr-dir PATH (dashboard)
+	tier        string // --tier TIER (dashboard)
+	category    string // --category CAT (dashboard)
+	incidents   string // --incidents PATH (dashboard JSON)
 }
 
 func parseReviewFlags(args []string) (revFlags, bool, int) {
@@ -156,6 +179,60 @@ func parseReviewFlags(args []string) (revFlags, bool, int) {
 			}
 			f.prURL = args[i+1]
 			i++
+		case arg == "--files":
+			if i+1 >= len(args) {
+				return f, false, revExitError
+			}
+			f.filesCSV = args[i+1]
+			i++
+		case arg == "--files-from":
+			if i+1 >= len(args) {
+				return f, false, revExitError
+			}
+			f.filesFrom = args[i+1]
+			i++
+		case arg == "--repo":
+			if i+1 >= len(args) {
+				return f, false, revExitError
+			}
+			f.repoRoot = args[i+1]
+			i++
+		case arg == "--agent":
+			if i+1 >= len(args) {
+				return f, false, revExitError
+			}
+			f.agentID = args[i+1]
+			i++
+		case arg == "--ledger":
+			if i+1 >= len(args) {
+				return f, false, revExitError
+			}
+			f.ledgerPath = args[i+1]
+			i++
+		case arg == "--adr-dir":
+			if i+1 >= len(args) {
+				return f, false, revExitError
+			}
+			f.adrDir = args[i+1]
+			i++
+		case arg == "--tier":
+			if i+1 >= len(args) {
+				return f, false, revExitError
+			}
+			f.tier = args[i+1]
+			i++
+		case arg == "--category":
+			if i+1 >= len(args) {
+				return f, false, revExitError
+			}
+			f.category = args[i+1]
+			i++
+		case arg == "--incidents":
+			if i+1 >= len(args) {
+				return f, false, revExitError
+			}
+			f.incidents = args[i+1]
+			i++
 		case len(arg) > 2 && arg[0] == '-' && arg[1] == '-':
 			fmt.Fprintf(os.Stderr, "error: unknown flag %q\n", arg)
 			return f, false, revExitError
@@ -195,6 +272,10 @@ Usage:
   helix review evidence sign   --input PATH --key-role ROLE --key-path PATH [--output PATH]
   helix review evidence verify --input PATH --key-role ROLE --key-path PATH [--json]
   helix review custody     --input PATH                              [--json]
+  helix review run         --pr URL                                  [--json]
+  helix review dashboard   --pr N --files a,b [--repo PATH] [--agent NAME]
+                           [--ledger PATH] [--adr-dir PATH] [--tier TIER]
+                           [--category CAT] [--incidents PATH] [--json]
   helix review help
 
 Subcommands:
@@ -207,6 +288,8 @@ Subcommands:
   evidence      Sign or verify an EvidenceBundle JSON file using ed25519 keys.
   custody       Print a custody summary for an evidence bundle.
   run           Run multi-model adversarial review against a PR (--pr URL).
+  dashboard     Human change management view: blast radius, risk score,
+                architectural fit (ADR lineage), trust context. Terminal + JSON.
   help          Show this help.
 
 Flags:
@@ -219,7 +302,16 @@ Flags:
   --key-role ROLE      Signer / verifier role (e.g. reviewer, arbitrator).
   --key-path PATH      Path to a 64-byte raw ed25519 private key (binary file).
   --state PATH         Persist / load FPTracker state as JSON.
-  --pr URL             PR URL to review (for review run subcommand).
+  --pr URL|N           PR URL or number (run / dashboard).
+  --files LIST         Comma-separated changed file paths (dashboard).
+  --files-from PATH    File with one changed path per line (dashboard).
+  --repo PATH          Repo root for import-graph blast radius (dashboard).
+  --agent NAME         Authoring agent ID (dashboard trust context).
+  --ledger PATH        Trust ledger JSONL (dashboard).
+  --adr-dir PATH       ADR markdown directory (dashboard).
+  --tier TIER          Trust tier override (provisional|observed|trusted|veteran).
+  --category CAT       Change category (contract|behavioral|resilience|cosmetic).
+  --incidents PATH     JSON array of related incidents for risk correlation.
   --json               Structured JSON output.
   --help, -h           Show this help.
 
@@ -268,6 +360,8 @@ func runReview(args []string, stdout, stderr io.Writer) int {
 		return runReviewCustody(flags, stdout, stderr)
 	case "run":
 		return runReviewRun(flags, stdout, stderr)
+	case "dashboard":
+		return runReviewDashboard(flags, stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "error: unknown subcommand %q\n\n", flags.subcommand)
 		printReviewHelp(stderr)
@@ -849,6 +943,149 @@ func parsePKIXEd25519(der []byte) (ed25519.PublicKey, error) {
 		}
 	}
 	return nil, errors.New("ed25519 BIT STRING not found in DER")
+}
+
+// -----------------------------------------------------------------------------
+// review dashboard — human change management view
+// -----------------------------------------------------------------------------
+
+// runReviewDashboard builds the change management dashboard (blast radius,
+// risk score, ADR fit, trust context) for human reviewers. Spec §6.1.
+func runReviewDashboard(flags revFlags, stdout, stderr io.Writer) int {
+	if flags.prURL == "" {
+		fmt.Fprintln(stderr, "error: --pr is required for review dashboard")
+		return revExitError
+	}
+
+	files, err := collectDashboardFiles(flags)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return revExitError
+	}
+	if len(files) == 0 {
+		fmt.Fprintln(stderr, "error: provide --files or --files-from with at least one changed path")
+		return revExitError
+	}
+
+	in := review.DashboardInput{
+		PR:           flags.prURL,
+		AgentID:      flags.agentID,
+		ChangedFiles: files,
+		RepoRoot:     flags.repoRoot,
+		LedgerPath:   flags.ledgerPath,
+		ADRDir:       flags.adrDir,
+	}
+	if flags.category != "" {
+		cat, ok := parseReviewCategory(flags.category)
+		if !ok {
+			fmt.Fprintf(stderr, "error: invalid --category %q (contract|behavioral|resilience|cosmetic)\n", flags.category)
+			return revExitError
+		}
+		in.Category = cat
+	}
+	if flags.tier != "" {
+		tier, ok := parseReviewTrustTier(flags.tier)
+		if !ok {
+			fmt.Fprintf(stderr, "error: invalid --tier %q (provisional|observed|trusted|veteran)\n", flags.tier)
+			return revExitError
+		}
+		in.TrustTier = tier
+	}
+	if flags.incidents != "" {
+		incs, err := loadRelatedIncidents(flags.incidents)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: --incidents: %v\n", err)
+			return revExitError
+		}
+		in.RelatedIncidents = incs
+	}
+
+	dash, err := review.BuildDashboard(in)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: build dashboard: %v\n", err)
+		return revExitError
+	}
+
+	if flags.jsonOut {
+		raw, err := review.DashboardJSON(dash)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: marshal dashboard: %v\n", err)
+			return revExitError
+		}
+		fmt.Fprintln(stdout, string(raw))
+		return revExitOK
+	}
+
+	fmt.Fprint(stdout, review.FormatDashboard(dash))
+	return revExitOK
+}
+
+func collectDashboardFiles(flags revFlags) ([]string, error) {
+	var files []string
+	if flags.filesCSV != "" {
+		for _, p := range strings.Split(flags.filesCSV, ",") {
+			p = strings.TrimSpace(p)
+			if p != "" {
+				files = append(files, p)
+			}
+		}
+	}
+	if flags.filesFrom != "" {
+		body, err := os.ReadFile(flags.filesFrom)
+		if err != nil {
+			return nil, fmt.Errorf("read --files-from: %w", err)
+		}
+		for _, line := range strings.Split(string(body), "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			files = append(files, line)
+		}
+	}
+	return files, nil
+}
+
+func parseReviewCategory(s string) (review.ChangeCategory, bool) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "contract":
+		return review.CategoryContract, true
+	case "behavioral":
+		return review.CategoryBehavioral, true
+	case "resilience":
+		return review.CategoryResilience, true
+	case "cosmetic":
+		return review.CategoryCosmetic, true
+	default:
+		return "", false
+	}
+}
+
+func parseReviewTrustTier(s string) (trust.TrustTier, bool) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "provisional":
+		return trust.TierProvisional, true
+	case "observed":
+		return trust.TierObserved, true
+	case "trusted":
+		return trust.TierTrusted, true
+	case "veteran":
+		return trust.TierVeteran, true
+	default:
+		return "", false
+	}
+}
+
+func loadRelatedIncidents(path string) ([]review.RelatedIncident, error) {
+	body, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var incs []review.RelatedIncident
+	if err := json.Unmarshal(body, &incs); err != nil {
+		return nil, fmt.Errorf("parse JSON: %w", err)
+	}
+	return incs, nil
 }
 
 // -----------------------------------------------------------------------------
