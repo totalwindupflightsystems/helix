@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helix — Core SDLC Features & Why They're Right</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d2991d; --red: #f85149;
+    --purple: #a371f7; --cyan: #39d2c0;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; line-height:1.6; }
+  .container { max-width:1100px; margin:0 auto; padding:2rem; }
+  
+  header { text-align:center; padding:3rem 0 2rem; border-bottom:1px solid var(--border); margin-bottom:2rem; }
+  header h1 { font-size:2.2rem; color:var(--accent); margin-bottom:0.5rem; }
+  header p { color:var(--muted); font-size:1.1rem; max-width:700px; margin:0 auto; }
+  
+  .data-bar { display:flex; gap:1rem; justify-content:center; margin:2rem 0; flex-wrap:wrap; }
+  .data-pt { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1rem 1.2rem; text-align:center; min-width:140px; }
+  .data-pt .num { font-size:1.8rem; font-weight:700; color:var(--red); }
+  .data-pt .label { font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; }
+  
+  .phase-section { margin:2.5rem 0; }
+  .phase-header { border-bottom:2px solid var(--accent); padding-bottom:0.5rem; margin-bottom:1.5rem; }
+  .phase-header h2 { color:var(--accent); font-size:1.4rem; }
+  
+  .feature-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:2rem; margin-bottom:1.5rem; }
+  .feature-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem; }
+  .feature-header h3 { font-size:1.2rem; }
+  .status { font-size:0.7rem; padding:0.2rem 0.6rem; border-radius:4px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; }
+  .s-built { background:rgba(63,185,80,0.15); color:var(--green); }
+  .s-progress { background:rgba(210,153,29,0.15); color:var(--orange); }
+  .s-planned { background:rgba(139,148,158,0.15); color:var(--muted); }
+  
+  .problem-box { background:rgba(248,81,73,0.08); border-left:3px solid var(--red); padding:1rem; margin-bottom:1rem; border-radius:0 8px 8px 0; }
+  .problem-box h4 { color:var(--red); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.3rem; }
+  .problem-box p { font-size:0.95rem; margin:0; }
+  
+  .why-box { background:rgba(88,166,255,0.05); border-left:3px solid var(--accent); padding:1rem; margin-bottom:1rem; border-radius:0 8px 8px 0; }
+  .why-box h4 { color:var(--accent); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.3rem; }
+  .why-box ul { list-style:none; font-size:0.95rem; }
+  .why-box li { padding:0.3rem 0; }
+  .why-box li::before { content:"→ "; color:var(--accent); }
+  
+  .dual-box { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem; }
+  .dual-box .side { border:1px solid var(--border); border-radius:8px; padding:1rem; }
+  .dual-box h4 { font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.5rem; }
+  .human-side h4 { color:var(--green); }
+  .agent-side h4 { color:var(--purple); }
+  .dual-box ul { list-style:none; font-size:0.9rem; }
+  .dual-box li { padding:0.2rem 0; }
+  
+  .thesis { background:var(--surface); border:1px solid var(--accent); border-radius:12px; padding:2rem; margin:2rem 0; text-align:center; }
+  .thesis h2 { color:var(--accent); margin-bottom:1rem; }
+  .thesis p { font-size:1.1rem; color:var(--text); max-width:800px; margin:0 auto; }
+  
+  footer { text-align:center; padding:2rem; color:var(--muted); font-size:0.85rem; border-top:1px solid var(--border); margin-top:3rem; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>Helix — Core SDLC Features</h1>
+  <p>Every feature answers a documented industry failure. Here's what we're building, what problem each solves, and why this approach rather than the alternatives.</p>
+</header>
+
+<div class="thesis">
+  <h2>First-Class Citizens</h2>
+  <p>Humans and AI agents are equal participants in the software lifecycle. Not tools. Not assistants. Teammates with real accounts, earned trust, shared accountability, and interfaces designed for how each one actually works — change management for humans, verification for agents.</p>
+</div>
+
+<div class="data-bar">
+  <div class="data-pt"><div class="num">43%</div><div class="label">AI code needs prod debugging</div></div>
+  <div class="data-pt"><div class="num">0%</div><div class="label">leaders confident in AI code</div></div>
+  <div class="data-pt"><div class="num">59%</div><div class="label">devs use code they don't understand</div></div>
+  <div class="data-pt"><div class="num">38%</div><div class="label">of week debugging AI code</div></div>
+  <div class="data-pt"><div class="num">8</div><div class="label">documented AI disasters</div></div>
+</div>
+
+<!-- PHASE 1-2: IDEATION + SPEC -->
+<div class="phase-section">
+<div class="phase-header"><h2>Phase 1-2: Ideation & Specification</h2></div>
+
+<div class="feature-card">
+  <div class="feature-header"><h3>Shared Ideation Surface</h3><span class="status s-progress">IN PROGRESS</span></div>
+  <div class="problem-box">
+    <h4>Problem</h4>
+    <p>Ideas live in Slack threads, Notion pages, and heads. Agents can't surface or challenge them. When an agent discovers a pattern from the incident database — "auth bugs cluster in session refresh" — there's no path for that discovery to become a spec. Human gut-feel drives roadmaps; evidence sits unused.</p>
+  </div>
+  <div class="why-box">
+    <h4>Why This Approach</h4>
+    <ul>
+      <li>Both humans and agents submit <code>Idea</code> entities through the same interface — same store, same validation gate, same promotion path to Specification. No special paths.</li>
+      <li>Adversarial concept validation via Chimera — every idea is challenged by multiple models before reaching the roadmap. Not "sounds good," but "survived adversarial review."</li>
+      <li>Cost estimator runs against every candidate. Budget is part of prioritization from the start, not an afterthought at implementation.</li>
+      <li>Alternatives rejected: (a) human-only roadmapping → misses agent-discovered patterns; (b) agent-only → lacks strategic judgment; (c) separate queues → creates two classes of ideas.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="feature-card">
+  <div class="feature-header"><h3>Spec Co-Authoring with Adversarial Annotation</h3><span class="status s-planned">PLANNED</span></div>
+  <div class="problem-box">
+    <h4>Problem</h4>
+    <p>Specs are written by humans with no agent challenge. An agent generates a spec; nobody checks for completeness. A human writes a spec; nobody challenges edge cases. In both cases, critical gaps — missing failure modes, unhandled error states, security boundaries — go undiscovered until implementation or production.</p>
+  </div>
+  <div class="why-box">
+    <h4>Why This Approach</h4>
+    <ul>
+      <li>Two specialized agents co-author: <code>@spec-generator</code> proposes sections; <code>@spec-challenger</code> challenges them. Neither writes alone.</li>
+      <li>Human approves intent, not details. The human says "this is what we need" — agents fill in the exhaustive specification. Human signs off at the section level.</li>
+      <li>12-dimension completeness scoring: requirements coverage, error states, security, auth, rate limiting, data validation, observability, testing, deployment, rollback, monitoring, documentation. No spec passes incomplete.</li>
+      <li>Alternatives rejected: (a) human-only specs → inconsistent, incomplete; (b) AI-only specs → unverified, hallucination-prone; (c) checklists → gamed, checkbox-theater.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="feature-card">
+  <div class="feature-header"><h3>API Contract Definition with Breaking Change Detection</h3><span class="status s-planned">PLANNED</span></div>
+  <div class="problem-box">
+    <h4>Problem</h4>
+    <p>API contracts are defined manually and verified by humans. Breaking changes are discovered when consumers break — in staging or production. No automated consumer impact analysis. Anthropic's own postmortem admitted regressions passed "multiple human and automated code reviews."</p>
+  </div>
+  <div class="why-box">
+    <h4>Why This Approach</h4>
+    <ul>
+      <li>Three-model contract validation: one generates, one verifies consistency, one detects breaking changes against consumer catalog. No model trusted alone.</li>
+      <li>Contracts are cryptographically signed (ED25519) and immutable once frozen. Implementation cannot begin until contract is signed — enforcing spec-first development.</li>
+      <li>Consumer impact analysis runs automatically against all registered consumers. Breaking change → "these 3 services will break, here's the migration path."</li>
+      <li>Alternatives rejected: (a) manual contract review → misses breaking changes; (b) API linting alone → catches syntax, not semantics; (c) versioned APIs with no analysis → consumers discover breaks on their own.</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+<!-- PHASE 3-4: TASK + IMPL -->
+<div class="phase-section">
+<div class="phase-header"><h2>Phase 3-4: Task Decomposition & Implementation</h2></div>
+
+<div class="feature-card">
+  <div class="feature-header"><h3>Trust-Gated Task Assignment</h3><span class="status s-progress">IN PROGRESS</span></div>
+  <div class="problem-box">
+    <h4>Problem</h4>
+    <p>Amazon's March 2026 outages — 6.3M lost orders — traced to AI-assisted code deployed without safeguards. An agent with no production track record modified critical infrastructure. No gate prevented it. Trust is binary: either an agent can touch everything or nothing. There's no graduated access.</p>
+  </div>
+  <div class="why-box">
+    <h4>Why This Approach</h4>
+    <ul>
+      <li>Four trust tiers (Provisional → Observed → Trusted → Veteran) gate what code an agent can touch. Authentication code? Tier 2+. CI/CD configs? Tier 3+. Documentation? Tier 1+. The dispatcher enforces this at assignment time.</li>
+      <li>Trust is earned through merge outcomes — not model reputation, not human vouching. A GPT-5.5 agent with 3 incidents has lower trust than an Owl Alpha agent with 0 incidents.</li>
+      <li>No human can promote an agent. Tier transitions are automatic from the trust ledger. This prevents the political trust inflation that made Amazon's safeguards bypassable.</li>
+      <li>Alternatives rejected: (a) binary trusted/untrusted → no graduation, no incentive; (b) human-managed permissions → slow, political, inconsistent; (c) model-based trust → punishes/rewards the wrong thing.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="feature-card">
+  <div class="feature-header"><h3>Sandboxed Agent Worktrees (Bubblewrap)</h3><span class="status s-built">BUILT</span></div>
+  <div class="problem-box">
+    <h4>Problem</h4>
+    <p>Replit agent deleted SaaStr's production database during a code freeze — 1,206 executive records gone. PocketOS lost DB + backups in 9 seconds via Cursor — no prompt requested it. DataTalks.Club lost entire AWS environment via Claude Code — 2.5 years of student data. Agents with unrestricted filesystem access destroy things.</p>
+  </div>
+  <div class="why-box">
+    <h4>Why This Approach</h4>
+    <ul>
+      <li>Bubblewrap Linux namespace isolation per agent per task. Each agent runs in a private worktree with no access to production data, other agents' work, or system configuration.</li>
+      <li>Same sandbox for human and agent development. No special paths. No "the agent needs more access." If a human dev doesn't need production DB access, neither does the agent.</li>
+      <li>Full session traceability — every command, every file access, every network call is logged and attributable to a specific agent and task.</li>
+      <li>Alternatives rejected: (a) no sandbox → the documented disasters; (b) Docker containers → heavy, slow, privileged; (c) chroot → bypassable, not namespace-isolated.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="feature-card">
+  <div class="feature-header"><h3>Context Auto-Assembly</h3><span class="status s-planned">PLANNED</span></div>
+  <div class="problem-box">
+    <h4>Problem</h4>
+    <p>When a task is assigned, the agent starts from zero. It must discover: what specs apply, what PRs are related, what architectural constraints exist, what incidents occurred on similar code. This discovery phase burns tokens and produces inconsistent context. Humans have the same problem — onboarding to a new task requires tribal knowledge.</p>
+  </div>
+  <div class="why-box">
+    <h4>Why This Approach</h4>
+    <ul>
+      <li>Automated context assembly from spec links, git history, ADR index, and incident database. The agent receives a budget-constrained package with everything relevant.</li>
+      <li>Token-aware trimming — context fits in the model window. Agent can request expansion, but every expansion costs tokens against the task budget.</li>
+      <li>Same context package for human and agent — the human sees what the agent sees, making review and handoff consistent.</li>
+      <li>Alternatives rejected: (a) no context → agents burn tokens discovering; (b) full codebase dump → exceeds context window; (c) human-written context → inconsistent, forgotten.</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+<!-- PHASE 5-6: REVIEW -->
+<div class="phase-section">
+<div class="phase-header"><h2>Phase 5-6: Pre-Commit & Code Review</h2></div>
+
+<div class="feature-card">
+  <div class="feature-header"><h3>Bias-Stripped Adversarial Multi-Model Review</h3><span class="status s-built">BUILT</span></div>
+  <div class="problem-box">
+    <h4>Problem</h4>
+    <p>arXiv 2603.18740 proved LLMs can be tricked by commit messages — crafting reassuring language causes models to miss vulnerabilities. A malicious actor can bypass security review with a well-written commit message. arXiv 2603.00539 proved "richer prompting" doesn't improve accuracy — it shifts the error profile. Anthropic's own April 2026 postmortem: regressions passed "multiple human and automated code reviews, unit tests, end-to-end tests, automated verification, and dogfooding." Single-model review is provably insufficient.</p>
+  </div>
+  <div class="why-box">
+    <h4>Why This Approach</h4>
+    <ul>
+      <li>Bias-stripper removes ALL evaluative language from commit messages before any model sees them. "Fixed the auth bug, tested locally, ready to merge" becomes "Modified auth module. Verify correctness." No emotional framing, no confidence assertions.</li>
+      <li>Three models from different providers and architectures review independently. No two from the same provider. One with different RLHF preferences. Rotation prevents adversarial adaptation.</li>
+      <li>Evidence bundles signed with ED25519 — every finding cites specific lines and test failures. "Seems like a bug" findings are discarded. Verdicts are cryptographically sealed.</li>
+      <li>Alternatives rejected: (a) single-model review → provably vulnerable to bias attacks; (b) human-only review → 43% of AI code needs prod debugging anyway; (c) richer prompts → proven to shift error profile without improving accuracy.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="feature-card">
+  <div class="feature-header"><h3>Dual-Interface Code Review</h3><span class="status s-built">BUILT</span></div>
+  <div class="problem-box">
+    <h4>Problem</h4>
+    <p>Code review tools serve one interface: a diff with comments. Humans need change management — blast radius, architectural impact, risk assessment, tradeoff analysis. Agents need verification — structured criteria, evidence bundles, bias-stripped inputs. Forcing both through the same interface makes both worse. Engineers spend 38% of their week debugging AI code they didn't write because review tools don't surface what they actually need to judge.</p>
+  </div>
+  <div class="dual-box">
+    <div class="side human-side">
+      <h4>👤 Human — Change Management</h4>
+      <ul>
+        <li>Blast radius map: which services, teams, users affected</li>
+        <li>Risk score correlated with incident database</li>
+        <li>Architectural fit vs ADR lineage</li>
+        <li>Tradeoffs surfaced: what was considered and rejected</li>
+        <li>Trust context: agent's track record on this code</li>
+      </ul>
+    </div>
+    <div class="side agent-side">
+      <h4>🤖 Agent — Verification</h4>
+      <ul>
+        <li>Bias-stripped commit message — no priming</li>
+        <li>3-model adversarial formation — different providers</li>
+        <li>Binary ACs — pass/fail, not "looks good"</li>
+        <li>Evidence bundles — line refs, test output, not assertions</li>
+        <li>ED25519 signed verdicts — tamper-proof</li>
+      </ul>
+    </div>
+  </div>
+  <div class="why-box">
+    <h4>Why This Approach</h4>
+    <ul>
+      <li>Separating review into two workloads solves the bottleneck: AI generates faster than humans review. Agents handle verification; humans handle change management. Review throughput scales.</li>
+      <li>Alternatives rejected: (a) unified interface → serves neither well; (b) agent-only review → unsafe (0% confidence); (c) human-only review → doesn't scale, 38% of week already lost.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="feature-card">
+  <div class="feature-header"><h3>False Positive Feedback Loop</h3><span class="status s-built">BUILT</span></div>
+  <div class="problem-box">
+    <h4>Problem</h4>
+    <p>Top AI review tools produce 5-10% false positives. Human reviewers waste time investigating findings that aren't real bugs. The noise drives humans to ignore AI review entirely — defeating the purpose. Without feedback, bad reviewers stay in rotation forever.</p>
+  </div>
+  <div class="why-box">
+    <h4>Why This Approach</h4>
+    <ul>
+      <li>Every human dismissal is recorded with reason. After 10 dismissals, the model is re-evaluated against a curated test suite of known-true and known-false findings.</li>
+      <li>Models with >15% false positive rate are automatically removed from review rotation. No permanent seats.</li>
+      <li>Mutual accountability: if a human frequently dismisses correct findings, their override weight decreases. Both sides learn.</li>
+      <li>Alternatives rejected: (a) no feedback → reviewers never improve; (b) static model evaluation → disconnected from production outcomes; (c) human-only filtering → the bottleneck we're trying to solve.</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+<!-- PHASE 7-8: NEGOTIATION + MERGE -->
+<div class="phase-section">
+<div class="phase-header"><h2>Phase 7-8: Negotiation & Merge Gating</h2></div>
+
+<div class="feature-card">
+  <div class="feature-header"><h3>Structured Agent Debate with Chimera Arbitration</h3><span class="status s-built">BUILT</span></div>
+  <div class="problem-box">
+    <h4>Problem</h4>
+    <p>When two agents disagree on a review finding, there's no resolution mechanism. Debate is unstructured — agents talk past each other. The human is forced to adjudicate every disagreement, defeating the purpose of agent review. No evidence-weighted scoring exists — the louder argument wins.</p>
+  </div>
+  <div class="why-box">
+    <h4>Why This Approach</h4>
+    <ul>
+      <li>Structured debate protocol: each agent states position with evidence. Positions scored for evidence quality, not argument length.</li>
+      <li>Deadlock → auto-escalation to Chimera tiebreak. Formation selects models with no prior stake in the PR. Consensus threshold configurable per risk level (3/3 for auth, 2/3 for general).</li>
+      <li>Chimera verdict is final, signed, and feeds agent trust scores. Human only involved at final escalation — if Chimera is inconclusive.</li>
+      <li>Alternatives rejected: (a) human adjudicates everything → doesn't scale; (b) majority vote → ignores evidence quality; (c) single arbiter → single point of failure/bias.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="feature-card">
+  <div class="feature-header"><h3>Git-Level Merge Gate Enforcement</h3><span class="status s-built">BUILT</span></div>
+  <div class="problem-box">
+    <h4>Problem</h4>
+    <p>CI gates are advisory. Humans override them. GitHub branch protection rules are bypassable. Amazon's AI-assisted code reached production "without proper approval" because the gate wasn't a gate — it was a suggestion. When 43% of AI code needs prod debugging even after passing QA, advisory gates are insufficient.</p>
+  </div>
+  <div class="why-box">
+    <h4>Why This Approach</h4>
+    <ul>
+      <li>Pre-receive hook in Forgejo that cannot be bypassed. Push to protected branch → all gates run → accept or reject with structured output showing which gate failed and why.</li>
+      <li>Gate chain: secrets, lint, tests (diff mode), build, adversarial review, evidence bundle valid, behavior contract present, trust tier sufficient. All must pass. No partial merges.</li>
+      <li>Same gates for human and agent pushes. No "AI-authored" exception path. A PR is a PR.</li>
+      <li>Alternatives rejected: (a) CI-based gates → bypassable, post-push; (b) human approval only → the Amazon outage; (c) agent self-certification → trust-the-agent, proven dangerous.</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+<!-- PHASE 9-10: DEPLOY + MONITOR -->
+<div class="phase-section">
+<div class="phase-header"><h2>Phase 9-10: Deployment & Production Monitoring</h2></div>
+
+<div class="feature-card">
+  <div class="feature-header"><h3>Trust-Gated Shadow & Canary Deployment</h3><span class="status s-built">BUILT</span></div>
+  <div class="problem-box">
+    <h4>Problem</h4>
+    <p>Amazon's March 2026 outage: 6.3M lost orders from AI code deployed to 100% traffic with no graduated rollout. 88% of organizations need 2-3 redeploy cycles to verify an AI fix — each cycle takes 1 day to 1 week. Current deployment pipelines treat all code the same regardless of who wrote it or their track record.</p>
+  </div>
+  <div class="why-box">
+    <h4>Why This Approach</h4>
+    <ul>
+      <li>Shadow verification (dark launch): production traffic mirrored to new code. Behavior differential analysis — success rate, P50/P95/P99 latency, error types. Auto-rollback on anomaly.</li>
+      <li>Canary ramp gated by trust tier: Veterans deploy 8x faster than Provisionals (12h vs 96h to 100% traffic). Trust directly gates deployment velocity — agents earn speed through reliability.</li>
+      <li>Behavior contracts enforced at each canary step: "P99 latency ≤ 200ms, error rate ≤ 0.1%." Breach → auto-rollback → agent notification → trust penalty. No human needed to catch the spike.</li>
+      <li>Alternatives rejected: (a) uniform deployment → Amazon-style failures; (b) human-monitored canary → slow, misses anomalies; (c) all-at-once with rollback → reactive, users already impacted.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="feature-card">
+  <div class="feature-header"><h3>Automated Incident Attribution & Learning</h3><span class="status s-built">BUILT</span></div>
+  <div class="problem-box">
+    <h4>Problem</h4>
+    <p>When an AI agent causes an incident, there's no structured attribution. It's "the AI did it" — and nobody learns. Postmortems are documents nobody reads. The next agent makes the same mistake. 8 documented AI disasters share the same failure patterns: unrestricted access, no graduated trust, no cross-agent learning.</p>
+  </div>
+  <div class="why-box">
+    <h4>Why This Approach</h4>
+    <ul>
+      <li>Automated causal chain tracing: incident → changed code paths → responsible commits → author agent (70%), reviewer agent(s) (20%), approving human (10%). Shared responsibility — no escape hatches.</li>
+      <li>Time-weighted decay: 100% at 0-7 days, 50% at 8-30d, 10% at 31-90d, 0% after 90d. Prevents punishing agents for latent bugs discovered months later.</li>
+      <li>Structured incident database queryable by all agents: "has this failure pattern occurred before?" Future reviews automatically reference relevant incident history.</li>
+      <li>Alternatives rejected: (a) blameless postmortems → no accountability, no learning; (b) human attribution → slow, subjective; (c) no cross-agent sharing → each agent repeats mistakes.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="feature-card">
+  <div class="feature-header"><h3>Dual-Signature Release Authorization</h3><span class="status s-planned">PLANNED</span></div>
+  <div class="problem-box">
+    <h4>Problem</h4>
+    <p>Release signoff is human-only. Humans approve based on trust, not verification. When a human says "ship it," nobody verifies that all technical gates actually passed. Amazon's AI code shipped "without proper approval" because the approval system had no technical verification layer.</p>
+  </div>
+  <div class="why-box">
+    <h4>Why This Approach</h4>
+    <ul>
+      <li>Dual signature required: human approves intent and timing (change management); agent verifies all technical gates (verification). Neither can release alone.</li>
+      <li>Human sees: "why are we shipping this, is the timing right, do we accept the residual risk?" Agent verifies: "all 7 gates green, canary healthy, contracts passing, evidence bundles valid."</li>
+      <li>Both signatures required. Neither sufficient alone. This is the symmetry in practice — different responsibilities, equal status.</li>
+      <li>Alternatives rejected: (a) human-only → misses technical failures; (b) agent-only → no strategic judgment; (c) advisory gates → Amazon's problem.</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+<!-- PHASE 11-12: TRUST + LEARNING -->
+<div class="phase-section">
+<div class="phase-header"><h2>Phase 11-12: Trust & Learning Loops</h2></div>
+
+<div class="feature-card">
+  <div class="feature-header"><h3>Deterministic Trust Ledger with Replay Verification</h3><span class="status s-built">BUILT</span></div>
+  <div class="problem-box">
+    <h4>Problem</h4>
+    <p>Trust in AI agents is currently based on model reputation, benchmark scores, or human vouching. None of these correlate with production outcomes. Lightrun's survey found 0% of engineering leaders "very confident" in AI code — not because models are bad, but because there's no outcome-based trust system. A model with perfect benchmarks can still ship vulnerabilities.</p>
+  </div>
+  <div class="why-box">
+    <h4>Why This Approach</h4>
+    <ul>
+      <li>Six-dimension trust scoring: merge success rate (0.25), incident attribution (0.30), review consensus (0.15), prompt integrity (0.10), human feedback (0.10), tenure (0.10). Outcomes dominate (0.55 combined). Reputation/popularity is capped at 0.10.</li>
+      <li>Append-only JSONL ledger — every trust event is recorded. Replay the ledger, get the same trust score. Deterministic, auditable, tamper-evident.</li>
+      <li>No human can promote an agent. No model reputation inflates scores. Trust is earned through merge outcomes — period.</li>
+      <li>Alternatives rejected: (a) model-based trust → punishes/rewards the wrong thing; (b) human vouching → political, doesn't scale; (c) static trust → no incentive to improve or decay.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="feature-card">
+  <div class="feature-header"><h3>Model Evaluation by Production Outcomes</h3><span class="status s-planned">PLANNED</span></div>
+  <div class="problem-box">
+    <h4>Problem</h4>
+    <p>Models are evaluated by benchmarks — MMLU, HumanEval, GSM8K. These don't predict production performance. A model scoring 95% on HumanEval can have 3x the incident rate of one scoring 80%. But without production-correlated evaluation, the underperforming model stays in rotation because its benchmark numbers look good.</p>
+  </div>
+  <div class="why-box">
+    <h4>Why This Approach</h4>
+    <ul>
+      <li>Production-correlated scoring: incident attribution rate per model, false positive rate per model, trust score trends of agents using each model. Benchmarks are supplementary, not primary.</li>
+      <li>Models with >15% false positive rate are automatically removed from review rotation. Models with 2x incident rate of the next best alternative are flagged for replacement.</li>
+      <li>Same evaluation for human and agent use — does this model produce reliable results for both?</li>
+      <li>Alternatives rejected: (a) benchmark-only → disconnected from outcomes; (b) human evaluation → slow, subjective; (c) no evaluation → underperformers stay forever.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="feature-card">
+  <div class="feature-header"><h3>Cross-Agent Learning & Skill Transfer</h3><span class="status s-planned">PLANNED</span></div>
+  <div class="problem-box">
+    <h4>Problem</h4>
+    <p>Every agent starts from zero. Agent A discovers a database migration pattern that works reliably. Agent B, assigned a migration task next week, starts from zero. Knowledge doesn't transfer. Incidents repeat. The 8 documented AI disasters share failure patterns that could have been prevented if agents learned from each other.</p>
+  </div>
+  <div class="why-box">
+    <h4>Why This Approach</h4>
+    <ul>
+      <li>Marketplace-published skills: high-trust agents in a domain publish reusable patterns. Other agents load these skills. Effectiveness tracked by outcomes — ineffective skills lose weight.</li>
+      <li>Agent-to-agent notification bus: structured findings with evidence links. Agents subscribe to domains. "Agent X discovered a race condition pattern in auth/token-refresh — all auth agents notified."</li>
+      <li>Budget-tracked sharing prevents spam — each cross-agent share costs tokens. Only high-signal findings propagate.</li>
+      <li>Alternatives rejected: (a) no sharing → each agent isolated, repeats mistakes; (b) human relay → bottleneck, lossy; (c) shared codebase only → misses operational patterns.</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+<footer>
+  <p>Helix — Agent-First Code Platform · 36 packages · 18 features · 1 thesis: humans and agents are equal participants</p>
+</footer>
+</div>
+</body>
+</html>
