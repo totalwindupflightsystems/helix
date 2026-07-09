@@ -1,0 +1,82 @@
+{
+  "task_id": "ideation-phase1",
+  "task_title": "Implement ideation system (capture, validate, prioritize)",
+  "task_criteria": [
+    "pkg/ideation has types.go with Idea, EvidenceRef, IdeaSource, IdeaStatus and store.go with JSONL IdeaStore Capture/Get/List/Update/Promote",
+    "cmd/helix/idea.go wires helix idea capture|list|show|validate|prioritize|promote|close|advocate into main.go switch and printUsage",
+    "helix idea validate returns structured ValidationReport with at least 2 offline concept agents and risk score",
+    "helix idea prioritize ranks ideas with deterministic composite score; promote creates specs/ideas placeholder and updates PromotedTo",
+    "go test ./pkg/ideation/... and go test ./cmd/helix/ -count=1 -short pass; go build ./cmd/helix succeeds"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 lint: \n  \u2713 tests: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 pkg/ideation has types.go with Idea, EvidenceRef, IdeaSource, IdeaStatus and store.go with JSONL IdeaStore Capture/Get/List/Update/Promote: types.go defines Idea (line 46), EvidenceRef (line 34), source constants (lines 15-19), status constants (lines 22-29). store.go has Store with Capture/Get/List/Update/Promote/Close methods using JSONL append+rewrite.\n  \u2713 cmd/helix/idea.go wires helix idea capture|list|show|validate|prioritize|promote|close|advocate into main.go switch and printUsage: main.go:443-446 case \"idea\" -> runIdeaWithDryRun; printUsage line 590 lists \"idea\". idea.go:241 runIdea switches capture/list/show/validate/prioritize/promote/close/advocate (lines 254-269).\n  \u2713 helix idea validate returns structured ValidationReport with at least 2 offline concept agents and risk score: validator.go:14-29 defines ValidationReport. Two offline agents: @assumption-buster (runAssumptionBuster line 84) and @architecture-fit (runArchitectureFit line 147). computeRiskScore line 189 produces 0-100 score. E2E test confirms >=2 agents_run.\n  \u2713 helix idea prioritize ranks ideas with deterministic composite score; promote creates specs/ideas placeholder and updates PromotedTo: priority.go:171-176 sort.SliceStable with compositeScore (cost/risk/advocacy) desc then title asc. E2E tests confirm deterministic ranking. promote (idea.go:530) creates specs/ideas/<id>-<slug>.md with frontmatter and calls store.Promote (store.go:169-171 sets Status=Promoted, PromotedTo).\n  \u2713 go test ./pkg/ideation/... and go test ./cmd/helix/ -count=1 -short pass; go build ./cmd/helix succeeds: go test ./pkg/ideation/... -> ok 0.016s. go test ./cmd/helix/ -count=1 -short -> ok 0.451s. go build ./cmd/helix -> exit 0.\nAll 5 criteria verified: pkg/ideation types and store implemented with JSONL Capture/Get/List/Update/Promote, CLI wired into main.go with all 8 subcommands, validate returns ValidationReport with 2 offline agents and risk score, prioritize uses deterministic composite score and promote creates specs/ideas placeholder with PromotedTo update, all tests pass and build succeeds.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 pkg/ideation has types.go with Idea, EvidenceRef, IdeaSource, IdeaStatus and store.go with JSONL IdeaStore Capture/Get/List/Update/Promote: types.go defines Idea (line 46), EvidenceRef (line 34), source constants (lines 15-19), status constants (lines 22-29). store.go has Store with Capture/Get/List/Update/Promote/Close methods using JSONL append+rewrite.\n  \u2713 cmd/helix/idea.go wires helix idea capture|list|show|validate|prioritize|promote|close|advocate into main.go switch and print",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: ideation-phase1\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 lint: \n  \u2713 tests: \n  \u2713 secrets: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 pkg/ideation has types.go with Idea, EvidenceRef, IdeaSource, IdeaStatus and store.go with JSONL IdeaStore Capture/Get/List/Update/Promote: types.go defines Idea (line 46), EvidenceRef (line 34), source constants (lines 15-19), status constants (lines 22-29). store.go has Store with Capture/Get/List/Update/Promote/Close methods using JSONL append+rewrite.\n  \u2713 cmd/helix/idea.go wires helix idea capture|list|show|validate|prioritize|promote|close|advocate into main.go switch and printUsage: main.go:443-446 case \"idea\" -> runIdeaWithDryRun; printUsage line 590 lists \"idea\". idea.go:241 runIdea switches capture/list/show/validate/prioritize/promote/close/advocate (lines 254-269).\n  \u2713 helix idea validate returns structured ValidationReport with at least 2 offline concept agents and risk score: validator.go:14-29 defines ValidationReport. Two offline agents: @assumption-buster (runAssumptionBuster line 84) and @architecture-fit (runArchitectureFit line 147). computeRiskScore line 189 produces 0-100 score. E2E test confirms >=2 agents_run.\n  \u2713 helix idea prioritize ranks ideas with deterministic composite score; promote creates specs/ideas placeholder and updates PromotedTo: priority.go:171-176 sort.SliceStable with compositeScore (cost/risk/advocacy) desc then title asc. E2E tests confirm deterministic ranking. promote (idea.go:530) creates specs/ideas/<id>-<slug>.md with frontmatter and calls store.Promote (store.go:169-171 sets Status=Promoted, PromotedTo).\n  \u2713 go test ./pkg/ideation/... and go test ./cmd/helix/ -count=1 -short pass; go build ./cmd/helix succeeds: go test ./pkg/ideation/... -> ok 0.016s. go test ./cmd/helix/ -count=1 -short -> ok 0.451s. go build ./cmd/helix -> exit 0.\nAll 5 criteria verified: pkg/ideation types and store implemented with JSONL Capture/Get/List/Update/Promote, CLI wired into main.go with all 8 subcommands, validate returns ValidationReport with 2 offline agents and risk score, prioritize uses deterministic composite score and promote creates specs/ideas placeholder with PromotedTo update, all tests pass and build succeeds.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-07-09T13:52:09.924522"
+}
