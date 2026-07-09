@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/totalwindupflightsystems/helix/pkg/mergegate"
 	"github.com/totalwindupflightsystems/helix/pkg/review"
@@ -40,14 +41,17 @@ var mgAllChecks = []mgCheck{
 
 // mgFlags holds parsed CLI flags.
 type mgFlags struct {
-	subcommand   string // check, checks
-	evidence     string // path to evidence bundle JSON
+	subcommand   string // check, checks, hook
+	evidence     string // path to evidence bundle JSON (check)
+	evidencePath string // path to evidence directory (hook)
 	contract     string // path to behavior contract YAML
 	trustTier    string // agent trust tier
 	agent        string // agent ID
 	jsonOut      bool
 	skipContract bool
 	skipCost     bool
+	dryRun       bool
+	protected    string // comma-separated protected branch patterns (hook)
 }
 
 // parseMergeGateFlags parses args for `helix mergegate`.
@@ -95,6 +99,22 @@ func parseMergeGateFlags(args []string) (mgFlags, bool, int) {
 			f.skipContract = true
 		case arg == "--skip-cost":
 			f.skipCost = true
+		case arg == "--dry-run":
+			f.dryRun = true
+		case arg == "--evidence-path":
+			if i+1 < len(args) {
+				f.evidencePath = args[i+1]
+				i++
+			} else {
+				return f, false, mgExitError
+			}
+		case arg == "--protected":
+			if i+1 < len(args) {
+				f.protected = args[i+1]
+				i++
+			} else {
+				return f, false, mgExitError
+			}
 		case arg == "--":
 			// rest are positional
 		case len(arg) > 2 && arg[0] == '-' && arg[1] == '-':
@@ -128,20 +148,25 @@ Runs all 5 Helix quality checks before allowing a merge:
 Usage:
   helix mergegate check --evidence <path> --contract <path> --trust <tier> [--agent <name>] [--json]
   helix mergegate checks
+  helix mergegate hook [--trust <tier>] [--evidence-path <dir>] [--protected main,master] [--dry-run]
   helix mergegate help
 
 Subcommands:
   check    Run the merge gate with the given artifacts
   checks   List all 5 gate checks with descriptions
+  hook     Run as a pre-receive hook (reads git refs from stdin)
   help     Show this help
 
 Flags:
-  --evidence <path>      Path to evidence bundle JSON file
+  --evidence <path>      Path to evidence bundle JSON file (check)
+  --evidence-path <dir>  Path to evidence directory (hook)
   --contract <path>      Path to behavior contract YAML file
   --trust <tier>         Agent trust tier: provisional|observed|trusted|veteran
   --agent <name>         Agent ID (optional, for display)
+  --protected <list>     Comma-separated protected branch patterns (hook)
   --skip-contract        Skip the behavior contract check
   --skip-cost            Skip the cost guard check
+  --dry-run              Dry-run mode: do not reject pushes (hook)
   --json                 Structured JSON output
   --help, -h             Show this help
 
@@ -170,6 +195,8 @@ func runMergeGate(args []string, stdout, stderr io.Writer) int {
 		return runMergeGateCheck(flags, stdout, stderr)
 	case "checks":
 		return runMergeGateChecks(flags, stdout)
+	case "hook":
+		return runMergeGateHook(flags, stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "error: unknown subcommand %q\n", flags.subcommand)
 		return mgExitError
@@ -343,4 +370,35 @@ func runMergeGateWithDryRun(args []string, stdout, stderr io.Writer, globalDryRu
 		return errExit{code: rc}
 	}
 	return nil
+}
+
+// runMergeGateHook runs the pre-receive hook evaluation.
+// Reads git refs from stdin (standard pre-receive protocol).
+func runMergeGateHook(flags mgFlags, stdout, stderr io.Writer) int {
+	cfg := mergegate.DefaultHookConfig()
+
+	// Override with CLI flags.
+	cfg.TrustTier = flags.trustTier
+	cfg.AgentID = flags.agent
+	cfg.EvidencePath = flags.evidencePath
+	cfg.DryRun = flags.dryRun
+
+	// Parse protected branches from comma-separated list.
+	if flags.protected != "" {
+		cfg.ProtectedBranches = strings.Split(flags.protected, ",")
+		for i, b := range cfg.ProtectedBranches {
+			cfg.ProtectedBranches[i] = strings.TrimSpace(b)
+		}
+	}
+
+	// Allow env override for bypass.
+	if os.Getenv("HELIX_SKIP_GATE") == "1" {
+		fmt.Fprintln(stderr, "helix-pre-receive: HELIX_SKIP_GATE=1 set, allowing push")
+		return mgExitOK
+	}
+
+	if err := mergegate.EvaluateHook(cfg, os.Stdin, stdout, stderr); err != nil {
+		return mgExitBlock
+	}
+	return mgExitOK
 }
