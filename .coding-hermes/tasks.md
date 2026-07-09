@@ -24,14 +24,11 @@
 - **Completed:** 2026-07-09 — Implemented pkg/mergegate/hook.go (pre-receive evaluation: stdin ref parsing, protected branch matching with glob patterns, changed-file collection via git diff-tree/ls-tree, 4 gate checks: evidence-on-disk, trust-tier, secrets-scan, commit-attestation). Added `helix mergegate hook` CLI subcommand. Created scripts/helix-pre-receive.sh (Forgejo pre-receive hook wrapper). 14 new tests including integration test with real git repo. E2E verified: protected branch push → evaluated, non-protected → skipped, tag push → skipped, branch deletion → rejected. make lint+test+build PASS (49 packages).
 - **AC met:** (1) Push to protected branch with failing gates → rejected with structured JSON message, (2) Push with all gates passing → accepted, (3) Works via `helix mergegate hook` reading pre-receive stdin, (4) HELIX_SKIP_GATE=1 bypass for emergencies.
 
-## [~] MEDIUM: Implement ideation system — Idea capture, validation, prioritization
+## [x] MEDIUM: Implement ideation system — Idea capture, validation, prioritization
 - **Priority:** medium — new capability, not blocking existing flow
 - **Plan:** specs/plans/phase-1-2-ideation-spec.md §1.1-1.3
-- **Gap:** No structured ideation. Ideas live in Slack/Notion/heads. Agents can't surface or challenge ideas.
-- **Files:** pkg/ideation/types.go, pkg/ideation/store.go, pkg/ideation/validator.go, pkg/ideation/priority.go, cmd/helix/idea.go (NEW — monorepo CLI, not separate helix-idea binary)
-- **AC:** (1) `helix idea capture --title "..." --body "..."` → persisted with evidence refs. (2) Go API `ideation.Capture` / store for agents. (3) `helix idea validate <id>` runs offline adversarial concept validation (assumption-buster + architecture-fit). (4) `helix idea prioritize` ranks by cost/risk/advocacy. (5) `helix idea promote <id> --to spec` creates spec placeholder.
-- **Logic:** `Idea` struct with Source (human/agent/chimera), EvidenceRefs, Status. JSONL store. `IdeaValidator` concept agents (offline deterministic). `IdeaPrioritizer` multi-dimensional scoring.
-- **Started:** 2026-07-09 — foreman tick, wiring check: monorepo CLI already wires existing pkgs; ideation is next new capability.
+- **Completed:** 2026-07-09 — pkg/ideation (types/store/validator/priority + tests), cmd/helix/idea.go wired into monorepo CLI. Offline concept agents @assumption-buster + @architecture-fit. Deterministic prioritizer with advocacy JSONL. Promote writes specs/ideas/*.md, blocks risk_score>=70. Ad-hoc verification 23/23. go test ./pkg/ideation + cmd/helix Idea tests PASS.
+- **AC met:** (1) `helix idea capture --title/--body` → JSONL store, (2) Go API Capture/Store for agents, (3) `helix idea validate` offline multi-agent report, (4) `helix idea prioritize` composite score ranking, (5) `helix idea promote --to spec` creates placeholder + PromotedTo.
 
 ## [ ] MEDIUM: Implement spec co-authoring with adversarial annotation
 - **Priority:** medium

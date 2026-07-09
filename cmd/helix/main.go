@@ -440,6 +440,12 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("memory", func() error {
 			return runMemoryWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "idea":
+		// `helix idea <capture|list|show|validate|prioritize|promote|close|advocate>`
+		// Phase 1 ideation: capture → offline validate → prioritize → promote to spec.
+		return RunWithObs("idea", func() error {
+			return runIdeaWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	}
 
 	// Delegate to subcommand binary
@@ -581,6 +587,7 @@ Subcommands:
   ci           Generate/validate Forgejo Actions workflow (spec §12.5)
   recovery     Error-recovery runbook + DR scenarios (spec §14.1, §10.3)
   memory       Hivemind memory bank lifecycle (spec §8.6)
+  idea         Idea capture, validation, prioritization (Phase 1)
 
 Global Flags:
   --verbose   Enable verbose output
