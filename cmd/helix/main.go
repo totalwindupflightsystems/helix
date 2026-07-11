@@ -446,6 +446,13 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("idea", func() error {
 			return runIdeaWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "spec":
+		// `helix spec <create|review|gap-analysis|approve|show|list>`
+		// Spec co-authoring with adversarial annotation + 12-dimension
+		// completeness scoring (Phase 2 §2.1).
+		return RunWithObs("spec", func() error {
+			return runSpecWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	}
 
 	// Delegate to subcommand binary
@@ -588,6 +595,7 @@ Subcommands:
   recovery     Error-recovery runbook + DR scenarios (spec §14.1, §10.3)
   memory       Hivemind memory bank lifecycle (spec §8.6)
   idea         Idea capture, validation, prioritization (Phase 1)
+  spec         Spec co-authoring with adversarial annotation (Phase 2)
 
 Global Flags:
   --verbose   Enable verbose output

@@ -1,0 +1,84 @@
+{
+  "task_id": "spec-coauthor",
+  "task_title": "Implement spec co-authoring with adversarial annotation",
+  "task_criteria": [
+    "pkg/spec/types.go defines Spec, SpecSection, SpecAnnotation, SpecStatus, AnnotationType, CompletenessReport, DimensionScore, CompletenessGap structs with JSON tags",
+    "pkg/spec/coauthor.go implements SpecCoAuthor.CoAuthor() that runs spec-generator and spec-challenger agents returning Spec with Annotations",
+    "pkg/spec/completeness.go implements SpecCompleteness.CheckCompleteness() scoring 12 dimensions and returning CompletenessReport",
+    "pkg/spec/store.go implements SpecStore with Save/Load/List writing to ~/.helix/specs/<id>.md with YAML frontmatter",
+    "cmd/helix/spec.go wires helix spec create|review|gap-analysis|approve|show into unified CLI following idea.go pattern",
+    "cmd/helix/main.go adds \"spec\" case to dispatch() switch and printUsage()",
+    "go build ./... and go vet ./... and go test -short -count=1 ./pkg/spec/... all pass"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 tests: \n  \u2713 lint: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 pkg/spec/types.go defines Spec, SpecSection, SpecAnnotation, SpecStatus, AnnotationType, CompletenessReport, DimensionScore, CompletenessGap structs with JSON tags: pkg/spec/types.go:1-112: Spec, SpecSection, SpecAnnotation, CompletenessReport, DimensionScore, CompletenessGap defined as structs with JSON tags. SpecStatus and AnnotationType implemented as idiomatic Go string constants with const declarations (StatusDraft/StatusInReview etc. at lines 15-18, AnnEdgeCase/AnnFailureMode etc. at lines 22-26). All 6 structs have complete json:\"\" tags.\n  \u2713 pkg/spec/coauthor.go implements SpecCoAuthor.CoAuthor() that runs spec-generator and spec-challenger agents returning Spec with Annotations: pkg/spec/coauthor.go:40-83: SpecCoAuthor.CoAuthor() dispatches @spec-generator via c.generate() (line 86, implemented lines 90-230) and @spec-challenger via c.challenge() (line 236, implemented lines 240-340). Returns Spec with Annotations populated and Status set to StatusInReview.\n  \u2713 pkg/spec/completeness.go implements SpecCompleteness.CheckCompleteness() scoring 12 dimensions and returning CompletenessReport: pkg/spec/completeness.go:101-150: SpecCompleteness.CheckCompleteness() scores across exactly 12 dimensions defined in completenessDimensions (lines 9-100): requirements_coverage, error_states, security, authentication, rate_limiting, data_validation, observability, testing, deployment, rollback, monitoring, documentation. Returns CompletenessReport with dimensions, gaps, and total score.\n  \u2713 pkg/spec/store.go implements SpecStore with Save/Load/List writing to ~/.helix/specs/<id>.md with YAML frontmatter: pkg/spec/store.go:32-192: SpecStore implements Save (line 58), Load (line 87), List (line 103). Empty root resolves to ~/.helix/specs via os.UserHomeDir() (lines 386-393). Writes to <id>.md with YAML frontmatter using gopkg.in/yaml.v3 (specToMarkdown lines 200-253).\n  \u2713 cmd/helix/spec.go wires helix spec create|review|gap-analysis|approve|show into unified CLI following idea.go pattern: cmd/helix/spec.go: runSpec() (line 107) dispatches create (runSpecCreate line 154), review (runSpecReview line 218), gap-analysis (runSpecGapAnalysis line 294), approve (runSpecApprove line 350), show (runSpecShow line 405), and list (runSpecList line 455). Uses runSpecWithDryRun wrapper (line 147) following same pattern as runIdeaWithDryRun.\n  \u2713 cmd/helix/main.go adds \"spec\" case to dispatch() switch and printUsage(): cmd/helix/main.go:449-456: 'case \"spec\":' in dispatch() switch calls runSpecWithDryRun(). cmd/helix/main.go:595-596: printUsage() includes '  spec         Spec co-authoring with adversarial annotation (Phase 2)'.\n  \u2713 go build ./... and go vet ./... and go test -short -count=1 ./pkg/spec/... all pass: go build ./... exits 0, go vet ./... exits 0, go test -short -count=1 ./pkg/spec/... exits 0 ([no test files]). Zero LSP diagnostics, zero dead code findings from Skylos scan (grade A+ 100).\nAll 7 criteria pass: spec types defined in types.go, CoAuthor/CheckCompleteness implemented in coauthor.go/completeness.go, SpecStore with YAML frontmatter in store.go, CLI wiring in spec.go and main.go, and all build/vet/test commands pass cleanly.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 pkg/spec/types.go defines Spec, SpecSection, SpecAnnotation, SpecStatus, AnnotationType, CompletenessReport, DimensionScore, CompletenessGap structs with JSON tags: pkg/spec/types.go:1-112: Spec, SpecSection, SpecAnnotation, CompletenessReport, DimensionScore, CompletenessGap defined as structs with JSON tags. SpecStatus and AnnotationType implemented as idiomatic Go string constants with const declarations (StatusDraft/StatusInReview etc. at lines 15-18, AnnEdgeCase/AnnFailureMode ",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: spec-coauthor\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 tests: \n  \u2713 lint: \n  \u2713 secrets: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 pkg/spec/types.go defines Spec, SpecSection, SpecAnnotation, SpecStatus, AnnotationType, CompletenessReport, DimensionScore, CompletenessGap structs with JSON tags: pkg/spec/types.go:1-112: Spec, SpecSection, SpecAnnotation, CompletenessReport, DimensionScore, CompletenessGap defined as structs with JSON tags. SpecStatus and AnnotationType implemented as idiomatic Go string constants with const declarations (StatusDraft/StatusInReview etc. at lines 15-18, AnnEdgeCase/AnnFailureMode etc. at lines 22-26). All 6 structs have complete json:\"\" tags.\n  \u2713 pkg/spec/coauthor.go implements SpecCoAuthor.CoAuthor() that runs spec-generator and spec-challenger agents returning Spec with Annotations: pkg/spec/coauthor.go:40-83: SpecCoAuthor.CoAuthor() dispatches @spec-generator via c.generate() (line 86, implemented lines 90-230) and @spec-challenger via c.challenge() (line 236, implemented lines 240-340). Returns Spec with Annotations populated and Status set to StatusInReview.\n  \u2713 pkg/spec/completeness.go implements SpecCompleteness.CheckCompleteness() scoring 12 dimensions and returning CompletenessReport: pkg/spec/completeness.go:101-150: SpecCompleteness.CheckCompleteness() scores across exactly 12 dimensions defined in completenessDimensions (lines 9-100): requirements_coverage, error_states, security, authentication, rate_limiting, data_validation, observability, testing, deployment, rollback, monitoring, documentation. Returns CompletenessReport with dimensions, gaps, and total score.\n  \u2713 pkg/spec/store.go implements SpecStore with Save/Load/List writing to ~/.helix/specs/<id>.md with YAML frontmatter: pkg/spec/store.go:32-192: SpecStore implements Save (line 58), Load (line 87), List (line 103). Empty root resolves to ~/.helix/specs via os.UserHomeDir() (lines 386-393). Writes to <id>.md with YAML frontmatter using gopkg.in/yaml.v3 (specToMarkdown lines 200-253).\n  \u2713 cmd/helix/spec.go wires helix spec create|review|gap-analysis|approve|show into unified CLI following idea.go pattern: cmd/helix/spec.go: runSpec() (line 107) dispatches create (runSpecCreate line 154), review (runSpecReview line 218), gap-analysis (runSpecGapAnalysis line 294), approve (runSpecApprove line 350), show (runSpecShow line 405), and list (runSpecList line 455). Uses runSpecWithDryRun wrapper (line 147) following same pattern as runIdeaWithDryRun.\n  \u2713 cmd/helix/main.go adds \"spec\" case to dispatch() switch and printUsage(): cmd/helix/main.go:449-456: 'case \"spec\":' in dispatch() switch calls runSpecWithDryRun(). cmd/helix/main.go:595-596: printUsage() includes '  spec         Spec co-authoring with adversarial annotation (Phase 2)'.\n  \u2713 go build ./... and go vet ./... and go test -short -count=1 ./pkg/spec/... all pass: go build ./... exits 0, go vet ./... exits 0, go test -short -count=1 ./pkg/spec/... exits 0 ([no test files]). Zero LSP diagnostics, zero dead code findings from Skylos scan (grade A+ 100).\nAll 7 criteria pass: spec types defined in types.go, CoAuthor/CheckCompleteness implemented in coauthor.go/completeness.go, SpecStore with YAML frontmatter in store.go, CLI wiring in spec.go and main.go, and all build/vet/test commands pass cleanly.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-07-11T23:59:46.293743"
+}
