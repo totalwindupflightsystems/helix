@@ -35,3 +35,19 @@ tasks:
   status: complete
   created_at: '2026-06-21T12:05:27.961379+00:00'
   completed_at: '2026-06-26T06:22:31.794519+00:00'
+- id: ideation-phase1
+  title: Implement ideation system (capture, validate, prioritize)
+  criteria:
+  - pkg/ideation has types.go with Idea, EvidenceRef, IdeaSource, IdeaStatus and store.go
+    with JSONL IdeaStore Capture/Get/List/Update/Promote
+  - cmd/helix/idea.go wires helix idea capture|list|show|validate|prioritize|promote|close|advocate
+    into main.go switch and printUsage
+  - helix idea validate returns structured ValidationReport with at least 2 offline
+    concept agents and risk score
+  - helix idea prioritize ranks ideas with deterministic composite score; promote
+    creates specs/ideas placeholder and updates PromotedTo
+  - go test ./pkg/ideation/... and go test ./cmd/helix/ -count=1 -short pass; go build
+    ./cmd/helix succeeds
+  status: complete
+  created_at: '2026-07-09T13:44:31.046692+00:00'
+  completed_at: '2026-07-09T13:51:02.637869+00:00'
