@@ -588,7 +588,6 @@ func runAdrSupersede(f adrFlags, stdout, stderr io.Writer) int {
 		if title == "" && newRef != "" {
 			// Treat second positional as title when it is not a known id.
 			title = newRef
-			newRef = ""
 		}
 		if title == "" {
 			fmt.Fprintln(stderr, "error: --title or new adr id required for supersede")
