@@ -41,7 +41,7 @@
 - **Gap:** No structured ADR system. Architecture decisions are ad-hoc.
 - **Completed:** 2026-07-11 — Implemented pkg/adr/types.go (ADR struct with alternatives, evidence links, review types), pkg/adr/coauthor.go (ADRCoAuthor proposes ADRs with tradeoff analysis), pkg/adr/review.go (ADRReviewer with multi-model consensus scoring), cmd/helix/adr.go (helix adr create|list|show|review|supersede CLI). Wired into cmd/helix/main.go. Unit tests in pkg/adr/adr_test.go. Ad-hoc verification 13/13. go build && go vet && go test -short PASS. Grok 4.5 worker + GitReins Tier 1 PASS. Two commits pushed.
 
-## [ ] MEDIUM: Implement design review with adversarial agents
+## [~] MEDIUM: Implement design review with adversarial agents
 - **Priority:** medium
 - **Plan:** specs/plans/phase-1-2-ideation-spec.md §2.3
 - **Gap:** Design reviews are meetings with no structured output. No adversarial challenge.
