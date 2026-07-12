@@ -576,14 +576,12 @@ func prosecuteCostAuditor(_ context.Context, req review.AgentRequest) (*review.A
 	}
 
 	var findings []review.Finding
-	sev := "info"
 	verdict := "clean"
 	if overBudget {
-		sev = "high"
 		verdict = "suspicious"
 		findings = append(findings, review.Finding{
 			Model:       "@cost-auditor",
-			Severity:    sev,
+			Severity:    "high",
 			Type:        string(AspectCost),
 			File:        "design",
 			Description: fmt.Sprintf("Projected cost $%.2f exceeds remaining budget $%.2f", costUSD, budgetRemaining),
@@ -591,11 +589,10 @@ func prosecuteCostAuditor(_ context.Context, req review.AgentRequest) (*review.A
 			Mitigation:  "Reduce scope, switch models, or raise budget before implementation",
 		})
 	} else if costUSD >= 5.0 {
-		sev = "medium"
 		verdict = "suspicious"
 		findings = append(findings, review.Finding{
 			Model:       "@cost-auditor",
-			Severity:    sev,
+			Severity:    "medium",
 			Type:        string(AspectCost),
 			File:        "design",
 			Description: fmt.Sprintf("Projected implementation cost is elevated ($%.2f)", costUSD),
@@ -642,10 +639,6 @@ func prosecuteConsistencyChecker(_ context.Context, req review.AgentRequest) (*r
 		})
 	}
 
-	// Contradictory language patterns across sections.
-	if strings.Contains(lower, "must not") && strings.Contains(lower, "must ") {
-		// Weak signal: presence of both strong modalities is fine; look for known pairs.
-	}
 	// Rejected alternative still described as chosen decision.
 	if strings.Contains(lower, "rejected because") && strings.Contains(lower, "we will use") {
 		// Check if same option appears as both rejected and chosen — crude line scan.
