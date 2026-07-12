@@ -35,7 +35,7 @@
 - **Completed:** 2026-07-11 — Implemented pkg/spec/types.go (Spec, SpecSection, SpecAnnotation, CompletenessReport, DimensionScore, CompletenessGap), pkg/spec/coauthor.go (SpecCoAuthor with spec-generator + spec-challenger rule-based agents), pkg/spec/completeness.go (SpecCompleteness with 12-dimension scoring), pkg/spec/store.go (SpecStore with YAML frontmatter markdown at ~/.helix/specs/). Wired `helix spec create|review|gap-analysis|approve|show|list` into unified CLI (cmd/helix/spec.go + cmd/helix/main.go). GitReins judge PASS (7/7 criteria). 29/29 ad-hoc verification.
 - **AC met:** (1) `helix spec create <idea-id>` creates spec template with 5 standard sections, (2) Agent co-authoring adds annotations (edge_cases, failure_modes, incompleteness) with severity, (3) `helix spec review` shows annotations, (4) `helix spec gap-analysis` shows 12-dimension completeness score with gap identification.
 
-## [ ] MEDIUM: Implement ADR co-authoring and multi-model review
+## [~] MEDIUM: Implement ADR co-authoring and multi-model review
 - **Priority:** medium
 - **Plan:** specs/plans/phase-1-2-ideation-spec.md §2.2
 - **Gap:** No structured ADR system. Architecture decisions are ad-hoc.
