@@ -35,13 +35,11 @@
 - **Completed:** 2026-07-11 — Implemented pkg/spec/types.go (Spec, SpecSection, SpecAnnotation, CompletenessReport, DimensionScore, CompletenessGap), pkg/spec/coauthor.go (SpecCoAuthor with spec-generator + spec-challenger rule-based agents), pkg/spec/completeness.go (SpecCompleteness with 12-dimension scoring), pkg/spec/store.go (SpecStore with YAML frontmatter markdown at ~/.helix/specs/). Wired `helix spec create|review|gap-analysis|approve|show|list` into unified CLI (cmd/helix/spec.go + cmd/helix/main.go). GitReins judge PASS (7/7 criteria). 29/29 ad-hoc verification.
 - **AC met:** (1) `helix spec create <idea-id>` creates spec template with 5 standard sections, (2) Agent co-authoring adds annotations (edge_cases, failure_modes, incompleteness) with severity, (3) `helix spec review` shows annotations, (4) `helix spec gap-analysis` shows 12-dimension completeness score with gap identification.
 
-## [~] MEDIUM: Implement ADR co-authoring and multi-model review
+## [x] MEDIUM: Implement ADR co-authoring and multi-model review
 - **Priority:** medium
 - **Plan:** specs/plans/phase-1-2-ideation-spec.md §2.2
 - **Gap:** No structured ADR system. Architecture decisions are ad-hoc.
-- **Files:** pkg/adr/types.go, pkg/adr/coauthor.go, pkg/adr/review.go, cmd/helix-adr/main.go (all NEW)
-- **AC:** `helix adr create "Use event sourcing for audit log"` → agent co-authors with tradeoffs. `helix adr review <id>` → multi-model review. `helix adr supersede <old-id> <new-id>` → links ADR lineage.
-- **Logic:** `ADR` struct with alternatives, tradeoffs, evidence links. `ADRCoAuthor` proposes alternatives; human selects. `ADRReviewer` uses multi-model dispatch for consistency, security, performance review.
+- **Completed:** 2026-07-11 — Implemented pkg/adr/types.go (ADR struct with alternatives, evidence links, review types), pkg/adr/coauthor.go (ADRCoAuthor proposes ADRs with tradeoff analysis), pkg/adr/review.go (ADRReviewer with multi-model consensus scoring), cmd/helix/adr.go (helix adr create|list|show|review|supersede CLI). Wired into cmd/helix/main.go. Unit tests in pkg/adr/adr_test.go. Ad-hoc verification 13/13. go build && go vet && go test -short PASS. Grok 4.5 worker + GitReins Tier 1 PASS. Two commits pushed.
 
 ## [ ] MEDIUM: Implement design review with adversarial agents
 - **Priority:** medium
