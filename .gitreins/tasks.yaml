@@ -51,3 +51,22 @@ tasks:
   status: complete
   created_at: '2026-07-09T13:44:31.046692+00:00'
   completed_at: '2026-07-09T13:51:02.637869+00:00'
+- id: spec-coauthor
+  title: Implement spec co-authoring with adversarial annotation
+  criteria:
+  - pkg/spec/types.go defines Spec, SpecSection, SpecAnnotation, SpecStatus, AnnotationType,
+    CompletenessReport, DimensionScore, CompletenessGap structs with JSON tags
+  - pkg/spec/coauthor.go implements SpecCoAuthor.CoAuthor() that runs spec-generator
+    and spec-challenger agents returning Spec with Annotations
+  - pkg/spec/completeness.go implements SpecCompleteness.CheckCompleteness() scoring
+    12 dimensions and returning CompletenessReport
+  - pkg/spec/store.go implements SpecStore with Save/Load/List writing to ~/.helix/specs/<id>.md
+    with YAML frontmatter
+  - cmd/helix/spec.go wires helix spec create|review|gap-analysis|approve|show into
+    unified CLI following idea.go pattern
+  - cmd/helix/main.go adds "spec" case to dispatch() switch and printUsage()
+  - go build ./... and go vet ./... and go test -short -count=1 ./pkg/spec/... all
+    pass
+  status: complete
+  created_at: '2026-07-11T23:39:09.869322+00:00'
+  completed_at: '2026-07-12T00:01:12.927946+00:00'
