@@ -30,13 +30,10 @@
 - **Completed:** 2026-07-09 — pkg/ideation (types/store/validator/priority + tests), cmd/helix/idea.go wired into monorepo CLI. Offline concept agents @assumption-buster + @architecture-fit. Deterministic prioritizer with advocacy JSONL. Promote writes specs/ideas/*.md, blocks risk_score>=70. Ad-hoc verification 23/23. go test ./pkg/ideation + cmd/helix Idea tests PASS.
 - **AC met:** (1) `helix idea capture --title/--body` → JSONL store, (2) Go API Capture/Store for agents, (3) `helix idea validate` offline multi-agent report, (4) `helix idea prioritize` composite score ranking, (5) `helix idea promote --to spec` creates placeholder + PromotedTo.
 
-## [ ] MEDIUM: Implement spec co-authoring with adversarial annotation
+## [x] MEDIUM: Implement spec co-authoring with adversarial annotation
 - **Priority:** medium
-- **Plan:** specs/plans/phase-1-2-ideation-spec.md §2.1
-- **Gap:** Specs are written by humans with no agent challenge. Completeness not verified.
-- **Files:** pkg/spec/types.go, pkg/spec/coauthor.go, pkg/spec/completeness.go, cmd/helix-spec/main.go (all NEW)
-- **AC:** `helix spec create <idea-id>` creates spec template. Agent proposes additional sections (edge cases, failure modes). `helix spec review <spec-id>` shows agent annotations with accept/reject. `helix spec gap-analysis <spec-id>` shows 12-dimension completeness score.
-- **Logic:** `SpecCoAuthor` uses two agents: @spec-generator proposes, @spec-challenger challenges. Annotations inline with severity. `SpecCompleteness` scores 12 dimensions. Spec store as markdown with YAML frontmatter.
+- **Completed:** 2026-07-11 — Implemented pkg/spec/types.go (Spec, SpecSection, SpecAnnotation, CompletenessReport, DimensionScore, CompletenessGap), pkg/spec/coauthor.go (SpecCoAuthor with spec-generator + spec-challenger rule-based agents), pkg/spec/completeness.go (SpecCompleteness with 12-dimension scoring), pkg/spec/store.go (SpecStore with YAML frontmatter markdown at ~/.helix/specs/). Wired `helix spec create|review|gap-analysis|approve|show|list` into unified CLI (cmd/helix/spec.go + cmd/helix/main.go). GitReins judge PASS (7/7 criteria). 29/29 ad-hoc verification.
+- **AC met:** (1) `helix spec create <idea-id>` creates spec template with 5 standard sections, (2) Agent co-authoring adds annotations (edge_cases, failure_modes, incompleteness) with severity, (3) `helix spec review` shows annotations, (4) `helix spec gap-analysis` shows 12-dimension completeness score with gap identification.
 
 ## [ ] MEDIUM: Implement ADR co-authoring and multi-model review
 - **Priority:** medium
