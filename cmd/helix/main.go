@@ -459,6 +459,12 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("spec", func() error {
 			return runSpecWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "design":
+		// `helix design <review>`
+		// Design review with adversarial agents (Phase 2 §2.3).
+		return RunWithObs("design", func() error {
+			return runDesignWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	}
 
 	// Delegate to subcommand binary
@@ -603,6 +609,7 @@ Subcommands:
   idea         Idea capture, validation, prioritization (Phase 1)
   adr          Architecture Decision Records + multi-model review (Phase 2)
   spec         Spec co-authoring with adversarial annotation (Phase 2)
+  design       Design review with adversarial agents (Phase 2)
 
 Global Flags:
   --verbose   Enable verbose output
