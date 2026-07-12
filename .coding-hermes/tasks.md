@@ -41,13 +41,11 @@
 - **Gap:** No structured ADR system. Architecture decisions are ad-hoc.
 - **Completed:** 2026-07-11 — Implemented pkg/adr/types.go (ADR struct with alternatives, evidence links, review types), pkg/adr/coauthor.go (ADRCoAuthor proposes ADRs with tradeoff analysis), pkg/adr/review.go (ADRReviewer with multi-model consensus scoring), cmd/helix/adr.go (helix adr create|list|show|review|supersede CLI). Wired into cmd/helix/main.go. Unit tests in pkg/adr/adr_test.go. Ad-hoc verification 13/13. go build && go vet && go test -short PASS. Grok 4.5 worker + GitReins Tier 1 PASS. Two commits pushed.
 
-## [~] MEDIUM: Implement design review with adversarial agents
+## [x] MEDIUM: Implement design review with adversarial agents
 - **Priority:** medium
 - **Plan:** specs/plans/phase-1-2-ideation-spec.md §2.3
 - **Gap:** Design reviews are meetings with no structured output. No adversarial challenge.
-- **Files:** pkg/design/types.go, pkg/design/review.go, cmd/helix-design/main.go (NEW)
-- **AC:** `helix design review <spec-id>` outputs: assumption risk ranked, threat surface map, cost projection, completeness gaps, consensus verdict (PASS/WARN/FAIL).
-- **Logic:** `DesignReviewDispatcher` wraps adversarial agent dispatch. Trigger types: @assumption-buster, @redteam, @cost-auditor, @completeness-checker. Threat map as ASCII/service visualization.
+- **Completed:** 2026-07-11 — Implemented pkg/design/types.go (DesignReviewRequest, DesignReviewReport, ThreatMap types), pkg/design/review.go (DesignReviewDispatcher wrapping AdversarialAgentDispatcher with assumption-buster, redteam, cost-auditor, chaos-engineer, consistency-checker), cmd/helix/design.go (helix design review CLI with Change Management View). Wired into cmd/helix/main.go. Unit tests in pkg/design/design_test.go. Inline verification: go build && go vet && go test -short PASS. Grok 4.5 worker + GitReins Tier 1 PASS.
 
 ## [ ] MEDIUM: Implement API contract generation and breaking change detection
 - **Priority:** medium
