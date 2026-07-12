@@ -446,6 +446,12 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("idea", func() error {
 			return runIdeaWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "adr":
+		// `helix adr <create|list|show|review|supersede>`
+		// ADR co-authoring with multi-model review (Phase 2 §2.2).
+		return RunWithObs("adr", func() error {
+			return runAdrWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	case "spec":
 		// `helix spec <create|review|gap-analysis|approve|show|list>`
 		// Spec co-authoring with adversarial annotation + 12-dimension
@@ -595,6 +601,7 @@ Subcommands:
   recovery     Error-recovery runbook + DR scenarios (spec §14.1, §10.3)
   memory       Hivemind memory bank lifecycle (spec §8.6)
   idea         Idea capture, validation, prioritization (Phase 1)
+  adr          Architecture Decision Records + multi-model review (Phase 2)
   spec         Spec co-authoring with adversarial annotation (Phase 2)
 
 Global Flags:
