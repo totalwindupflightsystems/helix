@@ -47,14 +47,14 @@
 - **Gap:** Design reviews are meetings with no structured output. No adversarial challenge.
 - **Completed:** 2026-07-11 — Implemented pkg/design/types.go (DesignReviewRequest, DesignReviewReport, ThreatMap types), pkg/design/review.go (DesignReviewDispatcher wrapping AdversarialAgentDispatcher with assumption-buster, redteam, cost-auditor, chaos-engineer, consistency-checker), cmd/helix/design.go (helix design review CLI with Change Management View). Wired into cmd/helix/main.go. Unit tests in pkg/design/design_test.go. Inline verification: go build && go vet && go test -short PASS. Grok 4.5 worker + GitReins Tier 1 PASS.
 
-## [~] MEDIUM: Implement API contract generation and breaking change detection
+## [x] MEDIUM: Implement API contract generation and breaking change detection
 - **Priority:** medium
 - **Plan:** specs/plans/phase-1-2-ideation-spec.md §2.4
 - **Gap:** Contracts defined manually. No breaking change detection. No consumer impact analysis.
-- **Files:** pkg/contract/types.go, pkg/contract/generate.go, pkg/contract/validate.go, pkg/contract/breaking.go, pkg/contract/store.go, cmd/helix/contract.go (all NEW; wire into monorepo CLI, not separate cmd/helix-contract)
+- **Files:** pkg/contract/types.go, pkg/contract/generate.go, pkg/contract/validate.go, pkg/contract/breaking.go, pkg/contract/store.go, cmd/helix/contract.go (all NEW; wired into monorepo CLI)
 - **AC:** `helix contract create <spec-id> --format openapi` generates schema. `helix contract validate <contract-id>` runs multi-model validation. `helix contract diff <old> <new>` shows breaking changes and consumer impacts. `helix contract freeze` hashes + immutability.
 - **Logic:** `ContractAuthor` generates OpenAPI/protobuf/GraphQL from spec. `ContractValidator` uses multi-model dispatch. `BreakingChangeDetector` diffs schemas + consumer catalog.
-- **In progress:** 2026-07-12 — foreman tick spawning Grok 4.5 worker
+- **Completed:** 2026-07-12 — Foreman implemented directly (two workers failed: glm-5.2 silent exit, MiniMax-M3 diff-without-write). 8 files, +1471 lines, 15 tests. Build+vet+test PASS (full project). GitReins Tier 1 PASS. Commit d086bc5.
 
 ## [ ] MEDIUM: Add trust-tier-gated task assignment to dispatcher
 - **Priority:** medium
