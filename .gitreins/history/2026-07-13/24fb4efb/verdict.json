@@ -1,0 +1,82 @@
+{
+  "task_id": "PH3-001-tier-gate",
+  "task_title": "Trust-tier-gated task assignment to dispatcher",
+  "task_criteria": [
+    "Agent with Tier=Provisional cannot be assigned to task with RequiredTier=Trusted \u2014 returns structured error with both tier names",
+    "Agent with tier below RequiredTier is never auto-assigned; agent with matching/higher tier and lowest load wins",
+    "Overloaded agent (CurrentLoad >= MaxLoad) is skipped entirely",
+    "File-category-based tier mapping: IaC\u2192Observed, auth\u2192Trusted, CI/CD\u2192Veteran, docs\u2192Provisional",
+    "ValidateTierAssignment returns clear error when agent tier is below task RequiredTier"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 tests: \n  \u2713 lint: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 Agent with Tier=Provisional cannot be assigned to task with RequiredTier=Trusted \u2014 returns structured error with both tier names: pkg/dispatcher/assignment.go:108-121 (ValidateTierAssignment returns structured error with both agent tier and required tier); pkg/dispatcher/assigner.go:31-40 (AssignAgent filters agents by tier, skipping Provisionals for Trusted tasks); pkg/dispatcher/assignment_test.go:74-85 (TestAssignAgent_TierGate_ProvisionalBlockedFromTrusted)\n  \u2713 Agent with tier below RequiredTier is never auto-assigned; agent with matching/higher tier and lowest load wins: pkg/dispatcher/assigner.go:31-40 (filters by CompareTiers >= 0); assigner.go:56-78 (sorts by capability match then lowest load); assignment_test.go:93-111 (TestAssignAgent_TierTie_LowestLoadWins, TestAssignAgent_HighestTierWins); assignment_test.go:74-85 (Provisional blocked for Trusted task)\n  \u2713 Overloaded agent (CurrentLoad >= MaxLoad) is skipped entirely: pkg/dispatcher/types.go:51-53 (CanAcceptLoad returns CurrentLoad < MaxLoad); pkg/dispatcher/assigner.go:45-51 (filters to agents with CanAcceptLoad); pkg/dispatcher/dispatcher_test.go:113-131 (TestAgentProfile_CanAcceptLoad tests at/over max); pkg/dispatcher/assignment_test.go:121-135 (TestAssignAgent_OverloadedAgentSkipped)\n  \u2713 File-category-based tier mapping: IaC\u2192Observed, auth\u2192Trusted, CI/CD\u2192Veteran, docs\u2192Provisional: pkg/dispatcher/assignment.go:29-36 (FileCategoryTier map: CatInfrastructure\u2192TierObserved, CatAuth\u2192TierTrusted, CatCICD\u2192TierVeteran, CatDocs\u2192TierProvisional); assignment_test.go:230-265 (TestClassifyFileCategory + TestRequiredTierForFiles verify all mappings)\n  \u2713 ValidateTierAssignment returns clear error when agent tier is below task RequiredTier: pkg/dispatcher/assignment.go:114-120 (returns fmt.Errorf with agent name, agent tier, task ID, required tier, and explanation); assignment_test.go:185-206 (TestValidateTierAssignment_Ok, TestValidateTierAssignment_Blocked, TestCanSelfAssign)\nAll 5 criteria are satisfied: tier-gated assignment via AssignAgent filtering, ValidateTierAssignment returning structured errors with both tier names, overloaded-agent skipping, file-category-to-tier mapping (IaC\u2192Observed, auth\u2192Trusted, CI/CD\u2192Veteran, docs\u2192Provisional), and lowest-load tiebreaking for auto-assignment.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 Agent with Tier=Provisional cannot be assigned to task with RequiredTier=Trusted \u2014 returns structured error with both tier names: pkg/dispatcher/assignment.go:108-121 (ValidateTierAssignment returns structured error with both agent tier and required tier); pkg/dispatcher/assigner.go:31-40 (AssignAgent filters agents by tier, skipping Provisionals for Trusted tasks); pkg/dispatcher/assignment_test.go:74-85 (TestAssignAgent_TierGate_ProvisionalBlockedFromTrusted)\n  \u2713 Agent with tier b",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: PH3-001-tier-gate\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 tests: \n  \u2713 lint: \n  \u2713 secrets: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 Agent with Tier=Provisional cannot be assigned to task with RequiredTier=Trusted \u2014 returns structured error with both tier names: pkg/dispatcher/assignment.go:108-121 (ValidateTierAssignment returns structured error with both agent tier and required tier); pkg/dispatcher/assigner.go:31-40 (AssignAgent filters agents by tier, skipping Provisionals for Trusted tasks); pkg/dispatcher/assignment_test.go:74-85 (TestAssignAgent_TierGate_ProvisionalBlockedFromTrusted)\n  \u2713 Agent with tier below RequiredTier is never auto-assigned; agent with matching/higher tier and lowest load wins: pkg/dispatcher/assigner.go:31-40 (filters by CompareTiers >= 0); assigner.go:56-78 (sorts by capability match then lowest load); assignment_test.go:93-111 (TestAssignAgent_TierTie_LowestLoadWins, TestAssignAgent_HighestTierWins); assignment_test.go:74-85 (Provisional blocked for Trusted task)\n  \u2713 Overloaded agent (CurrentLoad >= MaxLoad) is skipped entirely: pkg/dispatcher/types.go:51-53 (CanAcceptLoad returns CurrentLoad < MaxLoad); pkg/dispatcher/assigner.go:45-51 (filters to agents with CanAcceptLoad); pkg/dispatcher/dispatcher_test.go:113-131 (TestAgentProfile_CanAcceptLoad tests at/over max); pkg/dispatcher/assignment_test.go:121-135 (TestAssignAgent_OverloadedAgentSkipped)\n  \u2713 File-category-based tier mapping: IaC\u2192Observed, auth\u2192Trusted, CI/CD\u2192Veteran, docs\u2192Provisional: pkg/dispatcher/assignment.go:29-36 (FileCategoryTier map: CatInfrastructure\u2192TierObserved, CatAuth\u2192TierTrusted, CatCICD\u2192TierVeteran, CatDocs\u2192TierProvisional); assignment_test.go:230-265 (TestClassifyFileCategory + TestRequiredTierForFiles verify all mappings)\n  \u2713 ValidateTierAssignment returns clear error when agent tier is below task RequiredTier: pkg/dispatcher/assignment.go:114-120 (returns fmt.Errorf with agent name, agent tier, task ID, required tier, and explanation); assignment_test.go:185-206 (TestValidateTierAssignment_Ok, TestValidateTierAssignment_Blocked, TestCanSelfAssign)\nAll 5 criteria are satisfied: tier-gated assignment via AssignAgent filtering, ValidateTierAssignment returning structured errors with both tier names, overloaded-agent skipping, file-category-to-tier mapping (IaC\u2192Observed, auth\u2192Trusted, CI/CD\u2192Veteran, docs\u2192Provisional), and lowest-load tiebreaking for auto-assignment.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-07-13T03:43:06.261875"
+}
