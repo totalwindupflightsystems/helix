@@ -616,6 +616,7 @@ Subcommands:
   adr          Architecture Decision Records + multi-model review (Phase 2)
   spec         Spec co-authoring with adversarial annotation (Phase 2)
   design       Design review with adversarial agents (Phase 2)
+  contract     API contract generation + breaking changes (Phase 2)
 
 Global Flags:
   --verbose   Enable verbose output
