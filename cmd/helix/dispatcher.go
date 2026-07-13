@@ -59,11 +59,12 @@ const (
 // -----------------------------------------------------------------------------
 
 type dispFlags struct {
-	subcommand string // status, tick, list-tasks, help
+	subcommand string // status, tick, list-tasks, clarify, clarifications, help
 	specPath   string // --spec PATH
 	agentJSON  string // --agent JSON string
 	tier       string // --tier
 	jsonOut    bool   // --json
+	answer     string // --answer (for clarify subcommand)
 }
 
 func parseDispatcherFlags(args []string) (dispFlags, bool, int) {
@@ -99,6 +100,13 @@ func parseDispatcherFlags(args []string) (dispFlags, bool, int) {
 			}
 			f.tier = args[i+1]
 			i++
+		case arg == "--answer":
+			if i+1 >= len(args) {
+				fmt.Fprintf(os.Stderr, "error: --answer requires a value\n")
+				return f, false, dispExitError
+			}
+			f.answer = args[i+1]
+			i++
 		case len(arg) > 2 && arg[0] == '-' && arg[1] == '-':
 			fmt.Fprintf(os.Stderr, "error: unknown flag %q\n", arg)
 			return f, false, dispExitError
@@ -123,24 +131,29 @@ func printDispatcherHelp(w io.Writer) {
 	fmt.Fprintln(w, `helix dispatcher — inspect and drive the Ralph Loop engine
 
 Usage:
-  helix dispatcher status    --spec PATH [--agent JSON] [--tier TIER] [--json]
-  helix dispatcher tick      --spec PATH --agent JSON [--tier TIER]    [--json]
-  helix dispatcher list-tasks --spec PATH                             [--json]
+  helix dispatcher status          --spec PATH [--agent JSON] [--tier TIER] [--json]
+  helix dispatcher tick            --spec PATH --agent JSON [--tier TIER]    [--json]
+  helix dispatcher list-tasks      --spec PATH                              [--json]
+  helix dispatcher clarifications  list                                     [--json]
+  helix dispatcher clarify         <task-id> --answer "..."                 [--json]
   helix dispatcher help
 
 Subcommands:
-  status        Decompose the spec and print a per-task summary with the
-                cost-guard outcome (when --agent and --tier are provided).
-  tick          Run a single Ralph Loop tick on the spec: decompose →
-                assign → execute (no Forgejo side-effects).
-  list-tasks    Decompose the spec and print a numbered list of tasks.
-  help          Show this help.
+  status          Decompose the spec and print a per-task summary with the
+                  cost-guard outcome (when --agent and --tier are provided).
+  tick            Run a single Ralph Loop tick on the spec: decompose →
+                  assign → execute (no Forgejo side-effects).
+  list-tasks      Decompose the spec and print a numbered list of tasks.
+  clarifications  List pending and resolved clarification requests.
+  clarify         Resolve a pending clarification with an answer.
+  help            Show this help.
 
 Flags:
   --spec PATH         Path to the spec markdown file (decomposed into tasks)
   --agent JSON        Agent profile JSON; needed for assignment / cost-guard
                       Example: {"name":"alice","capability":"go","max_load":3,"current_load":0}
   --tier TIER         Trust tier for cost-guard: Provisional|Observed|Trusted|Veteran
+  --answer TEXT       Resolution text for the clarify subcommand
   --json              Emit structured JSON instead of human-readable output
   --help, -h          Show this help
 
@@ -183,6 +196,10 @@ func runDispatcher(args []string, stdout, stderr io.Writer) int {
 		return runDispatcherTick(flags, stdout, stderr)
 	case "list-tasks":
 		return runDispatcherListTasks(flags, stdout, stderr)
+	case "clarify":
+		return runDispatcherClarify(flags, stdout, stderr)
+	case "clarifications":
+		return runDispatcherClarifications(flags, stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "error: unknown subcommand %q\n\n", flags.subcommand)
 		printDispatcherHelp(stderr)
@@ -570,4 +587,129 @@ func stepSummaries(steps []disp.Step) []stepSummary {
 		})
 	}
 	return out
+}
+
+// -----------------------------------------------------------------------------
+// Clarification subcommands
+// -----------------------------------------------------------------------------
+
+// runDispatcherClarify resolves a pending clarification for a task.
+//
+//	helix dispatcher clarify <task-id> --answer "use library X"
+//
+// The resolution is persisted and the agent can resume execution.
+func runDispatcherClarify(flags dispFlags, stdout, stderr io.Writer) int {
+	taskID := flags.specPath // re-use --spec for task ID (positional)
+	if taskID == "" {
+		// The first positional after "clarify" is the task ID.
+		// parseDispatcherFlags puts it in specPath if it appears before flags.
+		// For better UX we allow it as the first positional arg.
+		fmt.Fprintln(stderr, "error: <task-id> is required (e.g. helix dispatcher clarify task-001 --answer \"...\")")
+		printDispatcherHelp(stderr)
+		return dispExitError
+	}
+	if flags.answer == "" {
+		fmt.Fprintln(stderr, "error: --answer is required")
+		printDispatcherHelp(stderr)
+		return dispExitError
+	}
+
+	cs := disp.NewClarificationStore(disp.DefaultClarificationDir())
+
+	// Load the existing pending clarification.
+	rec, err := cs.Load(taskID)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: no pending clarification for task %q: %v\n", taskID, err)
+		return dispExitError
+	}
+	if rec.Status == "resolved" {
+		fmt.Fprintf(stderr, "note: clarification for task %q is already resolved\n", taskID)
+	}
+
+	resp := disp.NewClarificationResponse(taskID, flags.answer, "human:operator")
+	resolved, err := cs.Resolve(&rec.Request, resp)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: save resolution: %v\n", err)
+		return dispExitError
+	}
+
+	if flags.jsonOut {
+		b, _ := json.MarshalIndent(resolved, "", "  ")
+		fmt.Fprintln(stdout, string(b))
+		return dispExitOK
+	}
+
+	fmt.Fprintf(stdout, "Clarification resolved for task %q\n", taskID)
+	fmt.Fprintf(stdout, "  Question:   %s\n", oneLine(rec.Request.Question))
+	fmt.Fprintf(stdout, "  Resolution: %s\n", flags.answer)
+	fmt.Fprintf(stdout, "  Resolved by: human:operator\n")
+	return dispExitOK
+}
+
+// runDispatcherClarifications lists pending (and optionally resolved)
+// clarification requests.
+//
+//	helix dispatcher clarifications list
+//
+// The subcommand takes no required flags — it reads from the on-disk
+// clarification store.
+func runDispatcherClarifications(flags dispFlags, stdout, stderr io.Writer) int {
+	cs := disp.NewClarificationStore(disp.DefaultClarificationDir())
+
+	filter := disp.ClarificationFilter{}
+	if flags.answer != "" {
+		// Re-use --answer to filter by status.
+		filter.Status = flags.answer
+	}
+	if flags.agentJSON != "" {
+		filter.AgentName = flags.agentJSON
+	}
+
+	records, err := cs.List(filter)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: list clarifications: %v\n", err)
+		return dispExitError
+	}
+
+	if flags.jsonOut {
+		out := make([]map[string]any, 0, len(records))
+		for _, r := range records {
+			entry := map[string]any{
+				"task_id":    r.Request.TaskID,
+				"status":     r.Status,
+				"question":   r.Request.Question,
+				"created_at": r.CreatedAt,
+			}
+			if r.Response != nil {
+				entry["resolution"] = r.Response.Resolution
+				entry["resolved_by"] = r.Response.ResolvedBy
+				entry["resolved_at"] = r.Response.ResolvedAt
+			}
+			out = append(out, entry)
+		}
+		b, _ := json.MarshalIndent(out, "", "  ")
+		fmt.Fprintln(stdout, string(b))
+		return dispExitOK
+	}
+
+	if len(records) == 0 {
+		fmt.Fprintln(stdout, "No clarification requests found.")
+		return dispExitOK
+	}
+
+	fmt.Fprintf(stdout, "Clarifications: %d\n\n", len(records))
+	for _, r := range records {
+		status := "PENDING"
+		if r.Status == "resolved" {
+			status = "RESOLVED"
+		}
+		fmt.Fprintf(stdout, "  [%s] %s\n", status, r.Request.TaskID)
+		fmt.Fprintf(stdout, "    Question: %s\n", oneLine(r.Request.Question))
+		if r.Response != nil {
+			fmt.Fprintf(stdout, "    Resolution: %s\n", oneLine(r.Response.Resolution))
+			fmt.Fprintf(stdout, "    Resolved by: %s\n", r.Response.ResolvedBy)
+		}
+		fmt.Fprintln(stdout)
+	}
+	return dispExitOK
 }
