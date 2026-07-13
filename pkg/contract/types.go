@@ -59,9 +59,9 @@ type ConsumerImpact struct {
 
 // ValidationReport is the output of multi-model contract validation.
 type ValidationReport struct {
-	Consistent       bool              `json:"consistent"`
-	BreakingChanges  []BreakingChange   `json:"breaking_changes,omitempty"`
-	MissingEndpoints []string           `json:"missing_endpoints,omitempty"`
-	ConsumerImpacts  []ConsumerImpact   `json:"consumer_impacts,omitempty"`
-	Warnings         []string           `json:"warnings,omitempty"`
+	Consistent       bool             `json:"consistent"`
+	BreakingChanges  []BreakingChange `json:"breaking_changes,omitempty"`
+	MissingEndpoints []string         `json:"missing_endpoints,omitempty"`
+	ConsumerImpacts  []ConsumerImpact `json:"consumer_impacts,omitempty"`
+	Warnings         []string         `json:"warnings,omitempty"`
 }
