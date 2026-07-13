@@ -3,13 +3,16 @@ package dispatcher
 import (
 	"fmt"
 	"sort"
+
+	"github.com/totalwindupflightsystems/helix/pkg/trust"
 )
 
-// AssignAgent matches a task to the best-fit agent based on capability and
-// current load. The selection strategy:
-//  1. Filter agents whose Capability matches the task description.
-//  2. Among matches, pick the one with the lowest current load.
-//  3. If no capability match, pick the least-loaded agent overall.
+// AssignAgent matches a task to the best-fit agent based on capability,
+// current load, and trust tier. The selection strategy:
+//  1. Filter agents whose tier is >= the task's RequiredTier.
+//  2. Filter agents whose Capability matches the task description.
+//  3. Among matches, pick the one with the lowest current load.
+//  4. If no capability match, pick the least-loaded agent among tier-eligible.
 //
 // Returns a DispatchResult with the assigned WorkItem or an error.
 func AssignAgent(task Task, agents []AgentProfile) (*DispatchResult, error) {
@@ -17,9 +20,31 @@ func AssignAgent(task Task, agents []AgentProfile) (*DispatchResult, error) {
 		return nil, fmt.Errorf("%w: cannot assign task %s", ErrNoAgents, task.ID)
 	}
 
+	requiredTier := task.RequiredTier
+	// Default to Provisional if no tier is set on the task.
+	if requiredTier == "" {
+		requiredTier = trust.TierProvisional
+	}
+
+	// Filter by tier: agent's tier must be >= requiredTier.
+	// Agents with empty tier default to Provisional (backward-compat).
+	var tierOk []AgentProfile
+	for _, a := range agents {
+		agentTier := a.Tier
+		if agentTier == "" {
+			agentTier = trust.TierProvisional
+		}
+		if trust.CompareTiers(agentTier, requiredTier) >= 0 {
+			tierOk = append(tierOk, a)
+		}
+	}
+	if len(tierOk) == 0 {
+		return nil, fmt.Errorf("%w: no agent meets tier %s for task %s", ErrTierTooLow, requiredTier, task.ID)
+	}
+
 	// Filter to agents that can accept load.
 	var available []AgentProfile
-	for _, a := range agents {
+	for _, a := range tierOk {
 		if a.CanAcceptLoad() {
 			available = append(available, a)
 		}

@@ -10,7 +10,11 @@
 //   - Stdlib only: no external Go dependencies.
 package dispatcher
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/totalwindupflightsystems/helix/pkg/trust"
+)
 
 // ---------------------------------------------------------------------------
 // Task status
@@ -67,20 +71,24 @@ func (s StepStatus) IsValid() bool {
 
 // Task is a single unit of work decomposed from a specification.
 type Task struct {
-	ID            string     `json:"id"`
-	SpecRef       string     `json:"spec_ref"`
-	Description   string     `json:"description"`
-	Priority      int        `json:"priority"`
-	AssignedAgent string     `json:"assigned_agent"`
-	Status        TaskStatus `json:"status"`
+	ID            string          `json:"id"`
+	SpecRef       string          `json:"spec_ref"`
+	Description   string          `json:"description"`
+	Priority      int             `json:"priority"`
+	AssignedAgent string          `json:"assigned_agent"`
+	Status        TaskStatus      `json:"status"`
+	RequiredTier  trust.TrustTier `json:"required_tier"`
 }
 
 // AgentProfile describes an agent available for task assignment.
 type AgentProfile struct {
-	Name        string `json:"name"`
-	Capability  string `json:"capability"`
-	CurrentLoad int    `json:"current_load"`
-	MaxLoad     int    `json:"max_load"`
+	Name        string          `json:"name"`
+	Capability  string          `json:"capability"`
+	CurrentLoad int             `json:"current_load"`
+	MaxLoad     int             `json:"max_load"`
+	Tier        trust.TrustTier `json:"tier"`
+	TrustScore  float64         `json:"trust_score"`
+	CostProfile float64         `json:"cost_profile"`
 }
 
 // CanAcceptLoad reports whether the agent has capacity for one more task.
@@ -135,6 +143,9 @@ var ErrNoCapableAgent = errors.New("dispatcher: no agent with required capabilit
 
 // ErrAgentOverloaded is returned when all capable agents are at max load.
 var ErrAgentOverloaded = errors.New("dispatcher: all capable agents are at max load")
+
+// ErrTierTooLow is returned when no agent meets the required trust tier for a task.
+var ErrTierTooLow = errors.New("dispatcher: no agent meets required trust tier")
 
 // ErrSpecNotFound is returned when the spec file cannot be read.
 var ErrSpecNotFound = errors.New("dispatcher: spec file not found")

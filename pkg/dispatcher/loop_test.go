@@ -321,7 +321,7 @@ func TestRunPipeline(t *testing.T) {
 		defer func() { _ = os.Chdir(origDir) }()
 
 		agents := []AgentProfile{
-			{Name: "coder", Capability: "code", CurrentLoad: 0, MaxLoad: 5},
+			{Name: "coder", Capability: "code", CurrentLoad: 0, MaxLoad: 5, Tier: "provisional"},
 		}
 		d := NewDispatcher(agents)
 
@@ -386,7 +386,7 @@ func TestRunPipeline(t *testing.T) {
 			[]byte(fmt.Sprintf("pid=%d\nts=2026-06-23T00:00:00Z\n", os.Getpid())), 0o644)
 
 		agents := []AgentProfile{
-			{Name: "coder", Capability: "code", CurrentLoad: 0, MaxLoad: 5},
+			{Name: "coder", Capability: "code", CurrentLoad: 0, MaxLoad: 5, Tier: "provisional"},
 		}
 		d := NewDispatcher(agents)
 
