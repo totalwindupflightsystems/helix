@@ -61,7 +61,9 @@
 - **Plan:** specs/plans/phase-3-4-task-impl.md §3.2
 - **Completed:** 2026-07-12 — Commit ec73389 (parallel tick). AssignAgent filters by tier, ValidateTierAssignment blocks self-assign above tier, FileCategoryTier maps IaC→Observed/auth→Trusted/CI/CD→Veteran. 8 files, +525/-33, 14 new tests. Guard PASS.
 
-## [ ] MEDIUM: Implement context auto-assembly for agent tasks
+- **Completed:** 2026-07-12 — Commit 6d91f7f. Implemented ContextPackage, ContextResource, ExpandableResource, AssembleContext with budget-constrained assembly. Queries spec store, ADR store, incident store, git log, codebase walk. Tier-based token budgets (Provisional 12K, Observed 24K, Trusted 48K, Veteran 96K). 2 files, +636 lines, 11 tests. Guard PASS.
+
+## [x] MEDIUM: Implement context auto-assembly for agent tasks
 - **Priority:** medium
 - **Plan:** specs/plans/phase-3-4-task-impl.md §3.3
 - **Gap:** Agents start tasks with no context. Must discover specs, related PRs, architectural constraints manually.
