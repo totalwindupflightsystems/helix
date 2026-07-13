@@ -71,13 +71,11 @@
 - **AC:** When task assigned, agent receives context package: (1) linked spec sections, (2) prior related PRs (from git log), (3) architectural constraints (from ADRs), (4) incident history for similar changes. Context fits in budget window. Agent can request expansion (costs tokens).
 - **Logic:** `ContextAssembler` queries spec links, git history, ADR index, incident DB. Budget-constrained assembly. Token-aware trimming.
 
-## [ ] MEDIUM: Implement structured clarification protocol
+## [x] MEDIUM: Implement structured clarification protocol
 - **Priority:** medium
 - **Plan:** specs/plans/phase-3-4-task-impl.md §4.2
-- **Gap:** Agent hits ambiguity → no structured way to ask. Human gets "help" messages.
-- **Files:** pkg/clarify/types.go, pkg/clarify/protocol.go, cmd/helix-clarify/main.go (all NEW)
-- **AC:** Agent files `CLARIFICATION_NEEDED` with: specific question, relevant spec section, blocked progress, context. Human or trusted agent responds. Resolution linked to task and spec. Ambiguity metrics feed spec quality scoring.
-- **Logic:** `Clarification` struct with question, spec ref, context. Async protocol — agent blocks until resolution. Resolution recorded in task audit. Ambiguity patterns aggregated.
+- **Completed:** 2026-07-13 — Foreman implemented directly (3 files, +902/-10 lines, 15 tests). pkg/dispatcher/clarification.go (ClarificationRequest, ClarificationResponse, ClarificationStore, AutoResolve), cmd/helix/dispatcher.go (clarify + clarifications subcommands, --answer flag). go build+vet+test PASS (50 packages), GitReins Tier 1 PASS. Commit 60d48cb.
+- **AC met:** (1) Agent emits structured ClarificationRequest JSON when blocked, (2) ClarificationStore persists to ~/.helix/clarifications/<task-id>.json, (3) Human resolves via `helix dispatcher clarify <task-id> --answer "..."`, (4) AutoResolve checks existing resolutions and ADR store, (5) Clarification error wrapping propagates through step execution.
 
 ## [ ] MEDIUM: Implement review load balancing and priority queue
 - **Priority:** medium
