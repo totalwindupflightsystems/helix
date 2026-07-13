@@ -56,13 +56,10 @@
 - **Logic:** `ContractAuthor` generates OpenAPI/protobuf/GraphQL from spec. `ContractValidator` uses multi-model dispatch. `BreakingChangeDetector` diffs schemas + consumer catalog.
 - **Completed:** 2026-07-12 — Foreman implemented directly (two workers failed: glm-5.2 silent exit, MiniMax-M3 diff-without-write). 8 files, +1471 lines, 15 tests. Build+vet+test PASS (full project). GitReins Tier 1 PASS. Commit d086bc5.
 
-## [ ] MEDIUM: Add trust-tier-gated task assignment to dispatcher
+## [x] MEDIUM: Add trust-tier-gated task assignment to dispatcher
 - **Priority:** medium
 - **Plan:** specs/plans/phase-3-4-task-impl.md §3.2
-- **Gap:** Tasks don't enforce required trust tier. Agent could be assigned above their tier.
-- **Files:** pkg/dispatcher/assignment.go (NEW), pkg/dispatcher/assignment_test.go (NEW)
-- **AC:** Dispatcher refuses to assign task requiring Tier 2 to Provisional agent. Error message shows required tier and agent's current tier. Agent can't self-assign above tier.
-- **Logic:** `AssignAgent` checks `Task.RequiredTier` against `Agent.TrustTier`. Returns structured error on mismatch. File-category-based tier requirements (IaC→Tier1, CI/CD→Tier3, auth→Tier2).
+- **Completed:** 2026-07-12 — Commit ec73389 (parallel tick). AssignAgent filters by tier, ValidateTierAssignment blocks self-assign above tier, FileCategoryTier maps IaC→Observed/auth→Trusted/CI/CD→Veteran. 8 files, +525/-33, 14 new tests. Guard PASS.
 
 ## [ ] MEDIUM: Implement context auto-assembly for agent tasks
 - **Priority:** medium
