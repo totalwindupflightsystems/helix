@@ -29,6 +29,35 @@ func AllTiers() []TrustTier {
 	return []TrustTier{TierProvisional, TierObserved, TierTrusted, TierVeteran}
 }
 
+// TierOrdinal maps a tier to its numeric rank for comparison.
+var TierOrdinal = map[TrustTier]int{
+	TierProvisional: 0,
+	TierObserved:    1,
+	TierTrusted:     2,
+	TierVeteran:     3,
+}
+
+// CompareTiers returns -1 if a < b, 0 if equal, 1 if a > b.
+// Veteran > Trusted > Observed > Provisional.
+func CompareTiers(a, b TrustTier) int {
+	oa, ok := TierOrdinal[a]
+	if !ok {
+		return -1
+	}
+	ob, ok := TierOrdinal[b]
+	if !ok {
+		return -1
+	}
+	switch {
+	case oa < ob:
+		return -1
+	case oa > ob:
+		return 1
+	default:
+		return 0
+	}
+}
+
 // TierThresholds defines the minimum score, merge count, and max incidents
 // (rolling 180d) required for each tier.
 type TierThresholds struct {

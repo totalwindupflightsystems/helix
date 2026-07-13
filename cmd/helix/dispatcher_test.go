@@ -318,7 +318,7 @@ func TestRunDispatcher_Status_WithCostGuard_JSON(t *testing.T) {
 	var out, errBuf bytes.Buffer
 	rc := runDispatcher([]string{
 		"status", "--spec", spec, "--json",
-		"--agent", `{"name":"alice","capability":"decompose","max_load":3,"current_load":0}`,
+		"--agent", `{"name":"alice","capability":"decompose","max_load":3,"current_load":0,"tier":"provisional"}`,
 		"--tier", "trusted",
 	}, &out, &errBuf)
 	if rc != dispExitOK {
@@ -406,7 +406,7 @@ func TestRunDispatcher_Tick_OK(t *testing.T) {
 	var out, errBuf bytes.Buffer
 	rc := runDispatcher([]string{
 		"tick", "--spec", spec,
-		"--agent", `{"name":"alice","capability":"decompose","max_load":3,"current_load":0}`,
+		"--agent", `{"name":"alice","capability":"decompose","max_load":3,"current_load":0,"tier":"provisional"}`,
 	}, &out, &errBuf)
 	if rc != dispExitOK {
 		t.Fatalf("rc=%d err=%q", rc, errBuf.String())
@@ -425,7 +425,7 @@ func TestRunDispatcher_Tick_JSON(t *testing.T) {
 	var out, errBuf bytes.Buffer
 	rc := runDispatcher([]string{
 		"tick", "--spec", spec, "--json",
-		"--agent", `{"name":"alice","capability":"decompose","max_load":3,"current_load":0}`,
+		"--agent", `{"name":"alice","capability":"decompose","max_load":3,"current_load":0,"tier":"provisional"}`,
 	}, &out, &errBuf)
 	if rc != dispExitOK {
 		t.Fatalf("rc=%d err=%q", rc, errBuf.String())

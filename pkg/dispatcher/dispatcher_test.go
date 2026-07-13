@@ -72,10 +72,10 @@ func TestAgentProfile_CanAcceptLoad(t *testing.T) {
 		agent AgentProfile
 		want  bool
 	}{
-		{"has capacity", AgentProfile{Name: "a1", CurrentLoad: 2, MaxLoad: 5}, true},
-		{"at max", AgentProfile{Name: "a2", CurrentLoad: 5, MaxLoad: 5}, false},
-		{"over max", AgentProfile{Name: "a3", CurrentLoad: 6, MaxLoad: 5}, false},
-		{"zero load", AgentProfile{Name: "a4", CurrentLoad: 0, MaxLoad: 3}, true},
+		{"has capacity", AgentProfile{Name: "a1", CurrentLoad: 2, MaxLoad: 5, Tier: "provisional"}, true},
+		{"at max", AgentProfile{Name: "a2", CurrentLoad: 5, MaxLoad: 5, Tier: "provisional"}, false},
+		{"over max", AgentProfile{Name: "a3", CurrentLoad: 6, MaxLoad: 5, Tier: "provisional"}, false},
+		{"zero load", AgentProfile{Name: "a4", CurrentLoad: 0, MaxLoad: 3, Tier: "provisional"}, true},
 	}
 	for _, tc := range cases {
 		tc := tc
@@ -233,9 +233,9 @@ func TestDecomposeTask(t *testing.T) {
 
 func TestAssignAgent(t *testing.T) {
 	agents := []AgentProfile{
-		{Name: "coder", Capability: "code", CurrentLoad: 1, MaxLoad: 5},
-		{Name: "reviewer", Capability: "review", CurrentLoad: 0, MaxLoad: 3},
-		{Name: "tester", Capability: "test", CurrentLoad: 4, MaxLoad: 5},
+		{Name: "coder", Capability: "code", CurrentLoad: 1, MaxLoad: 5, Tier: "provisional"},
+		{Name: "reviewer", Capability: "review", CurrentLoad: 0, MaxLoad: 3, Tier: "provisional"},
+		{Name: "tester", Capability: "test", CurrentLoad: 4, MaxLoad: 5, Tier: "provisional"},
 	}
 
 	t.Run("capability match", func(t *testing.T) {
@@ -262,7 +262,7 @@ func TestAssignAgent(t *testing.T) {
 
 	t.Run("all agents overloaded", func(t *testing.T) {
 		overloaded := []AgentProfile{
-			{Name: "busy", Capability: "code", CurrentLoad: 5, MaxLoad: 5},
+			{Name: "busy", Capability: "code", CurrentLoad: 5, MaxLoad: 5, Tier: "provisional"},
 		}
 		task := Task{ID: "t3", Description: "Write code"}
 		_, err := AssignAgent(task, overloaded)
@@ -294,7 +294,7 @@ func TestAssignAgent(t *testing.T) {
 func TestDispatcher_Dispatch(t *testing.T) {
 	t.Run("dispatches all tasks in priority order", func(t *testing.T) {
 		agents := []AgentProfile{
-			{Name: "a1", Capability: "code", CurrentLoad: 0, MaxLoad: 5},
+			{Name: "a1", Capability: "code", CurrentLoad: 0, MaxLoad: 5, Tier: "provisional"},
 		}
 		d := NewDispatcher(agents)
 
@@ -331,7 +331,7 @@ func TestDispatcher_Dispatch(t *testing.T) {
 
 	t.Run("respects load limits", func(t *testing.T) {
 		agents := []AgentProfile{
-			{Name: "a1", Capability: "code", CurrentLoad: 0, MaxLoad: 1},
+			{Name: "a1", Capability: "code", CurrentLoad: 0, MaxLoad: 1, Tier: "provisional"},
 		}
 		d := NewDispatcher(agents)
 
@@ -395,7 +395,7 @@ func TestExecuteLoop_Lock(t *testing.T) {
 
 func TestNewDispatcher(t *testing.T) {
 	agents := []AgentProfile{
-		{Name: "a1", Capability: "code", CurrentLoad: 0, MaxLoad: 5},
+		{Name: "a1", Capability: "code", CurrentLoad: 0, MaxLoad: 5, Tier: "provisional"},
 	}
 	d := NewDispatcher(agents)
 	if d == nil {
