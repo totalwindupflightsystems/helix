@@ -1,0 +1,81 @@
+{
+  "task_id": "context-auto-assembly",
+  "task_title": "Implement context auto-assembly for agent tasks",
+  "task_criteria": [
+    "ContextAssembler queries spec links, git history, ADR index, and incident DB \u2014 pkg/dispatcher/context.go Assemble method calls assembleSpecs/assemblePRs/assembleADRs/assembleIncidents.",
+    "Context fits in configurable budget window with token-based trimming \u2014 ContextBudget tracks consumption, trimToBudget truncates content, EstimateTokens converts len/4.",
+    "Expand() allows agents to request more context from specific section costing tokens \u2014 Expand accepts SectionSpecs/SectionPRs/SectionADRs/SectionIncidents with positive extraBudget.",
+    "Unit tests cover: normal assembly, empty stores, budget trimming, expansion, EstimateTokens, nil stores \u2014 14 test functions in context_test.go."
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 trust_tier:   File category 'code': requires provisional+, agent is provisional \u2014 OK\n\u2713 Trust tier: PASS\n\n  \u2713 lint: \n  \u2713 tests: \n  \u2713 build: \n  \u2713 secrets: \n  \u2713 lsp: ",
+      "steps": [
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "  File category 'code': requires provisional+, agent is provisional \u2014 OK\n\u2713 Trust tier: PASS\n",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 ContextAssembler queries spec links, git history, ADR index, and incident DB \u2014 pkg/dispatcher/context.go Assemble method calls assembleSpecs/assemblePRs/assembleADRs/assembleIncidents.: pkg/dispatcher/context.go:127-130 \u2014 Assemble calls assembleSpecs, assemblePRs, assembleADRs, assembleIncidents\n  \u2713 Context fits in configurable budget window with token-based trimming \u2014 ContextBudget tracks consumption, trimToBudget truncates content, EstimateTokens converts len/4.: context.go:17-20 (ContextBudget struct with total/remaining), :28-34 (Consume), :47-53 (EstimateTokens: len/4 + min=1), :334-353 (trimToBudget)\n  \u2713 Expand() allows agents to request more context from specific section costing tokens \u2014 Expand accepts SectionSpecs/SectionPRs/SectionADRs/SectionIncidents with positive extraBudget.: context.go:138-167 \u2014 Expand switch on SectionSpecs/SectionPRs/SectionADRs/SectionIncidents, rejects extraBudget <= 0\n  \u2713 Unit tests cover: normal assembly, empty stores, budget trimming, expansion, EstimateTokens, nil stores \u2014 14 test functions in context_test.go.: context_test.go \u2014 14 test functions (TestEstimateTokens, TestContextBudget, TestAssemble_Full, TestAssemble_NilStores, TestAssemble_EmptyStores, TestAssemble_BudgetTrimming, TestAssemble_ZeroBudget, TestExpand_ValidSection, TestExpand_UnknownSection, TestExpand_NilCtx, TestExpand_NonPositiveBudget, TestAssemble_NoRepoPath, TestAssembledContext_IsEmpty, TestAssemble_IncidentAgentFiltering) all pass\nAll 4 criteria verified: ContextAssembler assembles 4 section types, uses ContextBudget/trimToBudget/EstimateTokens for token-budgeted context, implements Expand with 4 section constants and positive-budget validation, and has 14 passing test functions covering all required scenarios.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 ContextAssembler queries spec links, git history, ADR index, and incident DB \u2014 pkg/dispatcher/context.go Assemble method calls assembleSpecs/assemblePRs/assembleADRs/assembleIncidents.: pkg/dispatcher/context.go:127-130 \u2014 Assemble calls assembleSpecs, assemblePRs, assembleADRs, assembleIncidents\n  \u2713 Context fits in configurable budget window with token-based trimming \u2014 ContextBudget tracks consumption, trimToBudget truncates content, EstimateTokens converts len/4.: context.go:17-20 ",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: context-auto-assembly\n\nStage tier1: PASS\n    \u2713 trust_tier:   File category 'code': requires provisional+, agent is provisional \u2014 OK\n\u2713 Trust tier: PASS\n\n  \u2713 lint: \n  \u2713 tests: \n  \u2713 build: \n  \u2713 secrets: \n  \u2713 lsp: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 ContextAssembler queries spec links, git history, ADR index, and incident DB \u2014 pkg/dispatcher/context.go Assemble method calls assembleSpecs/assemblePRs/assembleADRs/assembleIncidents.: pkg/dispatcher/context.go:127-130 \u2014 Assemble calls assembleSpecs, assemblePRs, assembleADRs, assembleIncidents\n  \u2713 Context fits in configurable budget window with token-based trimming \u2014 ContextBudget tracks consumption, trimToBudget truncates content, EstimateTokens converts len/4.: context.go:17-20 (ContextBudget struct with total/remaining), :28-34 (Consume), :47-53 (EstimateTokens: len/4 + min=1), :334-353 (trimToBudget)\n  \u2713 Expand() allows agents to request more context from specific section costing tokens \u2014 Expand accepts SectionSpecs/SectionPRs/SectionADRs/SectionIncidents with positive extraBudget.: context.go:138-167 \u2014 Expand switch on SectionSpecs/SectionPRs/SectionADRs/SectionIncidents, rejects extraBudget <= 0\n  \u2713 Unit tests cover: normal assembly, empty stores, budget trimming, expansion, EstimateTokens, nil stores \u2014 14 test functions in context_test.go.: context_test.go \u2014 14 test functions (TestEstimateTokens, TestContextBudget, TestAssemble_Full, TestAssemble_NilStores, TestAssemble_EmptyStores, TestAssemble_BudgetTrimming, TestAssemble_ZeroBudget, TestExpand_ValidSection, TestExpand_UnknownSection, TestExpand_NilCtx, TestExpand_NonPositiveBudget, TestAssemble_NoRepoPath, TestAssembledContext_IsEmpty, TestAssemble_IncidentAgentFiltering) all pass\nAll 4 criteria verified: ContextAssembler assembles 4 section types, uses ContextBudget/trimToBudget/EstimateTokens for token-budgeted context, implements Expand with 4 section constants and positive-budget validation, and has 14 passing test functions covering all required scenarios.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-07-13T03:55:11.752364"
+}
