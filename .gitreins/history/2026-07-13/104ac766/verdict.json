@@ -1,0 +1,81 @@
+{
+  "task_id": "trust-tier-gated-assignment",
+  "task_title": "Add trust-tier-gated task assignment to dispatcher",
+  "task_criteria": [
+    "Trust-tier gating blocks Provisional agent from Tier 2/Trusted tasks \u2014 pkg/dispatcher/assignment.go ValidateTierAssignment returns error when agent tier < required tier, pkg/dispatcher/assignment_test.go TestValidateTierAssignment_Blocked confirms.",
+    "Error message includes agent name, agent tier, required tier, and self-assign restriction text \u2014 ValidateTierAssignment fmt.Errorf in assignment.go:137-138.",
+    "CanSelfAssign returns false when agent tier is below required tier \u2014 pkg/dispatcher/assignment.go:145-147, test at assignment_test.go:215-224.",
+    "FileCategoryTier maps IaC\u2192Tier1(Observed), auth\u2192Tier2(Trusted), CI/CD\u2192Tier3(Veteran), config\u2192Tier1, docs\u2192Provisional, general\u2192Provisional \u2014 pkg/dispatcher/assignment.go:29-36, tests at assignment_test.go:228-273."
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 tests: \n  \u2713 build: \n  \u2713 lint: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 Trust-tier gating blocks Provisional agent from Tier 2/Trusted tasks \u2014 pkg/dispatcher/assignment.go ValidateTierAssignment returns error when agent tier < required tier, pkg/dispatcher/assignment_test.go TestValidateTierAssignment_Blocked confirms.: assignment.go:136 \u2014 CompareTiers(agent.Tier, task.RequiredTier) < 0 triggers error return; assignment_test.go:203-213 \u2014 TestValidateTierAssignment_Blocked confirms Provisional\u2192Trusted returns error\n  \u2713 Error message includes agent name, agent tier, required tier, and self-assign restriction text \u2014 ValidateTierAssignment fmt.Errorf in assignment.go:137-138.: assignment.go:137-138 \u2014 fmt.Errorf includes agent.Name, agent.Tier, task.ID, task.RequiredTier, and \"agent cannot self-assign above tier\"\n  \u2713 CanSelfAssign returns false when agent tier is below required tier \u2014 pkg/dispatcher/assignment.go:145-147, test at assignment_test.go:215-224.: assignment.go:145-147 \u2014 CanSelfAssign returns ValidateTierAssignment(agent,task)==nil; assignment_test.go:215-224 \u2014 TestCanSelfAssign: Provisional\u2192Provisional=true, Provisional\u2192Trusted=false\n  \u2713 FileCategoryTier maps IaC\u2192Tier1(Observed), auth\u2192Tier2(Trusted), CI/CD\u2192Tier3(Veteran), config\u2192Tier1, docs\u2192Provisional, general\u2192Provisional \u2014 pkg/dispatcher/assignment.go:29-36, tests at assignment_test.go:228-273.: assignment.go:29-36 \u2014 all 6 entries match spec; assignment_test.go:228-273 \u2014 TestClassifyFileCategory and TestRequiredTierForFiles exercise the mapping\nAll 4 trust-tier assignment criteria are implemented and verified with passing tests.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 Trust-tier gating blocks Provisional agent from Tier 2/Trusted tasks \u2014 pkg/dispatcher/assignment.go ValidateTierAssignment returns error when agent tier < required tier, pkg/dispatcher/assignment_test.go TestValidateTierAssignment_Blocked confirms.: assignment.go:136 \u2014 CompareTiers(agent.Tier, task.RequiredTier) < 0 triggers error return; assignment_test.go:203-213 \u2014 TestValidateTierAssignment_Blocked confirms Provisional\u2192Trusted returns error\n  \u2713 Error message includes agent name, ",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: trust-tier-gated-assignment\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 tests: \n  \u2713 build: \n  \u2713 lint: \n  \u2713 secrets: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 Trust-tier gating blocks Provisional agent from Tier 2/Trusted tasks \u2014 pkg/dispatcher/assignment.go ValidateTierAssignment returns error when agent tier < required tier, pkg/dispatcher/assignment_test.go TestValidateTierAssignment_Blocked confirms.: assignment.go:136 \u2014 CompareTiers(agent.Tier, task.RequiredTier) < 0 triggers error return; assignment_test.go:203-213 \u2014 TestValidateTierAssignment_Blocked confirms Provisional\u2192Trusted returns error\n  \u2713 Error message includes agent name, agent tier, required tier, and self-assign restriction text \u2014 ValidateTierAssignment fmt.Errorf in assignment.go:137-138.: assignment.go:137-138 \u2014 fmt.Errorf includes agent.Name, agent.Tier, task.ID, task.RequiredTier, and \"agent cannot self-assign above tier\"\n  \u2713 CanSelfAssign returns false when agent tier is below required tier \u2014 pkg/dispatcher/assignment.go:145-147, test at assignment_test.go:215-224.: assignment.go:145-147 \u2014 CanSelfAssign returns ValidateTierAssignment(agent,task)==nil; assignment_test.go:215-224 \u2014 TestCanSelfAssign: Provisional\u2192Provisional=true, Provisional\u2192Trusted=false\n  \u2713 FileCategoryTier maps IaC\u2192Tier1(Observed), auth\u2192Tier2(Trusted), CI/CD\u2192Tier3(Veteran), config\u2192Tier1, docs\u2192Provisional, general\u2192Provisional \u2014 pkg/dispatcher/assignment.go:29-36, tests at assignment_test.go:228-273.: assignment.go:29-36 \u2014 all 6 entries match spec; assignment_test.go:228-273 \u2014 TestClassifyFileCategory and TestRequiredTierForFiles exercise the mapping\nAll 4 trust-tier assignment criteria are implemented and verified with passing tests.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-07-13T03:40:57.297733"
+}
