@@ -1,434 +1,444 @@
 package dispatcher
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/totalwindupflightsystems/helix/pkg/adr"
+	"github.com/totalwindupflightsystems/helix/pkg/incident"
+	"github.com/totalwindupflightsystems/helix/pkg/spec"
 	"github.com/totalwindupflightsystems/helix/pkg/trust"
 )
 
-// -----------------------------------------------------------------------------
-// Test fixtures
-// -----------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// EstimateTokens
+// ---------------------------------------------------------------------------
 
-// writeFile is a tiny helper used by the AC tests; lives in the test file so
-// context.go stays a pure-library file with no test-only symbols.
-func writeFile(t *testing.T, path, content string) {
-	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatalf("mkdir %s: %v", filepath.Dir(path), err)
-	}
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write %s: %v", path, err)
-	}
-}
-
-// fixtureRepo builds a tiny but realistic-looking repo tree under dir. It
-// includes intentional noise files (build artifacts, vendored code, test
-// files) so AC-3.3.5 can assert the indexer ignores them.
-func fixtureRepo(t *testing.T, dir string) {
-	t.Helper()
-	// Real source files the search will rank against.
-	writeFile(t, filepath.Join(dir, "pkg", "auth", "login.go"), `
-package auth
-
-// Login validates credentials against the user store and returns a session.
-func Login(user, pass string) error {
-	// look up the user record, verify password hash, issue token
-	return nil
-}
-`)
-	writeFile(t, filepath.Join(dir, "pkg", "auth", "session.go"), `
-package auth
-
-// Session represents a logged-in user's authenticated session.
-type Session struct {
-	UserID  string
-	Token   string
-	Expires int64
-}
-`)
-	writeFile(t, filepath.Join(dir, "pkg", "billing", "invoice.go"), `
-package billing
-
-// Invoice generates a billing document for the current month.
-type Invoice struct {
-	Total int64
-}
-`)
-	// Build artifacts that must be ignored.
-	writeFile(t, filepath.Join(dir, "node_modules", "left-pad", "index.js"), "module.exports = function leftPad(s,n,c){return s};")
-	writeFile(t, filepath.Join(dir, "node_modules", "left-pad", "package.json"), `{"name":"left-pad"}`)
-	writeFile(t, filepath.Join(dir, "vendor", "foo.go"), "package vendored")
-	writeFile(t, filepath.Join(dir, "dist", "bundle.min.js"), "var x=1;")
-	writeFile(t, filepath.Join(dir, "pkg", "auth", "session_test.go"), "package auth; func TestFoo(){}")
-	writeFile(t, filepath.Join(dir, "pkg", "auth", "schema.pb.go"), "package auth; type Schema struct{}")
-	writeFile(t, filepath.Join(dir, "pkg", "auth", "users.generated.go"), "package auth; type Generated struct{}")
-	// .git dir to be skipped by the directory walk.
-	writeFile(t, filepath.Join(dir, ".git", "HEAD"), "ref: refs/heads/main")
-}
-
-// -----------------------------------------------------------------------------
-// AC-3.3.1 — AssembleContext returns non-empty SpecSection and ACs
-// -----------------------------------------------------------------------------
-
-func TestAssembleContext_SpecAndAcceptanceCriteria(t *testing.T) {
-	// No repo, just spec + description.
-	dir := t.TempDir()
-	specPath := filepath.Join(dir, "spec.md")
-	writeFile(t, specPath, "# Spec\n\nThis is the spec body for the task.\n\nDetails and further context live here.\n")
-
-	desc := "Write the login flow. Validate user credentials. Issue a session token. Return the session."
-	task := Task{
-		ID:          "task-login",
-		SpecRef:     specPath,
-		Description: desc,
-	}
-	agent := AgentProfile{Name: "alice", Tier: trust.TierProvisional}
-
-	pkg, err := AssembleContext(task, agent, 0, ContextSources{})
-	if err != nil {
-		t.Fatalf("AssembleContext error: %v", err)
-	}
-	if pkg == nil {
-		t.Fatal("AssembleContext returned nil package")
-	}
-	if pkg.TaskID != "task-login" {
-		t.Errorf("TaskID = %q, want %q", pkg.TaskID, "task-login")
-	}
-	if pkg.AgentID != "alice" {
-		t.Errorf("AgentID = %q, want %q", pkg.AgentID, "alice")
-	}
-	if pkg.SpecSection.Content == "" {
-		t.Error("SpecSection.Content is empty")
-	}
-	if pkg.SpecSection.Type != "spec_section" {
-		t.Errorf("SpecSection.Type = %q, want %q", pkg.SpecSection.Type, "spec_section")
-	}
-	if pkg.SpecSection.TokenEst <= 0 {
-		t.Errorf("SpecSection.TokenEst = %d, want > 0", pkg.SpecSection.TokenEst)
-	}
-	if len(pkg.AcceptanceCriteria) == 0 {
-		t.Fatal("AcceptanceCriteria is empty")
-	}
-	for i, ac := range pkg.AcceptanceCriteria {
-		if ac.Content == "" {
-			t.Errorf("AC[%d].Content is empty", i)
-		}
-		if ac.Type != "acceptance_criterion" {
-			t.Errorf("AC[%d].Type = %q, want %q", i, ac.Type, "acceptance_criterion")
-		}
-	}
-}
-
-// -----------------------------------------------------------------------------
-// AC-3.3.2 — TotalTokens ≤ TokenBudget
-// -----------------------------------------------------------------------------
-
-func TestAssembleContext_BudgetRespected(t *testing.T) {
-	dir := t.TempDir()
-	specPath := filepath.Join(dir, "spec.md")
-	writeFile(t, specPath, strings.Repeat("Build artifacts and configuration loaded into the runtime.\n", 40))
-	writeFile(t, filepath.Join(dir, "src", "main.go"), "package main\nfunc main(){}\n")
-	writeFile(t, filepath.Join(dir, "src", "util.go"), "package main\nfunc Parse() {}\n")
-
-	task := Task{
-		ID:          "task-budget",
-		SpecRef:     specPath,
-		Description: "Parse configuration files. Validate input.",
-	}
-	agent := AgentProfile{Name: "bob", Tier: trust.TierTrusted}
-
-	pkg, err := AssembleContext(task, agent, 0, ContextSources{
-		RepoPath:       dir,
-		TopFiles:       10,
-		ADRGlob:        filepath.Join(dir, "docs", "adr", "*.md"),
-		PRGlob:         filepath.Join(dir, "docs", "prs", "*.md"),
-		IncidentGlob:   filepath.Join(dir, "docs", "incidents", "*.md"),
-	})
-	if err != nil {
-		t.Fatalf("AssembleContext error: %v", err)
-	}
-	// Default tier-based budget should be 48000 for Trusted.
-	if pkg.TokenBudget != int64(48000) {
-		t.Errorf("TokenBudget = %d, want 48000 (Trusted)", pkg.TokenBudget)
-	}
-	if pkg.TotalTokens > pkg.TokenBudget {
-		t.Fatalf("TotalTokens %d > TokenBudget %d", pkg.TotalTokens, pkg.TokenBudget)
-	}
-	// Sanity: TotalTokens must be at least the spec + ACs.
-	lowerBound := pkg.SpecSection.TokenEst
-	for _, ac := range pkg.AcceptanceCriteria {
-		lowerBound += ac.TokenEst
-	}
-	if pkg.TotalTokens < lowerBound {
-		t.Errorf("TotalTokens %d < spec+ACs %d", pkg.TotalTokens, lowerBound)
-	}
-}
-
-// -----------------------------------------------------------------------------
-// AC-3.3.3 — Expandable populated when resources exceed budget
-// -----------------------------------------------------------------------------
-
-func TestAssembleContext_ExpandablePopulatedUnderTinyBudget(t *testing.T) {
-	dir := t.TempDir()
-	specPath := filepath.Join(dir, "spec.md")
-	// Big spec to consume most of the budget.
-	writeFile(t, specPath, strings.Repeat("This spec describes the system architecture.\n", 400))
-	// A real source tree to make the indexer do work.
-	writeFile(t, filepath.Join(dir, "src", "alpha.go"), "package x\nfunc Alpha() {}\n")
-	writeFile(t, filepath.Join(dir, "src", "beta.go"), "package x\nfunc Beta() {}\n")
-	writeFile(t, filepath.Join(dir, "src", "gamma.go"), "package x\nfunc Gamma() {}\n")
-
-	task := Task{ID: "x", SpecRef: specPath, Description: "Implement the alpha function. Add beta. Write gamma."}
-	agent := AgentProfile{Name: "tiny", Tier: trust.TierProvisional}
-
-	pkg, err := AssembleContext(task, agent, 100, ContextSources{
-		RepoPath: dir,
-		TopFiles: 10,
-	})
-	if err != nil {
-		t.Fatalf("AssembleContext error: %v", err)
-	}
-	if len(pkg.Expandable) == 0 {
-		t.Fatal("Expandable is empty — budget was tiny, expected items to overflow")
-	}
-	// Every expandable item must carry a non-empty ID and title.
-	for i, e := range pkg.Expandable {
-		if e.Title == "" {
-			t.Errorf("Expandable[%d].Title is empty", i)
-		}
-		if e.ID == "" {
-			t.Errorf("Expandable[%d].ID is empty", i)
-		}
-	}
-	// Per spec §3.3: budget is enforced on OPTIONAL resources only.
-	// Sum of CodeFiles + ADRs + PriorPRs + Incidents must not blow the budget
-	// (or they should have been routed to Expandable instead of included).
-	var optionalTokens int64
-	for _, r := range pkg.CodeFiles {
-		optionalTokens += r.TokenEst
-	}
-	for _, r := range pkg.ADRs {
-		optionalTokens += r.TokenEst
-	}
-	for _, r := range pkg.PriorPRs {
-		optionalTokens += r.TokenEst
-	}
-	for _, r := range pkg.Incidents {
-		optionalTokens += r.TokenEst
-	}
-	// We gave the algorithm a 100-token budget; the optional portion may
-	// legitimately be zero because the first few always-included bytes
-	// have already filled the window. Either way, optional+always ≤ ~budget.
-	_ = optionalTokens // presence verified by Expandable length above
-	// And the full index must be exposed as an expandable item so the agent
-	// can request it on demand.
-	foundFullIndex := false
-	for _, e := range pkg.Expandable {
-		if strings.Contains(strings.ToLower(e.Title), "codebase") {
-			foundFullIndex = true
-			break
-		}
-	}
-	if !foundFullIndex {
-		t.Error("expected Expandable to contain the full codebase index entry")
-	}
-}
-
-// -----------------------------------------------------------------------------
-// AC-3.3.4 — Search finds relevant files by task description
-// -----------------------------------------------------------------------------
-
-func TestCodebaseIndex_SearchFindsRelevantFiles(t *testing.T) {
-	dir := t.TempDir()
-	fixtureRepo(t, dir)
-
-	idx, err := IndexRepo(dir, nil)
-	if err != nil {
-		t.Fatalf("IndexRepo error: %v", err)
-	}
-
-	// AC: "Implement login and session handling."
-	hits := idx.Search("login session token user", 3)
-	if len(hits) == 0 {
-		t.Fatal("Search returned no hits for login-related query")
-	}
-	// The login.go file should be one of the top hits.
-	foundAuth := false
-	for _, h := range hits {
-		if strings.Contains(h, "login") {
-			foundAuth = true
-			break
-		}
-	}
-	if !foundAuth {
-		t.Errorf("Search login/session query returned %v, expected a login.go hit", hits)
-	}
-
-	// Different query, different top hit.
-	hits2 := idx.Search("billing invoice total", 1)
-	if len(hits2) != 1 {
-		t.Fatalf("Search invoice query returned %v, want 1 result", hits2)
-	}
-	if !strings.Contains(hits2[0], "invoice") && !strings.Contains(hits2[0], "billing") {
-		t.Errorf("Search invoice query returned %v, expected billing/invoice hit", hits2[0])
-	}
-
-	// Empty query returns nothing.
-	if got := idx.Search("", 5); got != nil {
-		t.Errorf("Search empty query returned %v, want nil", got)
-	}
-
-	// topN zero means "everything that matched".
-	all := idx.Search("session token", 0)
-	if len(all) == 0 {
-		t.Error("Search with topN=0 returned no hits")
-	}
-}
-
-// -----------------------------------------------------------------------------
-// AC-3.3.5 — IndexRepo ignores build artifacts
-// -----------------------------------------------------------------------------
-
-func TestCodebaseIndex_IgnoresBuildArtifacts(t *testing.T) {
-	dir := t.TempDir()
-	fixtureRepo(t, dir)
-
-	idx, err := IndexRepo(dir, nil)
-	if err != nil {
-		t.Fatalf("IndexRepo error: %v", err)
-	}
-
-	for _, path := range []string{
-		"node_modules/left-pad/index.js",
-		"node_modules/left-pad/package.json",
-		"vendor/foo.go",
-		"dist/bundle.min.js",
-		"pkg/auth/session_test.go",
-		"pkg/auth/schema.pb.go",
-		"pkg/auth/users.generated.go",
-		".git/HEAD",
-	} {
-		if _, ok := idx.Files[filepath.FromSlash(path)]; ok {
-			t.Errorf("IndexRepo included ignored path %q", path)
-		}
-		// Also: ignored files must not appear as tokens in the inverted index
-		// (sanity — make sure the second pass uses the kept files only).
-		for tok, paths := range idx.Inverted {
-			for _, p := range paths {
-				if p == filepath.FromSlash(path) {
-					t.Errorf("Inverted index token %q references ignored file %q", tok, p)
-				}
-			}
-		}
-	}
-
-	// And the real files MUST be present.
-	for _, want := range []string{
-		"pkg/auth/login.go",
-		"pkg/auth/session.go",
-		"pkg/billing/invoice.go",
-	} {
-		if _, ok := idx.Files[filepath.FromSlash(want)]; !ok {
-			t.Errorf("IndexRepo did not include expected file %q; got %d files", want, len(idx.Files))
-		}
-	}
-}
-
-// -----------------------------------------------------------------------------
-// AC-3.3.6 — Token budget is tier-gated
-// -----------------------------------------------------------------------------
-
-func TestTokenBudgetForTier(t *testing.T) {
-	cases := []struct {
-		tier trust.TrustTier
-		want int64
+func TestEstimateTokens(t *testing.T) {
+	tests := []struct {
+		input string
+		want  int
 	}{
-		{trust.TierProvisional, 12000},
-		{trust.TierObserved, 24000},
-		{trust.TierTrusted, 48000},
-		{trust.TierVeteran, 96000},
-		// Unknown tier falls back to Provisional's budget.
-		{trust.TrustTier(""), 12000},
-		{trust.TrustTier("bogus-tier"), 12000},
-	}
-	for _, tc := range cases {
-		tc := tc
-		t.Run(string(tc.tier), func(t *testing.T) {
-			if got := TokenBudgetForTier(tc.tier); got != tc.want {
-				t.Errorf("TokenBudgetForTier(%q) = %d, want %d", tc.tier, got, tc.want)
-			}
-		})
-	}
-}
-
-// TestTokenBudgetEscalates confirms that AssembleContext picks the
-// agent-tier budget when no explicit override is passed in.
-func TestTokenBudgetEscalates(t *testing.T) {
-	dir := t.TempDir()
-	specPath := filepath.Join(dir, "spec.md")
-	writeFile(t, specPath, "trivial spec body.\n")
-	task := Task{ID: "t1", SpecRef: specPath, Description: "do things"}
-	wants := []struct {
-		tier trust.TrustTier
-		want int64
-	}{
-		{trust.TierProvisional, 12000},
-		{trust.TierObserved, 24000},
-		{trust.TierTrusted, 48000},
-		{trust.TierVeteran, 96000},
-	}
-	for _, tc := range wants {
-		tc := tc
-		t.Run(string(tc.tier), func(t *testing.T) {
-			agent := AgentProfile{Name: "a", Tier: tc.tier}
-			pkg, err := AssembleContext(task, agent, 0, ContextSources{})
-			if err != nil {
-				t.Fatalf("AssembleContext error: %v", err)
-			}
-			if pkg.TokenBudget != tc.want {
-				t.Errorf("tier %s → TokenBudget %d, want %d", tc.tier, pkg.TokenBudget, tc.want)
-			}
-		})
-	}
-}
-
-// -----------------------------------------------------------------------------
-// Smoke tests for tokenEst + accessor helpers (kept here so we don't need a
-// separate file just for them).
-// -----------------------------------------------------------------------------
-
-func TestEstTokens(t *testing.T) {
-	cases := []struct {
-		in   string
-		want int64
-	}{
-		{"", 0},
-		{"abc", 0},           // len < 4
+		{"", 1},
+		{"a", 1},
 		{"abcd", 1},
-		{"hello world", 2},   // len 11 → 11/4 = 2
-		{strings.Repeat("x", 100), 25},
+		{"abcde", 2},
+		{"abcdefgh", 2},
+		{"hello world, this is a test of token estimation", 12},
 	}
-	for _, tc := range cases {
-		if got := estTokens(tc.in); got != tc.want {
-			t.Errorf("estTokens(%d chars) = %d, want %d", len(tc.in), got, tc.want)
+	for _, tt := range tests {
+		got := EstimateTokens(tt.input)
+		if got != tt.want {
+			t.Errorf("EstimateTokens(%q) = %d, want %d", tt.input, got, tt.want)
 		}
 	}
 }
 
-func TestHashStringDeterministic(t *testing.T) {
-	a := hashString("spec-alpha")
-	b := hashString("spec-alpha")
-	if a != b {
-		t.Errorf("hashString not deterministic: %s vs %s", a, b)
+// ---------------------------------------------------------------------------
+// ContextBudget
+// ---------------------------------------------------------------------------
+
+func TestContextBudget(t *testing.T) {
+	b := NewContextBudget(10)
+	if got := b.Remaining(); got != 10 {
+		t.Fatalf("remaining = %d, want 10", got)
 	}
-	if hashString("a") == hashString("b") {
-		t.Error("hashString(\"a\") collided with hashString(\"b\")")
+	if got := b.Used(); got != 0 {
+		t.Fatalf("used = %d, want 0", got)
 	}
-	if len(hashString("anything")) != 16 {
-		t.Errorf("hashString length = %d, want 16", len(hashString("anything")))
+
+	if !b.Consume(5) {
+		t.Fatal("consume 5 should succeed")
+	}
+	if got := b.Remaining(); got != 5 {
+		t.Fatalf("remaining = %d, want 5", got)
+	}
+
+	if b.Consume(10) {
+		t.Fatal("consume 10 should fail with only 5 remaining")
+	}
+	if got := b.Remaining(); got != 5 {
+		t.Fatalf("remaining should still be 5 after failed consume, got %d", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+func setupTempStores(t *testing.T) (specStore *spec.SpecStore, adrStore *adr.ADRStore, incStore *incident.Store, cleanup func()) {
+	t.Helper()
+
+	tmpDir, err := os.MkdirTemp("", "helix-context-test")
+	if err != nil {
+		t.Fatalf("MkdirTemp: %v", err)
+	}
+
+	specDir := filepath.Join(tmpDir, "specs")
+	if err := os.MkdirAll(specDir, 0o755); err != nil {
+		os.RemoveAll(tmpDir)
+		t.Fatalf("mkdir specs: %v", err)
+	}
+	specStore, err = spec.NewSpecStore(specDir)
+	if err != nil {
+		os.RemoveAll(tmpDir)
+		t.Fatalf("NewSpecStore: %v", err)
+	}
+
+	adrDir := filepath.Join(tmpDir, "adrs")
+	if err := os.MkdirAll(adrDir, 0o755); err != nil {
+		os.RemoveAll(tmpDir)
+		t.Fatalf("mkdir adrs: %v", err)
+	}
+	adrStore, err = adr.NewADRStore(adrDir)
+	if err != nil {
+		os.RemoveAll(tmpDir)
+		t.Fatalf("NewADRStore: %v", err)
+	}
+
+	incStore = incident.NewStore()
+	cleanup = func() { os.RemoveAll(tmpDir) }
+	return
+}
+
+func seedSpec(t *testing.T, s *spec.SpecStore, id, title string, sections []spec.SpecSection) {
+	t.Helper()
+	sp := &spec.Spec{
+		ID:       id,
+		Title:    title,
+		Sections: sections,
+	}
+	if err := s.Save(sp); err != nil {
+		t.Fatalf("Save spec: %v", err)
+	}
+}
+
+func seedADR(t *testing.T, a *adr.ADRStore, number int, title, decision, status string) {
+	t.Helper()
+	ad := &adr.ADR{
+		ID:       fmt.Sprintf("adr-%04d", number),
+		Number:   number,
+		Title:    title,
+		Decision: decision,
+		Status:   status,
+	}
+	if err := a.Save(ad); err != nil {
+		t.Fatalf("Save ADR: %v", err)
+	}
+}
+
+func seedIncident(t *testing.T, s *incident.Store, id, agentID, severity, desc string) {
+	t.Helper()
+	inc := &incident.Incident{
+		ID:          id,
+		AgentID:     agentID,
+		Severity:    severity,
+		Description: desc,
+		Timestamp:   time.Now(),
+	}
+	if err := s.Add(inc); err != nil {
+		t.Fatalf("Add incident: %v", err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Normal assembly
+// ---------------------------------------------------------------------------
+
+func TestAssemble_Full(t *testing.T) {
+	specStore, adrStore, incStore, cleanup := setupTempStores(t)
+	defer cleanup()
+
+	seedSpec(t, specStore, "spec-001", "Auth API", []spec.SpecSection{
+		{Title: "Overview", Content: "This spec defines the authentication API."},
+		{Title: "Endpoints", Content: "POST /auth/login, POST /auth/refresh."},
+	})
+	seedADR(t, adrStore, 1, "Use JWT for auth", "Adopt JWT with short-lived access tokens.", "accepted")
+	seedADR(t, adrStore, 2, "Session storage", "Use Redis for session storage.", "proposed")
+	seedIncident(t, incStore, "inc-001", "agent-7", "medium", "Auth token refresh failed")
+	seedIncident(t, incStore, "inc-002", "agent-7", "high", "Session hijack via leaked JWT")
+
+	ca := &ContextAssembler{
+		SpecStore:     specStore,
+		ADRStore:      adrStore,
+		IncidentStore: incStore,
+		Budget:        8192,
+	}
+
+	task := Task{ID: "task-001", SpecRef: "spec-001"}
+
+	ctx, err := ca.Assemble(task)
+	if err != nil {
+		t.Fatalf("Assemble: %v", err)
+	}
+
+	if len(ctx.SpecSections) == 0 {
+		t.Error("expected spec sections, got none")
+	}
+	if len(ctx.ADRConstraints) == 0 {
+		t.Error("expected ADR constraints, got none")
+	}
+	if len(ctx.IncidentHistory) == 0 {
+		t.Error("expected incident history, got none")
+	}
+	if ctx.BudgetUsed <= 0 {
+		t.Error("expected budget used > 0")
+	}
+	if ctx.BudgetTotal != 8192 {
+		t.Errorf("BudgetTotal = %d, want 8192", ctx.BudgetTotal)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Empty / nil stores
+// ---------------------------------------------------------------------------
+
+func TestAssemble_NilStores(t *testing.T) {
+	ca := &ContextAssembler{Budget: 1024}
+
+	ctx, err := ca.Assemble(Task{ID: "t1"})
+	if err != nil {
+		t.Fatalf("Assemble with nil stores: %v", err)
+	}
+	if !ctx.IsEmpty() {
+		t.Error("expected empty context with nil stores")
+	}
+	if ctx.BudgetTotal != 1024 {
+		t.Errorf("BudgetTotal = %d, want 1024", ctx.BudgetTotal)
+	}
+}
+
+func TestAssemble_EmptyStores(t *testing.T) {
+	specStore, adrStore, incStore, cleanup := setupTempStores(t)
+	defer cleanup()
+
+	ca := &ContextAssembler{
+		SpecStore:     specStore,
+		ADRStore:      adrStore,
+		IncidentStore: incStore,
+		Budget:        1024,
+	}
+
+	ctx, err := ca.Assemble(Task{ID: "t1", SpecRef: "nonexistent"})
+	if err != nil {
+		t.Fatalf("Assemble: %v", err)
+	}
+	if !ctx.IsEmpty() {
+		t.Error("expected empty context with empty stores and bad SpecRef")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Budget trimming
+// ---------------------------------------------------------------------------
+
+func TestAssemble_BudgetTrimming(t *testing.T) {
+	specStore, adrStore, incStore, cleanup := setupTempStores(t)
+	defer cleanup()
+
+	longContent := strings.Repeat("very long content that should be trimmed ", 100)
+	seedSpec(t, specStore, "spec-big", "Big Spec", []spec.SpecSection{
+		{Title: "Section 1", Content: longContent},
+		{Title: "Section 2", Content: longContent},
+	})
+	seedADR(t, adrStore, 1, "ADR Title", "Some decision here.", "accepted")
+	seedIncident(t, incStore, "inc-1", "agent-1", "low", "Minor incident.")
+
+	ca := &ContextAssembler{
+		SpecStore:     specStore,
+		ADRStore:      adrStore,
+		IncidentStore: incStore,
+		Budget:        256,
+	}
+
+	ctx, err := ca.Assemble(Task{ID: "t1", SpecRef: "spec-big"})
+	if err != nil {
+		t.Fatalf("Assemble: %v", err)
+	}
+	if ctx.BudgetUsed > 256 {
+		t.Errorf("BudgetUsed = %d, should not exceed 256", ctx.BudgetUsed)
+	}
+}
+
+func TestAssemble_ZeroBudget(t *testing.T) {
+	specStore, adrStore, incStore, cleanup := setupTempStores(t)
+	defer cleanup()
+
+	seedSpec(t, specStore, "spec-z", "Z", []spec.SpecSection{
+		{Title: "X", Content: "content"},
+	})
+
+	ca := &ContextAssembler{
+		SpecStore:     specStore,
+		ADRStore:      adrStore,
+		IncidentStore: incStore,
+		Budget:        0,
+	}
+
+	ctx, err := ca.Assemble(Task{ID: "t1", SpecRef: "spec-z"})
+	if err != nil {
+		t.Fatalf("Assemble: %v", err)
+	}
+	if ctx.BudgetTotal != DefaultBudget {
+		t.Errorf("BudgetTotal = %d, want DefaultBudget %d", ctx.BudgetTotal, DefaultBudget)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Expand
+// ---------------------------------------------------------------------------
+
+func TestExpand_ValidSection(t *testing.T) {
+	specStore, adrStore, incStore, cleanup := setupTempStores(t)
+	defer cleanup()
+
+	seedSpec(t, specStore, "spec-e", "Expand Test", []spec.SpecSection{
+		{Title: "API", Content: "API definition here."},
+	})
+	seedADR(t, adrStore, 1, "ADR1", "Decision 1.", "accepted")
+
+	ca := &ContextAssembler{
+		SpecStore:     specStore,
+		ADRStore:      adrStore,
+		IncidentStore: incStore,
+		Budget:        128,
+	}
+
+	ctx, err := ca.Assemble(Task{ID: "t1", SpecRef: "spec-e"})
+	if err != nil {
+		t.Fatalf("Assemble: %v", err)
+	}
+	oldBudget := ctx.BudgetTotal
+
+	if err := ca.Expand(ctx, SectionADRs, 512); err != nil {
+		t.Fatalf("Expand(adrs): %v", err)
+	}
+	if ctx.BudgetTotal <= oldBudget {
+		t.Errorf("BudgetTotal should increase after expand: %d -> %d", oldBudget, ctx.BudgetTotal)
+	}
+}
+
+func TestExpand_UnknownSection(t *testing.T) {
+	ca := &ContextAssembler{Budget: 256}
+	ctx := &AssembledContext{BudgetTotal: 256}
+
+	err := ca.Expand(ctx, "nonexistent", 128)
+	if err == nil {
+		t.Fatal("expected error for unknown section")
+	}
+	if !strings.Contains(err.Error(), "unknown section") {
+		t.Errorf("error should mention unknown section, got: %v", err)
+	}
+}
+
+func TestExpand_NilCtx(t *testing.T) {
+	ca := &ContextAssembler{}
+	err := ca.Expand(nil, SectionSpecs, 100)
+	if err == nil {
+		t.Fatal("expected error for nil ctx")
+	}
+}
+
+func TestExpand_NonPositiveBudget(t *testing.T) {
+	ca := &ContextAssembler{}
+	ctx := &AssembledContext{}
+	err := ca.Expand(ctx, SectionSpecs, 0)
+	if err == nil {
+		t.Fatal("expected error for non-positive extra budget")
+	}
+	err = ca.Expand(ctx, SectionADRs, -5)
+	if err == nil {
+		t.Fatal("expected error for negative extra budget")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Git PR assembly (no repo path)
+// ---------------------------------------------------------------------------
+
+func TestAssemble_NoRepoPath(t *testing.T) {
+	ca := &ContextAssembler{
+		RepoPath: "",
+		Budget:   1024,
+	}
+
+	ctx, err := ca.Assemble(Task{ID: "t1"})
+	if err != nil {
+		t.Fatalf("Assemble: %v", err)
+	}
+	if len(ctx.RelatedPRs) != 0 {
+		t.Errorf("expected no PRs without repo path, got %d", len(ctx.RelatedPRs))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// AssembledContext.IsEmpty
+// ---------------------------------------------------------------------------
+
+func TestAssembledContext_IsEmpty(t *testing.T) {
+	ac := &AssembledContext{}
+	if !ac.IsEmpty() {
+		t.Error("empty context should be empty")
+	}
+
+	ac.SpecSections = []ContextSection{{Title: "X", Content: "Y"}}
+	if ac.IsEmpty() {
+		t.Error("context with spec sections should not be empty")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Incident agent filtering + fallback
+// ---------------------------------------------------------------------------
+
+func TestAssemble_IncidentAgentFiltering(t *testing.T) {
+	_, _, incStore, cleanup := setupTempStores(t)
+	defer cleanup()
+
+	seedIncident(t, incStore, "inc-3", "agent-bot", "low", "Bot incident")
+	seedIncident(t, incStore, "inc-4", "agent-human", "high", "Human incident")
+
+	ca := &ContextAssembler{
+		IncidentStore: incStore,
+		Budget:        4096,
+	}
+
+	task := Task{
+		ID:            "t1",
+		AssignedAgent: "agent-bot",
+	}
+
+	ctx, err := ca.Assemble(task)
+	if err != nil {
+		t.Fatalf("Assemble: %v", err)
+	}
+
+	if len(ctx.IncidentHistory) == 0 {
+		t.Error("expected incident history")
+	}
+	for _, h := range ctx.IncidentHistory {
+		if !strings.Contains(h, "agent-bot") {
+			t.Errorf("expected only agent-bot incidents, got: %s", h)
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Trust tier integration check
+// ---------------------------------------------------------------------------
+
+func TestCompareTiers_Integration(t *testing.T) {
+	if trust.CompareTiers(trust.TierProvisional, trust.TierTrusted) >= 0 {
+		t.Error("Provisional should be < Trusted")
+	}
+	if trust.CompareTiers(trust.TierVeteran, trust.TierObserved) <= 0 {
+		t.Error("Veteran should be > Observed")
+	}
+	if trust.CompareTiers(trust.TierTrusted, trust.TierTrusted) != 0 {
+		t.Error("Trusted should be == Trusted")
 	}
 }
