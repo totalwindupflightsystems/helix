@@ -465,6 +465,12 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("design", func() error {
 			return runDesignWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "contract":
+		// `helix contract <create|validate|freeze|diff|consumer-check|list|show>`
+		// API contract generation and breaking change detection (Phase 2 §2.4).
+		return RunWithObs("contract", func() error {
+			return runContractWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	}
 
 	// Delegate to subcommand binary
