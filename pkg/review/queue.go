@@ -34,19 +34,19 @@ const (
 
 // ReviewQueueItem is a reviewable PR in the queue.
 type ReviewQueueItem struct {
-	ID                     string            `json:"id"`
-	PRURL                  string            `json:"pr_url"`
-	AuthorAgentID          string            `json:"author_agent_id"`
-	Category               ChangeCategory    `json:"change_category"`
-	RiskScore              float64           `json:"risk_score"`
-	SubmittedAt            time.Time         `json:"submitted_at"`
-	Status                 ReviewStatus      `json:"status"`
-	AssignedHuman          string            `json:"assigned_human,omitempty"`
-	AssignedModels         []string          `json:"assigned_models,omitempty"`
-	PriorityScore          float64           `json:"priority_score"`
-	EstimatedReviewMinutes int               `json:"estimated_review_minutes"`
-	Tier                   trust.TrustTier   `json:"trust_tier"`
-	GatesPassed            bool              `json:"gates_passed"`
+	ID                     string          `json:"id"`
+	PRURL                  string          `json:"pr_url"`
+	AuthorAgentID          string          `json:"author_agent_id"`
+	Category               ChangeCategory  `json:"change_category"`
+	RiskScore              float64         `json:"risk_score"`
+	SubmittedAt            time.Time       `json:"submitted_at"`
+	Status                 ReviewStatus    `json:"status"`
+	AssignedHuman          string          `json:"assigned_human,omitempty"`
+	AssignedModels         []string        `json:"assigned_models,omitempty"`
+	PriorityScore          float64         `json:"priority_score"`
+	EstimatedReviewMinutes int             `json:"estimated_review_minutes"`
+	Tier                   trust.TrustTier `json:"trust_tier"`
+	GatesPassed            bool            `json:"gates_passed"`
 }
 
 // PriorityScore calculates the priority as risk × staleness_hours.

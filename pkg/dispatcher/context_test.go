@@ -80,28 +80,28 @@ func setupTempStores(t *testing.T) (specStore *spec.SpecStore, adrStore *adr.ADR
 
 	specDir := filepath.Join(tmpDir, "specs")
 	if err := os.MkdirAll(specDir, 0o755); err != nil {
-		os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(tmpDir)
 		t.Fatalf("mkdir specs: %v", err)
 	}
 	specStore, err = spec.NewSpecStore(specDir)
 	if err != nil {
-		os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(tmpDir)
 		t.Fatalf("NewSpecStore: %v", err)
 	}
 
 	adrDir := filepath.Join(tmpDir, "adrs")
 	if err := os.MkdirAll(adrDir, 0o755); err != nil {
-		os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(tmpDir)
 		t.Fatalf("mkdir adrs: %v", err)
 	}
 	adrStore, err = adr.NewADRStore(adrDir)
 	if err != nil {
-		os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(tmpDir)
 		t.Fatalf("NewADRStore: %v", err)
 	}
 
 	incStore = incident.NewStore()
-	cleanup = func() { os.RemoveAll(tmpDir) }
+	cleanup = func() { _ = os.RemoveAll(tmpDir) }
 	return
 }
 

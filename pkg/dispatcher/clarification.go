@@ -25,7 +25,7 @@ import (
 
 // ClarificationRequest is emitted by an agent when it encounters ambiguity.
 type ClarificationRequest struct {
-	Type            string               `json:"type"`             // always "CLARIFICATION_NEEDED"
+	Type            string               `json:"type"` // always "CLARIFICATION_NEEDED"
 	TaskID          string               `json:"task_id"`
 	BlockedStep     int                  `json:"blocked_step"`
 	Question        string               `json:"question"`
@@ -45,7 +45,7 @@ type ClarificationContext struct {
 
 // ClarificationResponse resolves a pending clarification.
 type ClarificationResponse struct {
-	Type       string `json:"type"`        // "CLARIFICATION_RESOLVED"
+	Type       string `json:"type"` // "CLARIFICATION_RESOLVED"
 	TaskID     string `json:"task_id"`
 	Resolution string `json:"resolution"`
 	ResolvedBy string `json:"resolved_by"` // "human:<name>" or "agent:<name>"
