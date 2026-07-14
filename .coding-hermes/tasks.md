@@ -77,13 +77,11 @@
 - **Completed:** 2026-07-13 — Foreman implemented directly (3 files, +902/-10 lines, 15 tests). pkg/dispatcher/clarification.go (ClarificationRequest, ClarificationResponse, ClarificationStore, AutoResolve), cmd/helix/dispatcher.go (clarify + clarifications subcommands, --answer flag). go build+vet+test PASS (50 packages), GitReins Tier 1 PASS. Commit 60d48cb.
 - **AC met:** (1) Agent emits structured ClarificationRequest JSON when blocked, (2) ClarificationStore persists to ~/.helix/clarifications/<task-id>.json, (3) Human resolves via `helix dispatcher clarify <task-id> --answer "..."`, (4) AutoResolve checks existing resolutions and ADR store, (5) Clarification error wrapping propagates through step execution.
 
-## [ ] MEDIUM: Implement review load balancing and priority queue
+## [x] MEDIUM: Implement review load balancing and priority queue
 - **Priority:** medium
 - **Plan:** specs/plans/phase-5-6-review.md §6.3
-- **Gap:** PRs reviewed FIFO. No routing by expertise or urgency. Agent reviews not balanced.
-- **Files:** pkg/review/queue.go (NEW), pkg/review/queue_test.go (NEW)
-- **AC:** `helix review queue` shows PRs sorted by priority score (risk × staleness). `helix review assign --pr 42` routes to best reviewer (agent or human) based on expertise and load. Agent review counts tracked and balanced.
-- **Logic:** Priority scoring: risk score × hours waiting. Reviewer matching: domain expertise + current load + trust tier. Agent reviews capped per tick to prevent review spam.
+- **Completed:** 2026-07-14 — Foreman implemented directly (both GLM-5.2 and MiniMax-M3 workers failed silently). 3 files, +1145 lines, 10 tests. ReviewQueue with priority scoring, ReviewAssigner with self-review prevention, HumanReviewFilter, SLATracker, LoadTracker. CLI: `helix review queue --status` and `helix review assign --pr <url>`. Build+vet+test PASS (50 packages), GitReins Tier 1 PASS. Commit 7b1d0c3.
+- **AC met:** (1) ReviewQueue persists to ~/.helix/queue/reviews.json with priority scoring (risk × staleness), (2) ReviewAssigner distributes load with self-review prevention, tier routing, human gating, (3) HumanReviewFilter: CategoryContract always needs human, CategoryCosmetic+TierVeteran auto-merges, (4) Self-review prevention filters by AuthorAgentID, (5) SLATracker with per-category SLA durations (4h/24h/48h/72h), (6) LoadTracker for load-aware model selection, (7) `helix review queue --status` CLI, (8) `helix review assign --pr <url>` CLI.
 
 ## [ ] MEDIUM: Implement structured dismissal protocol for human-agent disagreement
 - **Priority:** medium
