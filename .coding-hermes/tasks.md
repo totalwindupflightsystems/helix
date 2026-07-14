@@ -83,13 +83,14 @@
 - **Completed:** 2026-07-14 — Foreman implemented directly (both GLM-5.2 and MiniMax-M3 workers failed silently). 3 files, +1145 lines, 10 tests. ReviewQueue with priority scoring, ReviewAssigner with self-review prevention, HumanReviewFilter, SLATracker, LoadTracker. CLI: `helix review queue --status` and `helix review assign --pr <url>`. Build+vet+test PASS (50 packages), GitReins Tier 1 PASS. Commit 7b1d0c3.
 - **AC met:** (1) ReviewQueue persists to ~/.helix/queue/reviews.json with priority scoring (risk × staleness), (2) ReviewAssigner distributes load with self-review prevention, tier routing, human gating, (3) HumanReviewFilter: CategoryContract always needs human, CategoryCosmetic+TierVeteran auto-merges, (4) Self-review prevention filters by AuthorAgentID, (5) SLATracker with per-category SLA durations (4h/24h/48h/72h), (6) LoadTracker for load-aware model selection, (7) `helix review queue --status` CLI, (8) `helix review assign --pr <url>` CLI.
 
-## [ ] MEDIUM: Implement structured dismissal protocol for human-agent disagreement
+## [x] MEDIUM: Implement structured dismissal protocol for human-agent disagreement
 - **Priority:** medium
 - **Plan:** specs/plans/phase-7-8-negotiate-merge.md §7.2
 - **Gap:** Human dismisses agent finding with "ignore." No learning. No accountability.
 - **Files:** pkg/review/dismissal.go (NEW), pkg/review/dismissal_test.go (NEW)
 - **AC:** Human dismisses finding with structured reason (not_valid/not_applicable/already_addressed/risk_accepted). Dismissal feeds false positive tracker. Frequent incorrect dismissals reduce human override weight.
 - **Logic:** `Dismissal` struct with reason enum, evidence. Feeds `FPTracker.Increment`. After N dismissals, human override weight decreases. Mutual accountability — both agent and human reviews tracked.
+- **Completed:** 2026-07-14 — Foreman implemented directly (GLM-5.2 worker silent exit). 3 files, +806 lines, 21 new tests. DismissalReason enum (false_positive|already_handled|out_of_scope|architectural_decision), Dismissal struct, DismissalStore with JSONL persistence + override weight (0-5→1.0, 6-15→0.75, 16-30→0.50, 31+→0.25), DismissalHandler coordinating with FPTracker, ParseDismissal for DISMISS: comment blocks, `helix review dismiss` CLI. Build+vet+test PASS (53 packages). GitReins Tier 1 PASS. Commit 13978bc.
 
 ## [ ] MEDIUM: Implement risk-level consensus thresholds for Chimera tiebreak
 - **Priority:** medium
