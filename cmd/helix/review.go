@@ -60,7 +60,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -79,7 +81,7 @@ const (
 // -----------------------------------------------------------------------------
 
 type revFlags struct {
-	subcommand  string // strip-bias, fp-stats, fp-record, evidence, custody, run, dashboard, help
+	subcommand  string // strip-bias, fp-stats, fp-record, evidence, custody, run, dashboard, dismiss, help
 	inputPath   string // --input PATH
 	outputPath  string // --output PATH
 	jsonOut     bool   // --json
@@ -101,6 +103,12 @@ type revFlags struct {
 	category    string // --category CAT (dashboard)
 	incidents   string // --incidents PATH (dashboard JSON)
 	status      bool   // --status (queue subcommand)
+	// dismiss subcommand flags
+	findingID        string // --finding-id
+	dismissReason    string // --reason
+	dismissNote      string // --note (dismiss)
+	dismissHumanID   string // --human-id
+	dismissPRNumber  int    // --pr-number
 }
 
 func parseReviewFlags(args []string) (revFlags, bool, int) {
@@ -236,6 +244,41 @@ func parseReviewFlags(args []string) (revFlags, bool, int) {
 			i++
 		case arg == "--status":
 			f.status = true
+		case arg == "--finding-id":
+			if i+1 >= len(args) {
+				return f, false, revExitError
+			}
+			f.findingID = args[i+1]
+			i++
+		case arg == "--reason":
+			if i+1 >= len(args) {
+				return f, false, revExitError
+			}
+			f.dismissReason = args[i+1]
+			i++
+		case arg == "--note":
+			if i+1 >= len(args) {
+				return f, false, revExitError
+			}
+			f.dismissNote = args[i+1]
+			i++
+		case arg == "--human-id":
+			if i+1 >= len(args) {
+				return f, false, revExitError
+			}
+			f.dismissHumanID = args[i+1]
+			i++
+		case arg == "--pr-number":
+			if i+1 >= len(args) {
+				return f, false, revExitError
+			}
+			pr, err := strconv.Atoi(args[i+1])
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: --pr-number requires an integer, got %q\n", args[i+1])
+				return f, false, revExitError
+			}
+			f.dismissPRNumber = pr
+			i++
 		case len(arg) > 2 && arg[0] == '-' && arg[1] == '-':
 			fmt.Fprintf(os.Stderr, "error: unknown flag %q\n", arg)
 			return f, false, revExitError
@@ -281,6 +324,8 @@ Usage:
                            [--category CAT] [--incidents PATH] [--json]
   helix review queue       --status
   helix review assign      --pr URL
+  helix review dismiss     --finding-id ID --reason REASON [--note TEXT]
+                           [--human-id ID] [--agent NAME] [--pr-number N] [--state PATH] [--json]
   helix review help
 
 Subcommands:
@@ -299,6 +344,8 @@ Subcommands:
                 by priority (risk × staleness). Use --status flag.
   assign        Trigger automatic reviewer assignment for a PR (--pr URL).
                 Prints assigned models, human-needed decision, panel size.
+  dismiss       Record a structured dismissal of an agent review finding.
+                Feeds the false positive tracker and tracks human override weight.
   help          Show this help.
 
 Flags:
@@ -376,6 +423,8 @@ func runReview(args []string, stdout, stderr io.Writer) int {
 		return runReviewQueue(flags, stdout, stderr)
 	case "assign":
 		return runReviewAssign(flags, stdout, stderr)
+	case "dismiss":
+		return runReviewDismiss(flags, stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "error: unknown subcommand %q\n\n", flags.subcommand)
 		printReviewHelp(stderr)
@@ -1290,5 +1339,96 @@ func runReviewAssign(flags revFlags, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "Human reason:     %s\n", result.HumanReason)
 	}
 	fmt.Fprintf(stdout, "Assigned models:  %v\n", result.AssignedModels)
+	return revExitOK
+}
+
+// -----------------------------------------------------------------------------
+// dismiss
+// -----------------------------------------------------------------------------
+
+func runReviewDismiss(flags revFlags, stdout, stderr io.Writer) int {
+	if flags.findingID == "" {
+		fmt.Fprintln(stderr, "error: --finding-id is required")
+		return revExitError
+	}
+	if flags.dismissReason == "" {
+		fmt.Fprintln(stderr, "error: --reason is required (false_positive, already_handled, out_of_scope, architectural_decision)")
+		return revExitError
+	}
+
+	reason := review.DismissalReason(flags.dismissReason)
+	if !reason.Valid() {
+		fmt.Fprintf(stderr, "error: invalid reason %q (must be one of: false_positive, already_handled, out_of_scope, architectural_decision)\n", flags.dismissReason)
+		return revExitError
+	}
+
+	storePath := flags.statePath
+	if storePath == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Fprintf(stderr, "error: cannot determine home directory: %v\n", err)
+			return revExitError
+		}
+		storePath = filepath.Join(home, ".helix", "dismissals.jsonl")
+	}
+
+	store, err := review.NewDismissalStore(storePath)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: open dismissals store: %v\n", err)
+		return revExitError
+	}
+
+	tracker, _ := loadFPTracker("") // shared in-process tracker, no persistence needed for one-shot
+
+	handler := review.NewDismissalHandler(store, tracker)
+
+	d := review.Dismissal{
+		FindingID: flags.findingID,
+		Reason:    reason,
+		Note:      flags.dismissNote,
+		HumanID:   flags.dismissHumanID,
+		AgentID:   flags.agentID,
+		PRNumber:  flags.dismissPRNumber,
+	}
+
+	count, err := handler.ProcessDismissal(d)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: process dismissal: %v\n", err)
+		return revExitError
+	}
+
+	if flags.jsonOut {
+		enc := json.NewEncoder(stdout)
+		enc.SetIndent("", "  ")
+		out := map[string]any{
+			"finding_id":      d.FindingID,
+			"reason":          string(d.Reason),
+			"human_id":        d.HumanID,
+			"agent_id":        d.AgentID,
+			"pr_number":       d.PRNumber,
+			"override_count":  count,
+			"override_weight": store.OverrideWeight(d.HumanID),
+			"tracker_summary": tracker.Summary(),
+		}
+		if err := enc.Encode(out); err != nil {
+			fmt.Fprintf(stderr, "error: marshal: %v\n", err)
+			return revExitError
+		}
+		return revExitOK
+	}
+
+	fmt.Fprintf(stdout, "✓ Dismissal recorded\n")
+	fmt.Fprintf(stdout, "  Finding:  %s\n", d.FindingID)
+	fmt.Fprintf(stdout, "  Reason:   %s\n", d.Reason)
+	if d.Note != "" {
+		fmt.Fprintf(stdout, "  Note:     %s\n", d.Note)
+	}
+	fmt.Fprintf(stdout, "  Human:    %s (override weight: %.2f)\n", d.HumanID, store.OverrideWeight(d.HumanID))
+	fmt.Fprintf(stdout, "  Agent:    %s\n", d.AgentID)
+	fmt.Fprintf(stdout, "  Store:    %s\n", storePath)
+	if d.Reason == review.DismissalFalsePositive {
+		newCount := tracker.DismissalCount(d.AgentID)
+		fmt.Fprintf(stdout, "  FP count: %d (flagged: %v)\n", newCount, tracker.IsFlagged(d.AgentID))
+	}
 	return revExitOK
 }
