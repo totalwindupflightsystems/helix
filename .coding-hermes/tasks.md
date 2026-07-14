@@ -157,4 +157,7 @@
 Run: `for pkg in pkg/*/; do name=$(basename "$pkg"); [ ! -d "cmd/$name" ] && [ ! -d "cmd/helix-$name" ] && echo "UNWIRED: $name"; done`
 If unwired packages exist, tasks MUST prioritize wiring them before any new package builds.
 
-## [ ] Fix CI: Helix CI — consecutive failures (#204-#208), investigate root cause
+## [x] Fix CI: Helix CI — consecutive failures (#204-#208), lint failures resolved
+- **Root cause:** golangci-lint failures — 4 gofmt, 8 errcheck in test files, 1 unused function (tokenizeReader)
+- **Fix:** Commit c5c1777 — gofmt'd 4 files, added `_ =` to 8 unchecked error returns, removed unused tokenizeReader+bufio import
+- **Verification:** go build+vet+test PASS (all packages), golangci-lint CLEAN (exit 0)
