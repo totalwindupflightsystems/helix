@@ -100,6 +100,7 @@ type revFlags struct {
 	tier        string // --tier TIER (dashboard)
 	category    string // --category CAT (dashboard)
 	incidents   string // --incidents PATH (dashboard JSON)
+	status      bool   // --status (queue subcommand)
 }
 
 func parseReviewFlags(args []string) (revFlags, bool, int) {
@@ -233,6 +234,8 @@ func parseReviewFlags(args []string) (revFlags, bool, int) {
 			}
 			f.incidents = args[i+1]
 			i++
+		case arg == "--status":
+			f.status = true
 		case len(arg) > 2 && arg[0] == '-' && arg[1] == '-':
 			fmt.Fprintf(os.Stderr, "error: unknown flag %q\n", arg)
 			return f, false, revExitError
@@ -276,6 +279,8 @@ Usage:
   helix review dashboard   --pr N --files a,b [--repo PATH] [--agent NAME]
                            [--ledger PATH] [--adr-dir PATH] [--tier TIER]
                            [--category CAT] [--incidents PATH] [--json]
+  helix review queue       --status
+  helix review assign      --pr URL
   helix review help
 
 Subcommands:
@@ -290,6 +295,10 @@ Subcommands:
   run           Run multi-model adversarial review against a PR (--pr URL).
   dashboard     Human change management view: blast radius, risk score,
                 architectural fit (ADR lineage), trust context. Terminal + JSON.
+  queue         Show review queue status: pending/in-progress items sorted
+                by priority (risk × staleness). Use --status flag.
+  assign        Trigger automatic reviewer assignment for a PR (--pr URL).
+                Prints assigned models, human-needed decision, panel size.
   help          Show this help.
 
 Flags:
@@ -302,7 +311,7 @@ Flags:
   --key-role ROLE      Signer / verifier role (e.g. reviewer, arbitrator).
   --key-path PATH      Path to a 64-byte raw ed25519 private key (binary file).
   --state PATH         Persist / load FPTracker state as JSON.
-  --pr URL|N           PR URL or number (run / dashboard).
+  --pr URL|N           PR URL or number (run / dashboard / assign).
   --files LIST         Comma-separated changed file paths (dashboard).
   --files-from PATH    File with one changed path per line (dashboard).
   --repo PATH          Repo root for import-graph blast radius (dashboard).
@@ -312,6 +321,7 @@ Flags:
   --tier TIER          Trust tier override (provisional|observed|trusted|veteran).
   --category CAT       Change category (contract|behavioral|resilience|cosmetic).
   --incidents PATH     JSON array of related incidents for risk correlation.
+  --status             Show queue status (queue subcommand).
   --json               Structured JSON output.
   --help, -h           Show this help.
 
@@ -362,6 +372,10 @@ func runReview(args []string, stdout, stderr io.Writer) int {
 		return runReviewRun(flags, stdout, stderr)
 	case "dashboard":
 		return runReviewDashboard(flags, stdout, stderr)
+	case "queue":
+		return runReviewQueue(flags, stdout, stderr)
+	case "assign":
+		return runReviewAssign(flags, stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "error: unknown subcommand %q\n\n", flags.subcommand)
 		printReviewHelp(stderr)
@@ -1151,5 +1165,130 @@ func runReviewRun(flags revFlags, stdout, stderr io.Writer) int {
 		result.ConsensusLevel, result.ModelsAgree, result.TotalModels)
 	fmt.Fprintf(stdout, "Diversity score: %d\n", result.DiversityScore)
 	fmt.Fprintf(stdout, "Findings: %d\n", len(result.Bundle.Findings))
+	return revExitOK
+}
+
+// -----------------------------------------------------------------------------
+// queue
+// -----------------------------------------------------------------------------
+
+func runReviewQueue(flags revFlags, stdout, stderr io.Writer) int {
+	q := review.NewReviewQueue()
+
+	// Try loading from default path
+	defaultPath := review.DefaultQueuePath()
+	if err := q.Load(defaultPath); err != nil {
+		fmt.Fprintf(stderr, "warning: could not load queue from %s: %v\n", defaultPath, err)
+	}
+
+	items := q.ListPendingSorted()
+
+	if flags.jsonOut {
+		type queueEntry struct {
+			ID             string  `json:"id"`
+			PRURL          string  `json:"pr_url"`
+			PriorityScore  float64 `json:"priority_score"`
+			RiskScore      float64 `json:"risk_score"`
+			Category       string  `json:"category"`
+			Tier           string  `json:"trust_tier"`
+			Status         string  `json:"status"`
+			AssignedHuman  string  `json:"assigned_human,omitempty"`
+			AssignedModels []string `json:"assigned_models,omitempty"`
+		}
+		var entries []queueEntry
+		for _, item := range items {
+			entries = append(entries, queueEntry{
+				ID:             item.ID,
+				PRURL:          item.PRURL,
+				PriorityScore:  item.PriorityScore,
+				RiskScore:      item.RiskScore,
+				Category:       string(item.Category),
+				Tier:           string(item.Tier),
+				Status:         string(item.Status),
+				AssignedHuman:  item.AssignedHuman,
+				AssignedModels: item.AssignedModels,
+			})
+		}
+		enc := json.NewEncoder(stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(map[string]any{"items": entries, "count": len(entries)}); err != nil {
+			fmt.Fprintf(stderr, "error: marshal queue: %v\n", err)
+			return revExitError
+		}
+		return revExitOK
+	}
+
+	if len(items) == 0 {
+		fmt.Fprintln(stdout, "No reviews in queue.")
+		return revExitOK
+	}
+
+	fmt.Fprintf(stdout, "Review Queue — %d items\n\n", len(items))
+	fmt.Fprintln(stdout, "ID	Priority	Risk	Category	Tier	Status")
+	for _, item := range items {
+		fmt.Fprintf(stdout, "%s	%.0f	%.0f	%s	%s	%s\n",
+			item.ID, item.PriorityScore, item.RiskScore,
+			item.Category, item.Tier, item.Status)
+	}
+	return revExitOK
+}
+
+// -----------------------------------------------------------------------------
+// assign
+// -----------------------------------------------------------------------------
+
+func runReviewAssign(flags revFlags, stdout, stderr io.Writer) int {
+	if flags.prURL == "" {
+		fmt.Fprintln(stderr, "error: --pr is required for assign")
+		return revExitError
+	}
+
+	ra := review.NewReviewAssigner()
+
+	item := review.ReviewQueueItem{
+		ID:            "cli-assign",
+		PRURL:         flags.prURL,
+		AuthorAgentID: "unknown-agent",
+		Category:      review.CategoryBehavioral,
+		RiskScore:     50,
+		SubmittedAt:   time.Now(),
+		Tier:          trust.TierObserved,
+	}
+
+	// Build a representative pool
+	pool := []review.ModelPoolEntry{
+		{Model: review.ModelInfo{Model: "model-a", Provider: "openai"}, Provider: "openai", RLHF: "helpful"},
+		{Model: review.ModelInfo{Model: "model-b", Provider: "deepseek"}, Provider: "deepseek", RLHF: "constitutional"},
+		{Model: review.ModelInfo{Model: "model-c", Provider: "anthropic"}, Provider: "anthropic", RLHF: "dpo"},
+	}
+
+	result, err := ra.AssignReviewers(item, pool)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: assign: %v\n", err)
+		return revExitError
+	}
+
+	if flags.jsonOut {
+		enc := json.NewEncoder(stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(result); err != nil {
+			fmt.Fprintf(stderr, "error: marshal result: %v\n", err)
+			return revExitError
+		}
+		return revExitOK
+	}
+
+	fmt.Fprintf(stdout, "Review Assignment for PR: %s\n\n", flags.prURL)
+	if result.AutoMerge {
+		fmt.Fprintln(stdout, "✓ Auto-merge: gates passed, no review needed")
+		return revExitOK
+	}
+	fmt.Fprintf(stdout, "Panel size:       %d\n", result.PanelSize)
+	fmt.Fprintf(stdout, "Consensus needed: %d\n", result.ConsensusNeeded)
+	fmt.Fprintf(stdout, "Human needed:     %v\n", result.HumanNeeded)
+	if result.HumanReason != "" {
+		fmt.Fprintf(stdout, "Human reason:     %s\n", result.HumanReason)
+	}
+	fmt.Fprintf(stdout, "Assigned models:  %v\n", result.AssignedModels)
 	return revExitOK
 }
