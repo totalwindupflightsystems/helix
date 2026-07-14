@@ -1,7 +1,6 @@
 package dispatcher
 
 import (
-	"bufio"
 	"fmt"
 	"io/fs"
 	"os"
@@ -317,19 +316,3 @@ func defaultIgnoreDirsLen() int { return len(defaultIgnoreDirs) }
 // by IndexRepo (which reads whole files) but available so callers can hook
 // future lazy-loading without changing the public API.
 // -----------------------------------------------------------------------------
-
-// tokenizeReader tokenizes the contents of r line-by-line. Exposed for tests
-// and future streaming indexing.
-func tokenizeReader(r *bufio.Reader) []string {
-	var out []string
-	for {
-		line, err := r.ReadString('\n')
-		if line != "" {
-			out = append(out, tokenize(line)...)
-		}
-		if err != nil {
-			break
-		}
-	}
-	return out
-}

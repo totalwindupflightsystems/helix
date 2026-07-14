@@ -104,11 +104,11 @@ type revFlags struct {
 	incidents   string // --incidents PATH (dashboard JSON)
 	status      bool   // --status (queue subcommand)
 	// dismiss subcommand flags
-	findingID        string // --finding-id
-	dismissReason    string // --reason
-	dismissNote      string // --note (dismiss)
-	dismissHumanID   string // --human-id
-	dismissPRNumber  int    // --pr-number
+	findingID       string // --finding-id
+	dismissReason   string // --reason
+	dismissNote     string // --note (dismiss)
+	dismissHumanID  string // --human-id
+	dismissPRNumber int    // --pr-number
 }
 
 func parseReviewFlags(args []string) (revFlags, bool, int) {
@@ -1234,14 +1234,14 @@ func runReviewQueue(flags revFlags, stdout, stderr io.Writer) int {
 
 	if flags.jsonOut {
 		type queueEntry struct {
-			ID             string  `json:"id"`
-			PRURL          string  `json:"pr_url"`
-			PriorityScore  float64 `json:"priority_score"`
-			RiskScore      float64 `json:"risk_score"`
-			Category       string  `json:"category"`
-			Tier           string  `json:"trust_tier"`
-			Status         string  `json:"status"`
-			AssignedHuman  string  `json:"assigned_human,omitempty"`
+			ID             string   `json:"id"`
+			PRURL          string   `json:"pr_url"`
+			PriorityScore  float64  `json:"priority_score"`
+			RiskScore      float64  `json:"risk_score"`
+			Category       string   `json:"category"`
+			Tier           string   `json:"trust_tier"`
+			Status         string   `json:"status"`
+			AssignedHuman  string   `json:"assigned_human,omitempty"`
 			AssignedModels []string `json:"assigned_models,omitempty"`
 		}
 		var entries []queueEntry

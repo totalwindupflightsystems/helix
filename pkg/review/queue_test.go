@@ -12,12 +12,12 @@ import (
 func TestReviewQueue_AddAndGet(t *testing.T) {
 	q := NewReviewQueue()
 	item := &ReviewQueueItem{
-		ID:        "pr-1",
-		PRURL:     "https://example.com/pr/1",
-		Category:  CategoryBehavioral,
-		RiskScore: 50,
+		ID:          "pr-1",
+		PRURL:       "https://example.com/pr/1",
+		Category:    CategoryBehavioral,
+		RiskScore:   50,
 		SubmittedAt: time.Now(),
-		Status:    ReviewStatusPending,
+		Status:      ReviewStatusPending,
 	}
 
 	if err := q.Add(item); err != nil {
@@ -41,17 +41,17 @@ func TestReviewQueue_ListPendingSorted(t *testing.T) {
 	now := time.Now()
 
 	// Older, lower risk -> lower priority
-	q.Add(&ReviewQueueItem{
+	_ = q.Add(&ReviewQueueItem{
 		ID: "old-low-risk", RiskScore: 10,
 		SubmittedAt: now.Add(-10 * time.Hour), Status: ReviewStatusPending,
 	})
 	// Newer, higher risk -> higher priority
-	q.Add(&ReviewQueueItem{
+	_ = q.Add(&ReviewQueueItem{
 		ID: "new-high-risk", RiskScore: 90,
 		SubmittedAt: now.Add(-1 * time.Hour), Status: ReviewStatusPending,
 	})
 	// Old, high risk -> should be top
-	q.Add(&ReviewQueueItem{
+	_ = q.Add(&ReviewQueueItem{
 		ID: "old-high-risk", RiskScore: 80,
 		SubmittedAt: now.Add(-8 * time.Hour), Status: ReviewStatusPending,
 	})
@@ -71,7 +71,7 @@ func TestReviewQueue_ListPendingSorted(t *testing.T) {
 
 func TestReviewQueue_PersistAndLoad(t *testing.T) {
 	q := NewReviewQueue()
-	q.Add(&ReviewQueueItem{
+	_ = q.Add(&ReviewQueueItem{
 		ID: "pr-1", PRURL: "https://example.com/pr/1",
 		Category: CategoryContract, RiskScore: 50,
 		SubmittedAt: time.Now(), Status: ReviewStatusPending,
@@ -215,9 +215,9 @@ func TestHumanReviewFilter_MustSeeHuman(t *testing.T) {
 	f := NewHumanReviewFilter()
 
 	tests := []struct {
-		name     string
-		item     ReviewQueueItem
-		mustSee  bool
+		name    string
+		item    ReviewQueueItem
+		mustSee bool
 	}{
 		{"contract change", ReviewQueueItem{Category: CategoryContract, Tier: trust.TierVeteran}, true},
 		{"provisional tier", ReviewQueueItem{Category: CategoryCosmetic, Tier: trust.TierProvisional}, true},
@@ -330,7 +330,7 @@ func TestSLATracker_Escalate(t *testing.T) {
 
 func TestReviewQueue_AssignHuman(t *testing.T) {
 	q := NewReviewQueue()
-	q.Add(&ReviewQueueItem{
+	_ = q.Add(&ReviewQueueItem{
 		ID: "pr-1", Status: ReviewStatusPending,
 		SubmittedAt: time.Now(),
 	})
@@ -351,7 +351,7 @@ func TestReviewQueue_AssignHuman(t *testing.T) {
 
 func TestReviewQueue_UpdateStatus(t *testing.T) {
 	q := NewReviewQueue()
-	q.Add(&ReviewQueueItem{
+	_ = q.Add(&ReviewQueueItem{
 		ID: "pr-1", Status: ReviewStatusPending,
 		SubmittedAt: time.Now(),
 	})
@@ -393,7 +393,7 @@ func TestLoadTracker_SelectWithLoadAwareness(t *testing.T) {
 
 func TestQueueSaveLoadToDefaultPath(t *testing.T) {
 	q := NewReviewQueue()
-	q.Add(&ReviewQueueItem{
+	_ = q.Add(&ReviewQueueItem{
 		ID: "test-1", PRURL: "https://example.com/1",
 		Category: CategoryContract, Status: ReviewStatusPending,
 		SubmittedAt: time.Now(), Tier: trust.TierObserved,

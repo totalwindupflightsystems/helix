@@ -92,13 +92,10 @@
 - **Logic:** `Dismissal` struct with reason enum, evidence. Feeds `FPTracker.Increment`. After N dismissals, human override weight decreases. Mutual accountability — both agent and human reviews tracked.
 - **Completed:** 2026-07-14 — Foreman implemented directly (GLM-5.2 worker silent exit). 3 files, +806 lines, 21 new tests. DismissalReason enum (false_positive|already_handled|out_of_scope|architectural_decision), Dismissal struct, DismissalStore with JSONL persistence + override weight (0-5→1.0, 6-15→0.75, 16-30→0.50, 31+→0.25), DismissalHandler coordinating with FPTracker, ParseDismissal for DISMISS: comment blocks, `helix review dismiss` CLI. Build+vet+test PASS (53 packages). GitReins Tier 1 PASS. Commit 13978bc.
 
-## [ ] MEDIUM: Implement risk-level consensus thresholds for Chimera tiebreak
+## [x] MEDIUM: Implement risk-level consensus thresholds for Chimera tiebreak
 - **Priority:** medium
 - **Plan:** specs/plans/phase-7-8-negotiate-merge.md §7.3
-- **Gap:** Consensus threshold is hardcoded. Auth changes should require higher consensus than formatting.
-- **Files:** pkg/negotiate/consensus.go (NEW), pkg/negotiate/consensus_test.go (NEW)
-- **AC:** Auth/authz changes → 3/3 consensus required. Behavioral changes → 2/3. Cosmetic changes → 1/3. Threshold configurable per file category. Chimera unavailable → fallback to human.
-- **Logic:** `ConsensusThreshold` per risk level. File category classifier maps changed files to risk level. Threshold comparison in `ConsensusEngine`. Fallback protocol when Chimera unreachable.
+- **Completed:** 2026-07-14 — Board was stale; work committed as 03f9715. consensus.go (383 lines) with ConsensusCategory (contract/behavioral/resilience/cosmetic), RequiredQuorum (3/2/1/1), ComputeWeight, CheckOverride, ConsensusCalculator, HasQuorum. 19 tests. escalation.go handles ChimeraUnavailable → human fallback. All ACs verified: (1) contract=3/3, (2) behavioral=2/2, (3) cosmetic=1/1, (4) configurable per category, (5) escalation with structured PR comment.
 
 ## [ ] MEDIUM: Implement incident attribution engine CLI
 - **Priority:** medium

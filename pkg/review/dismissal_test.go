@@ -45,7 +45,7 @@ func tempStore(t *testing.T) (*DismissalStore, func()) {
 	if err != nil {
 		t.Fatalf("NewDismissalStore: %v", err)
 	}
-	cleanup := func() { os.Remove(path) }
+	cleanup := func() { _ = os.Remove(path) }
 	return store, cleanup
 }
 

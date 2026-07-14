@@ -168,9 +168,9 @@ func TestClarificationStore_ListFilterByAgent(t *testing.T) {
 	} {
 		req := NewClarificationRequest(pair.task, i+1, "q", ClarificationContext{})
 		// Save as pending first.
-		cs.Save(&ClarificationRecord{Request: *req, Status: "pending", CreatedAt: req.BlockedSince})
+		_ = cs.Save(&ClarificationRecord{Request: *req, Status: "pending", CreatedAt: req.BlockedSince})
 		resp := NewClarificationResponse(pair.task, "a", pair.agent)
-		cs.Resolve(req, resp)
+		_, _ = cs.Resolve(req, resp)
 	}
 
 	results, err := cs.List(ClarificationFilter{AgentName: "kara"})
@@ -187,7 +187,7 @@ func TestClarificationStore_Delete(t *testing.T) {
 	cs := NewClarificationStore(dir)
 
 	req := NewClarificationRequest("task-del", 1, "q", ClarificationContext{})
-	cs.Save(&ClarificationRecord{Request: *req, Status: "pending", CreatedAt: req.BlockedSince})
+	_ = cs.Save(&ClarificationRecord{Request: *req, Status: "pending", CreatedAt: req.BlockedSince})
 
 	if err := cs.Delete("task-del"); err != nil {
 		t.Fatalf("Delete: %v", err)
@@ -242,7 +242,7 @@ func TestAutoResolve_ExistingResolution(t *testing.T) {
 		ClarificationContext{RelevantADR: "ADR-007"},
 	)
 	resp := NewClarificationResponse("task-001", "Use HTML5 constraint validation.", "human:kara")
-	cs.Resolve(req, resp)
+	_, _ = cs.Resolve(req, resp)
 
 	// Same question, slightly reworded.
 	req2 := NewClarificationRequest("task-001", 2,
