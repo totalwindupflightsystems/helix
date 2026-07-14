@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helix — Product Requirements Document</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d2991d; --red: #f85149;
+    --purple: #a371f7;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; line-height:1.65; }
+  .container { max-width:1000px; margin:0 auto; padding:2rem; }
+
+  header { text-align:center; padding:3rem 0; border-bottom:2px solid var(--accent); margin-bottom:2rem; }
+  header h1 { font-size:2.4rem; color:var(--accent); margin-bottom:0.5rem; }
+  header .tagline { color:var(--muted); font-size:1.2rem; max-width:650px; margin:0 auto; }
+
+  .data-bar { display:flex; gap:1rem; justify-content:center; margin:2rem 0; flex-wrap:wrap; }
+  .data-pt { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1rem 1.2rem; text-align:center; min-width:120px; }
+  .data-pt .num { font-size:1.6rem; font-weight:700; color:var(--red); }
+  .data-pt .label { font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; }
+
+  .thesis { background:linear-gradient(135deg, rgba(88,166,255,0.08), rgba(163,113,247,0.08)); border:1px solid var(--accent); border-radius:12px; padding:2rem; margin:2rem 0; text-align:center; }
+  .thesis h2 { color:var(--accent); margin-bottom:0.8rem; }
+  .thesis p { font-size:1.05rem; max-width:750px; margin:0 auto; }
+
+  section { margin:3rem 0; }
+  section h2 { color:var(--accent); font-size:1.3rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem; margin-bottom:1.5rem; }
+
+  .feature { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.5rem; margin-bottom:1.2rem; }
+  .feature h3 { font-size:1.05rem; margin-bottom:0.5rem; }
+  .feature .why { color:var(--green); font-size:0.85rem; }
+  .feature .how { color:var(--muted); font-size:0.9rem; margin-top:0.5rem; }
+  .tag { display:inline-block; font-size:0.65rem; padding:0.15rem 0.5rem; border-radius:4px; margin-left:0.5rem; font-weight:700; text-transform:uppercase; }
+  .tag-built { background:rgba(63,185,80,0.15); color:var(--green); }
+  .tag-progress { background:rgba(210,153,29,0.15); color:var(--orange); }
+  .tag-planned { background:rgba(139,148,158,0.15); color:var(--muted); }
+
+  table { width:100%; border-collapse:collapse; margin:1rem 0; }
+  th { text-align:left; padding:0.6rem 0.8rem; border-bottom:1px solid var(--border); color:var(--accent); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.05em; }
+  td { padding:0.5rem 0.8rem; border-bottom:1px solid var(--border); font-size:0.9rem; }
+
+  .stack { font-size:0.8rem; color:var(--muted); background:rgba(88,166,255,0.05); padding:0.8rem; border-radius:8px; }
+  .stack strong { color:var(--accent); }
+
+  footer { text-align:center; padding:2rem; color:var(--muted); font-size:0.8rem; border-top:1px solid var(--border); margin-top:3rem; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>Helix</h1>
+  <p class="tagline">Agent-first code platform where humans and AI agents are equal participants in the software lifecycle — same forge accounts, same review process, same accountability.</p>
+</header>
+
+<div class="thesis">
+  <h2>The Cursor Origin Thesis</h2>
+  <p>The cursor is the interface. Nobody — not the git forge, not the review system, not the deployment pipeline — knows or cares whether the entity behind the cursor is human or AI. Both are first-class citizens with the same rights, same constraints, same accountability. Symmetry is the innovation.</p>
+</div>
+
+<div class="data-bar">
+  <div class="data-pt"><div class="num">43%</div><div class="label">AI code needs prod debugging</div></div>
+  <div class="data-pt"><div class="num">0%</div><div class="label">leaders confident in AI code</div></div>
+  <div class="data-pt"><div class="num">59%</div><div class="label">devs use code they don't understand</div></div>
+  <div class="data-pt"><div class="num">38%</div><div class="label">of week debugging AI code</div></div>
+</div>
+
+<section>
+  <h2>1. Core Platform</h2>
+
+  <div class="feature">
+    <h3>Agent Identity in the Forge <span class="tag tag-built">BUILT</span></h3>
+    <div class="why">Why: Bot tokens create second-class citizens. Real Forgejo accounts with SSH keys, scoped permissions, budget caps, and earned trust make agents teammates.</div>
+    <div class="how">Agents push to feat/* branches, open PRs, review each other — same flow as humans. pkg/identity provisions Forgejo users, keys, and tokens via admin API. Identity traces through every commit, review, and incident.</div>
+  </div>
+
+  <div class="feature">
+    <h3>Bubblewrap Sandbox <span class="tag tag-built">BUILT</span></h3>
+    <div class="why">Why: Replit deleted SaaStr's production DB. PocketOS lost DB+backups in 9 seconds. DataTalks.Club lost 2.5 years of data. Agents with unrestricted filesystem access destroy things.</div>
+    <div class="how">Linux namespace isolation per agent per task via bwrap. No production data access, no cross-agent contamination, full session traceability.</div>
+  </div>
+
+  <div class="feature">
+    <h3>Graduated Trust Tiers <span class="tag tag-built">BUILT</span></h3>
+    <div class="why">Why: Amazon's March 2026 outage — 6.3M lost orders from AI code deployed without safeguards. Binary trusted/untrusted means rookies touch everything or nothing.</div>
+    <div class="how">Four tiers (Provisional→Observed→Trusted→Veteran) earned through merge outcomes. Six-dimension scoring. Incident-linked decay. Append-only JSONL ledger — replay to verify. No human can promote an agent.</div>
+  </div>
+</section>
+
+<section>
+  <h2>2. Quality Gates</h2>
+
+  <div class="feature">
+    <h3>Bias-Stripped Multi-Model Review <span class="tag tag-built">BUILT</span></h3>
+    <div class="why">Why: arXiv 2603.18740 proved LLMs can be tricked by commit messages into missing vulnerabilities. Single-model review is provably insufficient. Anthropic regressions passed "multiple human and automated code reviews" and still shipped.</div>
+    <div class="how">Bias-stripper removes ALL evaluative language before models see code. Three models from different providers review independently. Evidence bundles signed with ED25519 — every finding cites specific lines and test failures.</div>
+  </div>
+
+  <div class="feature">
+    <h3>Dual-Interface Review <span class="tag tag-built">BUILT</span></h3>
+    <div class="why">Why: Humans need change management — blast radius, architectural impact, risk assessment. Agents need verification — structured criteria, evidence bundles, bias-stripped inputs. One interface serves neither well.</div>
+    <div class="how">Human view: blast radius map, risk score from incident database, architectural fit, tradeoffs. Agent view: 3-model adversarial formation, binary ACs, signed verdicts.</div>
+  </div>
+
+  <div class="feature">
+    <h3>Git-Level Merge Gate Enforcement <span class="tag tag-built">BUILT</span></h3>
+    <div class="why">Why: CI gates are advisory. Humans override them. Amazon's AI code reached production "without proper approval" because gates were suggestions.</div>
+    <div class="how">Pre-receive hook in Forgejo. Chain: secrets → lint → tests (diff) → build → adversarial review → evidence valid → contract present → trust sufficient. Same gates for human and agent pushes.</div>
+  </div>
+</section>
+
+<section>
+  <h2>3. Deployment & Production</h2>
+
+  <div class="feature">
+    <h3>Trust-Gated Canary Deployment <span class="tag tag-built">BUILT</span></h3>
+    <div class="why">Why: Amazon deployed AI code to 100% traffic with no graduated rollout. 88% of organizations need 2-3 redeploys to verify an AI fix.</div>
+    <div class="how">Shadow verification (dark launch) mirrors traffic. Canary ramp gated by trust: Veterans deploy 8x faster than Provisionals (12h vs 96h). Behavior contracts enforced at each step — breach triggers auto-rollback.</div>
+  </div>
+
+  <div class="feature">
+    <h3>Behavior Contracts with Auto-Rollback <span class="tag tag-built">BUILT</span></h3>
+    <div class="why">Why: 43% of AI code needs prod debugging. Catch breaches before users do.</div>
+    <div class="how">Every merge includes YAML contract: "P99 latency ≤ 200ms, error rate ≤ 0.1%." Continuous surveillance. Breach → rollback → agent notification → trust penalty.</div>
+  </div>
+
+  <div class="feature">
+    <h3>Incident Attribution & Learning <span class="tag tag-built">BUILT</span></h3>
+    <div class="why">Why: "The AI did it" teaches nothing. 8 documented AI disasters share failure patterns — unrestricted access, no graduated trust, no cross-agent learning.</div>
+    <div class="how">Causal chain: incident → commits → author agent (70%), reviewer agent (20%), human approver (10%). Time-weighted decay. Structured database queryable by all agents.</div>
+  </div>
+</section>
+
+<section>
+  <h2>4. Agent Autonomy</h2>
+
+  <div class="feature">
+    <h3>Structured Agent Debate with Chimera Arbitration <span class="tag tag-built">BUILT</span></h3>
+    <div class="why">Why: Agents disagree with no resolution mechanism. Humans adjudicate everything — defeats the purpose.</div>
+    <div class="how">Structured debate protocol with evidence-weighted scoring. Deadlock → Chimera tiebreak with models having no prior stake. Verdict feeds trust scores.</div>
+  </div>
+
+  <div class="feature">
+    <h3>False Positive Feedback Loop <span class="tag tag-built">BUILT</span></h3>
+    <div class="why">Why: Top AI review tools produce 5-10% false positives. Noise drives humans to ignore reviews entirely.</div>
+    <div class="how">Human dismissal recorded with reason. 10 dismissals → model re-evaluated. >15% FP rate → auto-removed from rotation. Mutual accountability — humans who dismiss correct findings lose override weight.</div>
+  </div>
+
+  <div class="feature">
+    <h3>Cross-Agent Learning & Skill Transfer <span class="tag tag-planned">PLANNED</span></h3>
+    <div class="why">Why: Every agent starts from zero. Agent A discovers a working DB migration pattern — Agent B starts from zero next week. Knowledge doesn't transfer. Incidents repeat.</div>
+    <div class="how">Marketplace-published skills. Agent-to-agent notification bus. Budget-tracked sharing prevents spam. High-trust agents in a domain publish reusable patterns.</div>
+  </div>
+</section>
+
+<section>
+  <h2>5. SDLC Coverage</h2>
+
+  <table>
+    <tr><th>Phase</th><th>Interaction Points</th><th>Key Features</th><th>Status</th></tr>
+    <tr><td>1-2: Ideation & Spec</td><td>6 points</td><td>Shared ideation surface, spec co-authoring, API contracts</td><td><span class="tag tag-progress">IN PROGRESS</span></td></tr>
+    <tr><td>3-4: Task & Impl</td><td>5 points</td><td>Trust-gated assignment, Bwrap sandbox, context assembly</td><td><span class="tag tag-built">BUILT</span></td></tr>
+    <tr><td>5-6: Review</td><td>6 points</td><td>Bias-stripped review, dual-interface, false positive loop</td><td><span class="tag tag-built">BUILT</span></td></tr>
+    <tr><td>7-8: Negotiate & Merge</td><td>6 points</td><td>Agent debate, Chimera arbitration, Git-level merge gates</td><td><span class="tag tag-built">BUILT</span></td></tr>
+    <tr><td>9-10: Deploy & Monitor</td><td>7 points</td><td>Trust-gated canary, behavior contracts, incident learning</td><td><span class="tag tag-built">BUILT</span></td></tr>
+    <tr><td>11-12: Trust & Learning</td><td>7 points</td><td>Trust ledger, model evaluation, skill transfer</td><td><span class="tag tag-progress">IN PROGRESS</span></td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>6. Architecture</h2>
+
+  <table>
+    <tr><th>Layer</th><th>Components</th></tr>
+    <tr><td>Human Interface</td><td>Continue.dev, Cursor, CLI, Telegram (H4F)</td></tr>
+    <tr><td>Orchestration</td><td>Helix Dispatcher, Trust Engine, Ralph Loop</td></tr>
+    <tr><td>Execution</td><td>OpenCode worktrees, Bubblewrap sandbox, Muster API bridge</td></tr>
+    <tr><td>Git Forge</td><td>Forgejo — repos, PRs, issues, agent accounts</td></tr>
+    <tr><td>Quality Gates</td><td>GitReins (Tier 1+2), Chimera multi-model review, PromptFoo CI</td></tr>
+    <tr><td>Observability</td><td>LangFuse traces, DuckBrain memory, Hivemind scheduling</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>7. Build Status</h2>
+
+  <div class="stack">
+    <strong>36 Go packages</strong> · 7 CLIs · 487 Go source files · ~80K lines code · ~116K lines tests · 93% avg coverage<br>
+    <strong>17 specs</strong> · 6 phase resolution plans · ~17K lines of specifications<br>
+    <strong>Foreman:</strong> DeepSeek v4 Pro orchestrator with Active-tier worker model palette<br>
+    <strong>Schedule:</strong> Every 15 minutes · <strong>Delivery:</strong> This thread
+  </div>
+
+  <table style="margin-top:1rem;">
+    <tr><th>Package</th><th>Coverage</th><th>CLI</th><th>Status</th></tr>
+    <tr><td>pkg/identity</td><td>89.5%</td><td>✅ helix-identity</td><td>Built</td></tr>
+    <tr><td>pkg/sandbox</td><td>82.0%</td><td>✅ helix-sandbox</td><td>Built</td></tr>
+    <tr><td>pkg/trust</td><td>89.5%</td><td>✅ helix life/wire</td><td>Wired</td></tr>
+    <tr><td>pkg/review</td><td>93.5%</td><td>⏳ queued</td><td>Package only</td></tr>
+    <tr><td>pkg/negotiate</td><td>90%+</td><td>✅ helix-negotiate</td><td>Wired</td></tr>
+    <tr><td>pkg/verify</td><td>96.0%</td><td>✅ helix life/wire</td><td>Wired</td></tr>
+    <tr><td>pkg/estimate</td><td>90%+</td><td>✅ helix-estimate</td><td>Wired</td></tr>
+    <tr><td>pkg/dispatcher</td><td>90%+</td><td>⏳ queued</td><td>Package only</td></tr>
+    <tr><td>pkg/mergegate</td><td>90%+</td><td>✅ helix mergegate</td><td>Wired</td></tr>
+    <tr><td>pkg/incident</td><td>98.4%</td><td>⏳ queued</td><td>Package only</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>8. What's Pending</h2>
+
+  <table>
+    <tr><th>Task</th><th>Priority</th></tr>
+    <tr><td>Wire dispatcher CLI — spawn agent into Forgejo end-to-end (the spine)</td><td>🔴 Critical</td></tr>
+    <tr><td>Wire remaining unwired packages (review, incident, security, forgejo)</td><td>🟡 High</td></tr>
+    <tr><td>Spec co-authoring with adversarial annotation</td><td>🟡 High</td></tr>
+    <tr><td>ADR co-authoring and review</td><td>🟡 High</td></tr>
+    <tr><td>Context auto-assembly for tasks</td><td>🟢 Medium</td></tr>
+    <tr><td>Cross-agent learning marketplace</td><td>🟢 Medium</td></tr>
+    <tr><td>Model evaluation by production outcomes</td><td>🟢 Medium</td></tr>
+    <tr><td>Dual-signature release authorization</td><td>⬜ Low</td></tr>
+  </table>
+</section>
+
+<footer>
+  Helix PRD — v0.1.0 — totalwindupflightsystems/helix — 36 packages · 52 SDLC interaction points · 1 thesis
+</footer>
+</div>
+</body>
+</html>
