@@ -160,3 +160,5 @@
 ## [ ] FOREMAN RULE: Always run wiring check before generating new tasks
 Run: `for pkg in pkg/*/; do name=$(basename "$pkg"); [ ! -d "cmd/$name" ] && [ ! -d "cmd/helix-$name" ] && echo "UNWIRED: $name"; done`
 If unwired packages exist, tasks MUST prioritize wiring them before any new package builds.
+
+## [ ] Fix CI: Helix CI — consecutive failures (#204-#208), investigate root cause
