@@ -471,6 +471,18 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("contract", func() error {
 			return runContractWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "notify":
+		// `helix notify <publish|inbox|subscribe|unsubscribe|stream>`
+		// Cross-agent notification bus for structured findings with
+		// domain subscriptions and budget-tracked inbox delivery
+		// (Phase 12 §12.3).
+		return RunWithObs("notify", func() error {
+			rc := runNotifyWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+			if rc != 0 {
+				return errExit{code: rc}
+			}
+			return nil
+		})
 	}
 
 	// Delegate to subcommand binary
@@ -617,6 +629,7 @@ Subcommands:
   spec         Spec co-authoring with adversarial annotation (Phase 2)
   design       Design review with adversarial agents (Phase 2)
   contract     API contract generation + breaking changes (Phase 2)
+  notify       Cross-agent notification bus — publish, inbox, stream (Phase 12)
 
 Global Flags:
   --verbose   Enable verbose output
