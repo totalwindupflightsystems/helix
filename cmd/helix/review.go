@@ -384,6 +384,13 @@ Exit codes:
 
 // runReviewWithDryRun wraps runReview with the global --dry-run flag.
 func runReviewWithDryRun(args []string, stdout, stderr io.Writer, globalDryRun bool) error {
+	if len(args) > 0 && args[0] == "models" {
+		rc := runModelsWithDryRun(args, stdout, stderr, globalDryRun)
+		if rc != 0 && rc != revExitBlock {
+			return errExit{code: rc}
+		}
+		return nil
+	}
 	rc := runReview(args, stdout, stderr)
 	if rc != 0 && rc != revExitBlock {
 		return errExit{code: rc}
