@@ -430,7 +430,7 @@ func TestListEvents_Chronological(t *testing.T) {
 
 func TestSelectionScoreWithMetrics(t *testing.T) {
 	m := ModelMetrics{
-		IncidentRate:   0.1,
+		IncidentRate:    0.1,
 		AvgCostPerMerge: 0.05,
 	}
 

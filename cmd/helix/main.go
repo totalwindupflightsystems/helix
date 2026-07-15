@@ -481,21 +481,21 @@ func (d *dispatcher) dispatch(args []string) error {
 			if rc != 0 {
 				return errExit{code: rc}
 			}
-						return nil
-					})
-				case "models":
-					// `helix models <list|show|evaluate|rotate>`
-					// Model evaluation and rotation — per-model production outcome
-					// tracking with FP rate and incident rate rotation rules
-					// (Phase 12 §12.4).
-					return RunWithObs("models", func() error {
-						rc := runModelsWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
-						if rc != 0 {
-							return errExit{code: rc}
-						}
-						return nil
-					})
-				}
+			return nil
+		})
+	case "models":
+		// `helix models <list|show|evaluate|rotate>`
+		// Model evaluation and rotation — per-model production outcome
+		// tracking with FP rate and incident rate rotation rules
+		// (Phase 12 §12.4).
+		return RunWithObs("models", func() error {
+			rc := runModelsWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+			if rc != 0 {
+				return errExit{code: rc}
+			}
+			return nil
+		})
+	}
 
 	// Delegate to subcommand binary
 	binary, ok := subcommands[name]

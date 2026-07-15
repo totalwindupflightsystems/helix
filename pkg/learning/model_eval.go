@@ -49,10 +49,10 @@ type RotationEvent struct {
 
 // Rotation thresholds from spec §12.4 step 3.
 const (
-	FPRateRemovalThreshold    = 0.15  // 15%
-	IncidentRateMultiplier    = 2.0   // 2× fleet average
-	ConsecutiveDaysForPerm    = 14    // 14 days above threshold → permanent
-	CleanDaysForReAdmission   = 30    // 30 clean days → re-admitted
+	FPRateRemovalThreshold  = 0.15 // 15%
+	IncidentRateMultiplier  = 2.0  // 2× fleet average
+	ConsecutiveDaysForPerm  = 14   // 14 days above threshold → permanent
+	CleanDaysForReAdmission = 30   // 30 clean days → re-admitted
 )
 
 // ModelEvaluator tracks per-model metrics and enforces rotation rules.
@@ -60,12 +60,12 @@ const (
 type ModelEvaluator struct {
 	mu sync.RWMutex
 
-	metrics        map[string]*ModelMetrics
-	events         []RotationEvent
-	removedModels  map[string]bool
-	flaggedModels  map[string]bool
-	consecutiveDays map[string]int // modelID → consecutive days above threshold
-	lastCleanEval  map[string]time.Time // modelID → first clean eval day
+	metrics         map[string]*ModelMetrics
+	events          []RotationEvent
+	removedModels   map[string]bool
+	flaggedModels   map[string]bool
+	consecutiveDays map[string]int       // modelID → consecutive days above threshold
+	lastCleanEval   map[string]time.Time // modelID → first clean eval day
 }
 
 // NewModelEvaluator creates an empty evaluator.

@@ -125,34 +125,34 @@ func runModelsList(f modelsFlags, stdout, stderr io.Writer) int {
 
 	if f.jsonOut {
 		type modelEntry struct {
-			ModelID           string  `json:"model_id"`
-			IncidentRate      float64 `json:"incident_rate"`
-			FalsePositiveRate float64 `json:"false_positive_rate"`
-			TotalMerges       int     `json:"total_merges"`
-			IncidentsAttributed int   `json:"incidents_attributed"`
-			TotalReviews      int     `json:"total_reviews"`
-			FalsePositives    int     `json:"false_positives"`
-			AvgTrustScore     float64 `json:"avg_trust_score"`
-			AvgCostPerMerge   float64 `json:"avg_cost_per_merge"`
-			ActiveAgents      int     `json:"active_agents"`
-			InRotation        bool    `json:"in_rotation"`
-			Flagged           bool    `json:"flagged"`
+			ModelID             string  `json:"model_id"`
+			IncidentRate        float64 `json:"incident_rate"`
+			FalsePositiveRate   float64 `json:"false_positive_rate"`
+			TotalMerges         int     `json:"total_merges"`
+			IncidentsAttributed int     `json:"incidents_attributed"`
+			TotalReviews        int     `json:"total_reviews"`
+			FalsePositives      int     `json:"false_positives"`
+			AvgTrustScore       float64 `json:"avg_trust_score"`
+			AvgCostPerMerge     float64 `json:"avg_cost_per_merge"`
+			ActiveAgents        int     `json:"active_agents"`
+			InRotation          bool    `json:"in_rotation"`
+			Flagged             bool    `json:"flagged"`
 		}
 		entries := make([]modelEntry, 0, len(models))
 		for _, m := range models {
 			entries = append(entries, modelEntry{
-				ModelID:            m.ModelID,
-				IncidentRate:       m.IncidentRate,
-				FalsePositiveRate:  m.FalsePositiveRate,
-				TotalMerges:        m.TotalMerges,
+				ModelID:             m.ModelID,
+				IncidentRate:        m.IncidentRate,
+				FalsePositiveRate:   m.FalsePositiveRate,
+				TotalMerges:         m.TotalMerges,
 				IncidentsAttributed: m.IncidentsAttributed,
-				TotalReviews:       m.TotalReviews,
-				FalsePositives:     m.FalsePositives,
-				AvgTrustScore:      m.AvgTrustScore,
-				AvgCostPerMerge:    m.AvgCostPerMerge,
-				ActiveAgents:       m.ActiveAgents,
-				InRotation:         me.IsInReviewRotation(m.ModelID),
-				Flagged:            me.IsFlagged(m.ModelID),
+				TotalReviews:        m.TotalReviews,
+				FalsePositives:      m.FalsePositives,
+				AvgTrustScore:       m.AvgTrustScore,
+				AvgCostPerMerge:     m.AvgCostPerMerge,
+				ActiveAgents:        m.ActiveAgents,
+				InRotation:          me.IsInReviewRotation(m.ModelID),
+				Flagged:             me.IsFlagged(m.ModelID),
 			})
 		}
 		enc := json.NewEncoder(stdout)
@@ -254,8 +254,8 @@ func runModelsEvaluate(f modelsFlags, stdout, stderr io.Writer) int {
 
 	if f.jsonOut {
 		_ = json.NewEncoder(stdout).Encode(map[string]interface{}{
-			"status":     "evaluated",
-			"model_count": len(me.ListModels()),
+			"status":                  "evaluated",
+			"model_count":             len(me.ListModels()),
 			"fleet_avg_incident_rate": me.FleetAvgIncidentRate(),
 		})
 		return modelsExitOK
