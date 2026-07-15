@@ -495,6 +495,18 @@ func (d *dispatcher) dispatch(args []string) error {
 			}
 			return nil
 		})
+	case "learn":
+		// `helix learn skills <list|publish|deprecate|show>`
+		// Agent skill transfer marketplace — high-trust agents publish
+		// reusable skills, others load them during context assembly.
+		// (Phase 12 §12.2).
+		return RunWithObs("learn", func() error {
+			rc := runLearnWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+			if rc != 0 {
+				return errExit{code: rc}
+			}
+			return nil
+		})
 	}
 
 	// Delegate to subcommand binary
@@ -643,6 +655,7 @@ Subcommands:
   contract     API contract generation + breaking changes (Phase 2)
   notify       Cross-agent notification bus — publish, inbox, stream (Phase 12)
   models       Model evaluation and rotation — list, show, evaluate, rotate (Phase 12)
+  learn        Agent skill marketplace (Phase 12)
 
 Global Flags:
   --verbose   Enable verbose output
