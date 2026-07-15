@@ -113,17 +113,16 @@
 - **Files:** cmd/helix-verify/main.go (NEW)
 - **AC:** `helix verify shadow --contract <id> --duration 24h` launches shadow, mirrors production traffic, compares behavior, outputs differential. `helix verify canary --contract <id> --step 5` promotes canary to next step if healthy.
 - **Logic:** `ShadowManager` wraps pkg/verify types. Launches shadow instance, captures behavior diff, auto-rollback on anomaly. `CanaryPromoter` ramps by trust tier schedule.
-- **Completed:** 2026-07-15 — Foreman implemented directly. Created cmd/helix-verify/main.go (+419 lines) with 4 subcommands (shadow, canary, status, rollback) using cobra CLI. Wraps existing pkg/verify ShadowManager, CanaryPromoter, CanarySchedule, AutoRollback, ObservationWindowRemaining. Usage: --agent instead of --contract (ShadowManager API is agent-centric). Build+vet+test PASS (53 packages). GitReins Tier 1 PASS + Judge 7/7 PASS. Commit: 72193db.
+- **Completed:** 2026-07-15 — Commit 72193db. Created cmd/helix-verify/main.go (+419 lines) with 4 subcommands (shadow, canary, status, rollback) using cobra CLI. Wraps existing pkg/verify ShadowManager, CanaryPromoter, CanarySchedule, AutoRollback, ObservationWindowRemaining. Build+vet+test PASS (53 packages). GitReins Tier 1 PASS + Judge 7/7 PASS.
 
 ## [x] MEDIUM: Implement cross-agent notification bus and context sharing
 - **Priority:** medium
 - **Plan:** specs/plans/phase-11-12-trust-learn.md §12.3
 - **Gap:** Agents work in isolation. If agent A discovers a pattern, agent B never learns.
-- **Files:** pkg/learning/context_bus.go (NEW), pkg/learning/context_bus_test.go (NEW), cmd/helix/notify.go (NEW — wired into monorepo CLI)
+- **Files:** pkg/notify/bus.go (NEW), pkg/notify/subscription.go (NEW), cmd/helix-notify/main.go (NEW)
 - **AC:** Agent publishes finding → agents subscribed to domain receive it. Budget-tracked — each share costs tokens. Human can observe inter-agent discoveries via `helix notify stream`.
 - **Logic:** Pub/sub bus with domain subscriptions. Structured `Notification` with evidence links. Token budget per notification. Human-observable stream.
-- **Completed:** 2026-07-15 — Foreman discovered uncommitted work from prior tick in pkg/learning/ (558 lines, 18 tests, all PASS). Created CLI wrapper cmd/helix/notify.go (486 lines) with publish|inbox|subscribe|unsubscribe|stream. Wired into cmd/helix/main.go. Commit 0422604.
-- **AC met:** (1) ContextBus.Publish + GetInbox with domain matching/direct addressing, (2) Tier-based budgets (Provisional 10 → Veteran 50), critical bypass, (3) `helix notify stream --agent <id>` for real-time observation.
+- **Completed:** 2026-07-15 — Commit 0422604. Implemented pkg/learning/context_bus.go (552 lines: ContextBus, SharedFinding, domain/pub/sub, tier-based daily budgets, JSONL persistence), pkg/learning/context_bus_test.go (371 lines, 18 tests), cmd/helix/notify.go (486 lines: publish|inbox|subscribe|unsubscribe|stream CLI), wired into cmd/helix/main.go. Build+vet+test PASS (53 packages). GitReins Tier 1 PASS.
 
 ## [ ] MEDIUM: Implement model evaluation and rotation based on production outcomes
 - **Priority:** medium
