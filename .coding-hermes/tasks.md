@@ -158,15 +158,21 @@
 - **Priority:** low — documentation hygiene
 - **Completed:** 2026-07-15 — Foreman direct. Updated component table from 7 to 42 packages in 8 categorized sections: Core Platform, Review & Quality Gates, Design & Planning, Orchestration & Pipeline, Learning/Trust/Memory, Operations & Security, Infrastructure & Integration. 10 CLIs listed.
 
+## [ ] FIX: Non-deterministic TestDiscoverTimeBasedPatts uses time.Now() — CI flaky
+- **Priority:** medium — causes spurious CI failures
+- **Root cause:** `pkg/learning/miner_test.go:364` uses `time.Now()` to compute `monday`, making the test non-deterministic. CI runner clock differs from local, producing different weekday patterns. CI run #236 failed with "expected Monday, got Tuesday". Test passes locally.
+- **Fix:** Replace `now := time.Now()` with a fixed reference date (e.g., `time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC)`) so the test is deterministic. July 13, 2026 is a Monday — the test's monday calculation will produce the correct date.
+- **Files:** pkg/learning/miner_test.go (+1/-1)
+- **AC:** Test passes on CI. No `time.Now()` calls in test setup.
+
 ## [ ] FOREMAN RULE: Always run wiring check before generating new tasks
 Run: `for pkg in pkg/*/; do name=$(basename "$pkg"); [ ! -d "cmd/$name" ] && [ ! -d "cmd/helix-$name" ] && echo "UNWIRED: $name"; done`
 If unwired packages exist, tasks MUST prioritize wiring them before any new package builds.
+Note: 33 packages show "UNWIRED" — monorepo CLI pattern. All 33 routed through cmd/helix/main.go (49-case switch statement). Not a real issue.
 
-## [ ] INFRA: Track Hilo .vfs/ graph files (edges.jsonl, manifest.yaml)
+## [x] INFRA: Track Hilo .vfs/ graph files (edges.jsonl, manifest.yaml)
 - **Priority:** low — cross-machine sync hygiene
-- **Gap:** `.vfs/graph/edges.jsonl` and `.vfs/manifest.yaml` are untracked. Per hilo-usage skill, edges.jsonl must be committed for cross-machine graph sync via post-commit/merge hooks. `.vfs/` shows as `??` in git status.
-- **Files:** `.vfs/graph/edges.jsonl`, `.vfs/manifest.yaml` (track via git add)
-- **AC:** `git status` no longer shows `?? .vfs/`. Edges.jsonl committed and tracked for cross-machine Hilo sync.
+- **Completed:** 2026-07-15 — Commit 0300792. Added .vfs/graph/edges.jsonl (3141 lines) + .vfs/manifest.yaml (104 lines) to git tracking. Rebuildable cache files (graph.db, .last_warm) already in .gitignore. git status now clean — no `?? .vfs/`. AC met.
 
 ## [x] Fix CI: Helix CI — consecutive failures (#204-#208), lint failures resolved
 - **Root cause:** golangci-lint failures — 4 gofmt, 8 errcheck in test files, 1 unused function (tokenizeReader)
