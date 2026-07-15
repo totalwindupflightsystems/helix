@@ -32,31 +32,31 @@ import (
 
 // DiscoveredPattern is a systemic pattern mined from incident and trust data.
 type DiscoveredPattern struct {
-	ID              string                `json:"id"`
-	PatternType     PatternType           `json:"pattern_type"`
-	Title           string                `json:"title"`
-	Description     string                `json:"description"`
-	Categories      []incident.FileCategory `json:"categories,omitempty"`
-	Keywords        []string              `json:"keywords,omitempty"`
-	Confidence      float64               `json:"confidence"`       // 0.0–1.0
-	SampleSize      int                   `json:"sample_size"`      // number of incidents backing this pattern
-	StatisticalBasis string                `json:"statistical_basis"` // how significance was determined
-	DiscoveredAt    time.Time             `json:"discovered_at"`
-	DataSources     []string              `json:"data_sources"`     // which sources contributed
-	EvidenceLinks   []string              `json:"evidence_links,omitempty"`
-	ReviewChecklist []string              `json:"review_checklist,omitempty"` // actionable items for reviewers
+	ID               string                  `json:"id"`
+	PatternType      PatternType             `json:"pattern_type"`
+	Title            string                  `json:"title"`
+	Description      string                  `json:"description"`
+	Categories       []incident.FileCategory `json:"categories,omitempty"`
+	Keywords         []string                `json:"keywords,omitempty"`
+	Confidence       float64                 `json:"confidence"`        // 0.0–1.0
+	SampleSize       int                     `json:"sample_size"`       // number of incidents backing this pattern
+	StatisticalBasis string                  `json:"statistical_basis"` // how significance was determined
+	DiscoveredAt     time.Time               `json:"discovered_at"`
+	DataSources      []string                `json:"data_sources"` // which sources contributed
+	EvidenceLinks    []string                `json:"evidence_links,omitempty"`
+	ReviewChecklist  []string                `json:"review_checklist,omitempty"` // actionable items for reviewers
 }
 
 // PatternType classifies the kind of systemic pattern discovered.
 type PatternType string
 
 const (
-	PatternCategoryClustering     PatternType = "category_clustering"
+	PatternCategoryClustering       PatternType = "category_clustering"
 	PatternAgentProviderCorrelation PatternType = "agent_provider_correlation"
-	PatternChangeTypeRisk         PatternType = "change_type_risk"
-	PatternTimeBased              PatternType = "time_based"
-	PatternReviewGap              PatternType = "review_gap"
-	PatternSeverityCluster        PatternType = "severity_cluster"
+	PatternChangeTypeRisk           PatternType = "change_type_risk"
+	PatternTimeBased                PatternType = "time_based"
+	PatternReviewGap                PatternType = "review_gap"
+	PatternSeverityCluster          PatternType = "severity_cluster"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -197,13 +197,6 @@ func (m *PatternMiner) LastDiscovery() time.Time {
 // Discovery: Category Clustering
 // ─────────────────────────────────────────────────────────────────────────────
 
-// categoryCluster holds intermediate category clustering data.
-type categoryCluster struct {
-	category incident.FileCategory
-	count    int
-	total    int
-}
-
 func (m *PatternMiner) discoverCategoryClusters(allIncidents []*incident.Incident, allPatterns []*incident.IncidentPattern) []DiscoveredPattern {
 	if len(allPatterns) == 0 {
 		return nil
@@ -238,14 +231,14 @@ func (m *PatternMiner) discoverCategoryClusters(allIncidents []*incident.Inciden
 		conf := math.Min(ratio/3.0, 1.0) * math.Min(float64(cnt)/10.0, 1.0)
 
 		results = append(results, DiscoveredPattern{
-			PatternType:  PatternCategoryClustering,
-			Title:        fmt.Sprintf("%s category has elevated incident rate", cat),
-			Description:  fmt.Sprintf("%s files are involved in %d incidents (%.1f× the average of %.1f across %d categories).", cat, cnt, ratio, avgCount, len(counts)),
-			Categories:   []incident.FileCategory{cat},
-			Confidence:   conf,
-			SampleSize:   cnt,
+			PatternType:      PatternCategoryClustering,
+			Title:            fmt.Sprintf("%s category has elevated incident rate", cat),
+			Description:      fmt.Sprintf("%s files are involved in %d incidents (%.1f× the average of %.1f across %d categories).", cat, cnt, ratio, avgCount, len(counts)),
+			Categories:       []incident.FileCategory{cat},
+			Confidence:       conf,
+			SampleSize:       cnt,
 			StatisticalBasis: fmt.Sprintf("ratio=%.2f, min_expected=%.1f, categories=%d", ratio, avgCount, len(counts)),
-			DataSources:  []string{"incident_database"},
+			DataSources:      []string{"incident_database"},
 			ReviewChecklist: []string{
 				fmt.Sprintf("Review %s files with extra care — this category has high incident density", cat),
 				fmt.Sprintf("Check if %s-specific tests cover recent failure modes", cat),
@@ -262,9 +255,9 @@ func (m *PatternMiner) discoverCategoryClusters(allIncidents []*incident.Inciden
 
 // providerStats tracks per-provider incident metrics.
 type providerStats struct {
-	provider       string
-	incidentCount  int
-	patternCount   int
+	provider      string
+	incidentCount int
+	patternCount  int
 }
 
 func (m *PatternMiner) discoverProviderCorrelations(allIncidents []*incident.Incident, allPatterns []*incident.IncidentPattern) []DiscoveredPattern {
@@ -342,14 +335,14 @@ func (m *PatternMiner) discoverProviderCorrelations(allIncidents []*incident.Inc
 		conf := math.Min(ratio/3.0, 1.0) * math.Min(float64(st.patternCount)/10.0, 1.0)
 
 		results = append(results, DiscoveredPattern{
-			PatternType:  PatternAgentProviderCorrelation,
-			Title:        fmt.Sprintf("Agents using provider %s have elevated incident rate", st.provider),
-			Description:  fmt.Sprintf("Agents associated with provider %s have %.1f× the baseline incident rate (%d incidents in %d patterns vs fleet average of %.2f).", st.provider, ratio, st.incidentCount, st.patternCount, fleetRate),
-			Confidence:   conf,
-			SampleSize:   st.patternCount,
+			PatternType:      PatternAgentProviderCorrelation,
+			Title:            fmt.Sprintf("Agents using provider %s have elevated incident rate", st.provider),
+			Description:      fmt.Sprintf("Agents associated with provider %s have %.1f× the baseline incident rate (%d incidents in %d patterns vs fleet average of %.2f).", st.provider, ratio, st.incidentCount, st.patternCount, fleetRate),
+			Confidence:       conf,
+			SampleSize:       st.patternCount,
 			StatisticalBasis: fmt.Sprintf("provider_rate=%.2f, fleet_rate=%.2f, ratio=%.2f, patterns=%d", providerRate, fleetRate, ratio, st.patternCount),
-			DataSources:  []string{"incident_database", "incident_learning_db"},
-			Keywords:     []string{st.provider, "provider", "incident_rate"},
+			DataSources:      []string{"incident_database", "incident_learning_db"},
+			Keywords:         []string{st.provider, "provider", "incident_rate"},
 			ReviewChecklist: []string{
 				fmt.Sprintf("Consider switching agents from %s for high-risk tasks until incident rate improves", st.provider),
 				fmt.Sprintf("Cross-reference %s incident patterns with model-specific failure modes", st.provider),
@@ -405,14 +398,14 @@ func (m *PatternMiner) discoverChangeTypeRisk(allPatterns []*incident.IncidentPa
 		conf := math.Min(ratio/4.0, 1.0) * math.Min(float64(cnt)/8.0, 1.0)
 
 		results = append(results, DiscoveredPattern{
-			PatternType:  PatternChangeTypeRisk,
-			Title:        fmt.Sprintf("%s changes have elevated incident rate", ct),
-			Description:  fmt.Sprintf("%s changes account for %d incidents (%.1f× the average of %.1f across %d change types).", ct, cnt, ratio, avgCount, len(counts)),
-			Confidence:   conf,
-			SampleSize:   cnt,
+			PatternType:      PatternChangeTypeRisk,
+			Title:            fmt.Sprintf("%s changes have elevated incident rate", ct),
+			Description:      fmt.Sprintf("%s changes account for %d incidents (%.1f× the average of %.1f across %d change types).", ct, cnt, ratio, avgCount, len(counts)),
+			Confidence:       conf,
+			SampleSize:       cnt,
 			StatisticalBasis: fmt.Sprintf("ratio=%.2f, avg=%.1f, types=%d", ratio, avgCount, len(counts)),
-			DataSources:  []string{"incident_learning_db"},
-			Keywords:     []string{string(ct), "change_type", "risk"},
+			DataSources:      []string{"incident_learning_db"},
+			Keywords:         []string{string(ct), "change_type", "risk"},
 			ReviewChecklist: []string{
 				fmt.Sprintf("For %s changes, add extra review scrutiny", ct),
 				fmt.Sprintf("Consider splitting large %s changes into smaller, reviewable increments", ct),
@@ -452,13 +445,13 @@ func (m *PatternMiner) discoverTimeBasedPatts(allIncidents []*incident.Incident)
 		conf := math.Min(ratio/3.0, 1.0) * math.Min(float64(cnt)/8.0, 1.0)
 
 		results = append(results, DiscoveredPattern{
-			PatternType:  PatternTimeBased,
-			Title:        fmt.Sprintf("Elevated incident rate on %s", day.String()),
-			Description:  fmt.Sprintf("%d incidents occurred on %s (%.1f× the daily average of %.1f across %d total incidents).", cnt, day.String(), ratio, avgPerDay, total),
-			Confidence:   conf,
-			SampleSize:   cnt,
+			PatternType:      PatternTimeBased,
+			Title:            fmt.Sprintf("Elevated incident rate on %s", day.String()),
+			Description:      fmt.Sprintf("%d incidents occurred on %s (%.1f× the daily average of %.1f across %d total incidents).", cnt, day.String(), ratio, avgPerDay, total),
+			Confidence:       conf,
+			SampleSize:       cnt,
 			StatisticalBasis: fmt.Sprintf("day=%s, ratio=%.2f, avg_per_day=%.1f", day.String(), ratio, avgPerDay),
-			DataSources:  []string{"incident_database"},
+			DataSources:      []string{"incident_database"},
 			ReviewChecklist: []string{
 				fmt.Sprintf("Consider deployment policy review for %s", day.String()),
 				"Check if end-of-week fatigue correlates with review quality",
@@ -541,15 +534,15 @@ func (m *PatternMiner) discoverReviewGaps(allPatterns []*incident.IncidentPatter
 	sort.Strings(checklist)
 
 	return []DiscoveredPattern{{
-		PatternType:  PatternReviewGap,
-		Title:        "Review gaps detected in incident patterns",
-		Description:  fmt.Sprintf("%d of %d incidents (%.0f%%) show evidence of review gaps — issues that should have been caught in code review but were missed.", gapCount, len(allPatterns), gapRatio*100),
-		Categories:   topCategories,
-		Confidence:   conf,
-		SampleSize:   gapCount,
+		PatternType:      PatternReviewGap,
+		Title:            "Review gaps detected in incident patterns",
+		Description:      fmt.Sprintf("%d of %d incidents (%.0f%%) show evidence of review gaps — issues that should have been caught in code review but were missed.", gapCount, len(allPatterns), gapRatio*100),
+		Categories:       topCategories,
+		Confidence:       conf,
+		SampleSize:       gapCount,
 		StatisticalBasis: fmt.Sprintf("gap_ratio=%.2f, total_patterns=%d, gap_patterns=%d", gapRatio, len(allPatterns), gapCount),
-		DataSources:  []string{"incident_learning_db"},
-		ReviewChecklist: checklist,
+		DataSources:      []string{"incident_learning_db"},
+		ReviewChecklist:  checklist,
 	}}
 }
 
@@ -579,13 +572,13 @@ func (m *PatternMiner) discoverSeverityClusters(allIncidents []*incident.Inciden
 	conf := math.Min(highRatio*4.0, 1.0) * math.Min(float64(highSeverityCount)/5.0, 1.0)
 
 	results := []DiscoveredPattern{{
-		PatternType:  PatternSeverityCluster,
-		Title:        fmt.Sprintf("High-severity incident cluster detected"),
-		Description:  fmt.Sprintf("%d of %d incidents (%.0f%%) are high or critical severity.", highSeverityCount, len(allIncidents), highRatio*100),
-		Confidence:   conf,
-		SampleSize:   highSeverityCount,
+		PatternType:      PatternSeverityCluster,
+		Title:            "High-severity incident cluster detected",
+		Description:      fmt.Sprintf("%d of %d incidents (%.0f%%) are high or critical severity.", highSeverityCount, len(allIncidents), highRatio*100),
+		Confidence:       conf,
+		SampleSize:       highSeverityCount,
 		StatisticalBasis: fmt.Sprintf("high_severity_count=%d, total=%d, ratio=%.2f", highSeverityCount, len(allIncidents), highRatio),
-		DataSources:  []string{"incident_database"},
+		DataSources:      []string{"incident_database"},
 		ReviewChecklist: []string{
 			"Review recent high-severity incidents for common root causes",
 			"Check if high-severity incidents correlate with deployment frequency",
