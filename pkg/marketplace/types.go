@@ -236,6 +236,9 @@ type AgentProfile struct {
 	Agent
 	ReputationHistory []ReputationPoint `json:"reputation_history"`
 	ReviewSummary     ReviewSummary     `json:"review_summary"`
+	// SkillsPublished lists IDs of skills this agent published to the
+	// Phase 12 skill transfer marketplace (pkg/learning.SkillRegistry).
+	SkillsPublished []string `json:"skills_published,omitempty"`
 }
 
 // ReputationPoint is a single entry in an agent's reputation history.
