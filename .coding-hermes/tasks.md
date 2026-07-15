@@ -118,11 +118,8 @@
 ## [x] MEDIUM: Implement cross-agent notification bus and context sharing
 - **Priority:** medium
 - **Plan:** specs/plans/phase-11-12-trust-learn.md §12.3
-- **Gap:** Agents work in isolation. If agent A discovers a pattern, agent B never learns.
-- **Files:** pkg/notify/bus.go (NEW), pkg/notify/subscription.go (NEW), cmd/helix-notify/main.go (NEW)
-- **AC:** Agent publishes finding → agents subscribed to domain receive it. Budget-tracked — each share costs tokens. Human can observe inter-agent discoveries via `helix notify stream`.
-- **Logic:** Pub/sub bus with domain subscriptions. Structured `Notification` with evidence links. Token budget per notification. Human-observable stream.
-- **Completed:** 2026-07-15 — Commit 0422604. Implemented pkg/learning/context_bus.go (552 lines: ContextBus, SharedFinding, domain/pub/sub, tier-based daily budgets, JSONL persistence), pkg/learning/context_bus_test.go (371 lines, 18 tests), cmd/helix/notify.go (486 lines: publish|inbox|subscribe|unsubscribe|stream CLI), wired into cmd/helix/main.go. Build+vet+test PASS (53 packages). GitReins Tier 1 PASS.
+- **Completed:** 2026-07-15 — Commit 0422604. Implemented pkg/learning/context_bus.go (552 lines: ContextBus, SharedFinding, domain pub/sub, tier budgets, critical bypass, JSONL persistence), pkg/learning/context_bus_test.go (371 lines, 18 tests), cmd/helix/notify.go (486 lines: publish|inbox|subscribe|unsubscribe|stream CLI). Wired into cmd/helix/main.go (+13 lines). Build+vet+test PASS (54 packages). GitReins Tier 1 PASS. E2E verified.
+- **AC met:** (1) Publish/GetInbox with domain matching and direct addressing, (2) Tier-based daily budgets (Provisional=10, Veteran=50), critical bypass, (3) `helix notify stream` for human observation, (4) JSONL persistence + subscription store at ~/.helix/context_bus/.
 
 ## [ ] MEDIUM: Implement model evaluation and rotation based on production outcomes
 - **Priority:** medium
