@@ -804,10 +804,8 @@ func parseBlameOutput(blameOutput, filePath string) incident.ChangePath {
 			author = strings.TrimPrefix(line, "author ")
 			break
 		}
-		if strings.HasPrefix(line, "author-mail ") {
-			// Extract identity from email: agent-X@... → agent-X
-			// But prefer the author name field.
-		}
+		_ = strings.HasPrefix(line, "author-mail ")
+		// Unused — prefer author name field for identity extraction.
 	}
 
 	return incident.ChangePath{

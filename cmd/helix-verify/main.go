@@ -115,7 +115,7 @@ observation window (e.g., --duration 1h for quick verification).`,
 	cmd.Flags().StringVar(&shadowF.tier, "tier", "provisional", "Trust tier: provisional|observed|trusted|veteran")
 	cmd.Flags().DurationVar(&shadowF.duration, "duration", 0, "Override observation window (e.g., 24h, 1h30m)")
 	cmd.Flags().BoolVar(&shadowF.json, "json", false, "Output differential report as JSON")
-	cmd.MarkFlagRequired("agent")
+	_ = cmd.MarkFlagRequired("agent")
 	return cmd
 }
 
@@ -130,8 +130,8 @@ func runShadow(cmd *cobra.Command, args []string) error {
 	// baseline as "no prior metrics — shadow must pass on absolute
 	// thresholds."
 	baseline := verify.MetricsSnapshot{
-		SuccessRate:  1.0,
-		Timestamp:    time.Now().UTC(),
+		SuccessRate: 1.0,
+		Timestamp:   time.Now().UTC(),
 	}
 
 	d, err := manager.LaunchShadow(shadowF.agent, shadowF.tier, baseline, cfg)
@@ -198,7 +198,7 @@ Use 'helix-verify status --agent <id>' to see the current canary step.`,
 	cmd.Flags().StringVar(&canaryF.agent, "agent", "", "Agent ID (required)")
 	cmd.Flags().IntVar(&canaryF.step, "step", -1, "Canary step to advance to (-1 = promote to canary)")
 	cmd.Flags().BoolVar(&canaryF.json, "json", false, "Output step details as JSON")
-	cmd.MarkFlagRequired("agent")
+	_ = cmd.MarkFlagRequired("agent")
 	return cmd
 }
 
@@ -327,8 +327,8 @@ rolled_back and the reason is recorded for the breach report.`,
 	}
 	cmd.Flags().StringVar(&rollbackF.agent, "agent", "", "Agent ID (required)")
 	cmd.Flags().StringVar(&rollbackF.reason, "reason", "", "Rollback reason (required)")
-	cmd.MarkFlagRequired("agent")
-	cmd.MarkFlagRequired("reason")
+	_ = cmd.MarkFlagRequired("agent")
+	_ = cmd.MarkFlagRequired("reason")
 	return cmd
 }
 
@@ -349,7 +349,7 @@ func printDifferentialReport(report *verify.DifferentialReport, asJSON bool) {
 	if asJSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
-		enc.Encode(report)
+		_ = enc.Encode(report)
 		return
 	}
 
