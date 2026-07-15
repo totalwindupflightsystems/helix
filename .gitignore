@@ -3,11 +3,12 @@
 /helix-negotiate
 /helix-prompt
 /helix-marketplace
+/helix-sandbox
 /helios
+/helix-verify
 /helios-kb
 /sandbox
 /helix
-/helix-sandbox
 bin/
 .gitreins/config.yaml.bak
 .gitreins/config.yaml.v*-bak
