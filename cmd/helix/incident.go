@@ -31,10 +31,12 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os/exec"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/totalwindupflightsystems/helix/pkg/incident"
 	"github.com/totalwindupflightsystems/helix/pkg/security"
 )
 
@@ -100,6 +102,8 @@ func runIncident(args []string, stdout, stderr io.Writer) int {
 		return runIncidentUpdate(common, subArgs, stdout, stderr)
 	case "stats":
 		return runIncidentStats(common, subArgs, stdout, stderr)
+	case "attribute":
+		return runIncidentAttribute(common, subArgs, stdout, stderr)
 	case "--help", "-h", "help":
 		printIncidentUsage(stdout)
 		return 0
@@ -544,6 +548,276 @@ func runIncidentStats(common incidentCommonFlags, args []string, stdout, stderr 
 }
 
 // =============================================================================
+// attribute
+// =============================================================================
+
+func runIncidentAttribute(common incidentCommonFlags, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("helix-incident-attribute", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+
+	var since string
+	var limit int
+	fs.StringVar(&since, "since", "24h", "Time window for change discovery (e.g., 24h, 7d, 30m)")
+	fs.IntVar(&limit, "limit", 100, "Max commits to examine")
+
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			printIncidentUsage(stdout)
+			return 0
+		}
+		return 2
+	}
+
+	// Discover change paths from git history within the time window.
+	paths, err := discoverChangePaths(since, limit)
+	if err != nil {
+		fmt.Fprintf(stderr, "helix incident attribute: %v\n", err)
+		return 1
+	}
+
+	if len(paths) == 0 {
+		if common.asJSON {
+			fmt.Fprintln(stdout, `{"attributions":[],"message":"no changes found in window"}`)
+		} else {
+			fmt.Fprintf(stdout, "No changes found in the last %s.\n", since)
+		}
+		return 0
+	}
+
+	store := NewIncidentAttrStore()
+	engine := NewIncidentAttrEngine(store)
+
+	result, err := engine.Attribute("attr-"+randomHex(4), paths, nil)
+	if err != nil {
+		fmt.Fprintf(stderr, "helix incident attribute: %v\n", err)
+		return 1
+	}
+
+	if common.asJSON {
+		enc := json.NewEncoder(stdout)
+		enc.SetIndent("", "  ")
+		type attrEntry struct {
+			AgentID        string  `json:"agent_id"`
+			Responsibility float64 `json:"responsibility"`
+			TrustPenalty   float64 `json:"trust_penalty"`
+		}
+		summaries := result.Summarize(SeverityMediumStr)
+		var entries []attrEntry
+		for _, s := range summaries {
+			entries = append(entries, attrEntry{
+				AgentID:        s.AgentID,
+				Responsibility: s.Responsibility,
+				TrustPenalty:   s.TrustPenalty,
+			})
+		}
+		out := struct {
+			Attributions  []attrEntry `json:"attributions"`
+			ChangePaths   int         `json:"change_paths"`
+			Since         string      `json:"since"`
+			Normalization string      `json:"normalization"`
+		}{
+			Attributions:  entries,
+			ChangePaths:   len(paths),
+			Since:         since,
+			Normalization: "author 70%%, reviewer(s) 20%, approver 10%",
+		}
+		if err := enc.Encode(out); err != nil {
+			fmt.Fprintf(stderr, "helix incident attribute: encode: %v\n", err)
+			return 1
+		}
+	} else {
+		printAttributionTable(stdout, result, paths, since)
+	}
+
+	if common.verbose {
+		fmt.Fprintf(stderr, "[incident attribute] since=%s paths=%d agents=%d\n",
+			since, len(paths), len(result.Responsibility))
+	}
+	return 0
+}
+
+func printAttributionTable(w io.Writer, result *IncidentAttrResult, paths []IncidentAttrChangePath, since string) {
+	fmt.Fprintf(w, "Incident attribution — %d change paths in last %s\n", len(paths), since)
+	fmt.Fprintf(w, "Attribution model: author 70%%, reviewer(s) 20%% (shared), approver 10%%\n\n")
+	fmt.Fprintf(w, "%-20s %-16s %-14s\n", "AGENT", "RESPONSIBILITY", "TRUST PENALTY")
+	fmt.Fprintln(w, strings.Repeat("-", 56))
+	summaries := result.Summarize(SeverityMediumStr)
+	for _, s := range summaries {
+		fmt.Fprintf(w, "%-20s %15.1f%% %14.1f%%\n",
+			s.AgentID, s.Responsibility*100, s.TrustPenalty*100)
+	}
+	fmt.Fprintln(w, "\nChange paths:")
+	for _, p := range paths {
+		fmt.Fprintf(w, "  %s (author: %s)\n", p.FilePath, p.AuthorID)
+	}
+}
+
+// IncidentAttrStore is a thin alias so the CLI doesn't import pkg/incident directly.
+type IncidentAttrStore = incident.Store
+
+// IncidentAttrEngine is a thin alias.
+type IncidentAttrEngine = incident.AttributionEngine
+
+// IncidentAttrResult is a thin alias.
+type IncidentAttrResult = incident.AttributionResult
+
+// IncidentAttrChangePath is a thin alias.
+type IncidentAttrChangePath = incident.ChangePath
+
+// NewIncidentAttrStore creates the store via the pkg/incident package.
+var NewIncidentAttrStore = incident.NewStore
+
+// NewIncidentAttrEngine creates the engine via the pkg/incident package.
+var NewIncidentAttrEngine = incident.NewAttributionEngine
+
+// SeverityMediumStr is the medium severity string for trust penalty calculation.
+const SeverityMediumStr = "medium"
+
+// discoverChangePaths queries git log for changed files within the given
+// time window, then runs git blame on each to identify author/reviewer/approver.
+func discoverChangePaths(since string, limit int) ([]incident.ChangePath, error) {
+	// Convert shorthand formats to git-compatible relative dates.
+	gitSince := sinceToGitSince(since)
+
+	// Get commits in the time window.
+	output, err := gitLog(gitSince, limit)
+	if err != nil {
+		return nil, fmt.Errorf("git log: %w", err)
+	}
+	if output == "" {
+		return nil, nil
+	}
+
+	// Collect unique files from commit output.
+	files := uniqueFilesFromGitLog(output)
+
+	// For each file, run git blame to find the merge commit + author.
+	var paths []incident.ChangePath
+	for _, f := range files {
+		blameOut, err := gitBlame(f)
+		if err != nil {
+			// Skip files that can't be blamed (deleted, binary, etc.)
+			continue
+		}
+		path := parseBlameOutput(blameOut, f)
+		if path.AuthorID != "" {
+			paths = append(paths, path)
+		}
+	}
+	return paths, nil
+}
+
+// sinceToGitSince converts shorthand duration formats (24h, 7d, 30m, 2w)
+// to git-compatible relative date strings. Unknown formats pass through.
+func sinceToGitSince(since string) string {
+	// If it already looks git-compatible, pass through.
+	if strings.Contains(since, ".") || strings.Contains(since, " ") || strings.Contains(since, "-") {
+		return since
+	}
+	// Parse shorthand: <number><unit>
+	for i, c := range since {
+		if c >= '0' && c <= '9' {
+			continue
+		}
+		num := since[:i]
+		unit := since[i:]
+		switch unit {
+		case "h", "hr", "hrs":
+			return num + ".hours"
+		case "d":
+			return num + ".days"
+		case "w", "wk", "wks":
+			return num + ".weeks"
+		case "m":
+			return num + ".minutes"
+		case "s":
+			return num + ".seconds"
+		}
+		break
+	}
+	return since
+}
+
+// gitLog runs `git log` to get changed files since the given duration.
+func gitLog(since string, limit int) (string, error) {
+	cmd := exec.Command("git", "log", "--since="+since,
+		"--name-only", "--pretty=format:%H %an %s",
+		"-n", fmt.Sprintf("%d", limit))
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
+
+// uniqueFilesFromGitLog parses git log output and returns unique file paths.
+func uniqueFilesFromGitLog(output string) []string {
+	seen := make(map[string]bool)
+	var files []string
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "commit ") {
+			continue
+		}
+		// Skip lines that look like commit hashes + metadata (don't contain "/.")
+		if !strings.Contains(line, "/") && !strings.HasSuffix(line, ".go") &&
+			!strings.HasSuffix(line, ".py") && !strings.HasSuffix(line, ".ts") &&
+			!strings.HasSuffix(line, ".rs") && !strings.HasSuffix(line, ".js") {
+			continue
+		}
+		if !seen[line] {
+			seen[line] = true
+			files = append(files, line)
+		}
+	}
+	return files
+}
+
+// gitBlame runs `git blame` on a file to find the commit hash and author.
+func gitBlame(file string) (string, error) {
+	cmd := exec.Command("git", "blame", "--porcelain", "-w", file)
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
+
+// parseBlameOutput extracts ChangePath from git blame porcelain output.
+func parseBlameOutput(blameOutput, filePath string) incident.ChangePath {
+	lines := strings.Split(blameOutput, "\n")
+	if len(lines) < 2 {
+		return incident.ChangePath{FilePath: filePath}
+	}
+
+	// First line: <commit-hash> <orig-line> <final-line> <line-count>
+	firstFields := strings.Fields(lines[0])
+	if len(firstFields) < 1 || len(firstFields[0]) < 7 {
+		return incident.ChangePath{FilePath: filePath}
+	}
+	commitHash := firstFields[0]
+
+	// Parse porcelain fields: author <name>, committer <name>, summary <text>
+	var author string
+	for _, line := range lines[1:] {
+		if strings.HasPrefix(line, "author ") {
+			author = strings.TrimPrefix(line, "author ")
+			break
+		}
+		if strings.HasPrefix(line, "author-mail ") {
+			// Extract identity from email: agent-X@... → agent-X
+			// But prefer the author name field.
+		}
+	}
+
+	return incident.ChangePath{
+		FilePath: filePath,
+		MergeSHA: commitHash,
+		AuthorID: author,
+	}
+}
+
+// =============================================================================
 // Usage
 // =============================================================================
 
@@ -554,11 +828,12 @@ Usage:
   helix incident [--store PATH] [--json] [--verbose] <subcommand> [flags]
 
 Subcommands:
-  declare   Create a new incident and append to the JSONL log.
-  list      List incidents (default: active only).
-  show      Show details for one incident ID.
-  update    Update an incident's status.
-  stats     Print aggregate statistics.
+  declare    Create a new incident and append to the JSONL log.
+  list       List incidents (default: active only).
+  show       Show details for one incident ID.
+  update     Update an incident's status.
+  stats      Print aggregate statistics.
+  attribute  Trace causal chain from recent deploys to responsible agents.
 
 Common flags (before subcommand):
   --store PATH    JSONL store path (default %s, env %s)
@@ -581,12 +856,18 @@ Update flags:
   --status STATUS    New status (required)
   <id>               Incident ID (first positional or --id)
 
+Attribute flags:
+  --since DURATION   Time window for change discovery (default: 24h)
+  --limit N          Max commits to examine (default: 100)
+
 Examples:
   helix incident declare --severity SEV-1 --title "Chimera 503 spike"
   helix incident list
   helix incident show inc-a1b2c3
   helix incident update inc-a1b2c3 --status resolved
   helix incident stats --json
+  helix incident attribute --since 24h
+  helix incident attribute --since 7d --limit 50 --json
 `, security.DefaultIncidentPath, envIncidentStoreFile)
 }
 
