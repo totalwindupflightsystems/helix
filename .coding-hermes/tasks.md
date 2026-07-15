@@ -131,13 +131,14 @@
 - **Completed:** 2026-07-15 — Foreman implemented directly (both GLM-5.2 and kimi-k2.7 workers silent-exit). 4 files, +1255/-3 lines, 25 tests. ModelEvaluator with RecordMerge/RecordIncident/RecordReview/Evaluate/EvaluateAll. Rotation rules: FPR>15% removal, IR>2x fleet avg flagging, 14 consecutive days permanent removal, 30 clean days re-admission. Selection scoring formula (trust*0.70 + (1-IR)*0.20 + (1-costEff)*0.10). CLI: `helix models list|show|evaluate|rotate` with --json output. Build+vet+test PASS (55 packages). GitReins Tier 1 PASS. Commit a4656fb.
 - **AC met:** (1) ModelEvaluator tracks per-model incident and FP rates with RecordMerge/RecordIncident/RecordReview, (2) FPR>15% auto-removal, IR>2x fleet avg flagging, 14-day permanent + 30-day re-admit, (3) SelectionScore formula weights trust over model metrics, (4) `helix models list --sort-by incident-rate|false-positive-rate|cost` with table and JSON output.
 
-## [ ] LOW: Implement pattern discovery across incident database
+## [x] LOW: Implement pattern discovery across incident database
 - **Priority:** low
 - **Plan:** specs/plans/phase-11-12-trust-learn.md §12.1
 - **Gap:** Incident patterns are discovered by humans in postmortems. Slow, incomplete.
-- **Files:** pkg/incident/patterns.go (NEW), pkg/incident/patterns_test.go (NEW)
+- **Files:** pkg/learning/miner.go (NEW), pkg/learning/miner_test.go (NEW)
 - **AC:** `helix incident patterns` outputs: "auth bugs cluster in session refresh (12 incidents)," "agents from provider X have 3x incident rate on DB migrations." Patterns feed review context and agent assignment.
 - **Logic:** Query incident DB grouped by (file_category, error_type, provider). Statistical comparison against baseline. Significant clusters flagged. Review context enriched with pattern matches.
+- **Completed:** 2026-07-15 — Foreman implemented directly. 3 files, +1417 lines, 17 tests. PatternMiner with 6 discovery algorithms (category clusters, provider correlation, change type risk, time-based, review gaps, severity clusters). Confidence scoring with hypothesis/established thresholds. CLI: `helix incident patterns list|show|discover` with --json/--category/--min-confidence flags. Build+vet+test PASS (55 packages), GitReins Tier 1 PASS. Commit 5dc5c9e.
 
 ## [ ] LOW: Implement agent skill transfer marketplace
 - **Priority:** low
