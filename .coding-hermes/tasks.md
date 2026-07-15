@@ -106,13 +106,14 @@
 - **Logic:** Query deployment history → find changed files → git blame → agent identity lookup → attribution split. Time-weighted decay applied. Trust ledger update triggered.
 - **Completed:** 2026-07-15 — Foreman implemented directly. Added `attribute` subcommand with --since (with shorthand conversion: 24h→24.hours, 7d→7.days), --limit, --json, --verbose flags. discoverChangePaths() queries git log → unique files → git blame porcelain → ChangePath list → AttributionEngine.Attribute() → table/JSON output. +286/-5 in cmd/helix/incident.go. Build+vet+test PASS. GitReins Tier 1 PASS. E2E verified: `helix incident attribute --since 48h` found 12 change paths (totalwindupflightsystems 83.3%, Bane 16.7%). Commit b2d20ff.
 
-## [ ] MEDIUM: Implement shadow verification CLI
+## [x] MEDIUM: Implement shadow verification CLI
 - **Priority:** medium
 - **Plan:** specs/plans/phase-9-10-deploy-monitor.md §9.1
 - **Gap:** pkg/verify has contracts but no CLI to run shadow deployment.
 - **Files:** cmd/helix-verify/main.go (NEW)
 - **AC:** `helix verify shadow --contract <id> --duration 24h` launches shadow, mirrors production traffic, compares behavior, outputs differential. `helix verify canary --contract <id> --step 5` promotes canary to next step if healthy.
 - **Logic:** `ShadowManager` wraps pkg/verify types. Launches shadow instance, captures behavior diff, auto-rollback on anomaly. `CanaryPromoter` ramps by trust tier schedule.
+- **Completed:** 2026-07-15 — Foreman implemented directly. Created cmd/helix-verify/main.go (+419 lines) with 4 subcommands (shadow, canary, status, rollback) using cobra CLI. Wraps existing pkg/verify ShadowManager, CanaryPromoter, CanarySchedule, AutoRollback, ObservationWindowRemaining. Usage: --agent instead of --contract (ShadowManager API is agent-centric). Build+vet+test PASS (53 packages). GitReins Tier 1 PASS + Judge 7/7 PASS. Commit: (pending).
 
 ## [ ] MEDIUM: Implement cross-agent notification bus and context sharing
 - **Priority:** medium
