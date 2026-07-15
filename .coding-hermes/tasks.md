@@ -163,5 +163,7 @@ If unwired packages exist, tasks MUST prioritize wiring them before any new pack
 - **Fix:** Commit c5c1777 — gofmt'd 4 files, added `_ =` to 8 unchecked error returns, removed unused tokenizeReader+bufio import
 - **Verification:** go build+vet+test PASS (all packages), golangci-lint CLEAN (exit 0)
 
-## [x] Fix CI: totalwindupflightsystems/helix — run #223 — LOG_ACCESS_DENIED: 404 from gh run view
-- **Fix:** Commit 9d4b442 — gofmt alignment + remove unused categoryCluster + unnecessary fmt.Sprintf. Latest CI run #29429828723 confirmed green (success, 49s).
+## [x] Fix CI: totalwindupflightsystems/helix — run #223
+- **Root cause:** golangci-lint failures — gofmt, unused function, unnecessary fmt.Sprintf
+- **Fix:** Commit 9d4b442 — gofmt alignment + removed unused categoryCluster + fmt.Sprintf clean
+- **Verification:** CI run #223 PASS (completed success, 49s). All subsequent runs green.
