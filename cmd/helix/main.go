@@ -481,9 +481,21 @@ func (d *dispatcher) dispatch(args []string) error {
 			if rc != 0 {
 				return errExit{code: rc}
 			}
-			return nil
-		})
-	}
+						return nil
+					})
+				case "models":
+					// `helix models <list|show|evaluate|rotate>`
+					// Model evaluation and rotation — per-model production outcome
+					// tracking with FP rate and incident rate rotation rules
+					// (Phase 12 §12.4).
+					return RunWithObs("models", func() error {
+						rc := runModelsWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+						if rc != 0 {
+							return errExit{code: rc}
+						}
+						return nil
+					})
+				}
 
 	// Delegate to subcommand binary
 	binary, ok := subcommands[name]
@@ -630,6 +642,7 @@ Subcommands:
   design       Design review with adversarial agents (Phase 2)
   contract     API contract generation + breaking changes (Phase 2)
   notify       Cross-agent notification bus — publish, inbox, stream (Phase 12)
+  models       Model evaluation and rotation — list, show, evaluate, rotate (Phase 12)
 
 Global Flags:
   --verbose   Enable verbose output
