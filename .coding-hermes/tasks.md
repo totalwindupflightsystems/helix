@@ -121,13 +121,15 @@
 - **Completed:** 2026-07-15 — Commit 0422604. Implemented pkg/learning/context_bus.go (552 lines: ContextBus, SharedFinding, domain pub/sub, tier budgets, critical bypass, JSONL persistence), pkg/learning/context_bus_test.go (371 lines, 18 tests), cmd/helix/notify.go (486 lines: publish|inbox|subscribe|unsubscribe|stream CLI). Wired into cmd/helix/main.go (+13 lines). Build+vet+test PASS (54 packages). GitReins Tier 1 PASS. E2E verified.
 - **AC met:** (1) Publish/GetInbox with domain matching and direct addressing, (2) Tier-based daily budgets (Provisional=10, Veteran=50), critical bypass, (3) `helix notify stream` for human observation, (4) JSONL persistence + subscription store at ~/.helix/context_bus/.
 
-## [ ] MEDIUM: Implement model evaluation and rotation based on production outcomes
+## [x] MEDIUM: Implement model evaluation and rotation based on production outcomes
 - **Priority:** medium
 - **Plan:** specs/plans/phase-11-12-trust-learn.md §12.4
 - **Gap:** Models evaluated by benchmarks, not production outcomes. Underperforming models not rotated.
-- **Files:** pkg/review/model_eval.go (NEW), pkg/review/model_eval_test.go (NEW)
+- **Files:** pkg/learning/model_eval.go (NEW), pkg/learning/model_eval_test.go (NEW), cmd/helix/models.go (NEW — wired into monorepo CLI)
 - **AC:** Model X incident rate vs Model Y computed from incident DB. Models with >15% false positive rate auto-removed from review rotation. Dashboard: `helix review models` shows per-model stats.
 - **Logic:** `ModelEvaluator` queries incident DB + false positive tracker. Computes per-model incident rate, FP rate, review accuracy. Auto-rotation trigger: >15% FP rate or >2x incident rate of next best model.
+- **Completed:** 2026-07-15 — Foreman implemented directly (both GLM-5.2 and kimi-k2.7 workers silent-exit). 4 files, +1255/-3 lines, 25 tests. ModelEvaluator with RecordMerge/RecordIncident/RecordReview/Evaluate/EvaluateAll. Rotation rules: FPR>15% removal, IR>2x fleet avg flagging, 14 consecutive days permanent removal, 30 clean days re-admission. Selection scoring formula (trust*0.70 + (1-IR)*0.20 + (1-costEff)*0.10). CLI: `helix models list|show|evaluate|rotate` with --json output. Build+vet+test PASS (55 packages). GitReins Tier 1 PASS. Commit a4656fb.
+- **AC met:** (1) ModelEvaluator tracks per-model incident and FP rates with RecordMerge/RecordIncident/RecordReview, (2) FPR>15% auto-removal, IR>2x fleet avg flagging, 14-day permanent + 30-day re-admit, (3) SelectionScore formula weights trust over model metrics, (4) `helix models list --sort-by incident-rate|false-positive-rate|cost` with table and JSON output.
 
 ## [ ] LOW: Implement pattern discovery across incident database
 - **Priority:** low
@@ -161,3 +163,5 @@ If unwired packages exist, tasks MUST prioritize wiring them before any new pack
 - **Root cause:** golangci-lint failures — 4 gofmt, 8 errcheck in test files, 1 unused function (tokenizeReader)
 - **Fix:** Commit c5c1777 — gofmt'd 4 files, added `_ =` to 8 unchecked error returns, removed unused tokenizeReader+bufio import
 - **Verification:** go build+vet+test PASS (all packages), golangci-lint CLEAN (exit 0)
+
+## [ ] Fix CI: totalwindupflightsystems/helix — run #223 — LOG_ACCESS_DENIED: 404 from gh run view
