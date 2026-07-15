@@ -9,8 +9,15 @@
 /helios-kb
 /sandbox
 /helix
+/helix-release
 bin/
 .gitreins/config.yaml.bak
 .gitreins/config.yaml.v*-bak
+.gitreins/history/
+
+# Hilo — local cache files (rebuildable)
+.vfs/graph/graph.db
+.vfs/graph/graph.db.wal
+.vfs/graph/.last_warm
 
 .helix/
