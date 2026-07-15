@@ -14,7 +14,7 @@ func tempDir(t *testing.T) string {
 	t.Helper()
 	d, err := os.MkdirTemp("", "helix-learning-test-*")
 	require.NoError(t, err)
-	t.Cleanup(func() { os.RemoveAll(d) })
+	t.Cleanup(func() { _ = os.RemoveAll(d) })
 	return d
 }
 
