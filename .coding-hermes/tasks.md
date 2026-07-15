@@ -162,6 +162,12 @@
 Run: `for pkg in pkg/*/; do name=$(basename "$pkg"); [ ! -d "cmd/$name" ] && [ ! -d "cmd/helix-$name" ] && echo "UNWIRED: $name"; done`
 If unwired packages exist, tasks MUST prioritize wiring them before any new package builds.
 
+## [ ] INFRA: Track Hilo .vfs/ graph files (edges.jsonl, manifest.yaml)
+- **Priority:** low — cross-machine sync hygiene
+- **Gap:** `.vfs/graph/edges.jsonl` and `.vfs/manifest.yaml` are untracked. Per hilo-usage skill, edges.jsonl must be committed for cross-machine graph sync via post-commit/merge hooks. `.vfs/` shows as `??` in git status.
+- **Files:** `.vfs/graph/edges.jsonl`, `.vfs/manifest.yaml` (track via git add)
+- **AC:** `git status` no longer shows `?? .vfs/`. Edges.jsonl committed and tracked for cross-machine Hilo sync.
+
 ## [x] Fix CI: Helix CI — consecutive failures (#204-#208), lint failures resolved
 - **Root cause:** golangci-lint failures — 4 gofmt, 8 errcheck in test files, 1 unused function (tokenizeReader)
 - **Fix:** Commit c5c1777 — gofmt'd 4 files, added `_ =` to 8 unchecked error returns, removed unused tokenizeReader+bufio import
