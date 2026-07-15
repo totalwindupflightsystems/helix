@@ -97,13 +97,14 @@
 - **Plan:** specs/plans/phase-7-8-negotiate-merge.md §7.3
 - **Completed:** 2026-07-14 — Board was stale; work committed as 03f9715. consensus.go (383 lines) with ConsensusCategory (contract/behavioral/resilience/cosmetic), RequiredQuorum (3/2/1/1), ComputeWeight, CheckOverride, ConsensusCalculator, HasQuorum. 19 tests. escalation.go handles ChimeraUnavailable → human fallback. All ACs verified: (1) contract=3/3, (2) behavioral=2/2, (3) cosmetic=1/1, (4) configurable per category, (5) escalation with structured PR comment.
 
-## [ ] MEDIUM: Implement incident attribution engine CLI
+## [x] MEDIUM: Implement incident attribution engine CLI
 - **Priority:** medium
 - **Plan:** specs/plans/phase-9-10-deploy-monitor.md §10.3
 - **Gap:** pkg/incident has types but no CLI. Can't attribute incidents to agents.
-- **Files:** cmd/helix-incident/main.go (NEW)
+- **Files:** cmd/helix/incident.go (extended, not new file — monorepo CLI)
 - **AC:** `helix incident attribute --since 24h` traces causal chain from recent deploys → changed code paths → responsible agents. Output: author 70%, reviewer(s) 20%, approver 10%. Feeds trust ledger.
 - **Logic:** Query deployment history → find changed files → git blame → agent identity lookup → attribution split. Time-weighted decay applied. Trust ledger update triggered.
+- **Completed:** 2026-07-15 — Foreman implemented directly. Added `attribute` subcommand with --since (with shorthand conversion: 24h→24.hours, 7d→7.days), --limit, --json, --verbose flags. discoverChangePaths() queries git log → unique files → git blame porcelain → ChangePath list → AttributionEngine.Attribute() → table/JSON output. +286/-5 in cmd/helix/incident.go. Build+vet+test PASS. GitReins Tier 1 PASS. E2E verified: `helix incident attribute --since 48h` found 12 change paths (totalwindupflightsystems 83.3%, Bane 16.7%). Commit b2d20ff.
 
 ## [ ] MEDIUM: Implement shadow verification CLI
 - **Priority:** medium
