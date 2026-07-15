@@ -69,17 +69,90 @@ Every existing dev tool treats AI as an assistant — a smarter autocomplete. He
 14. Marketplace updates agent reputation (trust score, acceptance rate, cost adherence)
 15. LangFuse traces everything. Forgejo Pages deploys if site.
 
-## Components
+## Components (42 packages, 10 CLIs)
+
+### Core Platform
 
 | Component | Package | CLI | Description |
 |-----------|---------|-----|-------------|
 | Agent Identity | `pkg/identity` | `helix-identity` | Forgejo OAuth, SSH keys, PAT provisioning |
-| Cost Estimator | `pkg/estimate` | `helix-estimate` | Token burn pre-flight, cache-aware pricing |
-| PR Negotiation | `pkg/negotiate` | `helix-negotiate` | Agent debate protocol + Chimera tie-break |
 | Prompt Registry | `pkg/prompt` | `helix-prompt` | Prompt provenance, hash attestation, PromptFoo bridge |
 | Agent Marketplace | `pkg/marketplace` | `helix-marketplace` | Agent discoverability, trust scoring, human ratings |
-| Dispatcher | `pkg/dispatcher` | — | Ralph Loop engine, task decomposition, agent assignment |
+| Cost Estimator | `pkg/estimate` | `helix-estimate` | Token burn pre-flight, cache-aware pricing |
+| PR Negotiation | `pkg/negotiate` | `helix-negotiate` | Agent debate protocol + Chimera tie-break |
+| Dispatcher | `pkg/dispatcher` | `helix dispatch` | Ralph Loop engine, task decomposition, agent assignment |
 | Sandbox | `pkg/sandbox` | `sandbox` | Bubblewrap-based agent isolation |
+| Clarification Protocol | `pkg/dispatcher` | `helix dispatcher clarify` | Structured agent-human clarification with auto-resolve |
+
+### Review & Quality Gates
+
+| Component | Package | CLI | Description |
+|-----------|---------|-----|-------------|
+| Adversarial Review | `pkg/review` | `helix review` | Multi-model review pipeline, blast radius, dashboard, load balancing |
+| Review Dismissal | `pkg/review` | `helix review dismiss` | Structured dismissal protocol with false-positive tracking |
+| Merge Gate | `pkg/mergegate` | `helix mergegate` | Pre-receive hook: trust-tier, secrets, attestation enforcement |
+| Co-Approval | `pkg/coapproval` | `helix coapproval` | Final merge approval gate with multi-model consensus |
+| Force Merge Audit | `pkg/forcemerge` | `helix forcemerge` | Audit trail for every admin override merge |
+| Audit Trail | `pkg/audit` | `helix audit` | 12-step audit trail checker per spec |
+| Adversarial Scenarios | `pkg/adversarial` | `helix adversarial` | Encoded testing scenario pack for adversarial review |
+| Consensus Thresholds | `pkg/negotiate` | `helix negotiate` | Risk-level quorum thresholds for Chimera tiebreak |
+
+### Design & Planning
+
+| Component | Package | CLI | Description |
+|-----------|---------|-----|-------------|
+| Ideation | `pkg/ideation` | `helix idea` | Offline idea capture, validation, prioritization, promotion |
+| Spec Co-Authoring | `pkg/spec` | `helix spec` | Multi-agent spec creation with adversarial annotation, 12-dim completeness |
+| ADR System | `pkg/adr` | `helix adr` | Architecture Decision Records with co-authoring and multi-model review |
+| Design Review | `pkg/design` | `helix design` | Automated design review via adversarial agents (5 roles) |
+| API Contracts | `pkg/contract` | `helix contract` | OpenAPI/protobuf generation, validation, breaking change detection |
+
+### Orchestration & Pipeline
+
+| Component | Package | CLI | Description |
+|-----------|---------|-----|-------------|
+| PR Coordinator | `pkg/coordinator` | `helix coordinator` | Full PR lifecycle orchestration composing all services |
+| Pipeline State | `pkg/pipeline` | — | 12-step PR lifecycle state machine |
+| Retry Logic | `pkg/retry` | — | Exponential backoff for cross-service calls |
+| Platform Config | `pkg/config` | — | Unified platform configuration loading |
+
+### Learning, Trust & Memory
+
+| Component | Package | CLI | Description |
+|-----------|---------|-----|-------------|
+| Context Bus | `pkg/learning` | `helix notify` | Cross-agent notification and context sharing with domain pub/sub |
+| Model Evaluation | `pkg/learning` | `helix models` | Production-outcome-based model rotation: FPR/IR tracking, auto-removal |
+| Pattern Mining | `pkg/learning` | `helix incident patterns` | Incident pattern discovery across database: category, provider, time |
+| Skill Transfer | `pkg/learning` | `helix learn` | Agent skill registry with trust-gated publication and outcome tracking |
+| Trust Scoring | `pkg/trust` | `helix trust` | Graduated multi-dimensional trust with tier assignment and decay |
+| Agent Memory | `pkg/memory` | — | DuckBrain and Hivemind memory schema types and interfaces |
+| Incident DB | `pkg/incident` | `helix incident` | Incident learning database with attribution engine |
+
+### Operations & Security
+
+| Component | Package | CLI | Description |
+|-----------|---------|-----|-------------|
+| Release Signoff | — | `helix-release` | Dual human+agent signature with automated technical gate verification |
+| Shadow Verification | `pkg/verify` | `helix-verify` | Shadow deployment, canary promotion, behavior diff, auto-rollback |
+| Security Hardening | `pkg/security` | `helix security` | Security hardening checklist verifier |
+| Vulnerability Scan | `pkg/vuln` | `helix vuln` | Dependency vulnerability scanner |
+| Error Recovery | `pkg/recovery` | `helix recovery` | Structured error recovery procedures per component |
+| Graceful Degradation | `pkg/degradation` | `helix degradation` | Platform graceful-degradation policies |
+| Backup Strategy | `pkg/backup` | `helix backup` | Structured backup strategy data and validation |
+| Health Metrics | `pkg/health` | `helix health` | Agent and platform health metrics |
+
+### Infrastructure & Integration
+
+| Component | Package | CLI | Description |
+|-----------|---------|-----|-------------|
+| API Contracts | `pkg/api` | — | Typed Go structs from spec API contracts |
+| CI Generation | `pkg/ci` | `helix ci` | Forgejo Actions workflow generation and validation |
+| Webhook Receiver | `pkg/webhook` | `helix webhook` | Forgejo webhook event receiver |
+| Forgejo Client | `pkg/forgejo` | — | Forgejo REST API client: branches, repos, PRs |
+| Integration Tests | `pkg/integration` | — | End-to-end integration test harnesses |
+| Structured Logging | `pkg/log` | — | Dependency-free structured logging facility |
+| CLI Banners | `pkg/banner` | — | ASCII art startup banners for Helix CLI |
+| Deploy Targets | `pkg/deploy` | — | Platform deployment configuration
 
 ## Primitives
 
