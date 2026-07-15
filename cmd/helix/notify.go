@@ -152,7 +152,7 @@ func parseNotifyFlags(args []string, stderr io.Writer) (notifyFlags, bool) {
 				return f, false
 			}
 			i++
-			fmt.Sscanf(args[i], "%d", &f.interval)
+			_, _ = fmt.Sscanf(args[i], "%d", &f.interval)
 		default:
 			fmt.Fprintf(stderr, "notify: unknown flag %q\n", arg)
 			return f, false

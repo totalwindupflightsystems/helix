@@ -218,7 +218,7 @@ func (cb *ContextBus) loadSubscriptions() {
 	if err != nil {
 		return
 	}
-	json.Unmarshal(data, &cb.subscriptions) // best-effort
+	_ = json.Unmarshal(data, &cb.subscriptions) // best-effort
 }
 
 func (cb *ContextBus) saveSubscriptions() error {
