@@ -154,10 +154,9 @@
 - **Gap:** Release signoff was human-only with no technical gate verification.
 - **Files:** cmd/helix-release/main.go (NEW)
 
-## [ ] DOC: Update README component table — stale, only lists 7 of 42 packages
+## [x] DOC: Update README component table — stale, only lists 7 of 42 packages
 - **Priority:** low — documentation hygiene
-- **Gap:** README component table (lines 76-82) lists only 7 components: identity, estimate, negotiate, prompt, marketplace, dispatcher, sandbox. Project has 42 pkg/ directories and 10 cmd/ directories including recent additions: review (dashboard/load-balance/dismissal), learning (context_bus/model_eval/miner/skills), incident (attribution/patterns), ideation, spec, adr, design, contract, mergegate, verify, release, notify, models. Multiple standalone binaries missing from table: helix-release, helix-verify, sandbox.
-- **AC:** Component table in README lists all major packages with descriptions. Table format matches existing style (Component | Package | CLI | Description).
+- **Completed:** 2026-07-15 — Foreman direct. Updated component table from 7 to 42 packages in 8 categorized sections: Core Platform, Review & Quality Gates, Design & Planning, Orchestration & Pipeline, Learning/Trust/Memory, Operations & Security, Infrastructure & Integration. 10 CLIs listed.
 
 ## [ ] FOREMAN RULE: Always run wiring check before generating new tasks
 Run: `for pkg in pkg/*/; do name=$(basename "$pkg"); [ ! -d "cmd/$name" ] && [ ! -d "cmd/helix-$name" ] && echo "UNWIRED: $name"; done`
