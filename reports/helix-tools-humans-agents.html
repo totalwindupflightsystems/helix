@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helix — Tools For Humans, Tools For Agents, Shared Truth</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --purple: #a371f7; --orange: #d2991d;
+    --red: #f85149;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; line-height:1.65; }
+  .container { max-width:1100px; margin:0 auto; padding:2rem; }
+
+  header { text-align:center; padding:3rem 0 2rem; border-bottom:2px solid var(--accent); margin-bottom:2rem; }
+  header h1 { font-size:2.2rem; color:var(--accent); margin-bottom:0.5rem; }
+  header .tagline { color:var(--muted); font-size:1.1rem; max-width:750px; margin:0 auto; }
+
+  .thesis { background:linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border:1px solid var(--accent); border-radius:12px; padding:1.5rem; margin:2rem 0; }
+  .thesis p { font-size:1.05rem; text-align:center; }
+  .thesis .rule { color:var(--accent); font-weight:700; }
+
+  section { margin:3rem 0; }
+  section h2 { color:var(--accent); font-size:1.2rem; border-bottom:1px solid var(--border); padding-bottom:0.4rem; margin-bottom:1.2rem; }
+
+  .three-col { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; margin-bottom:1rem; }
+  .three-col .col { border:1px solid var(--border); border-radius:8px; padding:1rem; }
+  .col h3 { font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.8rem; padding-bottom:0.4rem; border-bottom:1px solid var(--border); }
+  .col.human h3 { color:var(--green); }
+  .col.agent h3 { color:var(--purple); }
+  .col.truth h3 { color:var(--accent); }
+  .col ul { list-style:none; font-size:0.88rem; }
+  .col li { padding:0.3rem 0; border-bottom:1px solid rgba(48,54,61,0.5); }
+  .col li:last-child { border-bottom:none; }
+  .col .idea { font-weight:600; }
+  .col .why { color:var(--muted); font-size:0.78rem; margin-top:0.15rem; }
+
+  .new-concept { background:var(--surface); border:1px dashed var(--purple); border-radius:12px; padding:1.5rem; margin:1.5rem 0; }
+  .new-concept h3 { color:var(--purple); margin-bottom:0.5rem; }
+  .new-concept p { font-size:0.92rem; color:var(--text); margin-bottom:0.5rem; }
+
+  footer { text-align:center; padding:2rem; color:var(--muted); font-size:0.8rem; border-top:1px solid var(--border); margin-top:3rem; }
+
+  @media (max-width:800px) { .three-col { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>Tools For Humans. Tools For Agents. Shared Truth.</h1>
+  <p class="tagline">Not "one interface, two views." Two different products optimized for two different kinds of intelligence. Connected by the same source of truth — the git repo.</p>
+</header>
+
+<div class="thesis">
+  <p>Humans think in <span style="color:var(--green)">narratives, risks, tradeoffs, context</span> — they need tools that tell stories. Agents think in <span style="color:var(--purple)">criteria, evidence, consensus</span> — they need tools that produce verdicts. <span class="rule">The only thing they share is truth.</span></p>
+</div>
+
+<!-- IDEATION -->
+<section>
+  <h2>1. Idea Inception & Prioritization</h2>
+  <div class="three-col">
+    <div class="col human">
+      <h3>👤 Human Tool: Idea Compass</h3>
+      <ul>
+        <li><div class="idea">Strategic context layer</div><div class="why">Shows business goals, user feedback themes, revenue impact. Humans decide what matters.</div></li>
+        <li><div class="idea">Cost projection at decision time</div><div class="why">Token burn estimate + implementation complexity + risk profile — before commitment, not after.</div></li>
+        <li><div class="idea">Pattern surface from agent discoveries</div><div class="why">"Agents found 23 incidents clustered in auth-refresh. Should we prioritize auth hardening?" Push, not pull.</div></li>
+        <li><div class="idea">Roadmap editor with agent stake</div><div class="why">Agent-submitted priorities visible alongside human ones. Transparent, not hidden.</div></li>
+      </ul>
+    </div>
+    <div class="col agent">
+      <h3>🤖 Agent Tool: Idea Mine</h3>
+      <ul>
+        <li><div class="idea">Unattended pattern scanner</div><div class="why">Scans incident DB + codebase + test logs. Detects clusters humans won't see because they don't read all the data.</div></li>
+        <li><div class="idea">Auto-generated evidence brief</div><div class="why">"23 incidents match this pattern across 7 services. Root cause: inconsistent TokenRefresh timeout. Proposed fix: consolidate to 300s with circuit breaker."</div></li>
+        <li><div class="idea">Adversarial challenge on submitted ideas</div><div class="why">Every human-submitted idea gets challenged by a model with no stake. Not "make it better" — "prove you need this at all."</div></li>
+      </ul>
+    </div>
+    <div class="col truth">
+      <h3>🔄 Shared Truth</h3>
+      <ul>
+        <li><div class="idea">Idea registry (git)</div><div class="why">Every idea is a file in ideas/. Traceable, versioned, attributed — human or agent, same trail.</div></li>
+        <li><div class="idea">Evidence ledger</div><div class="why">Every pattern claim links to specific incidents/commits/logs. Assertion → evidence → verdict chain.</div></li>
+        <li><div class="idea">Decision record (ADR)</div><div class="why">What was chosen, what was rejected, why. Human and agent decisions both recorded the same way.</div></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- SPECIFICATION -->
+<section>
+  <h2>2. Specification & Design</h2>
+  <div class="three-col">
+    <div class="col human">
+      <h3>👤 Human Tool: Design Canvas</h3>
+      <ul>
+        <li><div class="idea">Intent-level spec authoring</div><div class="why">Humans write intent and constraints. Not "exact Go interface with every error path." That's the agent's job.</div></li>
+        <li><div class="idea">Architecture decision visualizer</div><div class="why">What does this decision close off? What does it enable? Dependency graphs, not bullet points.</div></li>
+        <li><div class="idea">Blast radius preview during design</div><div class="why">"Adding this API route touches 3 auth services, 2 database tables, and the deployment pipeline." Before the spec is done.</div></li>
+        <li><div class="idea">Review by exception</div><div class="why">Human doesn't read the full spec. Agent produces a completeness assertion. Human only reviews what scored below threshold.</div></li>
+      </ul>
+    </div>
+    <div class="col agent">
+      <h3>🤖 Agent Tool: Spec Forge</h3>
+      <ul>
+        <li><div class="idea">Intent-to-spec compiler</div><div class="why">Human writes "we need auth that survives token refresh with 99.9% uptime." Agent produces the exhaustive spec — interfaces, DDL, error catalog, edge cases. Human signs off intent; agent fills in details.</div></li>
+        <li><div class="idea">12-dimension completeness scanner</div><div class="why">Requirements, errors, auth, rate limiting, data validation, observability, testing, deployment, rollback, monitoring, security, docs. None pass incomplete.</div></li>
+        <li><div class="idea">Breaking change impact analysis</div><div class="why">"This API contract change will break 3 consumers. Here's the migration path for each." Automatically, before the spec is committed.</div></li>
+        <li><div class="idea">Spec-sync watchdog</div><div class="why">Detects drift between specs and implementation. Not during review — continuously, in background.</div></li>
+      </ul>
+    </div>
+    <div class="col truth">
+      <h3>🔄 Shared Truth</h3>
+      <ul>
+        <li><div class="idea">specs/ directory (git)</div><div class="why">Every spec is versioned alongside code. Spec drift is a diff, not a meeting.</div></li>
+        <li><div class="idea">Contract files (.yaml)</div><div class="why">API contracts, behavior contracts, data schemas. Machine-readable, human-auditable. Both tools consume and produce same format.</div></li>
+        <li><div class="idea">Completeness assertion protocol</div><div class="why">Agent produces "spec passes 12/12 dimensions with 94% confidence." Human sees the score, digs into failing dimensions only.</div></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- IMPLEMENTATION -->
+<section>
+  <h2>3. Implementation</h2>
+  <div class="three-col">
+    <div class="col human">
+      <h3>👤 Human Tool: Task Compass</h3>
+      <ul>
+        <li><div class="idea">Task intent, not task detail</div><div class="why">Human writes: "Fix the auth refresh race condition discovered in INC-47." Not: "Modify TokenManager.go line 142 to use sync.Mutex."</div></li>
+        <li><div class="idea">Progress at a glance</div><div class="why">Dashboard showing: what's in progress, what's blocked, what passed/failed quality gates. No code-level detail unless requested.</div></li>
+        <li><div class="idea">Escalation trigger with reason</div><div class="why">Agent can't solve something → escalates with "I tried X, Y, Z. X failed because of A. Y failed because of B. Z is blocked by missing permission C." Human decides, doesn't investigate.</div></li>
+      </ul>
+    </div>
+    <div class="col agent">
+      <h3>🤖 Agent Tool: Task Executor</h3>
+      <ul>
+        <li><div class="idea">Structured task intake</div><div class="why">Agent receives: task intent + spec reference + related incidents + dependency graph + relevant code. Self-contained execution package.</div></li>
+        <li><div class="idea">Sandboxed worktree with full audit</div><div class="why">Bubblewrap isolation. Every file write, every test run, every command logged. Attributable to specific task and agent.</div></li>
+        <li><div class="idea">Deterministic acceptance verification</div><div class="why">Agent checks: does this compile? Do tests pass? Does it match specs? Does it satisfy the behavior contract? Binary yes/no, not "looks good."</div></li>
+        <li><div class="idea">Self-rollback on gate failure</div><div class="why">Agent can't merge if it can't pass quality gates. Automatic rollback, retry with different approach, escalate if stuck.</div></li>
+      </ul>
+    </div>
+    <div class="col truth">
+      <h3>🔄 Shared Truth</h3>
+      <ul>
+        <li><div class="idea">Task board (git)</div><div class="why">Tasks as files. Status transitions are commits. Agent and human both read/write same board.</div></li>
+        <li><div class="idea">Feature branches (git)</div><div class="why">Agent pushes to feat/*, human pushes to feat/*. Same branch conventions, same PR flow.</div></li>
+        <li><div class="idea">Sandbox policy (git)</div><div class="why">What each agent can access, what trust tier is required, what permissions are granted. Versioned, auditable.</div></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- REVIEW -->
+<section>
+  <h2>4. Pre-Merge Review</h2>
+  <div class="three-col">
+    <div class="col human">
+      <h3>👤 Human Tool: Change Compass</h3>
+      <ul>
+        <li><div class="idea">Blast radius map</div><div class="why">Not "what changed." What DEPENDS on what changed. Which teams, services, users are affected. Visual graph, not a file list.</div></li>
+        <li><div class="idea">Risk narrative</div><div class="why">"This change touches the auth pipeline. 3 prior incidents in this code path. The reviewer agent flagged 2 concerns; both resolved. The author agent has Veteran trust in auth code." Story, not checklist.</div></li>
+        <li><div class="idea">Architecture fit score</div><div class="why">Does this change align with ADRs? Does it introduce a new pattern? Is the pattern consistent with existing code?</div></li>
+        <li><div class="idea">Trust-weighted review load</div><div class="why">High-trust agent → lighter review surface. Low-trust agent → full review. Human attention allocated where it matters.</div></li>
+        <li><div class="idea">One-click sign-off with traceability</div><div class="why">Human approves with a signature. Every approval links to the evidence the agent produced. No read-the-entire-diff required.</div></li>
+      </ul>
+    </div>
+    <div class="col agent">
+      <h3>🤖 Agent Tool: Verdict Engine</h3>
+      <ul>
+        <li><div class="idea">Bias-stripped code ingestion</div><div class="why">All evaluative language stripped from commit messages before review. "Fixed the auth bug, tested locally" → "Modified auth module. Verify correctness." No priming.</div></li>
+        <li><div class="idea">Multi-model consensus formation</div><div class="why">3+ models from different providers review independently. Consensus with evidence scoring. No single model trusted.</div></li>
+        <li><div class="idea">Evidence bundles (ED25519 signed)</div><div class="why">Every finding cites specific lines and test failures. "Seems suspicious" findings are discarded. Signed verdicts are tamper-proof.</div></li>
+        <li><div class="idea">Deterministic acceptance gate</div><div class="why">Binary pass/fail per criterion. 7/7 ACs pass → green. 6/7 → blocked with reason. No "maybe."</div></li>
+        <li><div class="idea">False positive feedback loop</div><div class="why">Human dismisses finding → 10 dismissals → model re-evaluated → >15% FP rate → auto-removed from rotation.</div></li>
+      </ul>
+    </div>
+    <div class="col truth">
+      <h3>🔄 Shared Truth</h3>
+      <ul>
+        <li><div class="idea">PR thread (Forgejo/git)</div><div class="why">Human comments, agent evidence, debate records — all in the same PR. Both tools read/write same thread.</div></li>
+        <li><div class="idea">Evidence ledger (git)</div><div class="why">Every review produces a signed, hash-chained artifact. Verdict + evidence + model provenance all tracked.</div></li>
+        <li><div class="idea">Behavior contracts (.yaml)</div><div class="why">"P99 ≤ 200ms, error rate ≤ 0.1%." Machine-enforceable. Generated by agent, approved by human, verified in production.</div></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- DEPLOYMENT -->
+<section>
+  <h2>5. Deployment & Release</h2>
+  <div class="three-col">
+    <div class="col human">
+      <h3>👤 Human Tool: Release Helm</h3>
+      <ul>
+        <li><div class="idea">Intent-level release authorization</div><div class="why">"Is now the right time to ship? Do we accept the residual risk?" Human answers these. Agent verified everything else.</div></li>
+        <li><div class="idea">Canary confidence dashboard</div><div class="why">"Agent-authored code at 5% canary. P99 latency: stable. Error rate: 0.02%. Contracts: passing. Trust tier: Veteran. Recommend: accelerate to 25%." Human approves or adjusts.</div></li>
+        <li><div class="idea">Rollback trigger with reason</div><div class="why">Auto-rollback happened? Human sees: "Contract breach at 25% canary — error rate 0.18% vs 0.10% threshold. Rolled back. Agent trust penalty applied. Incident INC-52 created."</div></li>
+      </ul>
+    </div>
+    <div class="col agent">
+      <h3>🤖 Agent Tool: Deployment Sentinel</h3>
+      <ul>
+        <li><div class="idea">Shadow verification engine</div><div class="why">Dark launch: production traffic mirrored to new code. Behavior differential analysis. Auto-rollback on anomaly — no human needed to catch the spike.</div></li>
+        <li><div class="idea">Trust-gated canary ramp</div><div class="why">Veteran agent → 12h to 100%. Provisional → 96h. Trust directly gates velocity. Earned, not assigned.</div></li>
+        <li><div class="idea">Behavior contract surveillance</div><div class="why">Continuous verification of every deployed contract. Breach → auto-rollback → agent penalty → incident created. All unattended.</div></li>
+        <li><div class="idea">Release gate verification</div><div class="why">7 gates verified: build, test, lint, adversarial review, evidence valid, contract present, trust tier sufficient. All green → agent signs release. One red → blocked.</div></li>
+      </ul>
+    </div>
+    <div class="col truth">
+      <h3>🔄 Shared Truth</h3>
+      <ul>
+        <li><div class="idea">Behavior contracts (git)</div><div class="why">Every merge includes a .yaml contract. Enforced through deployment. Versioned, traceable, attributable.</div></li>
+        <li><div class="idea">Release signatures (git tag)</div><div class="why">Every release is signed: human signs intent + timing, agent signs technical verification. Both signatures required.</div></li>
+        <li><div class="idea">Canary config (git)</div><div class="why">Trust-tier-to-ramp-rate mapping. Versioned. Changes require human approval.</div></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- INCIDENTS -->
+<section>
+  <h2>6. Incidents & Learning</h2>
+  <div class="three-col">
+    <div class="col human">
+      <h3>👤 Human Tool: Incident Dashboard</h3>
+      <ul>
+        <li><div class="idea">Narrative timeline</div><div class="why">What happened, when, who was involved, what was the chain of causation. Human-readable, not a log dump.</div></li>
+        <li><div class="idea">Attribution view with context</div><div class="why">"Author agent: 70% responsibility. Reviewer agent: 20%. Approving human: 10%." With links to evidence, not judgment.</div></li>
+        <li><div class="idea">Trust trend visualization</div><div class="why">Agent trust over time, across incident spikes. Trending up or down? How many incidents before demotion?</div></li>
+        <li><div class="idea">Cross-agent pattern alert</div><div class="why">"3 agents have caused similar incidents in the same code path in the last 30 days." Not "here's a log." "Here's why you should care."</div></li>
+      </ul>
+    </div>
+    <div class="col agent">
+      <h3>🤖 Agent Tool: Learning Engine</h3>
+      <ul>
+        <li><div class="idea">Causal chain tracer</div><div class="why">Incident → code paths → commits → authors. Automatic attribution. Evidence-linked. No human investigation required.</div></li>
+        <li><div class="idea">Time-weighted attribution calculator</div><div class="why">100% at 0-7 days, 50% at 8-30d, 10% at 31-90d, 0% after 90d. Prevents punishing agents for latent bugs discovered months later.</div></li>
+        <li><div class="idea">Pattern-to-task converter</div><div class="why">"3 incidents match this pattern → create task: fix underlying race condition in auth-refresh → assign to agent with highest trust in auth code."</div></li>
+        <li><div class="idea">Marketplace skill auto-publish</div><div class="why">Agent discovers a reliable pattern → publishes it as a skill. Other agents load it. Tracked by outcomes — ineffective skills lose weight.</div></li>
+      </ul>
+    </div>
+    <div class="col truth">
+      <h3>🔄 Shared Truth</h3>
+      <ul>
+        <li><div class="idea">Incident database (git)</div><div class="why">Every incident is a structured file. Causation chain, attribution, remediation. Queryable by humans and agents alike.</div></li>
+        <li><div class="idea">Trust ledger (append-only JSONL)</div><div class="why">Every trust event recorded. Deterministic, replayable, tamper-evident. Both tools read the same ledger.</div></li>
+        <li><div class="idea">Pattern registry (git)</div><div class="why">Agent-discovered patterns stored where agents can query them before starting tasks.</div></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- NEW CONCEPTS -->
+<section>
+  <h2>7. Brand-New Concepts (Neither Human Nor Agent Tool Today)</h2>
+
+  <div class="new-concept">
+    <h3>🔮 Pre-Solve Lab (Off-by-One Engine)</h3>
+    <p><strong>What:</strong> While one agent works, the system pre-solves tomorrow's tasks. The pre-solve lab discovers patterns, caches solutions, and pre-loads context. When tomorrow's agent starts, the answer is already waiting. <strong>Why novel:</strong> No existing tool pre-computes solutions for future agents. CI caches builds but doesn't cache architectural insights or pattern discoveries.</p>
+  </div>
+
+  <div class="new-concept">
+    <h3>📊 Trust Futures Market (Internal)</h3>
+    <p><strong>What:</strong> Agents predict which other agents will succeed on specific task types. "Agent X on auth code: 94% probability of clean merge based on 23 prior auth tasks." When an agent volunteers for a task, its trust score in that domain is the starting bid. Agents that consistently overestimate or underestimate get trust-adjusted. <strong>Why novel:</strong> No existing system routes tasks based on predictive trust. Jira assigns based on availability, not probability of success.</p>
+  </div>
+
+  <div class="new-concept">
+    <h3>🔄 Consensus-Breaking Detection</h3>
+    <p><strong>What:</strong> When 3+ agents agree on a review verdict and one human overrides, the system flags: "Consensus-breaking override: 4 agents agree this is safe. 1 human disagrees. Tracking outcome." If the human was right (incident occurs), their override weight increases. If the agents were right (no incident), the human's override weight decreases. <strong>Why novel:</strong> No existing system tracks override outcomes across agents and humans to calibrate trust in both directions.</p>
+  </div>
+
+  <div class="new-concept">
+    <h3>🧬 Agent DNA (Capability Fingerprint)</h3>
+    <p><strong>What:</strong> Every agent has a dynamic fingerprint of what it's reliably good at, computed from merge outcomes — not benchmarks, not model reputation. Auth code: 98% merge success, 2 incidents in 89 tasks. Database migrations: 82% success, 7 incidents in 34 tasks. Frontend: 99% success, 0 incidents in 112 tasks. Task assignment routes to the agent with the highest fingerprint match. <strong>Why novel:</strong> Benchmarks measure general ability. Agent DNA measures specific production outcomes on specific code domains. Two agents on the same model have different DNA because they've built different track records.</p>
+  </div>
+
+  <div class="new-concept">
+    <h3>📝 Spec-as-Law (Enforced by Agents, Approved by Humans)</h3>
+    <p><strong>What:</strong> Specs aren't documentation. They're law. A spec says "P99 ≤ 200ms" — the behavior contract enforces it. A spec says "JWT expires at 15 minutes with 5-minute grace" — the agent generates code that matches, the review agent verifies it matches, the deployment sentinel monitors that it matches. If implementation drifts from spec, it's not a documentation gap — it's a violation, blocked at the merge gate. <strong>Why novel:</strong> Current tools treat specs as advisory prose. Helix treats them as executable constraints verified at every gate.</p>
+  </div>
+</section>
+
+<section>
+  <h2>8. The Protocol Layer (What Connects Them)</h2>
+
+  <table style="width:100%; border-collapse:collapse; margin-top:1rem;">
+    <tr><th style="text-align:left; padding:0.5rem; border-bottom:1px solid var(--border); color:var(--accent);">Protocol</th><th style="text-align:left; padding:0.5rem; border-bottom:1px solid var(--border); color:var(--accent);">Format</th><th style="text-align:left; padding:0.5rem; border-bottom:1px solid var(--border); color:var(--accent);">Human Tool Reads/Writes</th><th style="text-align:left; padding:0.5rem; border-bottom:1px solid var(--border); color:var(--accent);">Agent Tool Reads/Writes</th></tr>
+    <tr><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Task Intent</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">.yaml</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Writes intent, reads status</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Reads intent, compiles into structured work</td></tr>
+    <tr><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Specification</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">.scl / .yaml</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Writes intent + constraints</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Compiles into implementation; verifies against</td></tr>
+    <tr><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Behavior Contract</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">.yaml</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Approves/rejects</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Generates, verifies, enforces</td></tr>
+    <tr><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Review Verdict</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">.json + ED25519 sig</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Reads verdict + override</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Produces evidence bundles + signed verdicts</td></tr>
+    <tr><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Trust Event</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">JSONL</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Reads trends, submits feedback</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Calculates scores, adjusts tiers</td></tr>
+    <tr><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Incident Record</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">.yaml</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Reads narrative, approves attribution</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Traces causation, attributes, links to patterns</td></tr>
+    <tr><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Release Signature</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">git tag + sig</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Signs intent + timing</td><td style="padding:0.4rem; border-bottom:1px solid var(--border);">Signs technical verification</td></tr>
+  </table>
+</section>
+
+<footer>
+  Helix — Tools for humans. Tools for agents. Shared truth. · 6 SDLC domains · 24 tools · 6 brand-new concepts · 1 protocol layer.
+</footer>
+</div>
+</body>
+</html>
