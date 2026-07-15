@@ -94,15 +94,15 @@ var (
 
 // SignoffRecord is the persistent signoff document for one release.
 type SignoffRecord struct {
-	ReleaseID    string `json:"release_id"`
-	Version      string `json:"version"`
-	AgentID      string `json:"agent_id"`
-	MergeCommit  string `json:"merge_commit"`
+	ReleaseID   string `json:"release_id"`
+	Version     string `json:"version"`
+	AgentID     string `json:"agent_id"`
+	MergeCommit string `json:"merge_commit"`
 
 	HumanSignoff HumanSignoff `json:"human_signoff"`
 	AgentSignoff AgentSignoff `json:"agent_signoff"`
 
-	TrustTierAtSignoff string                `json:"trust_tier_at_signoff"`
+	TrustTierAtSignoff string                 `json:"trust_tier_at_signoff"`
 	CanarySchedule     *canaryScheduleSummary `json:"canary_schedule,omitempty"`
 }
 
@@ -129,9 +129,9 @@ type GateStatus struct {
 
 // canaryScheduleSummary is a lightweight view of the canary schedule.
 type canaryScheduleSummary struct {
-	Tier           string `json:"tier"`
-	TotalDuration  string `json:"total_duration"`
-	TotalSteps     int    `json:"total_steps"`
+	Tier            string  `json:"tier"`
+	TotalDuration   string  `json:"total_duration"`
+	TotalSteps      int     `json:"total_steps"`
 	TrafficStartPct float64 `json:"traffic_start_pct"`
 }
 
@@ -140,8 +140,8 @@ type canaryScheduleSummary struct {
 // ---------------------------------------------------------------------------
 
 type releaseStore struct {
-	mu   sync.RWMutex
-	dir  string // ~/.helix/releases
+	mu  sync.RWMutex
+	dir string // ~/.helix/releases
 }
 
 func newSignoffStore() *releaseStore {
@@ -391,12 +391,12 @@ func canaryScheduleSummaryFor(tier string) *canaryScheduleSummary {
 // ---------------------------------------------------------------------------
 
 type signoffFlags struct {
-	version      string
-	agent        string
-	mergeCommit  string
-	tier         string
-	ledger       string
-	json         bool
+	version     string
+	agent       string
+	mergeCommit string
+	tier        string
+	ledger      string
+	json        bool
 }
 
 var soFlags = &signoffFlags{}
@@ -589,9 +589,9 @@ func printGate(g GateStatus) {
 // ---------------------------------------------------------------------------
 
 type approveFlags struct {
-	version  string
-	humanID  string
-	ledger   string
+	version string
+	humanID string
+	ledger  string
 }
 
 var appFlags = &approveFlags{}
