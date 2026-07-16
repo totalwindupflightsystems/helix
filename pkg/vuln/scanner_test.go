@@ -634,15 +634,10 @@ func TestScan_DispatchesToCorrectRunner(t *testing.T) {
 	cases := []struct {
 		files    []string
 		wantLang Language
-		// preUnavailable is true when we expect ScannerUnavailable
-		// because the binary is not on PATH. npm happens to be
-		// installed in this environment; govulncheck and pip-audit
-		// are not, so their Scan branches return ScannerUnavailable.
-		preUnavailable bool
 	}{
-		{[]string{"go.mod"}, LangGo, true},
-		{[]string{"package.json"}, LangJS, false},
-		{[]string{"pyproject.toml"}, LangPython, true},
+		{[]string{"go.mod"}, LangGo},
+		{[]string{"package.json"}, LangJS},
+		{[]string{"pyproject.toml"}, LangPython},
 	}
 	for _, tc := range cases {
 		dir := t.TempDir()
@@ -659,17 +654,10 @@ func TestScan_DispatchesToCorrectRunner(t *testing.T) {
 		if r.Language != tc.wantLang {
 			t.Errorf("Scan(%v) language = %q, want %q", tc.files, r.Language, tc.wantLang)
 		}
-		if tc.preUnavailable {
-			if r.Status != ScannerUnavailable {
-				t.Errorf("Scan(%v) status = %q, want unavailable (binary missing)", tc.files, r.Status)
-			}
-		} else {
-			// npm IS installed — we accept either OK (no findings)
-			// or any non-error status. Reject ScannerUnavailable.
-			if r.Status == ScannerUnavailable {
-				t.Errorf("Scan(%v) should not be unavailable; npm is installed", tc.files)
-			}
-		}
+		// Status depends on whether the binary is on PATH and whether
+		// the dummy fixture dir is valid for the scanner — not on the
+		// dispatch logic. Only reject a fatal error (nil-Report, non-nil
+		// error on the Scan itself).
 	}
 }
 

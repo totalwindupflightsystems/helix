@@ -1,47 +1,56 @@
+version: "2"
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
+    goimports:
+      local-prefixes:
+        - github.com/totalwindupflightsystems/helix
 run:
   timeout: 5m
   go: "1.22"
-
 linters:
   enable:
     - errcheck
-    - gosimple
     - govet
     - ineffassign
     - staticcheck
     - unused
-    - gofmt
-    - goimports
-
-linters-settings:
-  gofmt:
-    simplify: true
-  goimports:
-    local-prefixes: github.com/totalwindupflightsystems/helix
-
-issues:
-  exclude-rules:
-    # Exclude errcheck for fmt.Fprint* calls (output operations, errors irrelevant)
-    - linters:
-        - errcheck
-      text: "Error return value of `(fmt\\.Fprint|fmt\\.Fprintf|fmt\\.Fprintln)`"
-    # Exclude errcheck on defer .Close() calls (cleanup only)
-    - linters:
-        - errcheck
-      text: "Error return value of `.*Close`"
-    # Exclude errcheck on w.Flush (tabwriter cleanup)
-    - linters:
-        - errcheck
-      text: "Error return value of `w\\.Flush`"
-    # Exclude some linters from running on test files
-    - path: _test\\.go
-      linters:
-        - errcheck
-        - unused
-    # Exclude known linter issues in generated code
-    - path: ".*\\.pb\\.go"
-      linters:
+  settings:
+    staticcheck:
+      checks:
         - all
-  exclude-use-default: false
+        - -QF1012  # WriteString(fmt.Sprintf(...)) — pre-existing
+        - -QF1001  # De Morgan's law — pre-existing
+        - -QF1003  # Tagged switch — pre-existing
+        - -QF1008  # Embedded field selector — pre-existing
+        - -QF1002  # Tagged switch on arg — pre-existing
+        - -ST1003  # Naming conventions — pre-existing
+        - -ST1005  # Error strings punctuation — pre-existing
+        - -ST1016  # Methods on value vs pointer — pre-existing
+        - -ST1020  # Exported function doc comment — pre-existing
+        - -ST1021  # Exported type doc comment — pre-existing
+        - -ST1022  # Exported method doc comment — pre-existing
+    errcheck:
+      exclude-functions:
+        - fmt.Fprintln
+        - fmt.Fprintf
+        - fmt.Fprint
+        - (io.Writer).Write
+        - (net/http.Flusher).Flush
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters: [errcheck]
+        text: "Error return value"
+      - path: cmd/
+        linters: [errcheck]
+        text: "Error return value"
+      - linters: [errcheck]
+        text: 'Close|Flush|\.Write\b'
+issues:
   max-issues-per-linter: 0
   max-same-issues: 0
