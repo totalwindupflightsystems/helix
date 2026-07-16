@@ -186,3 +186,15 @@
 - **Root cause:** gofmt failure in cmd/helix-release/main.go:97 (struct field alignment)
 - **Fix:** Commit 1728e6b — gofmt'd cmd/helix-release/main.go
 - **Verification:** CI run #235 PASS (49s). All subsequent runs green (runs #233-#234 also green).
+
+## [x] FIX: golangci-lint v2 config — version field, formatters section, exclusion rules
+- **Root cause:** golangci-lint-action `latest` upgraded to v2.x silently. Config missing `version: "2"`, gofmt/gosimple in wrong sections, exclude-rules moved to `linters.exclusions.rules`, new QF1012/ST1xxx checks surfaced.
+- **Fix:** Commit c19d74b. Updated `.golangci.yml` to v2 format: version field, formatters section for gofmt/goimports, exclude-functions for pre-existing errcheck patterns, linters.exclusions.rules for test/cmd files, staticcheck exclusions for pre-existing QF/ST checks.
+- **Also fixed:** `TestScan_DispatchesToCorrectRunner` (pkg/vuln) was environment-dependent (asserted govulncheck unavailable when it's installed). `TestRunVuln_ScanAutoDetectPython` (cmd/helix) failed when pip-audit found real CVEs in flask==2.0.
+- **Verification:** `make all` PASS — lint 0 issues, all 55+ test packages PASS, build PASS.
+
+## [ ] SEC — Go 1.26.0 stdlib vulnerabilities (GO-2026-5856, GO-2026-5039, GO-2026-5037)
+- **Priority:** medium — stdlib vulns, no known exploitation
+- **CVE:** GO-2026-5856 (crypto/tls ECH leak, fixed in 1.26.5), GO-2026-5039 (net/textproto error inclusion, fixed in 1.26.4), GO-2026-5037 (crypto/x509 parsing, fixed in 1.26.4)
+- **Found by:** govulncheck discovery sweep
+- **Fix:** Upgrade Go from 1.26.0 to ≥1.26.5 — requires downloading and installing Go binary, verifying no toolchain breaking changes.

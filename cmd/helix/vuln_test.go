@@ -166,7 +166,10 @@ func TestRunVuln_ScanAutoDetectPython(t *testing.T) {
 
 	var out, errOut bytes.Buffer
 	rc := runVuln([]string{"scan", "--dir", dir}, &out, &errOut)
-	if rc != 0 {
+	// Accept rc=0 (clean) or rc=2 (pip-audit found advisories in
+	// flask==2.0). Reject rc=1 (high/critical) or other codes which
+	// would indicate a scan error.
+	if rc != 0 && rc != 2 {
 		t.Errorf("rc=%d stderr=%s", rc, errOut.String())
 	}
 }
