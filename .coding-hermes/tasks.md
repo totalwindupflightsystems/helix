@@ -158,10 +158,11 @@
 - **Priority:** low — documentation hygiene
 - **Completed:** 2026-07-15 — Foreman direct. Updated component table from 7 to 42 packages in 8 categorized sections: Core Platform, Review & Quality Gates, Design & Planning, Orchestration & Pipeline, Learning/Trust/Memory, Operations & Security, Infrastructure & Integration. 10 CLIs listed.
 
-## [ ] FIX: Non-deterministic TestDiscoverTimeBasedPatts uses time.Now() — CI flaky
+## [x] FIX: Non-deterministic TestDiscoverTimeBasedPatts uses time.Now() — CI flaky
 - **Priority:** medium — causes spurious CI failures
-- **Root cause:** `pkg/learning/miner_test.go:364` uses `time.Now()` to compute `monday`, making the test non-deterministic. CI runner clock differs from local, producing different weekday patterns. CI run #236 failed with "expected Monday, got Tuesday". Test passes locally.
-- **Fix:** Replace `now := time.Now()` with a fixed reference date (e.g., `time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC)`) so the test is deterministic. July 13, 2026 is a Monday — the test's monday calculation will produce the correct date.
+- **Completed:** 2026-07-15 — Commit 41f0794. Replaced time.Now() with time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC) — July 13 2026 is a Monday. Test now deterministic across all environments. Build+vet+test PASS, GitReins Tier 1 PASS.
+- **Root cause:** `pkg/learning/miner_test.go:364` used `time.Now()` to compute `monday`, making the test non-deterministic.
+- **Fix:** Replace `now := time.Now()` with a fixed reference date `time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC)`.
 - **Files:** pkg/learning/miner_test.go (+1/-1)
 - **AC:** Test passes on CI. No `time.Now()` calls in test setup.
 
