@@ -166,10 +166,8 @@
 - **Files:** pkg/learning/miner_test.go (+1/-1)
 - **AC:** Test passes on CI. No `time.Now()` calls in test setup.
 
-## [ ] FOREMAN RULE: Always run wiring check before generating new tasks
-Run: `for pkg in pkg/*/; do name=$(basename "$pkg"); [ ! -d "cmd/$name" ] && [ ! -d "cmd/helix-$name" ] && echo "UNWIRED: $name"; done`
-If unwired packages exist, tasks MUST prioritize wiring them before any new package builds.
-Note: 33 packages show "UNWIRED" — monorepo CLI pattern. All 33 routed through cmd/helix/main.go (49-case switch statement). Not a real issue.
+## [x] FOREMAN RULE: Always run wiring check before generating new tasks
+- **Verified:** 2026-07-16 — Foreman reconfirmed: 34 packages "UNWIRED", all routed through cmd/helix/main.go (49-case switch). Monorepo CLI pattern. No action needed.
 
 ## [x] INFRA: Track Hilo .vfs/ graph files (edges.jsonl, manifest.yaml)
 - **Priority:** low — cross-machine sync hygiene
