@@ -361,7 +361,7 @@ func TestExtractProvider(t *testing.T) {
 
 func TestDiscoverTimeBasedPatts(t *testing.T) {
 	// Create incidents on different days to test time-based patterns.
-	now := time.Now()
+	now := time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC) // deterministic: Monday
 	var incidents []*incident.Incident
 	// 8 incidents on Monday, 2 each on other days.
 	monday := now.AddDate(0, 0, -int(now.Weekday())+1) // previous Monday
