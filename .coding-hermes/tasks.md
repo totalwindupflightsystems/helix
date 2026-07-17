@@ -198,3 +198,5 @@
 - **CVE:** GO-2026-5856 (crypto/tls ECH leak, fixed in 1.26.5), GO-2026-5039 (net/textproto error inclusion, fixed in 1.26.4), GO-2026-5037 (crypto/x509 parsing, fixed in 1.26.4)
 - **Found by:** govulncheck discovery sweep
 - **Fix:** Upgrade Go from 1.26.0 to ≥1.26.5 — requires downloading and installing Go binary, verifying no toolchain breaking changes.
+
+## [ ] Fix CI: FAIL - Helix CI (latest run #250) — Token lacks log-read permission. Run #249 and #248 succeeded.
