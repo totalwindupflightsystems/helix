@@ -193,10 +193,19 @@
 - **Also fixed:** `TestScan_DispatchesToCorrectRunner` (pkg/vuln) was environment-dependent (asserted govulncheck unavailable when it's installed). `TestRunVuln_ScanAutoDetectPython` (cmd/helix) failed when pip-audit found real CVEs in flask==2.0.
 - **Verification:** `make all` PASS — lint 0 issues, all 55+ test packages PASS, build PASS.
 
-## [ ] SEC — Go 1.26.0 stdlib vulnerabilities (GO-2026-5856, GO-2026-5039, GO-2026-5037)
+## [ ] SEC — Go 1.26.0 stdlib vulnerabilities (GO-2026-5856, GO-2026-5039, GO-2026-5037) — BLOCKED on manual sudo
 - **Priority:** medium — stdlib vulns, no known exploitation
-- **CVE:** GO-2026-5856 (crypto/tls ECH leak, fixed in 1.26.5), GO-2026-5039 (net/textproto error inclusion, fixed in 1.26.4), GO-2026-5037 (crypto/x509 parsing, fixed in 1.26.4)
-- **Found by:** govulncheck discovery sweep
-- **Fix:** Upgrade Go from 1.26.0 to ≥1.26.5 — requires downloading and installing Go binary, verifying no toolchain breaking changes.
+- **CVE:** GO-2026-5856 (crypto/tls ECH leak, fixed in 1.26.5), GO-2026-5039 (net/textproto error inclusion, fixed in 1.26.4), GO-2026-5037 (crypto/x509 parsing, fixed in 1.26.4), GO-2026-4971 (net, Windows only)
+- **Found by:** govulncheck discovery sweep (2026-07-16 re-check: all 4 confirmed present)
+- **⬆️ MANUAL UPGRADE REQUIRED (cron cannot sudo):** Tarball downloaded to `/tmp/go1.26.5.linux-amd64.tar.gz` (67MB). Run:
+  ```
+  sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf /tmp/go1.26.5.linux-amd64.tar.gz
+  ```
+  Then verify: `/usr/local/go/bin/go version` → `go1.26.5`. Update PATH if needed. `go build ./... && go test -short ./...` in helix/ to verify no toolchain breakage.
+- **Status:** BLOCKED — apt repos only have 1.26.0-1. Manual tarball install required. Foreman cannot sudo in cron context.
 
-## [ ] Fix CI: FAIL - Helix CI (latest run #250) — Token lacks log-read permission. Run #249 and #248 succeeded.
+## [x] Fix CI: golangci-lint config v2 format vs CI v1.x binary (run #250)
+- **Root cause:** golangci/golangci-lint-action@v6 installs golangci-lint v1.x (latest v1.64.8), but .golangci.yml was updated to v2 format. v1.x rejects `version: "2"`, `formatters` section, and `linters.settings` as invalid.
+- **Fix:** Updated `.github/workflows/ci.yml` to use `golangci/golangci-lint-action@v7` which supports golangci-lint v2.x. Local golangci-lint v2.12.2 confirms config is valid (0 issues).
+- **Files:** .github/workflows/ci.yml (+1/-1)
+- **AC:** CI lint job passes. golangci-lint v2 runs with v2-format config.
