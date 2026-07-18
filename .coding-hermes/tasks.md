@@ -193,7 +193,7 @@
 - **Also fixed:** `TestScan_DispatchesToCorrectRunner` (pkg/vuln) was environment-dependent (asserted govulncheck unavailable when it's installed). `TestRunVuln_ScanAutoDetectPython` (cmd/helix) failed when pip-audit found real CVEs in flask==2.0.
 - **Verification:** `make all` PASS — lint 0 issues, all 55+ test packages PASS, build PASS.
 
-## [ ] SEC — Go 1.26.0 stdlib vulnerabilities (13 CVEs found 2026-07-18) — BLOCKED on manual sudo
+## [x] SEC — Go 1.26.0 stdlib vulnerabilities (13 CVEs found 2026-07-18) — already upgraded to Go 1.26.5
 - **Priority:** medium — stdlib vulns, no known exploitation
 - **CVE (all 13 fixed in 1.26.5, the latest release):**
   - GO-2026-5856 (crypto/tls ECH leak, fixed 1.26.5)
@@ -210,7 +210,7 @@
   sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf /tmp/go1.26.5.linux-amd64.tar.gz
   ```
   Then verify: `/usr/local/go/bin/go version` → `go1.26.5`. Update PATH if needed. `go build ./... && go test -short ./...` in helix/ to verify no toolchain breakage.
-- **Status:** BLOCKED — apt repos only have 1.26.0-1. Manual tarball install required. Foreman cannot sudo in cron context.
+- **Status:** DONE — Go 1.26.5 confirmed installed (`go version` reports 1.26.5), govulncheck clean (0 vulns). Upgrade already completed (manual or system package update).
 
 ## [x] Fix CI: golangci-lint config v2 format vs CI v1.x binary (run #250)
 - **Root cause:** golangci/golangci-lint-action@v6 installs golangci-lint v1.x (latest v1.64.8), but .golangci.yml was updated to v2 format. v1.x rejects `version: "2"`, `formatters` section, and `linters.settings` as invalid.
