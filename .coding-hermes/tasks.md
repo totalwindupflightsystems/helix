@@ -193,11 +193,19 @@
 - **Also fixed:** `TestScan_DispatchesToCorrectRunner` (pkg/vuln) was environment-dependent (asserted govulncheck unavailable when it's installed). `TestRunVuln_ScanAutoDetectPython` (cmd/helix) failed when pip-audit found real CVEs in flask==2.0.
 - **Verification:** `make all` PASS — lint 0 issues, all 55+ test packages PASS, build PASS.
 
-## [ ] SEC — Go 1.26.0 stdlib vulnerabilities (GO-2026-5856, GO-2026-5039, GO-2026-5037) — BLOCKED on manual sudo
+## [ ] SEC — Go 1.26.0 stdlib vulnerabilities (13 CVEs found 2026-07-18) — BLOCKED on manual sudo
 - **Priority:** medium — stdlib vulns, no known exploitation
-- **CVE:** GO-2026-5856 (crypto/tls ECH leak, fixed in 1.26.5), GO-2026-5039 (net/textproto error inclusion, fixed in 1.26.4), GO-2026-5037 (crypto/x509 parsing, fixed in 1.26.4), GO-2026-4971 (net, Windows only)
-- **Found by:** govulncheck discovery sweep (2026-07-16 re-check: all 4 confirmed present)
-- **⬆️ MANUAL UPGRADE REQUIRED (cron cannot sudo):** Tarball downloaded to `/tmp/go1.26.5.linux-amd64.tar.gz` (67MB). Run:
+- **CVE (all 13 fixed in 1.26.5, the latest release):**
+  - GO-2026-5856 (crypto/tls ECH leak, fixed 1.26.5)
+  - GO-2026-5039 (net/textproto, fixed 1.26.4)
+  - GO-2026-5037 (crypto/x509, fixed 1.26.4)
+  - GO-2026-4971 (net, fixed 1.26.3)
+  - GO-2026-4947, GO-2026-4946, GO-2026-4870, GO-2026-4866 (crypto/x509 + crypto/tls, fixed 1.26.2)
+  - GO-2026-4918 (net/http, fixed 1.26.3)
+  - GO-2026-4602 (os, fixed 1.26.1), GO-2026-4601 (net/url, fixed 1.26.1)
+  - GO-2026-4600, GO-2026-4599 (crypto/x509, fixed 1.26.1)
+- **Found by:** govulncheck (2026-07-16: 4 CVEs; 2026-07-18 re-scan: 13 CVEs)
+- **⬆️ MANUAL UPGRADE REQUIRED (cron cannot sudo):** Tarball downloaded to `/tmp/go1.26.5.linux-amd64.tar.gz` (64MB). Run:
   ```
   sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf /tmp/go1.26.5.linux-amd64.tar.gz
   ```
