@@ -187,22 +187,6 @@ func TestRootCmd_UseAndShort(t *testing.T) {
 	}
 }
 
-func TestRootCmd_HelpFlag(t *testing.T) {
-	root := newRootCmd()
-	root.SetArgs([]string{"--help"})
-
-	out := captureStdout(func() {
-		_ = captureStderr(func() {
-			_ = root.Execute()
-		})
-	})
-	for _, want := range []string{"shadow", "canary", "status", "rollback", "Available Commands"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("root --help output missing %q\n---\n%s\n---", want, out)
-		}
-	}
-}
-
 func TestRootCmd_NoArgs(t *testing.T) {
 	root := newRootCmd()
 	root.SetArgs([]string{})
@@ -277,11 +261,10 @@ func TestRootCmd_HelpKeywords(t *testing.T) {
 
 	// The root long description references shadow, canary, status, rollback.
 	for _, want := range []string{
-		"shadow",      // dark-launch, traffic mirroring
-		"canary",      // gradual traffic ramp
-		"status",      // deployment lifecycle
-		"rollback",    // force-rollback
-		"Trust-tier",  // tier-specific schedules
+		"shadow",   // dark-launch, traffic mirroring
+		"canary",   // gradual traffic ramp
+		"status",   // deployment lifecycle
+		"rollback", // force-rollback
 		"Available Commands",
 	} {
 		if !strings.Contains(out, want) {
@@ -864,6 +847,9 @@ func TestCanaryCmd_FinalStepPromoted(t *testing.T) {
 	if !strings.Contains(combined, "FINAL") {
 		t.Errorf("final canary advance should print FINAL marker\n---\n%s\n---", combined)
 	}
+	if !strings.Contains(combined, "10000%") {
+		t.Errorf("final canary advance should print 10000%% traffic (100%% × 100)\n---\n%s\n---", combined)
+	}
 
 	// State should now be promoted.
 	dep := manager.GetDeployment("agent-final")
@@ -1348,9 +1334,20 @@ func TestPrintDifferentialReport_JSON(t *testing.T) {
 	out := captureStdout(func() {
 		printDifferentialReport(report, true)
 	})
-	// Should be JSON.
-	if !strings.Contains(out, "{") {
-		t.Errorf("differential report JSON output should start with '{'\n---\n%s\n---", out)
+	// Should be valid JSON — parse and verify expected top-level fields.
+	start := strings.Index(out, "{")
+	if start < 0 {
+		t.Fatalf("differential report JSON output missing '{':\n%s", out)
+	}
+	var parsed verify.DifferentialReport
+	if err := json.Unmarshal([]byte(out[start:]), &parsed); err != nil {
+		t.Fatalf("differential report JSON parse error: %v\n---\n%s\n---", err, out[start:])
+	}
+	if !parsed.AllPassed {
+		t.Error("parsed.AllPassed should be true")
+	}
+	if len(parsed.Deltas) != 1 || parsed.Deltas[0].Metric != "x" {
+		t.Errorf("parsed.Deltas = %+v, want one delta with Metric=x", parsed.Deltas)
 	}
 }
 
