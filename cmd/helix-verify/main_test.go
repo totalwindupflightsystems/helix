@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"os"
 	"strings"
@@ -98,6 +99,47 @@ func withFreshManager(t *testing.T) func() {
 	old := manager
 	manager = verify.NewShadowManager()
 	return func() { manager = old }
+}
+
+// backdateShadow moves a deployment's LaunchedAt backwards so that
+// ObservationWindowRemaining returns 0 on the next call. This lets tests
+// exercise the post-evaluation path of runShadow without sleeping for hours.
+// The test runs single-threaded, so direct field mutation is safe.
+func backdateShadow(t *testing.T, agentID string, age time.Duration) {
+	t.Helper()
+	dep := manager.GetDeployment(agentID)
+	if dep == nil {
+		t.Fatalf("backdateShadow: no deployment for %q", agentID)
+	}
+	dep.LaunchedAt = dep.LaunchedAt.Add(-age)
+}
+
+// shadowAndEvaluate drives the manager through shadow → evaluation, returning
+// the deployment in ShadowPassed (or ShadowFailed) state. Useful for tests
+// that want to start in a post-shadow state without running the CLI twice.
+func shadowAndEvaluate(t *testing.T, agentID, tier string, shadow verify.MetricsSnapshot) *verify.ShadowDeployment {
+	t.Helper()
+	baseline := verify.MetricsSnapshot{
+		SuccessRate:  1.0,
+		P99LatencyMs: 50,
+		Timestamp:    time.Now().UTC(),
+	}
+	cfg := verify.DefaultShadowConfig()
+	d, err := manager.LaunchShadow(agentID, tier, baseline, cfg)
+	if err != nil {
+		t.Fatalf("LaunchShadow: %v", err)
+	}
+	if err := manager.RecordShadowMetrics(agentID, shadow); err != nil {
+		t.Fatalf("RecordShadowMetrics: %v", err)
+	}
+	if _, err := manager.EvaluateShadow(agentID); err != nil {
+		t.Fatalf("EvaluateShadow: %v", err)
+	}
+	if d.GetState() != verify.StateShadowPassed {
+		t.Fatalf("deployment state = %s, want %s (differential report failed)",
+			d.GetState(), verify.StateShadowPassed)
+	}
+	return d
 }
 
 // ---------------------------------------------------------------------------
@@ -357,6 +399,141 @@ func TestShadowCmd_VeteranTier(t *testing.T) {
 	}
 }
 
+// TestShadowCmd_Output_JSON exercises the shadow --json end-to-end path:
+// the CLI is launched with --duration 1h, then we backdate the deployment
+// so the observation window has elapsed, then re-run shadow with --json.
+// The output is parsed as a DifferentialReport and verified for structure.
+func TestShadowCmd_Output_JSON(t *testing.T) {
+	defer resetFlags()
+	defer withFreshManager(t)()
+	resetFlags()
+
+	// 1. First launch establishes the deployment with --duration 1h.
+	cmd := newShadowCmd()
+	cmd.SetArgs([]string{"--agent", "test-agent", "--duration", "1h"})
+	var buf1 bytes.Buffer
+	cmd.SetOut(&buf1)
+	cmd.SetErr(&buf1)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("shadow launch failed: %v", err)
+	}
+
+	// 2. Record shadow metrics matching the baseline (perfect shadow) and
+	//    backdate the launch so the observation window is fully elapsed.
+	if err := manager.RecordShadowMetrics("test-agent", verify.MetricsSnapshot{
+		SuccessRate:  1.0,
+		P99LatencyMs: 50,
+		Timestamp:    time.Now().UTC(),
+	}); err != nil {
+		t.Fatalf("RecordShadowMetrics: %v", err)
+	}
+	backdateShadow(t, "test-agent", 2*time.Hour)
+
+	// 3. Re-run shadow with --json — should print a DifferentialReport.
+	resetFlags()
+	cmd = newShadowCmd()
+	cmd.SetArgs([]string{"--agent", "test-agent", "--duration", "1h", "--json"})
+	var buf2 bytes.Buffer
+	cmd.SetOut(&buf2)
+	cmd.SetErr(&buf2)
+
+	out := captureStdout(func() {
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("shadow --json execute error: %v", err)
+		}
+	})
+	jsonOut := buf2.String() + out
+	if jsonOut == "" {
+		t.Fatal("shadow --json produced no output")
+	}
+
+	// 4. Parse the JSON. The encoder in printDifferentialReport emits a single
+	//    JSON object — locate the leading '{' and decode from there.
+	start := strings.Index(jsonOut, "{")
+	if start < 0 {
+		t.Fatalf("shadow --json output contains no '{':\n%s", jsonOut)
+	}
+	var report verify.DifferentialReport
+	if err := json.Unmarshal([]byte(jsonOut[start:]), &report); err != nil {
+		t.Fatalf("shadow --json output is not valid JSON:\n%s\nerr: %v", jsonOut[start:], err)
+	}
+
+	// 5. Verify the differential report structure (these are the actual JSON
+	//    fields emitted by pkg/verify.DifferentialReport — not the names in
+	//    the task description, which referred to a separate surveillance
+	//    payload that this CLI does not produce).
+	if !report.AllPassed {
+		t.Errorf("differential report AllPassed = false, want true (perfect shadow metrics)")
+	}
+	if len(report.Deltas) == 0 {
+		t.Error("differential report has 0 deltas, want ≥4 (success_rate, p99, new_err, memory)")
+	}
+	metricNames := make(map[string]bool, len(report.Deltas))
+	for _, d := range report.Deltas {
+		metricNames[d.Metric] = true
+	}
+	for _, want := range []string{"success_rate", "p99_latency_ms", "new_error_types", "memory_growth_pct"} {
+		if !metricNames[want] {
+			t.Errorf("differential report missing metric %q (have: %v)", want, metricNames)
+		}
+	}
+}
+
+// TestShadowCmd_Output_JSON_FailedReport drives a failing differential and
+// verifies that --json still produces valid JSON with all_passed=false.
+func TestShadowCmd_Output_JSON_FailedReport(t *testing.T) {
+	defer resetFlags()
+	defer withFreshManager(t)()
+	resetFlags()
+
+	cmd := newShadowCmd()
+	cmd.SetArgs([]string{"--agent", "agent-json-fail", "--duration", "1h"})
+	var buf1 bytes.Buffer
+	cmd.SetOut(&buf1)
+	cmd.SetErr(&buf1)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("shadow launch failed: %v", err)
+	}
+
+	// Shadow metrics with success rate well below baseline → differential fails.
+	if err := manager.RecordShadowMetrics("agent-json-fail", verify.MetricsSnapshot{
+		SuccessRate:  0.5, // 50% success vs 100% baseline → 50% delta > 0.1% threshold
+		P99LatencyMs: 500,
+		Timestamp:    time.Now().UTC(),
+	}); err != nil {
+		t.Fatalf("RecordShadowMetrics: %v", err)
+	}
+	backdateShadow(t, "agent-json-fail", 2*time.Hour)
+
+	resetFlags()
+	cmd = newShadowCmd()
+	cmd.SetArgs([]string{"--agent", "agent-json-fail", "--duration", "1h", "--json"})
+	var buf2 bytes.Buffer
+	cmd.SetOut(&buf2)
+	cmd.SetErr(&buf2)
+
+	out := captureStdout(func() {
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("shadow --json failed-report execute error: %v", err)
+		}
+	})
+	jsonOut := buf2.String() + out
+	start := strings.Index(jsonOut, "{")
+	if start < 0 {
+		t.Fatalf("no JSON in output:\n%s", jsonOut)
+	}
+	var report verify.DifferentialReport
+	if err := json.Unmarshal([]byte(jsonOut[start:]), &report); err != nil {
+		t.Fatalf("failed-report JSON parse error: %v\n%s", err, jsonOut[start:])
+	}
+	if report.AllPassed {
+		t.Error("AllPassed should be false for a failed differential report")
+	}
+	if report.BlockReason == "" {
+		t.Error("BlockReason should be set when differential fails")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // canary subcommand
 // ---------------------------------------------------------------------------
@@ -457,6 +634,132 @@ func TestCanaryCmd_WrongState(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "shadowing") {
 		t.Errorf("canary wrong-state error = %q, want to mention 'shadowing'", err.Error())
+	}
+}
+
+func TestCanaryCmd_StepFlagDefaults(t *testing.T) {
+	cmd := newCanaryCmd()
+	f := cmd.Flags().Lookup("step")
+	if f == nil {
+		t.Fatal("canary missing --step flag")
+	}
+	if f.DefValue != "-1" {
+		t.Errorf("--step default = %q, want %q", f.DefValue, "-1")
+	}
+}
+
+func TestCanaryCmd_HappyPath_Promote(t *testing.T) {
+	defer resetFlags()
+	defer withFreshManager(t)()
+	resetFlags()
+
+	// Drive the manager through shadow → evaluation so we land in
+	// StateShadowPassed — the only state from which canary can promote.
+	shadowAndEvaluate(t, "agent-canary-promote", "provisional",
+		verify.MetricsSnapshot{
+			SuccessRate:  1.0,
+			P99LatencyMs: 50,
+			Timestamp:    time.Now().UTC(),
+		})
+
+	// Run the canary CLI command — should promote to canary state 1/N.
+	cmd := newCanaryCmd()
+	cmd.SetArgs([]string{"--agent", "agent-canary-promote"})
+	var outBuf, errBuf bytes.Buffer
+	cmd.SetOut(&outBuf)
+	cmd.SetErr(&errBuf)
+
+	out := captureStdout(func() {
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("canary execute error: %v\nstderr: %s", err, errBuf.String())
+		}
+	})
+	combined := outBuf.String() + out + errBuf.String()
+
+	for _, want := range []string{"Canary promoted", "agent-canary-promote", "State:", "canaried", "Traffic:"} {
+		if !strings.Contains(combined, want) {
+			t.Errorf("canary promote output missing %q\n---\n%s\n---", want, combined)
+		}
+	}
+
+	// Verify the manager state transitioned.
+	dep := manager.GetDeployment("agent-canary-promote")
+	if dep == nil {
+		t.Fatal("deployment missing after canary promotion")
+	}
+	if dep.GetState() != verify.StateCanaried {
+		t.Errorf("deployment state = %s, want %s", dep.GetState(), verify.StateCanaried)
+	}
+	if dep.PromotedAt.IsZero() {
+		t.Error("PromotedAt should be set after canary promotion")
+	}
+}
+
+func TestCanaryCmd_HappyPath_Advance(t *testing.T) {
+	defer resetFlags()
+	defer withFreshManager(t)()
+	resetFlags()
+
+	// Set up a canaried deployment (state Canaried, step 0).
+	shadowAndEvaluate(t, "agent-canary-advance", "trusted",
+		verify.MetricsSnapshot{
+			SuccessRate:  0.9999,
+			P99LatencyMs: 55,
+			Timestamp:    time.Now().UTC(),
+		})
+	if _, err := manager.PromoteToCanary("agent-canary-advance"); err != nil {
+		t.Fatalf("setup: PromoteToCanary failed: %v", err)
+	}
+
+	// Advance — without --step, walks one step forward.
+	resetFlags()
+	cmd := newCanaryCmd()
+	cmd.SetArgs([]string{"--agent", "agent-canary-advance"})
+	var outBuf, errBuf bytes.Buffer
+	cmd.SetOut(&outBuf)
+	cmd.SetErr(&errBuf)
+
+	out := captureStdout(func() {
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("canary advance execute error: %v\nstderr: %s", err, errBuf.String())
+		}
+	})
+	combined := outBuf.String() + out + errBuf.String()
+
+	for _, want := range []string{"Canary advanced", "agent-canary-advance", "Traffic:"} {
+		if !strings.Contains(combined, want) {
+			t.Errorf("canary advance output missing %q\n---\n%s\n---", want, combined)
+		}
+	}
+}
+
+func TestCanaryCmd_StepTargetingNotImplemented(t *testing.T) {
+	defer resetFlags()
+	defer withFreshManager(t)()
+	resetFlags()
+
+	// Set up a canaried agent with metrics identical to baseline (guaranteed to pass).
+	shadowAndEvaluate(t, "agent-step-impossible", "trusted",
+		verify.MetricsSnapshot{SuccessRate: 1.0, P99LatencyMs: 50, Timestamp: time.Now().UTC()})
+	if _, err := manager.PromoteToCanary("agent-step-impossible"); err != nil {
+		t.Fatalf("setup: PromoteToCanary failed: %v", err)
+	}
+
+	// --step with positive integer on a canaried agent should error
+	// (step targeting not yet implemented).
+	resetFlags()
+	cmd := newCanaryCmd()
+	cmd.SetArgs([]string{"--agent", "agent-step-impossible", "--step", "2"})
+	var outBuf, errBuf bytes.Buffer
+	cmd.SetOut(&outBuf)
+	cmd.SetErr(&errBuf)
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Error("canary --step 2 on canaried agent should error (not implemented)")
+	}
+	if !strings.Contains(err.Error(), "step targeting") {
+		t.Errorf("canary step-impossible error = %q, want to mention 'step targeting'", err.Error())
 	}
 }
 
