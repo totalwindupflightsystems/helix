@@ -217,3 +217,4 @@
 - **Fix:** Updated `.github/workflows/ci.yml` to use `golangci/golangci-lint-action@v7` which supports golangci-lint v2.x. Local golangci-lint v2.12.2 confirms config is valid (0 issues).
 - **Files:** .github/workflows/ci.yml (+1/-1)
 - **AC:** CI lint job passes. golangci-lint v2 runs with v2-format config.
+## [ ] DEPS: upgrade Go deps — cpuguy83/go-md2man v2.0.6→v2.0.7, kr/pretty v0.2.1→v0.3.1, kr/pty v1.1.1→v1.1.8
