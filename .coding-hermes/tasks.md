@@ -260,9 +260,36 @@ Findings requiring new tasks:
 - Priority: low — both binaries have no _test.go files
 - 738 lines (release) + 419 lines (verify) = 1157 lines with zero coverage
 - **Completed:** 2026-07-19 — Foreman tick. cmd/helix-release: 1007-line test file (31 test functions, foreman-direct fix for case-sensitivity) committed as 047f27a. cmd/helix-verify: 1426-line test file (48 test functions, MiniMax-M3 worker) committed across 4 commits (1b65ca4, 69da992, a56ba2d, c51a3ca). Both pass. All 57 packages green. 80.7% total coverage.
-## [ ] QUALITY — 20 files over 500 lines need refactoring consideration
+## [ ] QUALITY — 24 files over 500 lines need refactoring consideration
 - Priority: low — largest offenders: review.go (1441), incident.go (1183), design/review.go (1138)
 - Not blocking — just tracking for future refactoring cycles
+- Updated count: 24 files (was 20)
+
+## [x] DEPS — Upgrade golang.org/x/ modules (3 outdated)
+- Priority: low — mechanical maintenance
+- Completed: 2026-07-19 — Foreman direct. Upgraded golang.org/x/mod v0.21.0→v0.38.0, golang.org/x/sys v0.26.0→v0.47.0, golang.org/x/tools v0.26.0→v0.48.0.
+- Verification: go build+v vet+test PASS (57 packages), govulncheck CLEAN.
+
+## [x] LICENSE — Add MIT license file
+- Priority: low — open-source hygiene
+- Completed: 2026-07-19 — Foreman direct. Added MIT LICENSE to repo root.
+
+## [x] DUCKBRAIN-FIX — Populate Helix namespace (was Class 8 fabrication)
+- Priority: medium — previous DUCKBRAIN task fabricated, namespace was actually empty
+- Completed: 2026-07-19 — Foreman direct. Populated with 5 entries: architecture (42 pkgs, 10 CLIs, Go 1.26.5, Hilo 3167 edges), 3 pitfalls (duckbrain-fabrication, fabricated-dep-upgrade, golangci-lint-v2), 1 pattern (wiring-subcommand-lookpath).
+- Verified: list_keys returns all 5 entries.
+
+## [x] NEVER-DONE — 11-point self-improvement audit (2026-07-19 tick 18:18)
+Audit findings:
+- Build: PASS, Tests: PASS (57 packages), CI: GREEN (latest HEAD), Lint: 0 issues, Govulncheck: CLEAN
+- Go 1.26.5, Hilo: 3167 edges across 524 files
+- DuckBrain: WAS EMPTY (Class 8 fabrication on prior DUCKBRAIN task) → FIXED with 5 new entries
+- 24 files >500 lines (was 20). Largest: review.go (1441), incident.go (1183), design/review.go (1138)
+- Deps: 3 golang.org/x/ outdated → UPGRADED (mod v0.38.0, sys v0.47.0, tools v0.48.0)
+- LICENSE: WAS MISSING → ADDED (MIT)
+- Coverages: All 57 packages have tests. cmd/helix lowest at 57.3%, pkg/contract at 53.7%
+- No TODO/FIXME in production code. No benchmarks.
+- specs/AGENTS.md is from DexDat (foreign file) — pre-existing, not addressed
 
 ## [x] DOC — Add CONTRIBUTING.md
 - **Priority:** low — missing developer onboarding document
