@@ -235,6 +235,61 @@ func TestRootCmd_UnknownSubcommand(t *testing.T) {
 	}
 }
 
+// TestVerifyRootCmd_Help is the canonical "root help shows all 4 subcommands"
+// check. The task spec requires this exact test name and these keywords.
+func TestVerifyRootCmd_Help(t *testing.T) {
+	root := newRootCmd()
+	root.SetArgs([]string{"--help"})
+
+	out := captureStdout(func() {
+		_ = captureStderr(func() {
+			_ = root.Execute()
+		})
+	})
+
+	// Must include all four subcommands in the Available Commands section.
+	for _, want := range []string{"shadow", "canary", "status", "rollback"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("root --help output missing subcommand %q\n---\n%s\n---", want, out)
+		}
+	}
+
+	// Must include the standard cobra help sections.
+	for _, want := range []string{"Available Commands", "Flags", "Usage:"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("root --help output missing section %q\n---\n%s\n---", want, out)
+		}
+	}
+}
+
+// TestRootCmd_HelpKeywords validates that each subcommand's keyword appears
+// in the root --help output. This is a more granular check than
+// TestVerifyRootCmd_Help — it ensures the root's long description references
+// every concept the spec promises.
+func TestRootCmd_HelpKeywords(t *testing.T) {
+	root := newRootCmd()
+	root.SetArgs([]string{"--help"})
+	out := captureStdout(func() {
+		_ = captureStderr(func() {
+			_ = root.Execute()
+		})
+	})
+
+	// The root long description references shadow, canary, status, rollback.
+	for _, want := range []string{
+		"shadow",      // dark-launch, traffic mirroring
+		"canary",      // gradual traffic ramp
+		"status",      // deployment lifecycle
+		"rollback",    // force-rollback
+		"Trust-tier",  // tier-specific schedules
+		"Available Commands",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("root --help output missing keyword %q\n---\n%s\n---", want, out)
+		}
+	}
+}
+
 // ---------------------------------------------------------------------------
 // shadow subcommand
 // ---------------------------------------------------------------------------
@@ -763,6 +818,63 @@ func TestCanaryCmd_StepTargetingNotImplemented(t *testing.T) {
 	}
 }
 
+// TestCanaryCmd_FinalStepPromoted walks a "trusted" deployment all the way
+// from shadow-passed → canaried → advanced to 100% traffic (terminal
+// StatePromoted) by invoking the canary CLI command twice. The second
+// invocation must hit the `final` branch in runCanary and print the
+// "FINAL — deployment fully promoted to 100% traffic" message.
+func TestCanaryCmd_FinalStepPromoted(t *testing.T) {
+	defer resetFlags()
+	defer withFreshManager(t)()
+	resetFlags()
+
+	// Set up canaried state on a "trusted" agent (3-step schedule).
+	shadowAndEvaluate(t, "agent-final", "trusted",
+		verify.MetricsSnapshot{SuccessRate: 1.0, P99LatencyMs: 50, Timestamp: time.Now().UTC()})
+	if _, err := manager.PromoteToCanary("agent-final"); err != nil {
+		t.Fatalf("setup PromoteToCanary: %v", err)
+	}
+
+	// First advance: step 0 → step 1 (not final).
+	resetFlags()
+	cmd := newCanaryCmd()
+	cmd.SetArgs([]string{"--agent", "agent-final"})
+	var out1, err1 bytes.Buffer
+	cmd.SetOut(&out1)
+	cmd.SetErr(&err1)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("first canary advance: %v", err)
+	}
+
+	// Second advance: step 1 → step 2 (FINAL → StatePromoted).
+	resetFlags()
+	cmd = newCanaryCmd()
+	cmd.SetArgs([]string{"--agent", "agent-final"})
+	var outBuf, errBuf bytes.Buffer
+	cmd.SetOut(&outBuf)
+	cmd.SetErr(&errBuf)
+	out := captureStdout(func() {
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("second canary advance: %v", err)
+		}
+	})
+	combined := outBuf.String() + out + errBuf.String()
+
+	// The FINAL message should appear.
+	if !strings.Contains(combined, "FINAL") {
+		t.Errorf("final canary advance should print FINAL marker\n---\n%s\n---", combined)
+	}
+
+	// State should now be promoted.
+	dep := manager.GetDeployment("agent-final")
+	if dep == nil {
+		t.Fatal("deployment missing")
+	}
+	if dep.GetState() != verify.StatePromoted {
+		t.Errorf("deployment state = %s, want %s", dep.GetState(), verify.StatePromoted)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // status subcommand
 // ---------------------------------------------------------------------------
@@ -933,6 +1045,53 @@ func TestStatusCmd_AllList(t *testing.T) {
 
 	if !strings.Contains(combined, "agent-A") || !strings.Contains(combined, "agent-B") {
 		t.Errorf("status --all output should list both agents\n---\n%s\n---", combined)
+	}
+}
+
+// TestStatusCmd_CanariedAgent covers the canary-step branch of
+// printDeploymentStatus: when the deployment is in StateCanaried or
+// StatePromoted, the printer queries CurrentCanaryStep and renders a
+// "Canary step: X/Y (Z% traffic, ...)" line. No existing test exercises
+// that branch — this one drives the manager through shadow → evaluation →
+// canary promotion so the CLI's status command must produce the canary
+// step info.
+func TestStatusCmd_CanariedAgent(t *testing.T) {
+	defer resetFlags()
+	defer withFreshManager(t)()
+	resetFlags()
+
+	// Set up a canaried agent.
+	shadowAndEvaluate(t, "agent-canaried-1", "trusted",
+		verify.MetricsSnapshot{SuccessRate: 0.9999, P99LatencyMs: 55, Timestamp: time.Now().UTC()})
+	if _, err := manager.PromoteToCanary("agent-canaried-1"); err != nil {
+		t.Fatalf("PromoteToCanary: %v", err)
+	}
+
+	resetFlags()
+	cmd := newStatusCmd()
+	cmd.SetArgs([]string{"--agent", "agent-canaried-1"})
+	var outBuf, errBuf bytes.Buffer
+	cmd.SetOut(&outBuf)
+	cmd.SetErr(&errBuf)
+
+	out := captureStdout(func() {
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("status canaried execute error: %v", err)
+		}
+	})
+	combined := outBuf.String() + out + errBuf.String()
+
+	// Print must mention the canary step line — this is the branch of
+	// printDeploymentStatus that only fires when state == Canaried|Promoted.
+	for _, want := range []string{
+		"agent-canaried-1",
+		"canaried",
+		"Canary step:",
+		"traffic",
+	} {
+		if !strings.Contains(combined, want) {
+			t.Errorf("status of canaried agent missing %q\n---\n%s\n---", want, combined)
+		}
 	}
 }
 
