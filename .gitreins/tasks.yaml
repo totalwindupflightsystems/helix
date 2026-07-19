@@ -70,3 +70,67 @@ tasks:
   status: complete
   created_at: '2026-07-11T23:39:09.869322+00:00'
   completed_at: '2026-07-12T00:01:12.927946+00:00'
+- id: nd-test-cli-commands
+  title: 'helix: Add tests for untested cmd/helix command files (adr, contract, design,
+    learn, models, notify, spec)'
+  criteria:
+  - Each cmd/helix/*.go file without _test.go gets at least basic test coverage
+  - Tests pass with go test ./cmd/helix/...
+  - 'At minimum: parse flags, instantiate command, verify help output'
+  status: pending
+  created_at: '2026-07-19T17:28:57.696533+00:00'
+- id: nd-test-pkg-untested
+  title: 'helix: Add tests for untested pkg/* packages (adr, config, contract, design,
+    dispatcher, estimate, ideation, identity, integration)'
+  criteria:
+  - Each pkg subdirectory without tests gets test files
+  - Tests cover exported functions and types
+  - go test ./pkg/... passes
+  status: pending
+  created_at: '2026-07-19T17:28:58.756360+00:00'
+- id: nd-doc-contributing
+  title: 'helix: Add CONTRIBUTING.md with dev setup, commit rules, PR process'
+  criteria:
+  - CONTRIBUTING.md exists in repo root
+  - 'Covers: local setup, build, test, lint, commit rules, PR flow'
+  - Matches AGENTS.md conventions
+  status: pending
+  created_at: '2026-07-19T17:28:59.811759+00:00'
+- id: nd-deps-helix
+  title: 'helix: Update outdated Go dependencies (go-md2man, pty, go-internal, objx,
+    others)'
+  criteria:
+  - go list -u -m all shows zero [upgrade] markers
+  - go build ./... and go test ./... pass after upgrade
+  - Changelog reviewed for breaking changes
+  status: pending
+  created_at: '2026-07-19T17:29:00.860052+00:00'
+- id: nd-test-spec
+  title: 'helix: Add test coverage for pkg/spec (0%, zero tests, 4 production files)'
+  criteria:
+  - pkg/spec/types.go, coauthor.go, completeness.go, store.go each have corresponding
+    _test.go
+  - "go test -count=1 ./pkg/spec/... passes with \u226570% coverage"
+  - At least 10 test cases covering create, review, gap-analysis, and store operations
+  status: pending
+  created_at: '2026-07-19T18:54:33.778017+00:00'
+- id: nd-fix-deps-fabricated
+  title: 'helix: Actually upgrade go-md2man + kr/pty (fabricated in d342abe), plus
+    4 other outdated deps'
+  criteria:
+  - go list -u -m all shows zero [upgrade] markers for go-md2man, kr/pty, creack/pty,
+    rogpeppe/go-internal, stretchr/objx, pkg/diff
+  - go build ./... and go test -short ./... pass after upgrades
+  - go.mod reflects actual current versions
+  status: pending
+  created_at: '2026-07-19T18:54:34.792419+00:00'
+- id: nd-wiring-release
+  title: 'helix: Wire helix-release binary into unified `helix` CLI (`helix release`
+    subcommand)'
+  criteria:
+  - cmd/helix/main.go has case 'release' in dispatch() delegating to helix-release
+    binary
+  - helix release signoff|approve|status subcommands work from unified CLI
+  - go build ./cmd/helix succeeds with release wired
+  status: pending
+  created_at: '2026-07-19T18:54:35.806052+00:00'

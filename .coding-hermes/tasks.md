@@ -224,3 +224,52 @@
 - **Verification:** go build+v vet+test PASS (55+ packages), GitReins Tier 1 PASS
 - **Commit:** d342abe
 - **Worker:** none (foreman direct — mechanical dep upgrade)
+
+## [x] NEVER-DONE — Run 11-point self-improvement audit (2026-07-19 tick 13:50)
+
+Audit summary:
+- Build: PASS, Tests: PASS (55 packages, 78.5% total coverage), CI: GREEN (5/5 recent), Lint: 0 issues, Govulncheck: CLEAN
+- Go 1.26.5, Hilo graph: 3141 edges across 521 files
+- DuckBrain: 2 entries (idle ticks only)
+
+Findings requiring new tasks:
+1. pkg/spec: 0% coverage, zero test files (4 production files, 0 tests). GitReins spec-coauthor claimed "go test passes" but `?` ≠ pass
+2. Fabricated dep upgrade: commit d342abe claimed go-md2man v2.0.6→v2.0.7 + kr/pty v1.1.1→v1.1.8 but only kr/pretty was actually upgraded
+3. 6 deps still outdated: creack/pty v1.1.9→v1.1.24, rogpeppe/go-internal v1.9.0→v1.15.0, stretchr/objx v0.5.2→v0.5.3, pkg/diff, go-md2man, kr/pty
+4. helix-release CLI binary builds but is NOT wired into unified `helix` CLI (only helix-verify is)
+5. cmd/helix-release + cmd/helix-verify: zero test files (738 + 419 lines)
+6. 20 files >500 lines, largest: cmd/helix/review.go (1441), cmd/helix/incident.go (1183), pkg/design/review.go (1138)
+7. CONTRIBUTING.md missing
+8. DuckBrain namespace has only 2 idle-tick entries — no architecture decisions, pitfalls, or patterns recorded
+
+## [ ] TEST-SPEC — pkg/spec: Add test coverage (0%, 4 untested production files)
+- Priority: medium — zero coverage on spec co-authoring, completeness checker, and store
+- Files: pkg/spec/types.go, coauthor.go, completeness.go, store.go
+- GitReins task `spec-coauthor` claimed `go test passes` but package has no test files
+- Target: ≥70% coverage, ≥10 tests
+
+## [ ] FIX-DEPS — Fabricated dep upgrade: go-md2man + kr/pty not actually upgraded
+- Priority: medium — commit d342abe claim vs reality mismatch
+- Commit d342abe says "upgrade go-md2man v2.0.6→v2.0.7, kr/pty v1.1.1→v1.1.8" but go.mod only shows kr/pretty v0.3.1 change
+- go-md2man v2.0.6 [v2.0.7] and kr/pty v1.1.1 [v1.1.8] still show as outdated
+- Fix: run actual `go get` for go-md2man, kr/pty, creack/pty, rogpeppe/go-internal, stretchr/objx, pkg/diff
+
+## [ ] WIRING — helix-release binary not wired into unified `helix` CLI
+- Priority: low — `helix release` returns "unknown command"
+- cmd/helix-release/main.go builds OK (738 lines) but no case in cmd/helix/main.go
+- helix-verify IS wired as `helix verify` — same pattern needed for release
+
+## [ ] TEST-CLI — cmd/helix-release + cmd/helix-verify: zero test coverage
+- Priority: low — both binaries have no _test.go files
+- 738 lines (release) + 419 lines (verify) = 1157 lines with zero coverage
+- Existing task nd-test-cli-commands covers cmd/helix/*.go files but NOT cmd/helix-release or cmd/helix-verify
+
+## [ ] QUALITY — 20 files over 500 lines need refactoring consideration
+- Priority: low — largest offenders: review.go (1441), incident.go (1183), design/review.go (1138)
+- Not blocking — just tracking for future refactoring cycles
+
+## [ ] DOC — Add CONTRIBUTING.md
+- Priority: low — missing developer onboarding document
+
+## [ ] DUCKBRAIN — Populate Helix namespace with architecture decisions, pitfalls, patterns
+- Priority: low — only 2 idle-tick entries exist; no design decisions or lessons recorded
