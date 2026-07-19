@@ -774,9 +774,9 @@ func TestCanaryScheduleSummaryFor(t *testing.T) {
 func TestPrintGate_Output(t *testing.T) {
 	// Capture stdout around printGate to confirm it writes expected markers.
 	cases := []struct {
-		name   string
-		gate   GateStatus
-		want   []string // substrings expected in output
+		name string
+		gate GateStatus
+		want []string // substrings expected in output
 	}{
 		{
 			name: "passed and blocking",
@@ -845,8 +845,8 @@ func TestPrintSignoffDashboard_BothSigned(t *testing.T) {
 			AllGatesPassed: true,
 		},
 		HumanSignoff: HumanSignoff{
-			HumanID:   "alice",
-			Approved:  true,
+			HumanID:  "alice",
+			Approved: true,
 		},
 		CanarySchedule: canaryScheduleSummaryFor("trusted"),
 	}
