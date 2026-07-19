@@ -117,8 +117,8 @@ func TestSortedKeys(t *testing.T) {
 
 	t.Run("all subcommands", func(t *testing.T) {
 		got := sortedKeys(subcommands)
-		if len(got) != 6 {
-			t.Errorf("sortedKeys(subcommands) = %d keys, want 6", len(got))
+		if len(got) != 7 {
+			t.Errorf("sortedKeys(subcommands) = %d keys, want 7", len(got))
 		}
 		for i := 1; i < len(got); i++ {
 			if got[i] < got[i-1] {
@@ -142,8 +142,8 @@ func TestLookPath(t *testing.T) {
 		if err != nil {
 			t.Fatalf("lookPath(fake-cmd) = error: %v", err)
 		}
-		if got != "fake-cmd" {
-			t.Errorf("lookPath(fake-cmd) = %q, want fake-cmd", got)
+		if got != "./fake-cmd" {
+			t.Errorf("lookPath(fake-cmd) = %q, want ./fake-cmd", got)
 		}
 	})
 
@@ -466,7 +466,7 @@ func TestConstants(t *testing.T) {
 }
 
 func TestSubcommandsMap(t *testing.T) {
-	expected := []string{"identity", "estimate", "negotiate", "prompt", "marketplace", "sandbox"}
+	expected := []string{"identity", "estimate", "negotiate", "prompt", "marketplace", "sandbox", "release"}
 	for _, name := range expected {
 		binary, ok := subcommands[name]
 		if !ok {
@@ -476,8 +476,8 @@ func TestSubcommandsMap(t *testing.T) {
 			t.Errorf("subcommands[%q] has empty binary", name)
 		}
 	}
-	if len(subcommands) != 6 {
-		t.Errorf("subcommands has %d entries, want 6", len(subcommands))
+	if len(subcommands) != 7 {
+		t.Errorf("subcommands has %d entries, want 7", len(subcommands))
 	}
 }
 
