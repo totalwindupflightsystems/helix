@@ -242,17 +242,13 @@ Findings requiring new tasks:
 7. CONTRIBUTING.md missing
 8. DuckBrain namespace has only 2 idle-tick entries — no architecture decisions, pitfalls, or patterns recorded
 
-## [ ] TEST-SPEC — pkg/spec: Add test coverage (0%, 4 untested production files)
-- Priority: medium — zero coverage on spec co-authoring, completeness checker, and store
-- Files: pkg/spec/types.go, coauthor.go, completeness.go, store.go
-- GitReins task `spec-coauthor` claimed `go test passes` but package has no test files
-- Target: ≥70% coverage, ≥10 tests
+## [x] TEST-SPEC — pkg/spec: Add test coverage (0%, 4 untested production files)
+- **Priority:** medium — zero coverage on spec co-authoring, completeness checker, and store
+- **Completed:** 2026-07-19 — opencode-go worker. 1507 lines, 61 test functions, 96.2% coverage. Tests cover: store round-trip, markdown serialization, annotation serialization, CoAuthor all personas (generate + challenge), completeness 12-dimension scoring, all helpers. Commit 5c6e822.
 
-## [ ] FIX-DEPS — Fabricated dep upgrade: go-md2man + kr/pty not actually upgraded
-- Priority: medium — commit d342abe claim vs reality mismatch
-- Commit d342abe says "upgrade go-md2man v2.0.6→v2.0.7, kr/pty v1.1.1→v1.1.8" but go.mod only shows kr/pretty v0.3.1 change
-- go-md2man v2.0.6 [v2.0.7] and kr/pty v1.1.1 [v1.1.8] still show as outdated
-- Fix: run actual `go get` for go-md2man, kr/pty, creack/pty, rogpeppe/go-internal, stretchr/objx, pkg/diff
+## [x] FIX-DEPS — Fabricated dep upgrade: go-md2man + kr/pty not actually upgraded
+- **Priority:** medium — commit d342abe claim vs reality mismatch
+- **Completed:** 2026-07-19 — All 6 deps upgraded: go-md2man v2.0.6→v2.0.7, kr/pty v1.1.1→v1.1.8, creack/pty v1.1.9→v1.1.24, rogpeppe/go-internal v1.9.0→v1.15.0, stretchr/objx v0.5.2→v0.5.3, pkg/diff → latest. Build+vet+test PASS. Commit f603c31.
 
 ## [ ] WIRING — helix-release binary not wired into unified `helix` CLI
 - Priority: low — `helix release` returns "unknown command"
