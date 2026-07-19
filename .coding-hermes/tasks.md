@@ -256,10 +256,9 @@ Findings requiring new tasks:
 - helix-verify IS wired as `helix verify` — same pattern needed for release
 - **Completed:** 2026-07-19 — Foreman direct. Added `"release": "helix-release"` to subcommands map in cmd/helix/main.go. Fixed pre-existing `lookPath` bug where `filepath.Join(".", name)` dropped the `./` prefix, causing `exec.Command` to skip local files and fail with "not found in $PATH". Now correctly prefixes bare filenames with `./` so all binary-delegated subcommands work. Updated usage text, header comments, and tests (SortedKeys 6→7, SubcommandsMap 6→7, LookPath "./fake-cmd"). Build+vet+test PASS (55+ packages). E2E verified: `helix release signoff` delegates to helix-release correctly.
 
-## [ ] TEST-CLI — cmd/helix-release + cmd/helix-verify: zero test coverage
-- Priority: low — both binaries have no _test.go files
-- 738 lines (release) + 419 lines (verify) = 1157 lines with zero coverage
-- Existing task nd-test-cli-commands covers cmd/helix/*.go files but NOT cmd/helix-release or cmd/helix-verify
+## [x] TEST-CLI — cmd/helix-release + cmd/helix-verify: zero test coverage
+- Priority: low — both binaries had no _test.go files
+- Completed: 2026-07-19 — Worker (MiniMax-M3). Commit 047f27a: 1007 lines, 34 tests, 76.4% coverage for helix-release. Commit 1b65ca4: 967 lines, 32 tests, 68.4% coverage for helix-verify. Combined 1974 lines, 66 tests. go test PASS.
 
 ## [ ] QUALITY — 20 files over 500 lines need refactoring consideration
 - Priority: low — largest offenders: review.go (1441), incident.go (1183), design/review.go (1138)
