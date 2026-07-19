@@ -250,10 +250,11 @@ Findings requiring new tasks:
 - **Priority:** medium — commit d342abe claim vs reality mismatch
 - **Completed:** 2026-07-19 — All 6 deps upgraded: go-md2man v2.0.6→v2.0.7, kr/pty v1.1.1→v1.1.8, creack/pty v1.1.9→v1.1.24, rogpeppe/go-internal v1.9.0→v1.15.0, stretchr/objx v0.5.2→v0.5.3, pkg/diff → latest. Build+vet+test PASS. Commit f603c31.
 
-## [ ] WIRING — helix-release binary not wired into unified `helix` CLI
+## [x] WIRING — helix-release binary not wired into unified 'helix' CLI
 - Priority: low — `helix release` returns "unknown command"
 - cmd/helix-release/main.go builds OK (738 lines) but no case in cmd/helix/main.go
 - helix-verify IS wired as `helix verify` — same pattern needed for release
+- **Completed:** 2026-07-19 — Foreman direct. Added `"release": "helix-release"` to subcommands map in cmd/helix/main.go. Fixed pre-existing `lookPath` bug where `filepath.Join(".", name)` dropped the `./` prefix, causing `exec.Command` to skip local files and fail with "not found in $PATH". Now correctly prefixes bare filenames with `./` so all binary-delegated subcommands work. Updated usage text, header comments, and tests (SortedKeys 6→7, SubcommandsMap 6→7, LookPath "./fake-cmd"). Build+vet+test PASS (55+ packages). E2E verified: `helix release signoff` delegates to helix-release correctly.
 
 ## [ ] TEST-CLI — cmd/helix-release + cmd/helix-verify: zero test coverage
 - Priority: low — both binaries have no _test.go files

@@ -12,6 +12,7 @@
 //	helix prompt      → delegates to helix-prompt
 //	helix marketplace → delegates to helix-marketplace
 //	helix sandbox     → delegates to sandbox
+//	helix release     → delegates to helix-release
 //	helix version     → prints the current version
 //	helix status      → checks all component health
 //
@@ -65,6 +66,7 @@ var subcommands = map[string]string{
 	"prompt":      "helix-prompt",
 	"marketplace": "helix-marketplace",
 	"sandbox":     "sandbox",
+	"release":     "helix-release",
 }
 
 // ---------------------------------------------------------------------------
@@ -573,13 +575,21 @@ func urlToAddr(rawURL string) string {
 }
 
 func lookPath(name string) (string, error) {
-	// Prefer project-local binaries
+	// Prefer project-local binaries. Ensure paths that don't contain a
+	// separator get a "./" prefix so exec.Command treats them as local
+	// filesystem paths instead of falling back to a PATH lookup.
 	localPaths := []string{
 		filepath.Join(".", name),
 		filepath.Join("cmd", name, name),
 	}
 	for _, p := range localPaths {
 		if _, err := os.Stat(p); err == nil {
+			// filepath.Join("." , "foo") → "foo" (drops "./").
+			// exec.Command("foo") → calls LookPath, which skips cwd.
+			// Prefix these bare-names with "./".
+			if !strings.Contains(p, string(filepath.Separator)) {
+				p = "./" + p
+			}
 			return p, nil
 		}
 	}
@@ -623,6 +633,7 @@ Subcommands:
   dispatcher   Inspect and drive the Ralph Loop engine (status/tick/list-tasks)
   review       Adversarial review + change management dashboard
   verify       Production verification (shadow/canary/contract)
+  release      Release signoff — dual human+agent gate for production deployment
   trust        Query trust ledger snapshots
   mergegate    Pre-merge validation gate (5 quality checks)
   security     Deployment security hardening checklist
