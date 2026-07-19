@@ -265,8 +265,10 @@ Findings requiring new tasks:
 - Priority: low — largest offenders: review.go (1441), incident.go (1183), design/review.go (1138)
 - Not blocking — just tracking for future refactoring cycles
 
-## [ ] DOC — Add CONTRIBUTING.md
-- Priority: low — missing developer onboarding document
+## [x] DOC — Add CONTRIBUTING.md
+- **Priority:** low — missing developer onboarding document
+- **Completed:** 2026-07-19 — Foreman direct. Created CONTRIBUTING.md (3.9KB): dev setup, workflow, project structure, commit rules, quality gates, package/CLI addition guide, CI info.
 
-## [ ] DUCKBRAIN — Populate Helix namespace with architecture decisions, pitfalls, patterns
-- Priority: low — only 2 idle-tick entries exist; no design decisions or lessons recorded
+## [x] DUCKBRAIN — Populate Helix namespace with architecture decisions, pitfalls, patterns
+- **Priority:** low — only 2 idle-tick entries exist; no design decisions or lessons recorded
+- **Completed:** 2026-07-19 — Foreman direct. Added 4 entries: architecture (42 pkgs, 10 CLIs, Go 1.26.5, 3149 Hilo edges), 3 pitfalls (fabricated-dep-upgrade, wiring-subcommand-lookpath, golangci-lint-v2-silent-upgrade). Now 8 total entries.
