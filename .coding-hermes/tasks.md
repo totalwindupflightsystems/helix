@@ -267,10 +267,10 @@ Findings requiring new tasks:
 - **Targets:** Hot paths in review pipeline (adversarial dispatch, consensus scoring), incident miner (pattern discovery algorithms), context assembly, model evaluation scoring.
 - **AC met:** (1) 11 benchmark functions across key packages (≥5 required), (2) Benchmarks run with `go test -bench=. -benchmem` and produce ns/op + B/op + allocs/op.
 
-## [ ] QUALITY — 48 files over 500 lines need refactoring consideration
+## [ ] QUALITY — 49 files over 500 lines need refactoring consideration
 - Priority: low — largest offenders: review.go (1441), incident.go (1183), design/review.go (1138)
 - Not blocking — just tracking for future refactoring cycles
-- Updated count: 48 files (was 24 — prior audit undercounted; re-counted 2026-07-20)
+- Updated count: 49 files (was 48 — 2026-07-20 tick 12:23: +1, cmd/helix/dispatcher.go 715L newly crossed threshold)
 
 ## [x] DEPS — Upgrade golang.org/x/ modules (3 outdated)
 - Priority: low — mechanical maintenance
@@ -326,3 +326,17 @@ Audit summary:
 - 1 open task: QUALITY tracking (48 files >500 lines) — non-actionable, monitoring only.
 
 Findings: ZERO. All 11 points pass with no new tasks required. Board is effectively clean.
+
+## [x] NEVER-DONE — 11-point self-improvement audit (2026-07-20 tick 13:34)
+
+Audit summary:
+- Build: PASS, Vet: PASS, Tests: PASS (57/57 packages, 89.3% avg coverage)
+- CI: GREEN (5/5 recent), Lint: 0 issues, Govulncheck: CLEAN
+- Go 1.25.0, Hilo: 3167 edges across 524 files, Benchmarks: 11
+- DuckBrain (helix ns): 45+ entries — architecture, pitfalls, patterns, features, ticks
+- Docs: README, CONTRIBUTING, LICENSE, CHANGELOG, SKILL.md all present
+- Deps: 8 transitive-only deps with newer versions (same set, indirect, no action)
+- 48 production files >500 lines (QUALITY tracker, non-blocking)
+- specs/AGENTS.md does NOT exist; root AGENTS.md is native Helix
+
+Findings: ZERO. All 11 points pass. Board clean except QUALITY tracker (non-actionable).
