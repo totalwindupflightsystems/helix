@@ -486,3 +486,76 @@ func containsCategory(cats []incident.FileCategory, target incident.FileCategory
 	}
 	return false
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Benchmarks
+// ─────────────────────────────────────────────────────────────────────────────
+
+func BenchmarkPatternMiner_CategoryClusters(b *testing.B) {
+	var patterns []*incident.IncidentPattern
+	for i := 0; i < 10; i++ {
+		patterns = append(patterns, makePattern("p-auth-"+string(rune('a'+i)), "glm:agent1",
+			[]incident.FileCategory{incident.CategoryAuth}, incident.ChangeNew, nil))
+	}
+	for _, cat := range []incident.FileCategory{incident.CategoryDatabase, incident.CategoryAPI, incident.CategoryConfig, incident.CategoryNetworking} {
+		patterns = append(patterns, makePattern("p-"+string(cat), "glm:agent2",
+			[]incident.FileCategory{cat}, incident.ChangeNew, nil))
+	}
+
+	incidents := []*incident.Incident{
+		makeIncident("i1", "glm:agent1", "medium", time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC)),
+	}
+	m := NewPatternMiner(NewIncidentSliceSource(incidents), NewPatternSliceSource(patterns))
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m.discoverCategoryClusters(incidents, patterns)
+	}
+}
+
+func BenchmarkPatternMiner_ProviderCorrelation(b *testing.B) {
+	var patterns []*incident.IncidentPattern
+	for i := 0; i < 5; i++ {
+		patterns = append(patterns, makePattern("p-openai-"+string(rune('a'+i)), "openai:agent"+string(rune('a'+i)),
+			[]incident.FileCategory{incident.CategoryAuth}, incident.ChangeNew, nil))
+	}
+	for i := 0; i < 15; i++ {
+		patterns = append(patterns, makePattern("p-glm-"+string(rune('a'+i)), "glm:agent"+string(rune('a'+i)),
+			[]incident.FileCategory{incident.CategoryConfig}, incident.ChangeModify, nil))
+	}
+
+	incidents := []*incident.Incident{
+		makeIncident("i1", "openai:agent0", "high", time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC)),
+		makeIncident("i2", "glm:agent0", "low", time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC)),
+		makeIncident("i3", "glm:agent1", "low", time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC)),
+	}
+	m := NewPatternMiner(NewIncidentSliceSource(incidents), NewPatternSliceSource(patterns))
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m.discoverProviderCorrelations(incidents, patterns)
+	}
+}
+
+func BenchmarkPatternMiner_Discover(b *testing.B) {
+	var patterns []*incident.IncidentPattern
+	for i := 0; i < 10; i++ {
+		patterns = append(patterns, makePattern("p-auth-"+string(rune('a'+i)), "openai:agent"+string(rune('a'+i)),
+			[]incident.FileCategory{incident.CategoryAuth}, incident.ChangeNew, nil))
+	}
+	for _, ct := range []incident.ChangeType{incident.ChangeModify, incident.ChangeDelete, incident.ChangeRefactor} {
+		patterns = append(patterns, makePattern("p-"+string(ct), "glm:agent99",
+			[]incident.FileCategory{incident.CategoryDatabase}, ct, []string{"check carefully"}))
+	}
+
+	incidents := []*incident.Incident{
+		makeIncident("i1", "openai:agent0", "high", time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC)),
+		makeIncident("i2", "glm:agent99", "low", time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)),
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m := NewPatternMiner(NewIncidentSliceSource(incidents), NewPatternSliceSource(patterns))
+		m.Discover()
+	}
+}

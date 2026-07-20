@@ -442,3 +442,35 @@ func TestCompareTiers_Integration(t *testing.T) {
 		t.Error("Trusted should be == Trusted")
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Benchmarks
+// ---------------------------------------------------------------------------
+
+func BenchmarkEstimateTokens(b *testing.B) {
+	input := "this is a test string with approximately fifty characters in it ok"
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		EstimateTokens(input)
+	}
+}
+
+func BenchmarkEstimateTokens_Large(b *testing.B) {
+	large := strings.Repeat("the quick brown fox jumped over the lazy dog ", 100)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		EstimateTokens(large)
+	}
+}
+
+func BenchmarkContextBudget(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cb := NewContextBudget(4096)
+		for j := 0; j < 20; j++ {
+			cb.Consume(100)
+		}
+		cb.Remaining()
+		cb.Used()
+	}
+}

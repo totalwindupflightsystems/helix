@@ -825,3 +825,34 @@ func TestReview_DispatchesToAllModelsConcurrently(t *testing.T) {
 		t.Errorf("expected audit called once, got %d", audit.CallCount())
 	}
 }
+
+// =============================================================================
+// Benchmarks
+// =============================================================================
+
+func BenchmarkValidatePanel(b *testing.B) {
+	o := NewReviewOrchestrator()
+	panel := &ReviewPanel{
+		Primary:     newMock("gpt-5.1", "openai", "pass"),
+		Adversarial: newMock("claude-sonnet", "anthropic", "pass"),
+		Audit:       newMock("glm-4.5", "z.ai", "pass"),
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = o.ValidatePanel(panel)
+	}
+}
+
+func BenchmarkPanelRoles(b *testing.B) {
+	panel := &ReviewPanel{
+		Primary:     newMock("gpt-5.1", "openai", "pass"),
+		Adversarial: newMock("claude-sonnet", "anthropic", "pass"),
+		Audit:       newMock("glm-4.5", "z.ai", "pass"),
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = panel.Roles()
+	}
+}
