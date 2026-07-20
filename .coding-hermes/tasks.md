@@ -306,6 +306,15 @@ Audit findings:
 - **Priority:** low — only 2 idle-tick entries exist; no design decisions or lessons recorded
 - **Completed:** 2026-07-19 — Foreman direct. Added 4 entries: architecture (42 pkgs, 10 CLIs, Go 1.26.5, 3149 Hilo edges), 3 pitfalls (fabricated-dep-upgrade, wiring-subcommand-lookpath, golangci-lint-v2-silent-upgrade). Now 8 total entries.
 
+## [x] NEVER-DONE — 11-point self-improvement audit (2026-07-20 tick 08:18)
+Audit summary:
+- Build: PASS, Vet: PASS, Tests: PASS (57 packages, 80.7% coverage), CI: GREEN (5/5 recent)
+- Go 1.26.5, Hilo: 3167 edges across 524 files, Govulncheck: CLEAN
+- DuckBrain: 47 entries in helix namespace
+- **All 11 checks PASS — zero findings requiring new tasks.**
+- **Notable:** 8 "outdated" deps from `go list -u -m all` are transitive-only (NOT in go.mod). Prior ticks created bogus DEPS tasks from this false positive. Go 1.25 module pruning keeps go.mod lean with 3 direct + 7 indirect entries.
+- Only remaining item: QUALITY tracker (48 files >500 lines, non-blocking).
+
 ## [x] NEVER-DONE — 11-point self-improvement audit (2026-07-20 tick 08:14)
 
 Audit summary:
