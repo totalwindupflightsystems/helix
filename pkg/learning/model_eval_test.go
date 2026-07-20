@@ -482,3 +482,60 @@ func TestZeroReviews_ZeroFPRate(t *testing.T) {
 		t.Errorf("expected 0 FP rate for zero reviews, got %f", m.FalsePositiveRate)
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Benchmarks
+// ─────────────────────────────────────────────────────────────────────────────
+
+func BenchmarkModelEvaluator_EvaluateAll(b *testing.B) {
+	me := NewModelEvaluator()
+	// Seed 5 models with moderate activity.
+	for i := 0; i < 50; i++ {
+		me.RecordMerge("openai:gpt-5.1", true)
+		me.RecordMerge("anthropic:claude-sonnet", true)
+		me.RecordMerge("glm:z1-glm-4.5", true)
+		me.RecordMerge("minimax:m3", true)
+		me.RecordMerge("deepseek:v3", true)
+	}
+	for i := 0; i < 5; i++ {
+		me.RecordIncident("openai:gpt-5.1")
+		me.RecordIncident("glm:z1-glm-4.5")
+	}
+	for i := 0; i < 20; i++ {
+		me.RecordReview("openai:gpt-5.1", i%5 == 0)
+		me.RecordReview("anthropic:claude-sonnet", false)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		me.EvaluateAll()
+	}
+}
+
+func BenchmarkSelectionScore(b *testing.B) {
+	metrics := ModelMetrics{
+		ModelID:             "openai:gpt-5.1",
+		IncidentsAttributed: 3,
+		TotalMerges:         50,
+		IncidentRate:        0.06,
+		FalsePositives:      2,
+		TotalReviews:        20,
+		FalsePositiveRate:   0.10,
+		AvgTrustScore:       0.85,
+		AvgCostPerMerge:     0.012,
+	}
+	fleetMaxCost := 0.05
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		SelectionScoreWithMetrics(metrics, 0.85, fleetMaxCost)
+	}
+}
+
+func BenchmarkRecordMerge(b *testing.B) {
+	me := NewModelEvaluator()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		me.RecordMerge("openai:gpt-5.1", true)
+	}
+}
