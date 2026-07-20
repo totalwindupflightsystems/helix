@@ -260,10 +260,16 @@ Findings requiring new tasks:
 - Priority: low — both binaries have no _test.go files
 - 738 lines (release) + 419 lines (verify) = 1157 lines with zero coverage
 - **Completed:** 2026-07-19 — Foreman tick. cmd/helix-release: 1007-line test file (31 test functions, foreman-direct fix for case-sensitivity) committed as 047f27a. cmd/helix-verify: 1426-line test file (48 test functions, MiniMax-M3 worker) committed across 4 commits (1b65ca4, 69da992, a56ba2d, c51a3ca). Both pass. All 57 packages green. 80.7% total coverage.
-## [ ] QUALITY — 24 files over 500 lines need refactoring consideration
+## [ ] PERF — Add benchmarks for hot paths (0 benchmarks across 57 packages)
+- **Priority:** low — no performance baselines exist
+- **Found by:** 11-point audit Check 6 (2026-07-20). `go test -bench=. -run='^$' ./...` returns 0 `Benchmark` matches.
+- **Targets:** Hot paths in review pipeline (adversarial dispatch, consensus scoring), incident miner (pattern discovery algorithms), context assembly, model evaluation scoring.
+- **AC:** At least 5 benchmark functions across key packages. Benchmarks run with `go test -bench=. -benchmem` and produce ns/op + B/op + allocs/op.
+
+## [ ] QUALITY — 48 files over 500 lines need refactoring consideration
 - Priority: low — largest offenders: review.go (1441), incident.go (1183), design/review.go (1138)
 - Not blocking — just tracking for future refactoring cycles
-- Updated count: 24 files (was 20)
+- Updated count: 48 files (was 24 — prior audit undercounted; re-counted 2026-07-20)
 
 ## [x] DEPS — Upgrade golang.org/x/ modules (3 outdated)
 - Priority: low — mechanical maintenance
