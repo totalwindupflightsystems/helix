@@ -3139,3 +3139,12 @@
 {"from":"pkg/learning/skills.go","to":"std:time","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"pkg/learning/skills.go","to":"pkg/learning/skills_test.go","rel":"tests","provenance":"heuristic","confidence":0.8}
 {"from":"pkg/learning/skills_test.go","to":"pkg/learning/skills.go","rel":"tested_by","provenance":"heuristic","confidence":0.8}
+{"from":"cmd/helix-verify/main_test.go","to":"std:bytes","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"cmd/helix-verify/main_test.go","to":"std:encoding/json","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"cmd/helix-verify/main_test.go","to":"std:io","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"cmd/helix-verify/main_test.go","to":"std:os","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"cmd/helix-verify/main_test.go","to":"std:strings","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"cmd/helix-verify/main_test.go","to":"std:testing","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"cmd/helix-verify/main_test.go","to":"std:time","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"cmd/helix-verify/main_test.go","to":"pkg:github.com/spf13/cobra","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"cmd/helix-verify/main_test.go","to":"pkg:github.com/totalwindupflightsystems/helix/pkg/verify","rel":"imports","provenance":"ast_exact","confidence":1.0}
