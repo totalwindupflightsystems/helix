@@ -260,11 +260,12 @@ Findings requiring new tasks:
 - Priority: low — both binaries have no _test.go files
 - 738 lines (release) + 419 lines (verify) = 1157 lines with zero coverage
 - **Completed:** 2026-07-19 — Foreman tick. cmd/helix-release: 1007-line test file (31 test functions, foreman-direct fix for case-sensitivity) committed as 047f27a. cmd/helix-verify: 1426-line test file (48 test functions, MiniMax-M3 worker) committed across 4 commits (1b65ca4, 69da992, a56ba2d, c51a3ca). Both pass. All 57 packages green. 80.7% total coverage.
-## [ ] PERF — Add benchmarks for hot paths (0 benchmarks across 57 packages)
+## [x] PERF — Add benchmarks for hot paths (0 benchmarks across 57 packages)
 - **Priority:** low — no performance baselines exist
+- **Completed:** 2026-07-20 — Foreman direct. 11 benchmarks across 4 packages (+193 lines). pkg/dispatcher: BenchmarkEstimateTokens, BenchmarkEstimateTokens_Large, BenchmarkContextBudget. pkg/learning: BenchmarkPatternMiner_CategoryClusters, BenchmarkPatternMiner_ProviderCorrelation, BenchmarkPatternMiner_Discover, BenchmarkModelEvaluator_EvaluateAll, BenchmarkSelectionScore, BenchmarkRecordMerge. pkg/review: BenchmarkValidatePanel, BenchmarkPanelRoles. All produce ns/op + B/op + allocs/op. Commit 4317892.
 - **Found by:** 11-point audit Check 6 (2026-07-20). `go test -bench=. -run='^$' ./...` returns 0 `Benchmark` matches.
 - **Targets:** Hot paths in review pipeline (adversarial dispatch, consensus scoring), incident miner (pattern discovery algorithms), context assembly, model evaluation scoring.
-- **AC:** At least 5 benchmark functions across key packages. Benchmarks run with `go test -bench=. -benchmem` and produce ns/op + B/op + allocs/op.
+- **AC met:** (1) 11 benchmark functions across key packages (≥5 required), (2) Benchmarks run with `go test -bench=. -benchmem` and produce ns/op + B/op + allocs/op.
 
 ## [ ] QUALITY — 48 files over 500 lines need refactoring consideration
 - Priority: low — largest offenders: review.go (1441), incident.go (1183), design/review.go (1138)
