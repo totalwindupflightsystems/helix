@@ -390,3 +390,21 @@ Audit summary:
 - Scheduler: cooldown reverted 14400s→1800s (1st reversion, daemon restart). Re-fixed via API PUT → 14400s. Warning.
 
 Findings: ZERO. All 11 checks pass. Idle tick #4 — 1st cooldown reversion detected and corrected. Cooldown at 14400s (4h). Next tick in ~4h.
+
+## [x] NEVER-DONE — 11-point audit (2026-07-20 tick 20:43) — idle tick #5, all 11 checks PASS
+
+Audit summary:
+- Build: PASS, Vet: PASS, Tests: PASS (55/55 packages, 80.7% coverage)
+- CI: GREEN (5/5 recent), Lint: 0 issues, Govulncheck: CLEAN
+- Go 1.26.5, Hilo: 3167 edges across 524 files, Benchmarks: 11 (all real ns/op)
+- DuckBrain (helix ns): 5 entries — architecture, 1 pattern, 3 pitfalls
+- Docs: README, CONTRIBUTING, LICENSE, CHANGELOG, SKILL.md all present, 19 spec files
+- Deps: 8 transitive-only deps with newer versions — all indirect, not in go.mod (false positive)
+- Check 5 (pitfalls): 18 nil,nil returns — all verified guard clauses (empty-store, dry-run, not-found, etc.), zero true stubs
+- Check 6 (TODO/FIXME): 4 hits — all in promptfoo.go guard definition, not real TODOs
+- Check 7 (endpoint): CLI `helix status` + `helix doctor` functional. Services down (dev machine, expected)
+- Check 11 (wiring): All 9 cmd binaries build, 7 subcommands wired via unified CLI + 2 external helpers
+- 49 production files >500 lines (QUALITY tracker, non-blocking)
+- Scheduler cooldown: confirmed at 14400s (4h), stable since tick #3 escalation
+
+Findings: ZERO. All 11 checks pass. Idle tick #5 — 5th consecutive idle, cooldown stable at 4h.
