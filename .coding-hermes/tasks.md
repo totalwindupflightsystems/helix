@@ -2,8 +2,8 @@
 
 > **Core purpose:** Agent-First Code Platform — humans and AI agents as equal participants in the SDLC. Forgejo integration, sandboxed execution, adversarial review, trust-tiered task assignment.
 
-> **Foreman:** deepseek-v4-pro @ deepseek | **DuckBrain:** coding-hermes (empty — needs population)
-> **Last tick:** 2026-07-21 04:35 UTC | **Partial progress** | **Build:** FAIL (host exhaustion) | **Commit:** c6355c7 (host thread exhaustion — newosproc, INFRA)
+> **Foreman:** deepseek-v4-pro @ deepseek | **DuckBrain:** helix (11 entries — populated)
+> **Last tick:** 2026-07-21 16:44 UTC | **Tick #10** | **Build:** PASS (host exhaustion cleared) | **Commit:** (board + DuckBrain)
 
 ```
 ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
@@ -13,8 +13,7 @@ ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
 
 | ID | Task | Pri | Cpx | Deps | Tags | Model | Lvl | Fallback |
 |----|------|-----|-----|------|------|-------|-----|----------|
-| DUCKBRAIN-001 | Populate Helix namespace in DuckBrain — architecture decisions, patterns, pitfalls | Low | 2 | — | ++duckbrain, +documentation | DeepSeek V4 Flash | Minimal | GLM-5.2 |
-| QUALITY-001 | Break up files >1,000 lines: review.go (1441), incident.go (1183), design/review.go (1138), verify/surveillance.go (1081), audit/chain.go (1064) | Low | 3 | — | ++code-quality, +file-editing | DeepSeek V4 Pro | Medium | GLM-5.2 |
+|| QUALITY-001 | Break up files >1,000 lines: review.go (1441), incident.go (1183), design/review.go (1138), verify/surveillance.go (1081), audit/chain.go (1064) | Low | 3 | — | ++code-quality, +file-editing | DeepSeek V4 Pro | Medium | GLM-5.2 |
 
 ## Integration & E2E Tasks
 
@@ -68,27 +67,30 @@ ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
 
 **ESCALATION:** Idle tick #9 (≥7 protocol threshold). Project is genuinely complete at Phase 12 — 42 packages, 9 CLIs, all 11 audit checks pass (except DuckBrain population and long-file quality). The remaining INT/PROD tasks require a working Forgejo instance + non-exhausted Go toolchain. Last tick (#8) recommended SELF-PAUSE. This tick (#9) escalates to Bane with disable instructions. Cooldown set to max (43200s = 12h). NEVER self-disabling.
 
-## Assumptions
-- All 30+ medium/high tasks from Phases 1-12 are complete (42 packages, 10 CLIs)
-- Go 1.26.5, golangci-lint v2, GitReins Tier 1+2 all green
-- CI green (Last 3 runs: success)
-- Forgejo instance accessible for integration tests (INT-001 blocker: host exhaustion prevents build)
+## Assumptions (UPDATED Tick #10)
+- All 30+ medium/high tasks from Phases 1-12 are complete (42 packages, 9 CLIs)
+- Go 1.25.0, golangci-lint v2, GitReins Tier 1+2 all green
+- CI green (Last 5 runs: all success)
+- **Build/Tests GREEN** — host exhaustion cleared. `go build ./...`, `go vet ./...`, `go test -short ./...` all PASS.
+- Forgejo instance NOT locally available (blocks INT-001)
+- INT-xxx tasks blocked by Forgejo availability; PROD tasks actionable
 
 ## Routing Notes
 - INT tasks need real Forgejo + multi-component integration → V4 Pro High or GPT-5.6 Sol
 - PROD security tasks need architectural thinking → GPT-5.6 Sol
-- Mechanical tasks (DOC, DuckBrain) → V4 Flash
-- Helix is Go monorepo; all tasks benefit from Go expertise
-- ALL tasks currently blocked by host thread exhaustion (can't go build/go test/go vet)
+- Mechanical tasks (DOC, DuckBrain, QUALITY file splits) → V4 Flash or direct
+- Helix is Go monorepo; most tasks benefit from Go expertise
+- Build/Tests now GREEN (host exhaustion cleared)
+- INT-xxx BLOCKED by Forgejo availability (not running locally)
 
 ## Execution Order
-1. INT-001 (Forgejo E2E — validates the spine)
-2. INT-002 (Chimera E2E — validates review pipeline)
-3. PROD-001 (secrets — security before metrics)
-4. PROD-002 (rate limiting)
-5. PROD-003 (metrics/tracing)
-6. DUCKBRAIN-001 (DuckBrain population — can do now, no build needed)
-7. QUALITY-001 (file splitting — needs build verification)
+1. ~~DUCKBRAIN-001~~ ✅ Done (Tick #10 — namespace populated, 11 entries)
+2. QUALITY-001 (file splitting — build verified, code worker needed)
+3. INT-001 (Forgejo E2E — validates the spine; BLOCKED: Forgejo not available)
+4. INT-002 (Chimera E2E — validates review pipeline)
+5. PROD-001 (secrets — security before metrics)
+6. PROD-002 (rate limiting)
+7. PROD-003 (metrics/tracing)
 8. NEVER-DONE (periodic)
 
 ## Escalation Conditions
@@ -100,6 +102,8 @@ ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
 ---
 
 ## Completed (Phases 1-12) — 30+ Tasks
+
+**Tick #10 (2026-07-21 16:44 UTC):** DUCKBRAIN-001 — Helix DuckBrain namespace populated with 11 entries (architecture overview, project scope, 2 patterns, 4 pitfalls, current status). Host thread exhaustion cleared — `go build ./...`, `go vet ./...`, `go test -short ./...` all PASS. CI green.
 
 **Phase 1-2 (Foundation):** BwrapExecutor (sandbox), ForgejoLoop (dispatcher), ChimeraModelClient + DeepSeekModelClient (review), change management dashboard, merge gates, ideation system, spec co-authoring, ADR co-authoring, design review, API contract generation
 
