@@ -82,6 +82,23 @@ func (c *Client) CreateBranch(ctx context.Context, owner, repo, newBranchName, f
 	return &branch, nil
 }
 
+// DeleteBranch deletes a branch from the given repository.
+//
+//   - owner / repo identify the target repo.
+//   - branch is the branch name to delete.
+//
+// Returns nil on success (HTTP 204). Errors:
+//   - 404 if the branch doesn't exist.
+//   - 403 if branch protection prevents deletion.
+func (c *Client) DeleteBranch(ctx context.Context, owner, repo, branch string) error {
+	if owner == "" || repo == "" || branch == "" {
+		return fmt.Errorf("forgejo: DeleteBranch requires owner, repo, and branch")
+	}
+	path := fmt.Sprintf("/api/v1/repos/%s/%s/branches/%s",
+		url.PathEscape(owner), url.PathEscape(repo), url.PathEscape(branch))
+	return c.doRequest(ctx, http.MethodDelete, path, nil, nil)
+}
+
 // BranchRef returns the canonical refs/heads/<name> for a local branch name.
 // Convenience helper for code that needs to compare refs without string
 // formatting in the dispatcher.
