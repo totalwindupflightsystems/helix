@@ -9,7 +9,9 @@ require (
 )
 
 require (
+	filippo.io/age v1.1.1
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/getsops/sops/v3 v3.9.0
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
