@@ -41,18 +41,6 @@ import (
 	"github.com/totalwindupflightsystems/helix/pkg/security/store"
 )
 
-// crudSubcommands is the set of subcommands handled here. Kept as a
-// package-level set so parseSecretFlags / runSecrets can recognise
-// them without scattering string literals through the dispatch.
-var crudSubcommands = map[string]bool{
-	"set":    true,
-	"get":    true,
-	"delete": true,
-	"list":   true,
-	"rotate": true,
-	"init":   true,
-}
-
 // crudFlags holds the parsed flags + positional args for a CRUD
 // subcommand. The fields used depend on the subcommand:
 //
@@ -63,14 +51,14 @@ var crudSubcommands = map[string]bool{
 //	rotate: newKeyPath
 //	init:   (none)
 type crudFlags struct {
-	subcommand  string
-	key         string // set/get/delete
-	value       string // set
-	newKeyPath  string // rotate
-	storePath   string // --store override
-	keyPath     string // --key-path override
-	provider    string // --provider override (env|sops)
-	showHelp    bool
+	subcommand string
+	key        string // set/get/delete
+	value      string // set
+	newKeyPath string // rotate
+	storePath  string // --store override
+	keyPath    string // --key-path override
+	provider   string // --provider override (env|sops)
+	showHelp   bool
 }
 
 // env-var overrides for the store/key paths. These are intentionally

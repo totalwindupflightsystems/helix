@@ -993,4 +993,3 @@ func TestFileExists(t *testing.T) {
 	require.NoError(t, os.WriteFile(p, []byte("x"), 0o600))
 	assert.True(t, fileExists(p))
 }
-
