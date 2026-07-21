@@ -3,7 +3,7 @@
 > **Core purpose:** Agent-First Code Platform — humans and AI agents as equal participants in the SDLC. Forgejo integration, sandboxed execution, adversarial review, trust-tiered task assignment.
 
 > **Foreman:** deepseek-v4-pro @ deepseek | **DuckBrain:** coding-hermes (empty — needs population)
-> **Last tick:** 2026-07-21 04:33 UTC | **Idle tick #9** | **Build:** FAIL (host thread exhaustion — newosproc, INFRA)
+> **Last tick:** 2026-07-21 04:35 UTC | **Partial progress** | **Build:** FAIL (host exhaustion) | **Commit:** c6355c7 (host thread exhaustion — newosproc, INFRA)
 
 ```
 ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
@@ -20,7 +20,8 @@ ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
 
 | ID | Task | Pri | Cpx | Deps | Tags | Model | Lvl | Fallback |
 |----|------|-----|-----|------|------|-------|-----|----------|
-| INT-001 | End-to-end integration test: Forgejo → Helix → Agent PR → Review → Merge | High | 6 | — | ++testing, ++integration, ++multi-step-reasoning, ++distributed-systems | DeepSeek V4 Pro | High | GPT-5.6 Sol |
+| INT-001 | E2E integration test: Forgejo → Helix → Agent PR → Review → Merge — helpers + API methods done in c6355c7 | High | 6 | — | ++testing, ++integration, ++multi-step-reasoning, ++distributed-systems | DeepSeek V4 Pro | High | GPT-5.6 Sol |
+| INT-001b | Write 3 E2E test scenarios (happy path, 409 idempotent, error path) using helpers from c6355c7 | High | 4 | INT-001 | ++testing, ++integration | DeepSeek V4 Pro | High | GPT-5.6 Sol |
 | INT-002 | Chimera multi-model review E2E: real LLM calls, not stubs | High | 5 | INT-001 | ++testing, ++api-use, ++multi-step-reasoning | GLM-5.2 | High | DeepSeek V4 Pro |
 
 ## Production Hardening
