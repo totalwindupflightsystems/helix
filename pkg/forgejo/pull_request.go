@@ -96,6 +96,30 @@ func (c *Client) CreatePR(ctx context.Context, owner, repo, head, base, title, b
 	return &pr, nil
 }
 
+// ClosePR closes a pull request by updating its state to "closed".
+//
+//   - owner / repo identify the target repo.
+//   - prNumber is the PR index (not the global ID).
+//
+// Returns the updated PR payload on success. Errors:
+//   - 404 if the PR doesn't exist.
+//   - 403 if the caller lacks permission.
+func (c *Client) ClosePR(ctx context.Context, owner, repo string, prNumber int64) (*CreatePRResponse, error) {
+	if owner == "" || repo == "" || prNumber <= 0 {
+		return nil, fmt.Errorf("forgejo: ClosePR requires owner, repo, and valid prNumber")
+	}
+
+	path := fmt.Sprintf("/api/v1/repos/%s/%s/pulls/%d",
+		url.PathEscape(owner), url.PathEscape(repo), prNumber)
+
+	body := map[string]string{"state": "closed"}
+	var pr CreatePRResponse
+	if err := c.doRequest(ctx, http.MethodPatch, path, body, &pr); err != nil {
+		return nil, err
+	}
+	return &pr, nil
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
