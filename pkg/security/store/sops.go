@@ -1,5 +1,5 @@
-// sops.go — SOPSSecretStore: SOPS-encrypted YAML file as a
-// SecretStore implementation per specs/secret-management.md §3-§5.
+// Package store implements SOPS-encrypted SecretStore for agent credentials,
+// Forgejo tokens, and other sensitive configuration data.
 //
 // Storage format
 // --------------
@@ -99,8 +99,8 @@ type SOPSSecretStore struct {
 	// env-var convention at decrypt time.
 	keyPath string
 
-	mu      sync.RWMutex // guards file I/O + rotate state
-	rotating bool        // true while Rotate is in progress
+	mu       sync.RWMutex // guards file I/O + rotate state
+	rotating bool         // true while Rotate is in progress
 }
 
 // NewSOPSStore creates or opens a SOPS-secret store.
@@ -380,9 +380,9 @@ func (s *SOPSSecretStore) encryptAndWriteLocked(data map[string]any) error {
 		branch = append(branch, sops.TreeItem{Key: k, Value: data[k]})
 	}
 	tree := sops.Tree{
-		Branches:  sops.TreeBranches{branch},
-		Metadata:  sops.Metadata{Version: sopsversion.Version},
-		FilePath:  s.path,
+		Branches: sops.TreeBranches{branch},
+		Metadata: sops.Metadata{Version: sopsversion.Version},
+		FilePath: s.path,
 	}
 
 	// Generate data key, encrypt it with the age recipient. The

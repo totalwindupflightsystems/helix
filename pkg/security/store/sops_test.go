@@ -101,9 +101,9 @@ func createEmptyEncryptedStore(storePath, keyPath string) error {
 	// Build a SOPS tree with no secret keys (empty branch).
 	branch := make(sops.TreeBranch, 0)
 	tree := sops.Tree{
-		Branches:  sops.TreeBranches{branch},
-		Metadata:  sops.Metadata{Version: sopsversion.Version},
-		FilePath:  storePath,
+		Branches: sops.TreeBranches{branch},
+		Metadata: sops.Metadata{Version: sopsversion.Version},
+		FilePath: storePath,
 	}
 
 	dataKey := make([]byte, 32)

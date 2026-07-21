@@ -54,8 +54,8 @@ func newBase(code, message string) *baseError {
 }
 
 // withCause returns a copy of the baseError with the supplied cause.
-// We return a fresh value so callers can mutate the returned error
-// without affecting the package-level sentinel.
+//
+//nolint:unused // Available for error-wrapping in future implementations.
 func (e *baseError) withCause(cause error) *baseError {
 	return &baseError{code: e.code, message: e.message, cause: cause}
 }
