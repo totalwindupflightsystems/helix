@@ -81,5 +81,13 @@ func Defaults() *Config {
 			OveragePolicy:       "block",
 			EscalationThreshold: 1.5,
 		},
+		Secrets: SecretsConfig{
+			// "env" preserves backward compatibility — no encrypted
+			// store is created on disk and all lookups fall through
+			// to os.Getenv. Operators opt in to SOPS explicitly.
+			Provider:    "env",
+			SOPSKeyPath: "~/.helix/keys/age.txt",
+			StorePath:   "~/.helix/secrets.enc.yaml",
+		},
 	}
 }

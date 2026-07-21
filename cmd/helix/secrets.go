@@ -148,9 +148,14 @@ func parseSecretFlags(args []string, stdout, stderr io.Writer) (secretsFlags, er
 
 	switch subcommand {
 	case "scan", "list-rules", "help", "-h", "--help":
-		// recognised
+		// recognised scan-only subcommands handled below
+	case "set", "get", "delete", "list", "rotate", "init":
+		// CRUD subcommands are parsed + dispatched by secrets_crud.go.
+		// parseSecretFlags returns the raw subcommand so runSecrets
+		// can hand the original args off to parseCrudFlags.
+		return secretsFlags{subcommand: subcommand}, nil
 	default:
-		return secretsFlags{}, fmt.Errorf("unknown subcommand %q (expected: scan | list-rules | help)", subcommand)
+		return secretsFlags{}, fmt.Errorf("unknown subcommand %q (expected: scan | list-rules | help | set | get | delete | list | rotate | init)", subcommand)
 	}
 
 	if subcommand == "help" || subcommand == "-h" || subcommand == "--help" {
@@ -298,6 +303,17 @@ func runSecrets(args []string, stdout, stderr io.Writer) int {
 		return runSecretsScan(flags, stdout, stderr)
 	case "list-rules":
 		return runSecretsListRules(stdout)
+	case "set", "get", "delete", "list", "rotate", "init":
+		// CRUD subcommands parse their own flags + positionals via
+		// secrets_crud.go. We hand the original args (subcommand + rest)
+		// off to parseCrudFlags so it can re-derive the subcommand.
+		cf, err := parseCrudFlags(args, stdout, stderr)
+		if err != nil {
+			fmt.Fprintln(stderr, "helix secrets: parse:", err)
+			printCrudUsage(stderr)
+			return 2
+		}
+		return runCrud(cf, stdout, stderr)
 	}
 	return 2
 }

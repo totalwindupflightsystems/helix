@@ -22,11 +22,12 @@ import (
 
 // Client wraps the Forgejo REST API with BasicAuth and circuit-breaker support.
 type Client struct {
-	baseURL    string
-	username   string
-	password   string
-	httpClient *http.Client
-	circuit    CircuitBreaker
+	baseURL     string
+	username    string
+	password    string
+	httpClient  *http.Client
+	circuit     CircuitBreaker
+	rateLimiter RateLimiter // per-instance rate limiter; NoopRateLimiter by default
 }
 
 // CircuitBreaker is the minimal interface the client needs.
@@ -47,11 +48,12 @@ func (NoopCircuitBreaker) RecordFailure() {}
 // NewClient creates a Forgejo API client.
 func NewClient(baseURL, username, password string) *Client {
 	return &Client{
-		baseURL:    strings.TrimRight(baseURL, "/"),
-		username:   username,
-		password:   password,
-		httpClient: &http.Client{Timeout: 30 * time.Second},
-		circuit:    NoopCircuitBreaker{},
+		baseURL:     strings.TrimRight(baseURL, "/"),
+		username:    username,
+		password:    password,
+		httpClient:  &http.Client{Timeout: 30 * time.Second},
+		circuit:     NoopCircuitBreaker{},
+		rateLimiter: NoopRateLimiter{},
 	}
 }
 
@@ -64,6 +66,13 @@ func (c *Client) WithHTTPClient(client *http.Client) *Client {
 // WithCircuitBreaker attaches a circuit breaker.
 func (c *Client) WithCircuitBreaker(cb CircuitBreaker) *Client {
 	c.circuit = cb
+	return c
+}
+
+// WithRateLimiter attaches a rate limiter. Limits outbound API calls per
+// client instance so concurrent callers don't trigger Forgejo 429s.
+func (c *Client) WithRateLimiter(rl RateLimiter) *Client {
+	c.rateLimiter = rl
 	return c
 }
 
@@ -163,6 +172,11 @@ var ErrCircuitOpen = fmt.Errorf("circuit breaker open — service unavailable")
 func (c *Client) doRequest(ctx context.Context, method, path string, body interface{}, result interface{}) error {
 	if !c.circuit.Allow() {
 		return ErrCircuitOpen
+	}
+
+	// Rate-limit gate: wait for a token before sending.
+	if err := c.rateLimiter.Wait(ctx); err != nil {
+		return fmt.Errorf("rate limit: %w", err)
 	}
 
 	var bodyReader io.Reader

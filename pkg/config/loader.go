@@ -69,4 +69,10 @@ func (dst *Config) Merge(src *Config) {
 	if src.Budget.OveragePolicy != "" {
 		dst.Budget = src.Budget
 	}
+	// Secrets.Provider is the discriminator — any explicit provider
+	// (including "env") means the operator took control of the section,
+	// so we copy the whole block.
+	if src.Secrets.Provider != "" {
+		dst.Secrets = src.Secrets
+	}
 }
