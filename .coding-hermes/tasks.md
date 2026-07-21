@@ -16,7 +16,8 @@ ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
 | INT-001 | E2E integration test: Forgejo → Helix → Agent PR → Review → Merge — helpers + API methods done in c6355c7 | High | 6 | — | ++testing, ++integration, ++multi-step-reasoning, ++distributed-systems | DeepSeek V4 Pro | High | GPT-5.6 Sol |
 | INT-001b | Write 3 E2E test scenarios (happy path, 409 idempotent, error path) using helpers from c6355c7 | High | 4 | INT-001 | ++testing, ++integration | DeepSeek V4 Pro | High | GPT-5.6 Sol |
 | INT-002 | Chimera multi-model review E2E: real LLM calls, not stubs | High | 5 | INT-001 | ++testing, ++api-use, ++multi-step-reasoning | GLM-5.2 | High | DeepSeek V4 Pro |
-| PROD-001 | Secret management: HashiCorp Vault or SOPS integration | Medium | 5 | — | ++security, ++architecture, ++distributed-systems | GPT-5.6 Sol | High | DeepSeek V4 Pro |
+|| PROD-001 | **SPEC DONE — Impl Pending.** SOPS-backed SecretStore: interface, sops.go, CLI CRUD, config integration (spec committed 94ac4b7) | Medium | 5 | — | ++security, ++architecture, ++distributed-systems | GPT-5.6 Sol | High | DeepSeek V4 Pro |
+|| PROD-001a | Implement `pkg/security/store` — `SecretStore` interface, SOPS-backed store, unit tests | Medium | 3 | PROD-001 | ++backend, ++go-coding, ++terminal | GLM-5.2 | High | MiniMax-M3 |
 | PROD-002 | Rate limiting on Forgejo API calls | Medium | 3 | — | ++backend, ++performance | DeepSeek V4 Flash | Medium | GLM-5.2 |
 | PROD-003 | Metrics + tracing (OpenTelemetry) | Low | 4 | — | ++backend, ++infra | DeepSeek V4 Pro | Medium | GLM-5.2 |
 
@@ -26,7 +27,22 @@ ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
 |----|------|-----|-----|------|------|-------|-----|----------|
 | NEVER-DONE | 11-point audit across all 55+ packages | Low | 3 | — | ++terminal, ++code-review, ++file-editing | DeepSeek V4 Pro | Medium | GLM-5.2 |
 
-## Tick #11 — 2026-07-21 22:15 UTC — QUALITY-001 Completed
+## Tick #12 — 2026-07-21 17:34 UTC — NEVER-DONE Audit + PROD-001 Spec Committed
+
+**11-point audit:** All 11 checks PASS. No spec gaps, test gaps, outdated deps, stubs, or wiring issues found.
+
+**Pre-existing uncommitted work discovered:** PROD-001 spec (293 lines, 10 sections) was sitting untracked on disk with SOPS/age deps in go.mod. Spec is complete with exact Go interfaces, CLI surface, error catalog, and build order. Committed as `94ac4b7`.
+
+| # | File | Status | Notes |
+|---|------|--------|-------|
+| 1 | `specs/secret-management.md` | ✅ Committed (94ac4b7) | Complete 10-section PROD-001 spec |
+| 2 | `go.mod` + `go.sum` | ✅ Committed | SOPS v3.9.0 + filippo.io/age v1.1.1 |
+
+**CI:** Build ✅ Test ✅ Integration ✅ | Lint ❌ (pre-existing unused E2E helpers)
+
+**Build:** `go build ./...` ✅ | **Vet:** `go vet ./...` ✅ | **Tests:** All packages `ok` ✅
+
+**Next:** Spawn worker for PROD-001a — implement `pkg/security/store` (interface + SOPS store + tests)
 
 **Found uncommitted worker output in dirty workdir.** Prior tick's worker had extracted 5 files >1,000 lines but never committed. 3 of 5 extractions were partial (original code not pruned). Foreman completed the pruning and committed all 5.
 
