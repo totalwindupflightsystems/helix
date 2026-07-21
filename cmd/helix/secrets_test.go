@@ -2,14 +2,22 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	fage "filippo.io/age"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/totalwindupflightsystems/helix/pkg/config"
+	"github.com/totalwindupflightsystems/helix/pkg/security/store"
 )
 
 // =============================================================================
@@ -499,3 +507,490 @@ func TestScanWithExcludes_MissingPath(t *testing.T) {
 	_, err = scanWithExcludes("/no/such", g)
 	assert.Error(t, err)
 }
+
+// =============================================================================
+// secrets_crud.go — parseCrudFlags
+// =============================================================================
+
+func TestParseCrudFlags_Set(t *testing.T) {
+	var buf bytes.Buffer
+	f, err := parseCrudFlags([]string{"set", "foo", "bar"}, &buf, &buf)
+	require.NoError(t, err)
+	assert.Equal(t, "set", f.subcommand)
+	assert.Equal(t, "foo", f.key)
+	assert.Equal(t, "bar", f.value)
+}
+
+func TestParseCrudFlags_Get(t *testing.T) {
+	var buf bytes.Buffer
+	f, err := parseCrudFlags([]string{"get", "foo"}, &buf, &buf)
+	require.NoError(t, err)
+	assert.Equal(t, "get", f.subcommand)
+	assert.Equal(t, "foo", f.key)
+}
+
+func TestParseCrudFlags_Delete(t *testing.T) {
+	var buf bytes.Buffer
+	f, err := parseCrudFlags([]string{"delete", "foo"}, &buf, &buf)
+	require.NoError(t, err)
+	assert.Equal(t, "delete", f.subcommand)
+	assert.Equal(t, "foo", f.key)
+}
+
+func TestParseCrudFlags_List(t *testing.T) {
+	var buf bytes.Buffer
+	f, err := parseCrudFlags([]string{"list"}, &buf, &buf)
+	require.NoError(t, err)
+	assert.Equal(t, "list", f.subcommand)
+}
+
+func TestParseCrudFlags_Rotate(t *testing.T) {
+	var buf bytes.Buffer
+	f, err := parseCrudFlags([]string{"rotate", "/tmp/newkey.txt"}, &buf, &buf)
+	require.NoError(t, err)
+	assert.Equal(t, "rotate", f.subcommand)
+	assert.Equal(t, "/tmp/newkey.txt", f.newKeyPath)
+}
+
+func TestParseCrudFlags_Init(t *testing.T) {
+	var buf bytes.Buffer
+	f, err := parseCrudFlags([]string{"init"}, &buf, &buf)
+	require.NoError(t, err)
+	assert.Equal(t, "init", f.subcommand)
+}
+
+func TestParseCrudFlags_Set_MissingValue(t *testing.T) {
+	var buf bytes.Buffer
+	_, err := parseCrudFlags([]string{"set", "foo"}, &buf, &buf)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "<key> <value>")
+}
+
+func TestParseCrudFlags_Get_MissingKey(t *testing.T) {
+	var buf bytes.Buffer
+	_, err := parseCrudFlags([]string{"get"}, &buf, &buf)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "<key>")
+}
+
+func TestParseCrudFlags_Delete_MissingKey(t *testing.T) {
+	var buf bytes.Buffer
+	_, err := parseCrudFlags([]string{"delete"}, &buf, &buf)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "<key>")
+}
+
+func TestParseCrudFlags_Rotate_MissingPath(t *testing.T) {
+	var buf bytes.Buffer
+	_, err := parseCrudFlags([]string{"rotate"}, &buf, &buf)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "<new-key-path>")
+}
+
+func TestParseCrudFlags_Set_ExtraArgs(t *testing.T) {
+	var buf bytes.Buffer
+	_, err := parseCrudFlags([]string{"set", "a", "b", "c"}, &buf, &buf)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unexpected extra arguments")
+}
+
+func TestParseCrudFlags_List_ExtraArgs(t *testing.T) {
+	var buf bytes.Buffer
+	_, err := parseCrudFlags([]string{"list", "extra"}, &buf, &buf)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unexpected arguments")
+}
+
+func TestParseCrudFlags_Init_ExtraArgs(t *testing.T) {
+	var buf bytes.Buffer
+	_, err := parseCrudFlags([]string{"init", "extra"}, &buf, &buf)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unexpected arguments")
+}
+
+func TestParseCrudFlags_Flags(t *testing.T) {
+	var buf bytes.Buffer
+	f, err := parseCrudFlags([]string{"get", "--provider", "sops", "--store", "/tmp/s.yaml",
+		"--key-path", "/tmp/k.txt", "foo"}, &buf, &buf)
+	require.NoError(t, err)
+	assert.Equal(t, "sops", f.provider)
+	assert.Equal(t, "/tmp/s.yaml", f.storePath)
+	assert.Equal(t, "/tmp/k.txt", f.keyPath)
+	assert.Equal(t, "foo", f.key)
+}
+
+func TestParseCrudFlags_EnvDefaults(t *testing.T) {
+	t.Setenv(envSecretsStorePath, "/env/store.yaml")
+	t.Setenv(envSecretsKeyPath, "/env/key.txt")
+	t.Setenv(envSecretsProvider, "sops")
+
+	var buf bytes.Buffer
+	f, err := parseCrudFlags([]string{"get", "foo"}, &buf, &buf)
+	require.NoError(t, err)
+	assert.Equal(t, "sops", f.provider)
+	assert.Equal(t, "/env/store.yaml", f.storePath)
+	assert.Equal(t, "/env/key.txt", f.keyPath)
+}
+
+func TestParseCrudFlags_FlagsOverrideEnv(t *testing.T) {
+	t.Setenv(envSecretsProvider, "env")
+
+	var buf bytes.Buffer
+	f, err := parseCrudFlags([]string{"get", "--provider", "sops", "foo"}, &buf, &buf)
+	require.NoError(t, err)
+	assert.Equal(t, "sops", f.provider, "--provider must beat env")
+}
+
+func TestParseCrudFlags_Empty(t *testing.T) {
+	var buf bytes.Buffer
+	_, err := parseCrudFlags(nil, &buf, &buf)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "missing secrets subcommand")
+}
+
+// =============================================================================
+// resolveSecretsConfig
+// =============================================================================
+
+func TestResolveSecretsConfig_Defaults(t *testing.T) {
+	provider, storePath, keyPath := resolveSecretsConfig(crudFlags{}, nil)
+	assert.Equal(t, "env", provider)
+	assert.Contains(t, storePath, "secrets.enc.yaml")
+	assert.Contains(t, keyPath, "age.txt")
+}
+
+func TestResolveSecretsConfig_ConfigWins(t *testing.T) {
+	cfg := &config.Config{
+		Secrets: config.SecretsConfig{
+			Provider:    "sops",
+			StorePath:   "/cfg/store.yaml",
+			SOPSKeyPath: "/cfg/key.txt",
+		},
+	}
+	provider, storePath, keyPath := resolveSecretsConfig(crudFlags{}, cfg)
+	assert.Equal(t, "sops", provider)
+	assert.Equal(t, "/cfg/store.yaml", storePath)
+	assert.Equal(t, "/cfg/key.txt", keyPath)
+}
+
+func TestResolveSecretsConfig_FlagWins(t *testing.T) {
+	cfg := &config.Config{
+		Secrets: config.SecretsConfig{
+			Provider: "sops", StorePath: "/cfg/s.yaml", SOPSKeyPath: "/cfg/k.txt",
+		},
+	}
+	f := crudFlags{provider: "env", storePath: "/flag/s.yaml", keyPath: "/flag/k.txt"}
+	provider, storePath, keyPath := resolveSecretsConfig(f, cfg)
+	assert.Equal(t, "env", provider)
+	assert.Equal(t, "/flag/s.yaml", storePath)
+	assert.Equal(t, "/flag/k.txt", keyPath)
+}
+
+// =============================================================================
+// runCrud — env provider
+// =============================================================================
+
+func TestRunCrud_Env_Get(t *testing.T) {
+	t.Setenv("HELIX_TEST_FOO", "bar")
+	var stdout, stderr bytes.Buffer
+	rc := runCrud(crudFlags{subcommand: "get", key: "HELIX_TEST_FOO"}, &stdout, &stderr)
+	assert.Equal(t, 0, rc)
+	assert.Equal(t, "bar\n", stdout.String())
+}
+
+func TestRunCrud_Env_Get_Missing(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	rc := runCrud(crudFlags{subcommand: "get", key: "HELIX_NOPE_DOES_NOT_EXIST"}, &stdout, &stderr)
+	assert.Equal(t, 1, rc)
+	assert.Contains(t, stderr.String(), "not set in environment")
+}
+
+func TestRunCrud_Env_Set_Rejected(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	rc := runCrud(crudFlags{subcommand: "set", key: "X", value: "Y"}, &stdout, &stderr)
+	assert.Equal(t, 1, rc)
+	assert.Contains(t, stderr.String(), "cannot persist")
+}
+
+func TestRunCrud_Env_Delete_Rejected(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	rc := runCrud(crudFlags{subcommand: "delete", key: "X"}, &stdout, &stderr)
+	assert.Equal(t, 1, rc)
+	assert.Contains(t, stderr.String(), "cannot unset")
+}
+
+func TestRunCrud_Env_List(t *testing.T) {
+	t.Setenv("HELIX_LIST_A", "1")
+	t.Setenv("HELIX_LIST_B", "2")
+	var stdout, stderr bytes.Buffer
+	rc := runCrud(crudFlags{subcommand: "list"}, &stdout, &stderr)
+	assert.Equal(t, 0, rc)
+	lines := strings.Split(strings.TrimRight(stdout.String(), "\n"), "\n")
+	assert.Contains(t, lines, "HELIX_LIST_A")
+	assert.Contains(t, lines, "HELIX_LIST_B")
+}
+
+func TestRunCrud_Env_Rotate_Rejected(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	rc := runCrud(crudFlags{subcommand: "rotate", newKeyPath: "/tmp/x"}, &stdout, &stderr)
+	assert.Equal(t, 1, rc)
+	assert.Contains(t, stderr.String(), "no key to rotate")
+}
+
+func TestRunCrud_Env_Init_Rejected(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	rc := runCrud(crudFlags{subcommand: "init"}, &stdout, &stderr)
+	assert.Equal(t, 1, rc)
+	assert.Contains(t, stderr.String(), "nothing to initialise")
+}
+
+func TestRunCrud_UnknownProvider(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	rc := runCrud(crudFlags{subcommand: "get", key: "X", provider: "vault"}, &stdout, &stderr)
+	assert.Equal(t, 2, rc)
+	assert.Contains(t, stderr.String(), "unsupported provider")
+}
+
+func TestRunCrud_Help(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	rc := runCrud(crudFlags{subcommand: "get", showHelp: true}, &stdout, &stderr)
+	assert.Equal(t, 0, rc)
+	assert.Contains(t, stdout.String(), "Usage:")
+}
+
+// =============================================================================
+// runCrud — sops provider (real age keys, real SOPS)
+// =============================================================================
+
+// writeTestAgeKey generates a fresh age identity at path and returns
+// the identity. Mirrors the helper in pkg/security/store/sops_test.go
+// but lives here because this is package main.
+func writeTestAgeKey(t *testing.T, path string) {
+	t.Helper()
+	id, err := fage.GenerateX25519Identity()
+	require.NoError(t, err, "generate age identity")
+	contents := "# created: 2026-07-21T17:00:00Z\n" +
+		"# public key: " + id.Recipient().String() + "\n" +
+		id.String() + "\n"
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
+	require.NoError(t, os.WriteFile(path, []byte(contents), 0o600))
+}
+
+// newSOPSCrudFixture builds a CRUD-ready test harness: a temp dir
+// containing an age key + empty encrypted store, SOPS_AGE_KEY_FILE
+// pointing at the key, and the CRUD flags wired to use them.
+func newSOPSCrudFixture(t *testing.T) (storePath, keyPath string) {
+	t.Helper()
+	dir := t.TempDir()
+	keyPath = filepath.Join(dir, "age.txt")
+	storePath = filepath.Join(dir, "secrets.enc.yaml")
+
+	writeTestAgeKey(t, keyPath)
+	t.Setenv("SOPS_AGE_KEY_FILE", keyPath)
+
+	// Seed an empty encrypted store so the SOPS smoke-test decrypt
+	// at NewSOPSStore succeeds. Use the store package directly.
+	s, err := store.NewSOPSStore(storePath, keyPath)
+	require.NoError(t, err)
+	// Set a marker and delete it to force the initial file write.
+	require.NoError(t, s.Set(context.Background(), "__init__", ""))
+	require.NoError(t, s.Delete(context.Background(), "__init__"))
+	return storePath, keyPath
+}
+
+func TestRunCrud_SOPS_SetGet(t *testing.T) {
+	storePath, keyPath := newSOPSCrudFixture(t)
+
+	var stdout, stderr bytes.Buffer
+	cf := crudFlags{
+		subcommand: "set",
+		key:        "forgejo_token",
+		value:      "sk-or-v1-abc",
+		provider:   "sops",
+		storePath:  storePath,
+		keyPath:    keyPath,
+	}
+	rc := runCrud(cf, &stdout, &stderr)
+	require.Equal(t, 0, rc, "set failed: %s", stderr.String())
+	assert.Contains(t, stdout.String(), "set forgejo_token")
+
+	// Get it back.
+	var stdout2, stderr2 bytes.Buffer
+	cf = crudFlags{subcommand: "get", key: "forgejo_token", provider: "sops",
+		storePath: storePath, keyPath: keyPath}
+	rc = runCrud(cf, &stdout2, &stderr2)
+	require.Equal(t, 0, rc, "get failed: %s", stderr2.String())
+	assert.Equal(t, "sk-or-v1-abc\n", stdout2.String())
+}
+
+func TestRunCrud_SOPS_Get_NotFound(t *testing.T) {
+	storePath, keyPath := newSOPSCrudFixture(t)
+	var stdout, stderr bytes.Buffer
+	cf := crudFlags{subcommand: "get", key: "does_not_exist", provider: "sops",
+		storePath: storePath, keyPath: keyPath}
+	rc := runCrud(cf, &stdout, &stderr)
+	assert.Equal(t, 1, rc)
+	assert.Contains(t, stderr.String(), "not found")
+}
+
+func TestRunCrud_SOPS_Delete(t *testing.T) {
+	storePath, keyPath := newSOPSCrudFixture(t)
+
+	// Seed a secret.
+	require.NoError(t, runCrudSilent(crudFlags{subcommand: "set", key: "k1", value: "v1",
+		provider: "sops", storePath: storePath, keyPath: keyPath}))
+
+	var stdout, stderr bytes.Buffer
+	rc := runCrud(crudFlags{subcommand: "delete", key: "k1", provider: "sops",
+		storePath: storePath, keyPath: keyPath}, &stdout, &stderr)
+	assert.Equal(t, 0, rc, "delete: %s", stderr.String())
+	assert.Contains(t, stdout.String(), "deleted k1")
+
+	// Follow-up get must miss.
+	var stdout2, stderr2 bytes.Buffer
+	rc = runCrud(crudFlags{subcommand: "get", key: "k1", provider: "sops",
+		storePath: storePath, keyPath: keyPath}, &stdout2, &stderr2)
+	assert.Equal(t, 1, rc)
+}
+
+func TestRunCrud_SOPS_Delete_Idempotent(t *testing.T) {
+	storePath, keyPath := newSOPSCrudFixture(t)
+	var stdout, stderr bytes.Buffer
+	// Delete a key that was never set.
+	rc := runCrud(crudFlags{subcommand: "delete", key: "never_set", provider: "sops",
+		storePath: storePath, keyPath: keyPath}, &stdout, &stderr)
+	assert.Equal(t, 0, rc, "idempotent delete should succeed: %s", stderr.String())
+	assert.Contains(t, stdout.String(), "deleted never_set")
+}
+
+func TestRunCrud_SOPS_List(t *testing.T) {
+	storePath, keyPath := newSOPSCrudFixture(t)
+	require.NoError(t, runCrudSilent(crudFlags{subcommand: "set", key: "alpha", value: "1",
+		provider: "sops", storePath: storePath, keyPath: keyPath}))
+	require.NoError(t, runCrudSilent(crudFlags{subcommand: "set", key: "beta", value: "2",
+		provider: "sops", storePath: storePath, keyPath: keyPath}))
+
+	var stdout, stderr bytes.Buffer
+	rc := runCrud(crudFlags{subcommand: "list", provider: "sops",
+		storePath: storePath, keyPath: keyPath}, &stdout, &stderr)
+	require.Equal(t, 0, rc, "list: %s", stderr.String())
+	keys := strings.Fields(stdout.String())
+	assert.Contains(t, keys, "alpha")
+	assert.Contains(t, keys, "beta")
+	// SOPS store also leaves the __init__ marker? No — we deleted it
+	// in newSOPSCrudFixture. Sanity: at least alpha + beta present.
+	assert.GreaterOrEqual(t, len(keys), 2)
+}
+
+func TestRunCrud_SOPS_SetUpdate(t *testing.T) {
+	storePath, keyPath := newSOPSCrudFixture(t)
+	require.NoError(t, runCrudSilent(crudFlags{subcommand: "set", key: "k", value: "v1",
+		provider: "sops", storePath: storePath, keyPath: keyPath}))
+	require.NoError(t, runCrudSilent(crudFlags{subcommand: "set", key: "k", value: "v2",
+		provider: "sops", storePath: storePath, keyPath: keyPath}))
+
+	var stdout, stderr bytes.Buffer
+	rc := runCrud(crudFlags{subcommand: "get", key: "k", provider: "sops",
+		storePath: storePath, keyPath: keyPath}, &stdout, &stderr)
+	require.Equal(t, 0, rc)
+	assert.Equal(t, "v2\n", stdout.String(), "set should have updated the value")
+}
+
+func TestRunCrud_SOPS_Rotate(t *testing.T) {
+	storePath, keyPath := newSOPSCrudFixture(t)
+	require.NoError(t, runCrudSilent(crudFlags{subcommand: "set", key: "secret", value: "keep-me",
+		provider: "sops", storePath: storePath, keyPath: keyPath}))
+
+	// Generate a second key for rotation target.
+	newKey := filepath.Join(filepath.Dir(keyPath), "age2.txt")
+	writeTestAgeKey(t, newKey)
+
+	var stdout, stderr bytes.Buffer
+	rc := runCrud(crudFlags{subcommand: "rotate", newKeyPath: newKey, provider: "sops",
+		storePath: storePath, keyPath: keyPath}, &stdout, &stderr)
+	require.Equal(t, 0, rc, "rotate: %s", stderr.String())
+	assert.Contains(t, stdout.String(), "rotated to")
+
+	// Point SOPS at the new key — Get should still return the value.
+	t.Setenv("SOPS_AGE_KEY_FILE", newKey)
+	var stdout2, stderr2 bytes.Buffer
+	rc = runCrud(crudFlags{subcommand: "get", key: "secret", provider: "sops",
+		storePath: storePath, keyPath: newKey}, &stdout2, &stderr2)
+	require.Equal(t, 0, rc, "get after rotate: %s", stderr2.String())
+	assert.Equal(t, "keep-me\n", stdout2.String())
+}
+
+func TestRunCrud_SOPS_AutoInit_Key(t *testing.T) {
+	// When the age key file is absent, runCrud auto-generates one
+	// before opening the store. We can't rely on age-keygen being
+	// installed in CI — skip if missing.
+	if _, err := exec.LookPath("age-keygen"); err != nil {
+		t.Skip("age-keygen not installed; skipping auto-init test")
+	}
+	dir := t.TempDir()
+	keyPath := filepath.Join(dir, "age.txt")
+	storePath := filepath.Join(dir, "secrets.enc.yaml")
+
+	var stdout, stderr bytes.Buffer
+	rc := runCrud(crudFlags{subcommand: "list", provider: "sops",
+		storePath: storePath, keyPath: keyPath}, &stdout, &stderr)
+	require.Equal(t, 0, rc, "auto-init + list: %s", stderr.String())
+	assert.Contains(t, stdout.String(), "generated age key", "should report auto-init")
+	assert.True(t, fileExists(keyPath), "age key should have been created")
+}
+
+// runCrudSilent is a tiny helper for test fixtures that need to seed
+// state without inspecting output. Returns the exit code; non-zero is
+// surfaced to the caller via require.NoError in tests.
+func runCrudSilent(f crudFlags) error {
+	var stderr bytes.Buffer
+	if rc := runCrud(f, io.Discard, &stderr); rc != 0 {
+		return fmt.Errorf("runCrud %s rc=%d: %s", f.subcommand, rc, stderr.String())
+	}
+	return nil
+}
+
+// =============================================================================
+// end-to-end dispatch (runSecrets → CRUD)
+// =============================================================================
+
+func TestRunSecrets_CRUD_SetGet_Env(t *testing.T) {
+	t.Setenv("HELIX_E2E", "secret-value")
+	var stdout, stderr bytes.Buffer
+	rc := runSecrets([]string{"get", "HELIX_E2E"}, &stdout, &stderr)
+	assert.Equal(t, 0, rc, stderr.String())
+	assert.Equal(t, "secret-value\n", stdout.String())
+}
+
+func TestRunSecrets_CRUD_BadSubcommand(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	rc := runSecrets([]string{"frobnicate"}, &stdout, &stderr)
+	assert.Equal(t, 2, rc)
+}
+
+func TestRunSecrets_CRUD_Set_MissingValue(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	rc := runSecrets([]string{"set", "only-key"}, &stdout, &stderr)
+	assert.Equal(t, 2, rc)
+	assert.Contains(t, stderr.String(), "<key> <value>")
+}
+
+// =============================================================================
+// expandCLIHome / fileExists helpers
+// =============================================================================
+
+func TestExpandCLIHome(t *testing.T) {
+	t.Setenv("HOME", "/home/testuser")
+	assert.Equal(t, "/home/testuser/x.txt", expandCLIHome("~/x.txt"))
+	assert.Equal(t, "/abs/path", expandCLIHome("/abs/path"))
+	assert.Equal(t, "", expandCLIHome(""))
+}
+
+func TestFileExists(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "x")
+	assert.False(t, fileExists(p))
+	require.NoError(t, os.WriteFile(p, []byte("x"), 0o600))
+	assert.True(t, fileExists(p))
+}
+
