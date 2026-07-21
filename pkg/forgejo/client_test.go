@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -484,4 +485,102 @@ func TestClient_TrailingSlashTrimmed(t *testing.T) {
 	c := NewClient(mf.url()+"/", "admin", "secret")
 	_, err := c.GetUser(context.Background(), "test")
 	require.NoError(t, err)
+}
+
+// ---------------------------------------------------------------------------
+// Rate limiter integration
+// ---------------------------------------------------------------------------
+
+// recordingRateLimiter records every Wait call so tests can assert wiring.
+type recordingRateLimiter struct {
+	calls atomic.Int64
+}
+
+func (r *recordingRateLimiter) Wait(_ context.Context) error {
+	r.calls.Add(1)
+	return nil
+}
+
+func TestClient_DefaultRateLimiterIsNoop_DoesNotBlock(t *testing.T) {
+	mf := newMockForgejo()
+	defer mf.close()
+
+	mf.mux.HandleFunc("/api/v1/users/u", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, User{UserName: "u"})
+	})
+
+	// Default client (no WithRateLimiter) must keep existing behavior.
+	c := NewClient(mf.url(), "admin", "secret")
+	_, ok := c.rateLimiter.(NoopRateLimiter)
+	require.True(t, ok, "default rate limiter must be NoopRateLimiter; got %T", c.rateLimiter)
+
+	start := time.Now()
+	for i := 0; i < 50; i++ {
+		_, err := c.GetUser(context.Background(), "u")
+		require.NoError(t, err)
+	}
+	elapsed := time.Since(start)
+	// 50 sequential calls with Noop limiter complete in well under a second
+	// (each call is just an HTTP roundtrip to a local httptest server).
+	assert.Less(t, elapsed, 2*time.Second,
+		"NoopRateLimiter default must not throttle; elapsed=%s", elapsed)
+}
+
+func TestClient_WithRateLimiter_CalledBeforeRequest(t *testing.T) {
+	mf := newMockForgejo()
+	defer mf.close()
+
+	mf.mux.HandleFunc("/api/v1/users/u", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, User{UserName: "u"})
+	})
+
+	rl := &recordingRateLimiter{}
+	c := NewClient(mf.url(), "admin", "secret").WithRateLimiter(rl)
+
+	_, err := c.GetUser(context.Background(), "u")
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), rl.calls.Load(),
+		"rate limiter must be invoked exactly once per request")
+}
+
+func TestClient_WithRateLimiter_CountsAcrossRequests(t *testing.T) {
+	mf := newMockForgejo()
+	defer mf.close()
+
+	mf.mux.HandleFunc("/api/v1/users/u", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, User{UserName: "u"})
+	})
+
+	rl := &recordingRateLimiter{}
+	c := NewClient(mf.url(), "admin", "secret").WithRateLimiter(rl)
+
+	const n = 7
+	for i := 0; i < n; i++ {
+		_, err := c.GetUser(context.Background(), "u")
+		require.NoError(t, err)
+	}
+	assert.Equal(t, int64(n), rl.calls.Load(),
+		"rate limiter must be invoked once per request across N calls")
+}
+
+func TestClient_WithRateLimiter_Throttles(t *testing.T) {
+	mf := newMockForgejo()
+	defer mf.close()
+
+	mf.mux.HandleFunc("/api/v1/users/u", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, User{UserName: "u"})
+	})
+
+	// 50 RPS, burst 1: 3 consecutive calls must take >= ~40ms.
+	rl := NewTokenBucket(50, 1)
+	c := NewClient(mf.url(), "admin", "secret").WithRateLimiter(rl)
+
+	start := time.Now()
+	for i := 0; i < 3; i++ {
+		_, err := c.GetUser(context.Background(), "u")
+		require.NoError(t, err)
+	}
+	elapsed := time.Since(start)
+	assert.GreaterOrEqual(t, elapsed, 30*time.Millisecond,
+		"3 calls at 50 RPS / burst 1 should take at least ~40ms; elapsed=%s", elapsed)
 }

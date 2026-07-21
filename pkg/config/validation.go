@@ -185,6 +185,26 @@ func (c *Config) ValidateAll() ConfigErrors {
 		})
 	}
 
+	// Secrets (spec secret-management.md §4.2)
+	if c.Secrets.Provider != "" && c.Secrets.Provider != "env" && c.Secrets.Provider != "sops" {
+		errors = append(errors, ConfigError{
+			Section: "secrets", Field: "provider",
+			Message: fmt.Sprintf("secrets.provider must be 'env' or 'sops', got %q", c.Secrets.Provider),
+		})
+	}
+	if c.Secrets.Provider == "sops" && c.Secrets.SOPSKeyPath == "" {
+		errors = append(errors, ConfigError{
+			Section: "secrets", Field: "sops_key_path",
+			Message: "secrets.sops_key_path is required when secrets.provider is 'sops'",
+		})
+	}
+	if c.Secrets.Provider == "sops" && c.Secrets.StorePath == "" {
+		errors = append(errors, ConfigError{
+			Section: "secrets", Field: "store_path",
+			Message: "secrets.store_path is required when secrets.provider is 'sops'",
+		})
+	}
+
 	// Services
 	if c.Services.Forgejo.URL == "" && c.Forgejo.URL != "" {
 		errors = append(errors, ConfigError{

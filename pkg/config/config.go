@@ -21,6 +21,24 @@ type Config struct {
 	Prompts     PromptsConfig     `yaml:"prompts"`
 	Services    ServicesConfig    `yaml:"services"`
 	Budget      BudgetConfig      `yaml:"budget"`
+	Secrets     SecretsConfig     `yaml:"secrets"`
+}
+
+// SecretsConfig configures the runtime SecretStore provider per
+// specs/secret-management.md §4.2. The default provider is "env" so
+// existing deployments keep reading secrets from os.Getenv without
+// any encrypted store. Switching provider to "sops" activates the
+// SOPS+age file-backed store implemented in pkg/security/store.
+type SecretsConfig struct {
+	// Provider selects the SecretStore backend. One of "env" (default)
+	// or "sops". Other values are rejected at validation time.
+	Provider string `yaml:"provider"`
+	// SOPSKeyPath is the age identity file used by the SOPS store.
+	// Defaults to ~/.helix/keys/age.txt. Ignored when Provider != "sops".
+	SOPSKeyPath string `yaml:"sops_key_path"`
+	// StorePath is the encrypted YAML file backing the SOPS store.
+	// Defaults to ~/.helix/secrets.enc.yaml. Ignored when Provider != "sops".
+	StorePath string `yaml:"store_path"`
 }
 
 // ForgejoConfig holds the Forgejo forge connection parameters.

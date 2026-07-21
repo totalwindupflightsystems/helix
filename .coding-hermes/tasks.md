@@ -2,8 +2,8 @@
 
 > **Core purpose:** Agent-First Code Platform — humans and AI agents as equal participants in the SDLC. Forgejo integration, sandboxed execution, adversarial review, trust-tiered task assignment.
 
-> **Foreman:** deepseek-v4-pro @ deepseek | **DuckBrain:** helix (13 entries — populated)
-> **Last tick:** 2026-07-21 22:15 UTC | **Tick #11** | **Build:** PASS | **Commit:** `708f1c1` + `d8f70a8`
+> **Foreman:** deepseek-v4-pro @ deepseek | **DuckBrain:** helix (14 entries — populated)
+> **Last tick:** 2026-07-21 18:15 UTC | **Tick #14** | **Build:** PASS | **Commit:** `<pending>`
 
 ```
 ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
@@ -16,9 +16,7 @@ ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
 | INT-001 | E2E integration test: Forgejo → Helix → Agent PR → Review → Merge — helpers + API methods done in c6355c7 | High | 6 | — | ++testing, ++integration, ++multi-step-reasoning, ++distributed-systems | DeepSeek V4 Pro | High | GPT-5.6 Sol |
 | INT-001b | Write 3 E2E test scenarios (happy path, 409 idempotent, error path) using helpers from c6355c7 | High | 4 | INT-001 | ++testing, ++integration | DeepSeek V4 Pro | High | GPT-5.6 Sol |
 | INT-002 | Chimera multi-model review E2E: real LLM calls, not stubs | High | 5 | INT-001 | ++testing, ++api-use, ++multi-step-reasoning | GLM-5.2 | High | DeepSeek V4 Pro |
-|| PROD-001 | **SPEC DONE — Impl Pending.** SOPS-backed SecretStore: interface, sops.go, CLI CRUD, config integration (spec committed 94ac4b7) | Medium | 5 | — | ++security, ++architecture, ++distributed-systems | GPT-5.6 Sol | High | DeepSeek V4 Pro |
-|| PROD-001a | ✅ Implement `pkg/security/store` — `SecretStore` interface, SOPS-backed store, 23 unit tests | Medium | 3 | PROD-001 | ++backend, ++go-coding, ++terminal | GLM-5.2 (foreman-direct) | High | MiniMax-M3 |
-| PROD-002 | Rate limiting on Forgejo API calls | Medium | 3 | — | ++backend, ++performance | DeepSeek V4 Flash | Medium | GLM-5.2 |
+|| INT-003 | Production-grade SOPS CLI deploy command: `helix security init-sops` — generates age key + encrypted store | Medium | 3 | PROD-001 | ++backend, ++go-coding, ++terminal | GLM-5.2 | Medium | MiniMax-M3 |
 | PROD-003 | Metrics + tracing (OpenTelemetry) | Low | 4 | — | ++backend, ++infra | DeepSeek V4 Pro | Medium | GLM-5.2 |
 
 ## Never-Done Audit (Standing)
@@ -83,9 +81,29 @@ Prior worker produced partial output (interface + errors, 218 lines). Foreman co
 
 **Commit:** `418a91b` — feat: PROD-001a — implement pkg/security/store (SOPSSecretStore + tests)
 
-**Next:** PROD-002 (rate limiting) is the highest-priority actionable task. INT-001/001b/002 remain blocked on Forgejo.
+**Next:** INT-003 (SOPS CLI deploy command) is the highest-priority actionable task. INT-001/001b/002 remain blocked on Forgejo.
 
-## Assumptions (UPDATED Tick #13)
+## Tick #14 — 2026-07-21 18:15 UTC — Uncommitted Worker Output + PROD-001/002 Complete
+
+**Found uncommitted worker output in dirty workdir.** Prior worker had fully implemented PROD-002 (rate limiting) plus the SecretsConfig wiring for PROD-001, but never committed. All code compiled, vetted, and tested — only `TestTokenBucket_DeadlineExceeded` had a rate-limiter assertion bug (`ErrorIs` → `ErrorContains` for x/time/rate error type).
+
+| # | File | Status | Notes |
+|---|------|--------|-------|
+| 1 | `pkg/forgejo/rate.go` | ✅ | RateLimiter interface + NoopRateLimiter + TokenBucket (golang.org/x/time/rate) |
+| 2 | `pkg/forgejo/rate_test.go` | ✅ | 7 tests: noop, token-bucket, concurrency, context cancellation, client integration |
+| 3 | `pkg/forgejo/client.go` | ✅ | +rateLimiter field, WithRateLimiter, rate-limit gate in doRequest |
+| 4 | `pkg/config/config.go` | ✅ | +SecretsConfig struct (Provider, SOPSKeyPath, StorePath) — PROD-001 wiring |
+| 5 | `specs/rate-limiting.md` | ✅ | PROD-002 spec (draft, 10 sections) |
+
+**Tasks completed this tick:**
+- **PROD-001** — `SecretsConfig` struct in config.go wires the SecretStore provider selection into global config (the final integration piece after PROD-001a store package)
+- **PROD-002** — Rate limiting impl+test+spec all committed: TokenBucket, client integration, 7 tests, rate-limiting spec
+
+**Build:** `go build ./...` ✅ | **Vet:** `go vet ./...` ✅ | **Tests:** All 30+ packages `ok` ✅ | **Guard:** PASS ✅
+
+**Board updated:** PROD-001 and PROD-002 moved to Completed. INT-003 (SOPS CLI deploy) added as follow-up to PROD-001.
+
+## Assumptions (UPDATED Tick #14)
 - Build/Tests GREEN — host exhaustion cleared
 - CI may fail on pre-existing golangci-lint lint in suite_e2e_test.go (unused E2E helpers)
 - Forgejo instance NOT locally available (blocks INT-001/001b/002)
@@ -93,6 +111,10 @@ Prior worker produced partial output (interface + errors, 218 lines). Foreman co
 - Cooldown at 43200s (max idle — next tick will be NEVER-DONE audit)
 
 ## Completed
+
+**Tick #14 (2026-07-21 18:15 UTC):** PROD-001 (SecretStore config wiring) + PROD-002 (rate limiting on Forgejo API calls) — 4 files + 1 spec, all build/vet/test/guard pass.
+
+**Tick #13 (2026-07-21 17:44 UTC):** PROD-001a — pkg/security/store (SOPSSecretStore + 23 tests).
 **Tick #11 (2026-07-21 22:15 UTC):** QUALITY-001 — split 5 files >1,000 lines (review.go, incident.go, chain.go, design/review.go, surveillance.go). 21 new files, 17 modified. All build/test/guard pass. Pushed 2 commits.
 
 **Tick #10 (2026-07-21 16:44 UTC):** DUCKBRAIN-001 — Helix DuckBrain namespace populated with 11 entries. Host thread exhaustion cleared.
