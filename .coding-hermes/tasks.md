@@ -3,7 +3,7 @@
 > **Core purpose:** Agent-First Code Platform — humans and AI agents as equal participants in the SDLC. Forgejo integration, sandboxed execution, adversarial review, trust-tiered task assignment.
 >
 > **Foreman:** deepseek-v4-pro @ deepseek | **DuckBrain:** helix (14 entries — populated)
-> **Last tick:** 2026-07-21 18:18 UTC | **Tick #15** | **Build:** PASS | **Commit:** `98da981`
+> **Last tick:** 2026-07-21 18:44 UTC | **Tick #16** | **Build:** PASS | **Commit:** `19f836a`
 
 ```
 ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
@@ -116,6 +116,24 @@ Prior worker produced partial output (interface + errors, 218 lines). Foreman co
 - INT-003 covered by `helix secrets init` in secrets_crud.go
 - PROD-003 low priority, not blocking
 - Cooldown at 43200s (max idle — next tick will be NEVER-DONE audit)
+
+## Tick #16 — 2026-07-21 18:44 UTC — Lint Fixes + Idle
+
+**Foreman-direct fix:** Fixed 3 new lint issues from Tick #15's GLM-5.2 worker:
+- gofmt in `secrets_crud.go` (struct field alignment) and `secrets_test.go` (trailing newline)
+- Removed unused `crudSubcommands` var (declared but never referenced)
+- `golangci-lint run ./cmd/helix/...` now clean: 0 issues
+
+**CI:** Lint still ❌ on pre-existing unused E2E helpers in `suite_e2e_test.go` (helpers for INT-001, blocked on Forgejo). Build/Test/Integration ✅.
+
+**Status:** Idle. All actionable tasks blocked (INT-001/001b/002 on Forgejo) or Low (PROD-003). NEVER-DONE audit last done Tick #12. Cooldown at 43200s.
+
+| # | File | Change | Status |
+|---|------|--------|--------|
+| 1 | `cmd/helix/secrets_crud.go` | −13 lines | ✅ gofmt + removed unused var |
+| 2 | `cmd/helix/secrets_test.go` | −1 line | ✅ trailing newline fix |
+
+**Commit:** `19f836a` — fix: gofmt + remove unused crudSubcommands var
 
 ## Completed
 
