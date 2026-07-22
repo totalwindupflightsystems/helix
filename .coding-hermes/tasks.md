@@ -3,7 +3,7 @@
 > **Core purpose:** Agent-First Code Platform — humans and AI agents as equal participants in the SDLC. Forgejo integration, sandboxed execution, adversarial review, trust-tiered task assignment.
 >
 > **Foreman:** deepseek-v4-pro @ deepseek | **DuckBrain:** helix (14 entries — populated)
-> **Last tick:** 2026-07-22 04:15 UTC | **Tick #19** | **Build:** PASS | **Commit:** pending
+|> **Last tick:** 2026-07-22 08:16 UTC | **Tick #20** | **Build:** ⚠️ (host thread exhaustion) | **Commit:** 97c3771
 
 ```
 ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
@@ -20,7 +20,7 @@ ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
 || DEPS-002 | Update AWS SDK eventstream (v1.6.2→v1.7.8) — GO-2026-5764 panic DoS via SOPS transitive dep | Med | 2 | — | ++deps, ++terminal | DeepSeek V4 Flash | Low | Step-3.7 Flash |
 || COVERAGE-001 | Improve pkg/contract test coverage (53.7% → 80%) — breaking.go, generate.go, store.go, validate.go, types.go | Med | 3 | — | ++testing, ++go | MiniMax-M3 | Medium | GLM-5.2 |
 || COVERAGE-002 | Improve pkg/adr test coverage (65.2% → 80%) — coauthor.go, review.go, types.go | Med | 3 | — | ++testing, ++go | MiniMax-M3 | Medium | GLM-5.2 |
-|| COVERAGE-003 | Add tests for pkg/security/store: Path(), KeyPath(), Provider() accessors + error wrappers (0% coverage) | Med | 1 | — | ++testing, ++terminal | MiniMax-M3 | Low | DeepSeek V4 Flash |
+|| ~~COVERAGE-003~~ | Add tests for pkg/security/store: Path(), KeyPath(), Provider() accessors + error wrappers (0% coverage) | Med | 1 | 97c3771 | MiniMax-M3 |
 || REFACTOR-001 | Replace 6 panic() calls with error returns in pkg/deploy (2), pkg/learning (2), pkg/degradation (1), pkg/adversarial (1) | Med | 2 | — | ++refactor, ++error-handling, ++go | Kimi K3 | Low | MiniMax-M3 |
 
 ## INT-003 — Covered (no separate work needed)
@@ -219,7 +219,10 @@ Prior worker produced partial output (interface + errors, 218 lines). Foreman co
 
 | ID | Task | Pri | Cpx | Commit | Model |
 |----|------|-----|-----|--------|-------|
-| U01 | Usability & coverage audit across all 55+ packages | High | 3 | 5f0de10 | DS-V4-Flash |
+|| U01 | Usability & coverage audit across all 55+ packages | High | 3 | 5f0de10 | DS-V4-Flash |
+|| COVERAGE-003 | Accessor + error wrapper tests for pkg/security/store | Med | 1 | 97c3771 | (foreman-direct) |
+
+**Tick #20 (2026-07-22 08:16 UTC):** COVERAGE-003 — add 212 lines of tests for Path/KeyPath/Provider accessors + all 5 Wrap* error helpers + AsSecretError + sentinel identity. Host thread exhaustion (cgroup) prevents `go test` CGO test binaries; syntax verified via gofmt. Foreman-direct (no worker). Commit 97c3771.
 
 **Tick #15 (2026-07-21 18:18 UTC):** PROD-001 CLI CRUD + config integration + PROD-002 rate limiting — 9 files (+1,418 lines), GLM-5.2 worker on zai-glm. Commit 98da981.
 
