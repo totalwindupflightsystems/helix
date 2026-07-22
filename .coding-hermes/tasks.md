@@ -3,7 +3,7 @@
 > **Core purpose:** Agent-First Code Platform — humans and AI agents as equal participants in the SDLC. Forgejo integration, sandboxed execution, adversarial review, trust-tiered task assignment.
 >
 > **Foreman:** deepseek-v4-pro @ deepseek | **DuckBrain:** helix (14 entries — populated)
-> **Last tick:** 2026-07-21 18:44 UTC | **Tick #16** | **Build:** PASS | **Commit:** `19f836a`
+> **Last tick:** 2026-07-21 19:05 UTC | **Tick #17** | **Build:** PASS | **Commit:** `19f836a`
 
 ```
 ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
@@ -17,6 +17,8 @@ ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
 | INT-001b | Write 3 E2E test scenarios (happy path, 409 idempotent, error path) using helpers from c6355c7 | High | 4 | INT-001 | ++testing, ++integration | DeepSeek V4 Pro | High | GPT-5.6 Sol |
 | INT-002 | Chimera multi-model review E2E: real LLM calls, not stubs | High | 5 | INT-001 | ++testing, ++api-use, ++multi-step-reasoning | GLM-5.2 | High | DeepSeek V4 Pro |
 | PROD-003 | Metrics + tracing (OpenTelemetry) | Low | 4 | — | ++backend, ++infra | DeepSeek V4 Pro | Medium | GLM-5.2 |
+| DEPS-001 | Update golang.org/x/text (v0.16.0→v0.39.0) — GO-2026-5970 infinite loop DoS | Med | 2 | — | ++deps, ++terminal | DeepSeek V4 Flash | Low | Step-3.7 Flash |
+| DEPS-002 | Update AWS SDK eventstream (v1.6.2→v1.7.8) — GO-2026-5764 panic DoS via SOPS transitive dep | Med | 2 | — | ++deps, ++terminal | DeepSeek V4 Flash | Low | Step-3.7 Flash |
 
 ## INT-003 — Covered (no separate work needed)
 
