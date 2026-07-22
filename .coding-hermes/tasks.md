@@ -23,6 +23,7 @@ ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
 
 INT-003 (SOPS CLI deploy command) is already implemented by `helix secrets init` in `cmd/helix/secrets_crud.go` (commit 98da981). No additional work needed.
 
+| U01 | Usability & coverage audit — find gaps in endpoint wiring, UX flow, error handling, edge cases, test coverage | High | 3±1 | — | +++testing, ++endpoint-verification, ++code-review, +e2e, -vision | DS-V4-Flash | Medium | GLM-5.2 |
 ## Never-Done Audit (Standing)
 
 | ID | Task | Pri | Cpx | Deps | Tags | Model | Lvl | Fallback |
