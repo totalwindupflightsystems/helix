@@ -182,7 +182,7 @@ Prior worker produced partial output (interface + errors, 218 lines). Foreman co
 
 **Cooldown:** Reverted from 43200s→7200s (scheduler restart). Re-fixed to 43200s via API PUT. 1st reversion tracked.
 
-**Commit:** `pending`
+**Commit:** `0f3cb79`
 
 ## Completed
 
