@@ -3,7 +3,7 @@
 > **Core purpose:** Agent-First Code Platform — humans and AI agents as equal participants in the SDLC. Forgejo integration, sandboxed execution, adversarial review, trust-tiered task assignment.
 >
 > **Foreman:** deepseek-v4-pro @ deepseek | **DuckBrain:** helix (14 entries — populated)
-> **Last tick:** 2026-07-21 19:05 UTC | **Tick #17** | **Build:** PASS | **Commit:** `19f836a`
+> **Last tick:** 2026-07-21 19:05 UTC | **Tick #17** | **Build:** PASS | **Commit:** `<pending>`
 
 ```
 ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
@@ -17,8 +17,8 @@ ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
 | INT-001b | Write 3 E2E test scenarios (happy path, 409 idempotent, error path) using helpers from c6355c7 | High | 4 | INT-001 | ++testing, ++integration | DeepSeek V4 Pro | High | GPT-5.6 Sol |
 | INT-002 | Chimera multi-model review E2E: real LLM calls, not stubs | High | 5 | INT-001 | ++testing, ++api-use, ++multi-step-reasoning | GLM-5.2 | High | DeepSeek V4 Pro |
 | PROD-003 | Metrics + tracing (OpenTelemetry) | Low | 4 | — | ++backend, ++infra | DeepSeek V4 Pro | Medium | GLM-5.2 |
-| DEPS-001 | Update golang.org/x/text (v0.16.0→v0.39.0) — GO-2026-5970 infinite loop DoS | Med | 2 | — | ++deps, ++terminal | DeepSeek V4 Flash | Low | Step-3.7 Flash |
-| DEPS-002 | Update AWS SDK eventstream (v1.6.2→v1.7.8) — GO-2026-5764 panic DoS via SOPS transitive dep | Med | 2 | — | ++deps, ++terminal | DeepSeek V4 Flash | Low | Step-3.7 Flash |
+| DEPS-001 | Update golang.org/x/text (v0.16.0→v0.39.0) + golang.org/x/net (v0.26.0→v0.55.0) — fixed 3 Go vulns | Med | 2 | — | ++deps, ++terminal | DeepSeek V4 Flash | Low | Step-3.7 Flash |
+|| DEPS-002 | Update AWS SDK eventstream (v1.6.2→v1.7.8) — GO-2026-5764 panic DoS via SOPS transitive dep | Med | 2 | — | ++deps, ++terminal | DeepSeek V4 Flash | Low | Step-3.7 Flash |
 
 ## INT-003 — Covered (no separate work needed)
 
@@ -136,6 +136,33 @@ Prior worker produced partial output (interface + errors, 218 lines). Foreman co
 | 2 | `cmd/helix/secrets_test.go` | −1 line | ✅ trailing newline fix |
 
 **Commit:** `19f836a` — fix: gofmt + remove unused crudSubcommands var
+
+## Tick #17 — 2026-07-21 19:05 UTC — NEVER-DONE Audit + Dep Upgrades
+
+**NEVER-DONE 11-point audit results:**
+
+| # | Check | Result | Details |
+|---|-------|--------|---------|
+| 1 | Spec alignment | ✅ | 20 specs comprehensive; all match current code structure |
+| 2 | Doc coverage | ✅ | AGENTS.md, spec files, DuckBrain (21 entries) all current |
+| 3 | Test gaps | ✅ | 0 packages with zero tests (265 test files, 297 source files) |
+| 4 | Package upgrades | ⚠️ | 3 outdated direct deps: x/time v0.5.0→v0.15.0, age v1.2.0→v1.3.1, sops v3.9.0→v3.13.2 |
+| 5 | Pitfall hunt | ✅ | All `nil, nil` returns are legitimate guard clauses. No stubs found. |
+| 6 | Performance | ✅ | 11 benchmark functions producing real ns/op data |
+| 7 | Endpoint verification | ⚠️ | No live server (Forgejo blocked). All 8 CLI binaries build + run. |
+| 8 | CI/CD health | ⚠️ | Lint ❌ (pre-existing, 12 unused E2E helpers). Build/Test/Integration ✅. 4 remaining govulncheck vulns in transitive deps. |
+| 9 | DuckBrain sync | ✅ | 21 entries in helix namespace. Written this tick. |
+| 10 | Code quality | ✅ | No TODO/FIXME/HACK outside promptfoo tests. Longest file: scanner.go (941 lines). |
+| 11 | Middle-out wiring | ✅ | 8 CLI binaries build (`helix`, `helix-identity`, `helix-estimate`, `helix-negotiate`, `helix-prompt`, `helix-marketplace`, `helix-release`, `helix-verify`, `sandbox`). All wired through `cmd/helix/main.go`. |
+
+**Foreman-direct fixes this tick:**
+
+- **DEPS-001**: Bumped `golang.org/x/text` v0.16.0→v0.39.0 and `golang.org/x/net` v0.26.0→v0.55.0 via `go mod edit` + `go mod tidy`. Fixed 3 Go vulns (GO-2026-5970 infinite loop, GO-2026-5026 Punycode, GO-2026-4918 HTTP/2 infinite loop).
+- **Cooldown**: Reverted from 43200s→900s (scheduler daemon restart). Re-fixed to 43200s via API PUT. 1st reversion this tick (tracking: 1 reversion total).
+
+**Remaining — DEPS-002:** 4 govulncheck vulns remain in transitive deps: GO-2026-5764 (AWS SDK eventstream via sops), GO-2026-4945 (go-jose JWE via sops), GO-2026-4550 & GO-2025-3754 (CIRCL via age). Blocked on sops/age parent upgrades.
+
+**Assets updated:** go.mod, go.sum, .coding-hermes/tasks.md
 
 ## Completed
 
