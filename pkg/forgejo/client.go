@@ -14,6 +14,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // ---------------------------------------------------------------------------
@@ -48,10 +50,18 @@ func (NoopCircuitBreaker) RecordFailure() {}
 // NewClient creates a Forgejo API client.
 func NewClient(baseURL, username, password string) *Client {
 	return &Client{
-		baseURL:     strings.TrimRight(baseURL, "/"),
-		username:    username,
-		password:    password,
-		httpClient:  &http.Client{Timeout: 30 * time.Second},
+		baseURL:  strings.TrimRight(baseURL, "/"),
+		username: username,
+		password: password,
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+			Transport: otelhttp.NewTransport(
+				http.DefaultTransport,
+				otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
+					return "forgejo." + r.Method + " " + r.URL.Path
+				}),
+			),
+		},
 		circuit:     NoopCircuitBreaker{},
 		rateLimiter: NoopRateLimiter{},
 	}

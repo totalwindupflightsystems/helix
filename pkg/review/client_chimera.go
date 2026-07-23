@@ -15,6 +15,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // ChimeraModelClient implements ModelClient for Chimera multi-model deliberation.
@@ -32,7 +34,15 @@ func NewChimeraClient(cfg ModelClientConfig) *ChimeraModelClient {
 			Model:    cfg.Model,
 			Provider: "chimera",
 		},
-		client: &http.Client{Timeout: cfg.timeout()},
+		client: &http.Client{
+			Timeout: cfg.timeout(),
+			Transport: otelhttp.NewTransport(
+				http.DefaultTransport,
+				otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
+					return "chimera." + r.Method + " " + r.URL.Path
+				}),
+			),
+		},
 	}
 }
 

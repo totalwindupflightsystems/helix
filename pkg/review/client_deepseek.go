@@ -14,6 +14,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // DeepSeekModelClient implements ModelClient for a single-model DeepSeek review.
@@ -34,7 +36,15 @@ func NewDeepSeekClient(cfg ModelClientConfig) *DeepSeekModelClient {
 			Model:    cfg.Model,
 			Provider: "deepseek",
 		},
-		client: &http.Client{Timeout: cfg.timeout()},
+		client: &http.Client{
+			Timeout: cfg.timeout(),
+			Transport: otelhttp.NewTransport(
+				http.DefaultTransport,
+				otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
+					return "deepseek." + r.Method + " " + r.URL.Path
+				}),
+			),
+		},
 	}
 }
 
