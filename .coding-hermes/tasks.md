@@ -26,6 +26,26 @@
 | INT-002 | Chimera multi-model review E2E | High | 5 | INT-001 | ⏳ Blocked |
 | NEVER-DONE | 11-point standing audit | Low | 3 | — | 🔄 Standing |
 
+### Tick #30 — Discovery Sweep + NEVER-DONE Audit
+
+| Check | Result | Details |
+|-------|--------|---------|
+| **1.5a — Build** | ✅ PASS | `go build ./...` + `go vet ./...` both clean |
+| **1.5c — TODOs** | ✅ PASS | 0 code TODOs/FIXMEs (only prompt test validation patterns) |
+| **1.5d — CI** | ✅ PASS | Last 3 runs all green (Tick #29, #29b) |
+| **1.5f — Vulns** | ✅ PASS | 0 vulns (govulncheck clean) |
+| **1.5g — Deps** | ✅ PASS | go mod verify clean |
+| **ND-3 — Test Gaps** | ✅ PASS | All packages have tests (266 test / 298 source) |
+| **ND-4 — Upgrades** | ✅ Done | sops v3.13.2→v3.13.3 + 39 transitive deps |
+| **ND-5 — Pitfalls** | ✅ PASS | 0 stubs — all `nil, nil` are legitimate guard clauses |
+| **ND-6 — Benchmarks** | ✅ PASS | 11 benchmark functions found |
+| **ND-8 — CI/CD** | ✅ PASS | 3/3 recent runs green |
+| **ND-10 — Quality** | ✅ PASS | Max source file 941 lines, .gitignore complete |
+| **ND-11 — Wiring** | ✅ PASS | CLI builds, 22 subcommands, version/status/doctor work |
+| **ND-9 — DuckBrain** | ⚠️ N/A | Connection issue (transport), namespace exists |
+
+**Actions taken:** SOPS v3.13.2→v3.13.3 minor upgrade. All blocks remain (INT-001, INT-001b, INT-002 need Forgejo). Idle tick #1.
+
 ## Completed
 
 | ID | Task | Pri | Commit | Tick |
