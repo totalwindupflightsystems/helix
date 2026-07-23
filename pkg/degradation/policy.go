@@ -251,56 +251,61 @@ func (r *Registry) PoliciesForService(service Service) []Policy {
 
 // DefaultRegistry returns a Registry pre-populated with the spec §14.2
 // graceful degradation policies for all 9 services.
-func DefaultRegistry() *Registry {
+func DefaultRegistry() (*Registry, error) {
 	r := NewRegistry()
+	policies := []Policy{
+		// Forgejo: can't push/PR/merge when down. Local writes OK.
+		{Service: ServiceForgejo, State: HealthDown, Action: ActionFailFast, Notification: NotifyCritical, Rationale: "Forgejo down: agents write locally, no PRs possible"},
+		{Service: ServiceForgejo, State: HealthDegraded, Action: ActionPause, Notification: NotifyWarning, Rationale: "Forgejo degraded: pause PR flow, retry"},
+		{Service: ServiceForgejo, State: HealthHealthy, Action: ActionContinueWithCache, Notification: NotifySilent, Rationale: "Forgejo healthy"},
+		{Service: ServiceForgejo, State: HealthUnknown, Action: ActionContinueWithCache, Notification: NotifyInfo, Rationale: "Forgejo health unknown; proceed with caution"},
 
-	// Forgejo: can't push/PR/merge when down. Local writes OK.
-	r.MustRegister(Policy{Service: ServiceForgejo, State: HealthDown, Action: ActionFailFast, Notification: NotifyCritical, Rationale: "Forgejo down: agents write locally, no PRs possible"})
-	r.MustRegister(Policy{Service: ServiceForgejo, State: HealthDegraded, Action: ActionPause, Notification: NotifyWarning, Rationale: "Forgejo degraded: pause PR flow, retry"})
-	r.MustRegister(Policy{Service: ServiceForgejo, State: HealthHealthy, Action: ActionContinueWithCache, Notification: NotifySilent, Rationale: "Forgejo healthy"})
-	r.MustRegister(Policy{Service: ServiceForgejo, State: HealthUnknown, Action: ActionContinueWithCache, Notification: NotifyInfo, Rationale: "Forgejo health unknown; proceed with caution"})
+		// Chimera: human review still works.
+		{Service: ServiceChimera, State: HealthDown, Action: ActionUseFallback, Fallback: "human_review_only", Notification: NotifyWarning, Rationale: "Chimera down: PRs merge with human-only co-approval"},
+		{Service: ServiceChimera, State: HealthDegraded, Action: ActionContinueWithCache, Notification: NotifyInfo, Rationale: "Chimera degraded: use cached verdicts"},
+		{Service: ServiceChimera, State: HealthHealthy, Action: ActionContinueWithCache, Notification: NotifySilent, Rationale: "Chimera healthy"},
 
-	// Chimera: human review still works.
-	r.MustRegister(Policy{Service: ServiceChimera, State: HealthDown, Action: ActionUseFallback, Fallback: "human_review_only", Notification: NotifyWarning, Rationale: "Chimera down: PRs merge with human-only co-approval"})
-	r.MustRegister(Policy{Service: ServiceChimera, State: HealthDegraded, Action: ActionContinueWithCache, Notification: NotifyInfo, Rationale: "Chimera degraded: use cached verdicts"})
-	r.MustRegister(Policy{Service: ServiceChimera, State: HealthHealthy, Action: ActionContinueWithCache, Notification: NotifySilent, Rationale: "Chimera healthy"})
+		// Conscientiousness: adversarial layer absent.
+		{Service: ServiceConscientiousness, State: HealthDown, Action: ActionContinueWithCache, Notification: NotifyCritical, Rationale: "Conscientiousness down: adversarial layer absent, elevated risk"},
+		{Service: ServiceConscientiousness, State: HealthDegraded, Action: ActionContinueWithCache, Notification: NotifyWarning, Rationale: "Conscientiousness degraded: pass through with warning"},
+		{Service: ServiceConscientiousness, State: HealthHealthy, Action: ActionContinueWithCache, Notification: NotifySilent, Rationale: "Conscientiousness healthy"},
 
-	// Conscientiousness: adversarial layer absent.
-	r.MustRegister(Policy{Service: ServiceConscientiousness, State: HealthDown, Action: ActionContinueWithCache, Notification: NotifyCritical, Rationale: "Conscientiousness down: adversarial layer absent, elevated risk"})
-	r.MustRegister(Policy{Service: ServiceConscientiousness, State: HealthDegraded, Action: ActionContinueWithCache, Notification: NotifyWarning, Rationale: "Conscientiousness degraded: pass through with warning"})
-	r.MustRegister(Policy{Service: ServiceConscientiousness, State: HealthHealthy, Action: ActionContinueWithCache, Notification: NotifySilent, Rationale: "Conscientiousness healthy"})
+		// Hivemind: schedule pauses.
+		{Service: ServiceHivemind, State: HealthDown, Action: ActionUseFallback, Fallback: "local_memory", Notification: NotifyWarning, Rationale: "Hivemind down: agents operate from local memory, scheduling pauses"},
+		{Service: ServiceHivemind, State: HealthDegraded, Action: ActionContinueWithCache, Notification: NotifyInfo, Rationale: "Hivemind degraded: queue tasks, retry"},
+		{Service: ServiceHivemind, State: HealthHealthy, Action: ActionContinueWithCache, Notification: NotifySilent, Rationale: "Hivemind healthy"},
 
-	// Hivemind: schedule pauses.
-	r.MustRegister(Policy{Service: ServiceHivemind, State: HealthDown, Action: ActionUseFallback, Fallback: "local_memory", Notification: NotifyWarning, Rationale: "Hivemind down: agents operate from local memory, scheduling pauses"})
-	r.MustRegister(Policy{Service: ServiceHivemind, State: HealthDegraded, Action: ActionContinueWithCache, Notification: NotifyInfo, Rationale: "Hivemind degraded: queue tasks, retry"})
-	r.MustRegister(Policy{Service: ServiceHivemind, State: HealthHealthy, Action: ActionContinueWithCache, Notification: NotifySilent, Rationale: "Hivemind healthy"})
+		// LangFuse: traces lost for the window only.
+		{Service: ServiceLangFuse, State: HealthDown, Action: ActionContinueWithCache, Notification: NotifyWarning, Rationale: "LangFuse down: traces lost for the outage window only"},
+		{Service: ServiceLangFuse, State: HealthDegraded, Action: ActionContinueWithCache, Notification: NotifyInfo, Rationale: "LangFuse degraded: partial trace capture"},
+		{Service: ServiceLangFuse, State: HealthHealthy, Action: ActionContinueWithCache, Notification: NotifySilent, Rationale: "LangFuse healthy"},
 
-	// LangFuse: traces lost for the window only.
-	r.MustRegister(Policy{Service: ServiceLangFuse, State: HealthDown, Action: ActionContinueWithCache, Notification: NotifyWarning, Rationale: "LangFuse down: traces lost for the outage window only"})
-	r.MustRegister(Policy{Service: ServiceLangFuse, State: HealthDegraded, Action: ActionContinueWithCache, Notification: NotifyInfo, Rationale: "LangFuse degraded: partial trace capture"})
-	r.MustRegister(Policy{Service: ServiceLangFuse, State: HealthHealthy, Action: ActionContinueWithCache, Notification: NotifySilent, Rationale: "LangFuse healthy"})
+		// Prometheus: metrics gap.
+		{Service: ServicePrometheus, State: HealthDown, Action: ActionContinueWithCache, Notification: NotifyWarning, Rationale: "Prometheus down: metrics gap, alerts may miss events"},
+		{Service: ServicePrometheus, State: HealthDegraded, Action: ActionContinueWithCache, Notification: NotifyInfo, Rationale: "Prometheus degraded: partial metrics"},
+		{Service: ServicePrometheus, State: HealthHealthy, Action: ActionContinueWithCache, Notification: NotifySilent, Rationale: "Prometheus healthy"},
 
-	// Prometheus: metrics gap.
-	r.MustRegister(Policy{Service: ServicePrometheus, State: HealthDown, Action: ActionContinueWithCache, Notification: NotifyWarning, Rationale: "Prometheus down: metrics gap, alerts may miss events"})
-	r.MustRegister(Policy{Service: ServicePrometheus, State: HealthDegraded, Action: ActionContinueWithCache, Notification: NotifyInfo, Rationale: "Prometheus degraded: partial metrics"})
-	r.MustRegister(Policy{Service: ServicePrometheus, State: HealthHealthy, Action: ActionContinueWithCache, Notification: NotifySilent, Rationale: "Prometheus healthy"})
+		// Caddy: external access blocked.
+		{Service: ServiceCaddy, State: HealthDown, Action: ActionFailFast, Notification: NotifyCritical, Rationale: "Caddy down: external access blocked, human intervention needed"},
+		{Service: ServiceCaddy, State: HealthDegraded, Action: ActionPause, Notification: NotifyWarning, Rationale: "Caddy degraded: pause external merges"},
+		{Service: ServiceCaddy, State: HealthHealthy, Action: ActionContinueWithCache, Notification: NotifySilent, Rationale: "Caddy healthy"},
 
-	// Caddy: external access blocked.
-	r.MustRegister(Policy{Service: ServiceCaddy, State: HealthDown, Action: ActionFailFast, Notification: NotifyCritical, Rationale: "Caddy down: external access blocked, human intervention needed"})
-	r.MustRegister(Policy{Service: ServiceCaddy, State: HealthDegraded, Action: ActionPause, Notification: NotifyWarning, Rationale: "Caddy degraded: pause external merges"})
-	r.MustRegister(Policy{Service: ServiceCaddy, State: HealthHealthy, Action: ActionContinueWithCache, Notification: NotifySilent, Rationale: "Caddy healthy"})
+		// DuckBrain: similar to LangFuse — pause but don't fail.
+		{Service: ServiceDuckBrain, State: HealthDown, Action: ActionUseFallback, Fallback: "local_ledger", Notification: NotifyWarning, Rationale: "DuckBrain down: use local ledger, replay later"},
+		{Service: ServiceDuckBrain, State: HealthDegraded, Action: ActionContinueWithCache, Notification: NotifyInfo, Rationale: "DuckBrain degraded: queue writes"},
+		{Service: ServiceDuckBrain, State: HealthHealthy, Action: ActionContinueWithCache, Notification: NotifySilent, Rationale: "DuckBrain healthy"},
 
-	// DuckBrain: similar to LangFuse — pause but don't fail.
-	r.MustRegister(Policy{Service: ServiceDuckBrain, State: HealthDown, Action: ActionUseFallback, Fallback: "local_ledger", Notification: NotifyWarning, Rationale: "DuckBrain down: use local ledger, replay later"})
-	r.MustRegister(Policy{Service: ServiceDuckBrain, State: HealthDegraded, Action: ActionContinueWithCache, Notification: NotifyInfo, Rationale: "DuckBrain degraded: queue writes"})
-	r.MustRegister(Policy{Service: ServiceDuckBrain, State: HealthHealthy, Action: ActionContinueWithCache, Notification: NotifySilent, Rationale: "DuckBrain healthy"})
-
-	// Muster: tools unavailable — degrade gracefully.
-	r.MustRegister(Policy{Service: ServiceMuster, State: HealthDown, Action: ActionUseFallback, Fallback: "static_tools", Notification: NotifyWarning, Rationale: "Muster down: use static tool registry"})
-	r.MustRegister(Policy{Service: ServiceMuster, State: HealthDegraded, Action: ActionContinueWithCache, Notification: NotifyInfo, Rationale: "Muster degraded: cache generated tools"})
-	r.MustRegister(Policy{Service: ServiceMuster, State: HealthHealthy, Action: ActionContinueWithCache, Notification: NotifySilent, Rationale: "Muster healthy"})
-
-	return r
+		// Muster: tools unavailable — degrade gracefully.
+		{Service: ServiceMuster, State: HealthDown, Action: ActionUseFallback, Fallback: "static_tools", Notification: NotifyWarning, Rationale: "Muster down: use static tool registry"},
+		{Service: ServiceMuster, State: HealthDegraded, Action: ActionContinueWithCache, Notification: NotifyInfo, Rationale: "Muster degraded: cache generated tools"},
+		{Service: ServiceMuster, State: HealthHealthy, Action: ActionContinueWithCache, Notification: NotifySilent, Rationale: "Muster healthy"},
+	}
+	for _, policy := range policies {
+		if err := r.Register(policy); err != nil {
+			return nil, err
+		}
+	}
+	return r, nil
 }
 
 // -----------------------------------------------------------------------------

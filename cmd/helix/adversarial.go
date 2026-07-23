@@ -185,7 +185,11 @@ func runAdversarial(args []string, stdout, stderr io.Writer) int {
 // --role / --severity-min if set) and renders a table or JSON report.
 // Returns 0 if every scenario passed, 1 otherwise.
 func runAdversarialAll(f adversarialFlags, stdout, stderr io.Writer) int {
-	lib := adv.DefaultLibrary()
+	lib, err := adv.DefaultLibrary()
+	if err != nil {
+		fmt.Fprintln(stderr, "helix adversarial run-all: init library:", err)
+		return 2
+	}
 
 	scenarios, err := filterScenarios(lib, f.role, f.severityMin)
 	if err != nil {
@@ -205,7 +209,10 @@ func runAdversarialAll(f adversarialFlags, stdout, stderr io.Writer) int {
 	// so RunAll processes exactly what the user asked for.
 	filtered := adv.NewLibrary()
 	for _, s := range scenarios {
-		filtered.MustRegister(s)
+		if err := filtered.Register(s); err != nil {
+			fmt.Fprintln(stderr, "helix adversarial run-all: register:", err)
+			return 2
+		}
 	}
 
 	// Catch panics so a single bad scenario doesn't kill the batch —
@@ -248,7 +255,11 @@ func runAdversarialOne(f adversarialFlags, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	lib := adv.DefaultLibrary()
+	lib, err := adv.DefaultLibrary()
+	if err != nil {
+		fmt.Fprintln(stderr, "helix adversarial run: init library:", err)
+		return 2
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), f.timeout)
 	defer cancel()
 
@@ -299,7 +310,11 @@ func runAdversarialOne(f adversarialFlags, stdout, stderr io.Writer) int {
 // runAdversarialList prints every registered scenario (after applying
 // --role and --severity-min filters) as a table or JSON.
 func runAdversarialList(f adversarialFlags, stdout, stderr io.Writer) int {
-	lib := adv.DefaultLibrary()
+	lib, err := adv.DefaultLibrary()
+	if err != nil {
+		fmt.Fprintln(stderr, "helix adversarial list: init library:", err)
+		return 2
+	}
 
 	scenarios, err := filterScenarios(lib, f.role, f.severityMin)
 	if err != nil {

@@ -106,12 +106,13 @@ type SharedFinding struct {
 }
 
 // NewFindingID generates a unique hex-encoded ID.
-func NewFindingID() string {
+// Returns an error if crypto/rand fails.
+func NewFindingID() (string, error) {
 	b := make([]byte, 12)
 	if _, err := rand.Read(b); err != nil {
-		panic(fmt.Sprintf("learning: crypto/rand failed: %v", err))
+		return "", fmt.Errorf("learning: crypto/rand failed: %w", err)
 	}
-	return hex.EncodeToString(b)
+	return hex.EncodeToString(b), nil
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -262,7 +263,6 @@ func (cb *ContextBus) Publish(fromAgentID string, toAgentID string, domain Domai
 	}
 
 	sf := SharedFinding{
-		ID:            NewFindingID(),
 		FromAgentID:   fromAgentID,
 		ToAgentID:     toAgentID,
 		Domain:        domain,
@@ -272,6 +272,11 @@ func (cb *ContextBus) Publish(fromAgentID string, toAgentID string, domain Domai
 		Timestamp:     time.Now(),
 		Consumed:      false,
 	}
+	findingID, err := NewFindingID()
+	if err != nil {
+		return nil, err
+	}
+	sf.ID = findingID
 
 	cb.mu.Lock()
 	cb.findings = append(cb.findings, sf)

@@ -288,12 +288,15 @@ func NewLibrary() *Library {
 }
 
 // DefaultLibrary returns a Library pre-populated with the spec §12.4 scenarios.
-func DefaultLibrary() *Library {
+// It returns an error if any scenario fails validation or registration.
+func DefaultLibrary() (*Library, error) {
 	lib := NewLibrary()
 	for _, s := range SpecScenarios() {
-		lib.MustRegister(s)
+		if err := lib.Register(s); err != nil {
+			return nil, err
+		}
 	}
-	return lib
+	return lib, nil
 }
 
 // Register adds a scenario. Returns an error if a scenario with the same ID

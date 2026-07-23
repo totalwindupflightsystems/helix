@@ -147,7 +147,8 @@ func TestAdversarialList_DefaultLibrary(t *testing.T) {
 	assert.Contains(t, out, "ROLE")
 	assert.Contains(t, out, "Total:")
 	// Spec §12.4 default library has 5 scenarios — assert at least one.
-	lib := adv.DefaultLibrary()
+	lib, err := adv.DefaultLibrary()
+	require.NoError(t, err)
 	assert.GreaterOrEqual(t, len(lib.All()), 1)
 }
 
@@ -172,7 +173,8 @@ func TestAdversarialList_RoleFilter(t *testing.T) {
 	// The default library has @redteam scenarios (gate-bypass). Output
 	// should include them, but NOT @finops-cost scenarios.
 	out := stdout.String()
-	lib := adv.DefaultLibrary()
+	lib, err := adv.DefaultLibrary()
+	require.NoError(t, err)
 	redteamScenarios := lib.ScenariosForRole(adv.RoleRedTeam)
 	require.Greater(t, len(redteamScenarios), 0, "library has no @redteam scenarios to filter for")
 	for _, s := range redteamScenarios {
@@ -189,7 +191,8 @@ func TestAdversarialList_SeverityFilter(t *testing.T) {
 
 	// Walk every scenario in the lib. If it ranks >= high, it MUST
 	// appear in stdout. If it ranks < high, it MUST NOT.
-	lib := adv.DefaultLibrary()
+	lib, err := adv.DefaultLibrary()
+	require.NoError(t, err)
 	highRank := mustSeverityRank(t, adv.SevHigh)
 
 	for _, s := range lib.All() {
@@ -369,7 +372,8 @@ func mustSeverityRank(t *testing.T, s adv.Severity) int {
 // non-empty ScenarioID/Name/Role so the table renderer can't produce
 // blank rows.
 func TestAdversarialDefaultLibrary_RecordsWellFormed(t *testing.T) {
-	lib := adv.DefaultLibrary()
+	lib, err := adv.DefaultLibrary()
+	require.NoError(t, err)
 	require.NotEmpty(t, lib.All())
 	for id, s := range lib.All() {
 		assert.Equal(t, id, s.ID)
