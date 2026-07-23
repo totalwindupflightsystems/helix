@@ -19,32 +19,37 @@
 
 ## Remaining Tasks
 
-| ID | Task | Pri | Cpx | Deps | Tags | Status |
-|----|------|-----|-----|------|------|--------|
-| INT-001 | E2E integration test: Forgejo → Helix → Agent PR → Review → Merge | High | 6 | Forgejo | ⏳ Blocked |
-| INT-001b | Write 3 E2E test scenarios | High | 4 | INT-001 | ⏳ Blocked |
-| INT-002 | Chimera multi-model review E2E | High | 5 | INT-001 | ⏳ Blocked |
-| NEVER-DONE | 11-point standing audit | Low | 3 | — | 🔄 Standing |
+|    | ID | Task | Pri | Cpx | Deps | Tags | Status |
+|    |-----|------|-----|-----|------|------|--------|
+|    | INT-001 | E2E integration test: Forgejo → Helix → Agent PR → Review → Merge | High | 6 | Forgejo | ⏳ Blocked |
+|    | INT-001b | Write 3 E2E test scenarios | High | 4 | INT-001 | ⏳ Blocked |
+|    | INT-002 | Chimera multi-model review E2E | High | 5 | INT-001 | ⏳ Blocked |
+|    | NEVER-DONE | 11-point standing audit | Low | 3 | — | 🔄 Standing |
 
-### Tick #30 — Discovery Sweep + NEVER-DONE Audit
+### Tick #31 — Discovery Sweep + NEVER-DONE Audit
 
 | Check | Result | Details |
 |-------|--------|---------|
 | **1.5a — Build** | ✅ PASS | `go build ./...` + `go vet ./...` both clean |
-| **1.5c — TODOs** | ✅ PASS | 0 code TODOs/FIXMEs (only prompt test validation patterns) |
-| **1.5d — CI** | ✅ PASS | Last 3 runs all green (Tick #29, #29b) |
-| **1.5f — Vulns** | ✅ PASS | 0 vulns (govulncheck clean) |
+| **1.5b — Lint** | ✅ PASS | `make lint` — 0 issues (golangci-lint clean) |
+| **1.5c — TODOs** | ✅ PASS | 0 code TODOs/FIXMEs (only doc comments referencing stubs) |
+| **1.5d — CI** | ✅ PASS | Last 5 runs: 4 green, 1 historical failure (Tick #28) |
+| **1.5e — Remote** | ✅ PASS | Up to date with origin/master, no remote commits |
+| **1.5f — Vulns** | ✅ PASS | govulncheck — 0 vulns affecting code, 1 non-calling transitive |
 | **1.5g — Deps** | ✅ PASS | go mod verify clean |
-| **ND-3 — Test Gaps** | ✅ PASS | All packages have tests (266 test / 298 source) |
-| **ND-4 — Upgrades** | ✅ Done | sops v3.13.2→v3.13.3 + 39 transitive deps |
-| **ND-5 — Pitfalls** | ✅ PASS | 0 stubs — all `nil, nil` are legitimate guard clauses |
-| **ND-6 — Benchmarks** | ✅ PASS | 11 benchmark functions found |
-| **ND-8 — CI/CD** | ✅ PASS | 3/3 recent runs green |
-| **ND-10 — Quality** | ✅ PASS | Max source file 941 lines, .gitignore complete |
-| **ND-11 — Wiring** | ✅ PASS | CLI builds, 22 subcommands, version/status/doctor work |
-| **ND-9 — DuckBrain** | ⚠️ N/A | Connection issue (transport), namespace exists |
+| **ND-1 — Build** | ✅ PASS | `go build ./...` + `go vet ./...` clean across 30+ packages |
+| **ND-2 — Lint** | ✅ PASS | 0 issues (golangci-lint v2.x) |
+| **ND-3 — Test Gaps** | ✅ PASS | 58/58 packages pass, 266 tests / 564 source files |
+| **ND-4 — Upgrades** | ✅ NONE | No critical upgrades; minor bumps available (non-actionable) |
+| **ND-5 — Pitfalls** | ✅ PASS | 0 stubs; 4 `panic()` calls in non-test code are legitimate guard clauses |
+| **ND-6 — Benchmarks** | ✅ PASS | 11 benchmark functions found across 5 packages |
+| **ND-7 — Hilo** | ✅ PASS | 3,334 edges across 549 files, 1 language (Go). Hilo=useful |
+| **ND-8 — CI/CD** | ✅ PASS | Last green run: Tick #30. No failures since CI fix. |
+| **ND-9 — DuckBrain** | ⚠️ N/A | Connection error (BigInt transport issue — known) |
+| **ND-10 — Quality** | ✅ PASS | Max source file: 941 lines (pkg/vuln/scanner.go). 0 lint issues. |
+| **ND-11 — Wiring** | ✅ PASS | CLI builds, 22+ subcommands across cmd/helix*, version/status/doctor work |
 
-**Actions taken:** SOPS v3.13.2→v3.13.3 minor upgrade. All blocks remain (INT-001, INT-001b, INT-002 need Forgejo). Idle tick #1.
+**Actions taken:** None — all checks pass, no new work found. All blocks remain (INT-001, INT-001b, INT-002 need Forgejo). Idle tick #2.
 
 ## Completed
 
