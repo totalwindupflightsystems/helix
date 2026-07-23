@@ -3,7 +3,7 @@
 > **Core purpose:** Agent-First Code Platform — humans and AI agents as equal participants in the SDLC. Forgejo integration, sandboxed execution, adversarial review, trust-tiered task assignment.
 >
 > **Foreman:** deepseek-v4-flash @ deepseek | **DuckBrain:** helix (MCP degraded — recall fails, list_keys connection error)
-> **Last tick:** 2026-07-23 04:50 UTC | **Tick #26** | **Build:** ✅ | **Commit:** HEAD
+> **Last tick:** 2026-07-23 11:51 UTC | **Tick #27** | **Build:** ✅ | **Commit:** HEAD
 
 ```
 ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
@@ -13,7 +13,8 @@ ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
 
 | ID | Task | Pri | Cpx | Deps | Tags | Model | Lvl | Fallback |
 |----|------|-----|-----|------|------|-------|-----|----------|
-| INT-001 | E2E integration test: Forgejo → Helix → Agent PR → Review → Merge — helpers + API methods done in c6355c7 | High | 6 | — | ++testing, ++integration, ++multi-step-reasoning, ++distributed-systems | DeepSeek V4 Pro | High | GPT-5.6 Sol |
+|| COVERAGE-002 | Improve pkg/adr test coverage (65.2%→80%) — coauthor.go and review.go — gap from Tick #19, never completed | Med | 3 | — | ++testing, ++go | MiniMax-M3 | Medium | GLM-5.2 |
+|| INT-001 | E2E integration test: Forgejo → Helix → Agent PR → Review → Merge — helpers + API methods done in c6355c7 | High | 6 | — | ++testing, ++integration, ++multi-step-reasoning, ++distributed-systems | DeepSeek V4 Pro | High | GPT-5.6 Sol |
 || INT-001b | Write 3 E2E test scenarios (happy path, 409 idempotent, error path) using helpers from c6355c7 | High | 4 | INT-001 | ++testing, ++integration | DeepSeek V4 Pro | High | GPT-5.6 Sol |
 || INT-002 | Chimera multi-model review E2E: real LLM calls, not stubs | High | 5 | INT-001 | ++testing, ++api-use, ++multi-step-reasoning | GLM-5.2 | High | DeepSeek V4 Pro |
 |||| ~~PROD-003a~~ | OpenTelemetry tracer provider + CLI wiring — tracer.go (355 lines), observability.go (+80/-6), OTel dep promotion. Tick #26. | Low | 2 | 2599d68 | MiniMax-M3 |
@@ -368,7 +369,44 @@ Prior worker produced partial output (interface + errors, 218 lines). Foreman co
 - **NEVER-DONE**: Standing audit (Low)
 - **INT-001/001b/002**: Blocked on Forgejo
 
-**Next:** PROD-003 (highest-priority unblocked) or NEVER-DONE audit.
+|**Next:** COVERAGE-002 (pkg/adr 65.2%→80%) or NEVER-DONE audit.
+
+## Tick #27 — 2026-07-23 11:51 UTC — Idle Tick — Discovery Sweep + Cooldown Fix
+
+**Status:** Discovery sweep complete. No actionable tasks requiring a worker. INT-001/001b/002 remain blocked on Forgejo. COVERAGE-002 (pkg/adr 65.2%→80%) — discovered as a gap from Tick #19 that was never completed — added back to remaining tasks.
+
+**NEVER-DONE 11-point audit summary:**
+
+| # | Check | Result | Details |
+|---|-------|--------|---------|
+| 1 | Spec alignment | ✅ | 21 specs comprehensive; all match current code structure |
+| 2 | Doc coverage | ✅ | AGENTS.md current, 21 specs |
+| 3 | Test gaps | ✅ | 266 test files across 58 packages (298 source files). COVERAGE-002 pkg/adr added back. |
+| 4 | Package upgrades | ⚠️ | Minor transitive cloud.google.com deps via SOPS — not actionable |
+| 5 | Pitfall hunt | ✅ | No `nil, nil` returns outside guard clauses. No stubs. |
+| 6 | Performance | ✅ | Benchmarks producing real ns/op data |
+| 7 | Endpoint verification | ⚠️ | No live server (Forgejo blocked). All 9 CLI binaries build. |
+| 8 | CI/CD health | ⚠️ | Lint ❌ (pre-existing, unused E2E helpers). Build/Test/Integration ✅. 0 vulns in our code. |
+| 9 | DuckBrain sync | ❌ | MCP connection errors — cannot read/write this tick |
+| 10 | Code quality | ✅ | No TODO/FIXME/HACK outside promptfoo tests. Longest file: scanner.go (941 lines). |
+| 11 | Middle-out wiring | ✅ | 9 CLI binaries build. All wired through cmd/helix/main.go. |
+
+**Cooldown:** Fixed from 7200s→43200s (12h) after scheduler daemon restart reverted it.
+
+| Check | Result | Details |
+|-------|--------|---------|
+| `go build ./...` | ✅ PASS | All packages compile |
+| `go vet ./...` | ✅ PASS | No vet issues |
+| `go test -short -count=1 ./...` | ✅ PASS | All 30+ packages `ok` |
+| `govulncheck ./...` | ✅ PASS | 0 vulnerabilities in our code |
+| Hilo graph | ✅ 564 files | Graph warmed (DuckDB lock contention non-blocking) |
+| DuckBrain | ❌ Degraded | MCP connection errors — cannot write this tick |
+| CI | ⚠️ Lint ❌ (pre-existing) | Unused E2E helpers in suite_e2e_test.go (for INT-001) |
+| Cooldown | ✅ 43200s (12h) | Re-fixed from 7200s (scheduler restart — 1st reversion this tick) |
+
+**No worker spawned this tick.** Cooldown at 12h idle. COVERAGE-002 added to board for next tick.
+
+**Next:** COVERAGE-002 (pkg/adr 65.2%→80%) — oldest remaining unblocked task.
 
 ## Completed
 
