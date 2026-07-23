@@ -26,14 +26,14 @@
 |    | INT-002 | Chimera multi-model review E2E | High | 5 | INT-001 | ⏳ Blocked |
 |    | NEVER-DONE | 11-point standing audit | Low | 3 | — | 🔄 Standing |
 
-### Tick #31 — Discovery Sweep + NEVER-DONE Audit
+### Tick #32 — Discovery Sweep + NEVER-DONE Audit + Graduated Slowdown
 
 | Check | Result | Details |
 |-------|--------|---------|
 | **1.5a — Build** | ✅ PASS | `go build ./...` + `go vet ./...` both clean |
 | **1.5b — Lint** | ✅ PASS | `make lint` — 0 issues (golangci-lint clean) |
 | **1.5c — TODOs** | ✅ PASS | 0 code TODOs/FIXMEs (only doc comments referencing stubs) |
-| **1.5d — CI** | ✅ PASS | Last 5 runs: 4 green, 1 historical failure (Tick #28) |
+| **1.5d — CI** | ✅ PASS | Last 5 runs: all green |
 | **1.5e — Remote** | ✅ PASS | Up to date with origin/master, no remote commits |
 | **1.5f — Vulns** | ✅ PASS | govulncheck — 0 vulns affecting code, 1 non-calling transitive |
 | **1.5g — Deps** | ✅ PASS | go mod verify clean |
@@ -44,12 +44,19 @@
 | **ND-5 — Pitfalls** | ✅ PASS | 0 stubs; 4 `panic()` calls in non-test code are legitimate guard clauses |
 | **ND-6 — Benchmarks** | ✅ PASS | 11 benchmark functions found across 5 packages |
 | **ND-7 — Hilo** | ✅ PASS | 3,334 edges across 549 files, 1 language (Go). Hilo=useful |
-| **ND-8 — CI/CD** | ✅ PASS | Last green run: Tick #30. No failures since CI fix. |
+| **ND-8 — CI/CD** | ✅ PASS | Last 5 CI runs all green. Stable since Tick #29 CI fix. |
 | **ND-9 — DuckBrain** | ⚠️ N/A | Connection error (BigInt transport issue — known) |
 | **ND-10 — Quality** | ✅ PASS | Max source file: 941 lines (pkg/vuln/scanner.go). 0 lint issues. |
 | **ND-11 — Wiring** | ✅ PASS | CLI builds, 22+ subcommands across cmd/helix*, version/status/doctor work |
 
-**Actions taken:** None — all checks pass, no new work found. All blocks remain (INT-001, INT-001b, INT-002 need Forgejo). Idle tick #2.
+**Actions taken:**
+- All static gates pass. No new work from discovery sweep.
+- No new GitHub issues, no remote commits, no CI failures.
+- All blocks remain (INT-001, INT-001b, INT-002 need Forgejo).
+- Cooldown increased from 7200s (2h) → 14400s (4h) via scheduler API — graduated slowdown (idle tick #3).
+- DuckBrain unreachable (known BigInt transport issue) — idle counter tracked via board only.
+
+**Idle tick progress:** #1 (Tick #30) → #2 (Tick #31) → #3 (Tick #32) → ⏸️ 4h cooldown active. Next escalation at idle tick #5 (12h cooldown).
 
 ## Completed
 
