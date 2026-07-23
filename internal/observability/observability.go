@@ -51,12 +51,16 @@
 package observability
 
 import (
+	"context"
 	"io"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/totalwindupflightsystems/helix/pkg/log"
 )
@@ -148,6 +152,12 @@ type Options struct {
 	// LogFileMode overrides the default 0o600 when HELIX_LOG_FILE
 	// creates the destination. Zero → 0o600.
 	LogFileMode os.FileMode
+
+	// Tracing configures OpenTelemetry distributed tracing. The zero
+	// value (Enabled: false) returns a no-op TracerProvider with zero
+	// overhead — no goroutines, no connections. See SetupTracing in
+	// tracer.go for the full env-var contract.
+	Tracing TracerConfig
 }
 
 // =============================================================================
@@ -167,6 +177,10 @@ type Observer struct {
 	// via Options.Sink are the caller's responsibility.
 	ownsSink bool
 	sink     io.Writer
+
+	// tpShutdown flushes pending trace spans during Close(). Nil when
+	// tracing is disabled (the no-op case).
+	tpShutdown func() error
 }
 
 // =============================================================================
@@ -240,6 +254,15 @@ func Init(opts Options) (*Observer, error) {
 		logger = logger.WithApp(app)
 	}
 
+	// Set up tracing (PROD-003a). When opts.Tracing is the zero value
+	// (Enabled == false), SetupTracing returns a no-op provider with
+	// zero overhead — no goroutines, no connections, no exporters started.
+	// Tracing setup failures are non-fatal: log and continue.
+	tp, tpErr := SetupTracing(opts.Tracing)
+	if tpErr != nil {
+		return nil, tpErr
+	}
+
 	o := &Observer{
 		app:      app,
 		logger:   logger,
@@ -248,15 +271,31 @@ func Init(opts Options) (*Observer, error) {
 		ownsSink: ownsSink,
 		sink:     sink,
 	}
+	if tp != nil {
+		o.tpShutdown = func() error { return ShutdownTraceProvider(tp) }
+	}
 	SetGlobal(o)
 	return o, nil
 }
 
 // Close releases resources owned by the Observer (the file handle
-// opened from HELIX_LOG_FILE, if any). Idempotent; safe to call on an
-// Observer whose sink was supplied externally.
+// opened from HELIX_LOG_FILE, if any, and the TracerProvider, if
+// tracing is configured). Idempotent; safe to call on an Observer
+// whose sink was supplied externally.
+//
+// Shutdown order: TracerProvider flush first so spans are emitted
+// before the log sink closes (preserves ordering in the log-trace
+// correlation).
 func (o *Observer) Close() error {
-	if o == nil || !o.ownsSink {
+	if o == nil {
+		return nil
+	}
+	// Flush pending trace spans before closing the log sink.
+	if o.tpShutdown != nil {
+		_ = o.tpShutdown()
+		o.tpShutdown = nil
+	}
+	if !o.ownsSink {
 		return nil
 	}
 	if c, ok := o.sink.(io.Closer); ok {
@@ -381,6 +420,30 @@ func RunWithDryRun(name string, dryRun bool, fn func() error) error {
 	return runWith(Global(), name, "", fn, dryRun)
 }
 
+// RunWithTrace wraps fn with a root OpenTelemetry trace span. This is
+// the PROD-003a entry point: every CLI subcommand should call this
+// instead of Run when distributed tracing is desired. When tracing is
+// disabled (tpShutdown is nil), RunWithTrace behaves identically to
+// Run — it measures duration and emits the log entry, but without
+// span creation.
+func RunWithTrace(name string, fn func() error) error {
+	o := Global()
+	if o == nil || o.tpShutdown == nil {
+		// Tracing not configured — behave like Run.
+		return runWith(o, name, "", fn, false)
+	}
+	tracer := otel.Tracer("helix")
+	_, span := tracer.Start(context.Background(), "helix."+name)
+	defer func() {
+		span.End()
+	}()
+	err := fn()
+	if err != nil {
+		span.RecordError(err)
+	}
+	return err
+}
+
 // runWith is the shared implementation. It is package-private so the
 // public surface stays small.
 //
@@ -428,6 +491,17 @@ func runWith(o *Observer, name, agentID string, fn func() error, dryRun bool) er
 	} else if aid := strings.TrimSpace(os.Getenv(EnvAgentID)); aid != "" {
 		fields["agent_id"] = aid
 	}
+
+	// Attach the current trace ID when tracing is active. This lets
+	// operators correlate structured log lines with distributed trace
+	// spans in their observability backend.
+	if o.tpShutdown != nil {
+		sc := trace.SpanContextFromContext(context.Background())
+		if sc.IsValid() {
+			fields["trace_id"] = sc.TraceID().String()
+		}
+	}
+
 	fields["pid"] = os.Getpid()
 
 	lvl := log.LevelInfo
