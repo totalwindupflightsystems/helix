@@ -271,13 +271,15 @@ func TestInbox_Expiry(t *testing.T) {
 
 	// Manually insert an old finding.
 	old := SharedFinding{
-		ID:          NewFindingID(),
 		FromAgentID: "old-agent",
 		Domain:      DomainAuth,
 		Finding:     "expired finding",
 		Priority:    PriorityInfo,
 		Timestamp:   time.Now().Add(-DefaultFindingRetention - time.Hour),
 	}
+	oldID, err := NewFindingID()
+	require.NoError(t, err)
+	old.ID = oldID
 	cb.mu.Lock()
 	cb.findings = append(cb.findings, old)
 	cb.mu.Unlock()

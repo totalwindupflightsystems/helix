@@ -114,7 +114,11 @@ func runDegradation(args []string, stdout, stderr io.Writer) int {
 
 // runDegradationList prints all degradation policies.
 func runDegradationList(flags degradationFlags, stdout, stderr io.Writer) int {
-	reg := degradation.DefaultRegistry()
+	reg, err := degradation.DefaultRegistry()
+	if err != nil {
+		fmt.Fprintf(stderr, "error: initialize degradation registry: %v\n", err)
+		return degradationExitError
+	}
 
 	if flags.jsonOut {
 		report := reg.GenerateReport()
@@ -142,7 +146,11 @@ func runDegradationCheck(flags degradationFlags, stdout, stderr io.Writer) int {
 	svc := degradation.Service(flags.service)
 	state := degradation.HealthState(flags.state)
 
-	reg := degradation.DefaultRegistry()
+	reg, err := degradation.DefaultRegistry()
+	if err != nil {
+		fmt.Fprintf(stderr, "error: initialize degradation registry: %v\n", err)
+		return degradationExitError
+	}
 	policy, ok := reg.Lookup(svc, state)
 	if !ok {
 		fmt.Fprintf(stderr, "no policy found for service=%s state=%s\n", flags.service, flags.state)

@@ -294,6 +294,15 @@ func TestUnit_Render_InvalidPropagatesError(t *testing.T) {
 // Registry
 // -----------------------------------------------------------------------------
 
+func defaultRegistry(t *testing.T) *Registry {
+	t.Helper()
+	r, err := DefaultRegistry()
+	if err != nil {
+		t.Fatalf("DefaultRegistry: %v", err)
+	}
+	return r
+}
+
 func TestRegistry_Register_Get_List_All(t *testing.T) {
 	r := NewRegistry()
 	r.MustRegister(HelixPlatformService())
@@ -352,7 +361,7 @@ func TestRegistry_Register_InvalidUnit(t *testing.T) {
 }
 
 func TestDefaultRegistry(t *testing.T) {
-	r := DefaultRegistry()
+	r := defaultRegistry(t)
 	if len(r.List()) != 3 {
 		t.Errorf("DefaultRegistry has %d units, want 3", len(r.List()))
 	}
@@ -389,7 +398,7 @@ func TestFormatUnit_Invalid(t *testing.T) {
 }
 
 func TestFormatRegistry(t *testing.T) {
-	r := DefaultRegistry()
+	r := defaultRegistry(t)
 	got, err := FormatRegistry(r)
 	if err != nil {
 		t.Fatalf("FormatRegistry error: %v", err)

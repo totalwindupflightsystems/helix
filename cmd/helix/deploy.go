@@ -173,7 +173,11 @@ func runDeployRender(flags depFlags, stdout, stderr io.Writer) int {
 			out["caddy"] = reg
 		}
 		if wantsSystemd {
-			reg := systemd.DefaultRegistry()
+			reg, err := systemd.DefaultRegistry()
+			if err != nil {
+				fmt.Fprintf(stderr, "error: initialize systemd registry: %v\n", err)
+				return depExitFail
+			}
 			out["systemd"] = reg.All()
 		}
 		data, _ := json.MarshalIndent(out, "", "  ")
@@ -200,7 +204,11 @@ func runDeployRender(flags depFlags, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stdout, body)
 	}
 	if wantsSystemd {
-		reg := systemd.DefaultRegistry()
+		reg, err := systemd.DefaultRegistry()
+		if err != nil {
+			fmt.Fprintf(stderr, "error: initialize systemd registry: %v\n", err)
+			return depExitFail
+		}
 		body, err := systemd.FormatRegistry(reg)
 		if err != nil {
 			fmt.Fprintf(stderr, "error: render systemd: %v\n", err)
@@ -258,7 +266,11 @@ func runDeployList(flags depFlags, stdout, stderr io.Writer) int {
 		}
 	}
 	if wantsSystemd {
-		reg := systemd.DefaultRegistry()
+		reg, err := systemd.DefaultRegistry()
+		if err != nil {
+			fmt.Fprintf(stderr, "error: initialize systemd registry: %v\n", err)
+			return depExitFail
+		}
 		for _, name := range reg.List() {
 			entries = append(entries, entry{Kind: "systemd", Name: name})
 		}

@@ -311,12 +311,19 @@ func HelixBackupTimer() Unit {
 }
 
 // DefaultRegistry returns a Registry pre-populated with all three spec units.
-func DefaultRegistry() *Registry {
+// It returns an error if any canonical unit fails validation or registration.
+func DefaultRegistry() (*Registry, error) {
 	r := NewRegistry()
-	r.MustRegister(HelixPlatformService())
-	r.MustRegister(HelixBackupService())
-	r.MustRegister(HelixBackupTimer())
-	return r
+	if err := r.Register(HelixPlatformService()); err != nil {
+		return nil, err
+	}
+	if err := r.Register(HelixBackupService()); err != nil {
+		return nil, err
+	}
+	if err := r.Register(HelixBackupTimer()); err != nil {
+		return nil, err
+	}
+	return r, nil
 }
 
 // -----------------------------------------------------------------------------

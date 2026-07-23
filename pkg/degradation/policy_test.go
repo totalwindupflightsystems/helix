@@ -167,8 +167,17 @@ func TestRegistry_PoliciesForService_Empty(t *testing.T) {
 // DefaultRegistry (spec §14.2)
 // -----------------------------------------------------------------------------
 
+func defaultRegistry(t *testing.T) *Registry {
+	t.Helper()
+	r, err := DefaultRegistry()
+	if err != nil {
+		t.Fatalf("DefaultRegistry: %v", err)
+	}
+	return r
+}
+
 func TestDefaultRegistry_AllServices(t *testing.T) {
-	r := DefaultRegistry()
+	r := defaultRegistry(t)
 	for _, svc := range AllServices() {
 		if len(r.PoliciesForService(svc)) == 0 {
 			t.Errorf("DefaultRegistry missing policies for service %q", svc)
@@ -177,7 +186,7 @@ func TestDefaultRegistry_AllServices(t *testing.T) {
 }
 
 func TestDefaultRegistry_Forgejo_Down_FailFast(t *testing.T) {
-	r := DefaultRegistry()
+	r := defaultRegistry(t)
 	p, ok := r.Lookup(ServiceForgejo, HealthDown)
 	if !ok {
 		t.Fatal("expected Forgejo down policy")
@@ -191,7 +200,7 @@ func TestDefaultRegistry_Forgejo_Down_FailFast(t *testing.T) {
 }
 
 func TestDefaultRegistry_Chimera_Down_UseFallback(t *testing.T) {
-	r := DefaultRegistry()
+	r := defaultRegistry(t)
 	p, ok := r.Lookup(ServiceChimera, HealthDown)
 	if !ok {
 		t.Fatal("expected Chimera down policy")
@@ -205,7 +214,7 @@ func TestDefaultRegistry_Chimera_Down_UseFallback(t *testing.T) {
 }
 
 func TestDefaultRegistry_LangFuse_Down_ContinueWithCache(t *testing.T) {
-	r := DefaultRegistry()
+	r := defaultRegistry(t)
 	p, ok := r.Lookup(ServiceLangFuse, HealthDown)
 	if !ok {
 		t.Fatal("expected LangFuse down policy")
@@ -216,7 +225,7 @@ func TestDefaultRegistry_LangFuse_Down_ContinueWithCache(t *testing.T) {
 }
 
 func TestDefaultRegistry_Hivemind_Down_LocalMemory(t *testing.T) {
-	r := DefaultRegistry()
+	r := defaultRegistry(t)
 	p, ok := r.Lookup(ServiceHivemind, HealthDown)
 	if !ok {
 		t.Fatal("expected Hivemind down policy")
@@ -227,7 +236,7 @@ func TestDefaultRegistry_Hivemind_Down_LocalMemory(t *testing.T) {
 }
 
 func TestDefaultRegistry_Caddy_Down_Critical(t *testing.T) {
-	r := DefaultRegistry()
+	r := defaultRegistry(t)
 	p, ok := r.Lookup(ServiceCaddy, HealthDown)
 	if !ok {
 		t.Fatal("expected Caddy down policy")
@@ -241,7 +250,7 @@ func TestDefaultRegistry_Caddy_Down_Critical(t *testing.T) {
 }
 
 func TestDefaultRegistry_Healthy_AllSilent(t *testing.T) {
-	r := DefaultRegistry()
+	r := defaultRegistry(t)
 	for _, svc := range AllServices() {
 		p, ok := r.Lookup(svc, HealthHealthy)
 		if !ok {
@@ -258,7 +267,7 @@ func TestDefaultRegistry_Healthy_AllSilent(t *testing.T) {
 // -----------------------------------------------------------------------------
 
 func TestApplyPolicy_FailFast(t *testing.T) {
-	r := DefaultRegistry()
+	r := defaultRegistry(t)
 	res := r.ApplyPolicy(ServiceForgejo, HealthDown)
 	if !res.ShouldBlock {
 		t.Error("expected ShouldBlock=true for Forgejo down")
@@ -275,7 +284,7 @@ func TestApplyPolicy_FailFast(t *testing.T) {
 }
 
 func TestApplyPolicy_UseFallback(t *testing.T) {
-	r := DefaultRegistry()
+	r := defaultRegistry(t)
 	res := r.ApplyPolicy(ServiceChimera, HealthDown)
 	if res.ShouldBlock {
 		t.Error("expected ShouldBlock=false for Chimera down")
@@ -286,7 +295,7 @@ func TestApplyPolicy_UseFallback(t *testing.T) {
 }
 
 func TestApplyPolicy_Pause(t *testing.T) {
-	r := DefaultRegistry()
+	r := defaultRegistry(t)
 	res := r.ApplyPolicy(ServiceCaddy, HealthDegraded)
 	if !res.ShouldPause {
 		t.Error("expected ShouldPause=true for Caddy degraded")
@@ -294,7 +303,7 @@ func TestApplyPolicy_Pause(t *testing.T) {
 }
 
 func TestApplyPolicy_Continue(t *testing.T) {
-	r := DefaultRegistry()
+	r := defaultRegistry(t)
 	res := r.ApplyPolicy(ServiceLangFuse, HealthDown)
 	if res.ShouldBlock {
 		t.Error("expected ShouldBlock=false for LangFuse down")
@@ -308,7 +317,7 @@ func TestApplyPolicy_Continue(t *testing.T) {
 }
 
 func TestApplyPolicy_RationalePopulated(t *testing.T) {
-	r := DefaultRegistry()
+	r := defaultRegistry(t)
 	res := r.ApplyPolicy(ServiceForgejo, HealthDown)
 	if res.Rationale == "" {
 		t.Error("expected non-empty Rationale")
@@ -320,7 +329,7 @@ func TestApplyPolicy_RationalePopulated(t *testing.T) {
 // -----------------------------------------------------------------------------
 
 func TestReport_TotalPolicies(t *testing.T) {
-	r := DefaultRegistry()
+	r := defaultRegistry(t)
 	rep := r.GenerateReport()
 	// DefaultRegistry registers ~13 policies (4 Forgejo + 3 Chimera + 3 Conscientiousness + 3 Hivemind + 3 LangFuse + 3 Prometheus + 3 Caddy + 3 DuckBrain + 3 Muster = 28)
 	if rep.TotalPolicies < 9 {
@@ -329,7 +338,7 @@ func TestReport_TotalPolicies(t *testing.T) {
 }
 
 func TestReport_FormatReport(t *testing.T) {
-	r := DefaultRegistry()
+	r := defaultRegistry(t)
 	got := r.FormatReport()
 	wants := []string{
 		"Helix Degradation Policy Pack",
@@ -353,7 +362,7 @@ func TestReport_FormatReport(t *testing.T) {
 }
 
 func TestFormatApplyResult(t *testing.T) {
-	r := DefaultRegistry()
+	r := defaultRegistry(t)
 	res := r.ApplyPolicy(ServiceForgejo, HealthDown)
 	got := FormatApplyResult(res)
 	wants := []string{"forgejo", "down", "fail_fast", "critical"}
@@ -365,7 +374,7 @@ func TestFormatApplyResult(t *testing.T) {
 }
 
 func TestFormatApplyResult_WithFallback(t *testing.T) {
-	r := DefaultRegistry()
+	r := defaultRegistry(t)
 	res := r.ApplyPolicy(ServiceChimera, HealthDown)
 	got := FormatApplyResult(res)
 	if !strings.Contains(got, "fallback=human_review_only") {
@@ -395,7 +404,7 @@ func TestAllServices(t *testing.T) {
 // -----------------------------------------------------------------------------
 
 func TestSpecCoverage_MatrixTransitions(t *testing.T) {
-	r := DefaultRegistry()
+	r := defaultRegistry(t)
 	covered := 0
 	for _, svc := range AllServices() {
 		for _, st := range []HealthState{HealthHealthy, HealthDegraded, HealthDown, HealthUnknown} {

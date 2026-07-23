@@ -83,12 +83,13 @@ func NewSkillRegistry(store SkillStore) *SkillRegistry {
 }
 
 // NewSkillID generates a UUID-like hex identifier.
-func NewSkillID() string {
+// Returns an error if crypto/rand fails.
+func NewSkillID() (string, error) {
 	b := make([]byte, 12)
 	if _, err := rand.Read(b); err != nil {
-		panic(fmt.Sprintf("learning: crypto/rand failed: %v", err))
+		return "", fmt.Errorf("learning: crypto/rand failed: %w", err)
 	}
-	return hex.EncodeToString(b)
+	return hex.EncodeToString(b), nil
 }
 
 // DefaultSkillsPath returns ~/.helix/skills/skills.json.
@@ -362,7 +363,11 @@ func (r *SkillRegistry) Publish(authorAgentID string, authorTrust float64, domai
 
 	now := time.Now().UTC()
 	if skill.ID == "" {
-		skill.ID = NewSkillID()
+		id, err := NewSkillID()
+		if err != nil {
+			return err
+		}
+		skill.ID = id
 	}
 	if skill.Version == "" {
 		skill.Version = "0.1.0"

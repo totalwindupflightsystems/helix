@@ -332,7 +332,10 @@ func TestSpecScenarios_HasLockRace(t *testing.T) {
 // -----------------------------------------------------------------------------
 
 func TestDefaultLibrary_HasAllSpecScenarios(t *testing.T) {
-	lib := DefaultLibrary()
+	lib, err := DefaultLibrary()
+	if err != nil {
+		t.Fatalf("DefaultLibrary: %v", err)
+	}
 	if len(lib.List()) != 5 {
 		t.Errorf("DefaultLibrary has %d scenarios, want 5", len(lib.List()))
 	}
@@ -359,7 +362,10 @@ func TestLibrary_RunOne_NotFound(t *testing.T) {
 }
 
 func TestLibrary_RunOne_OK(t *testing.T) {
-	lib := DefaultLibrary()
+	lib, err := DefaultLibrary()
+	if err != nil {
+		t.Fatalf("DefaultLibrary: %v", err)
+	}
 	res, err := lib.RunOne(context.Background(), "gate-bypass")
 	if err != nil {
 		t.Fatalf("RunOne: %v", err)
@@ -373,7 +379,10 @@ func TestLibrary_RunOne_OK(t *testing.T) {
 }
 
 func TestLibrary_RunAll_AllPass(t *testing.T) {
-	lib := DefaultLibrary()
+	lib, err := DefaultLibrary()
+	if err != nil {
+		t.Fatalf("DefaultLibrary: %v", err)
+	}
 	results := lib.RunAll(context.Background())
 	if len(results) != 5 {
 		t.Errorf("RunAll returned %d results, want 5", len(results))
@@ -431,7 +440,10 @@ func TestLibrary_RunOne_NilRun(t *testing.T) {
 // -----------------------------------------------------------------------------
 
 func TestGenerateReport_AllPass(t *testing.T) {
-	lib := DefaultLibrary()
+	lib, err := DefaultLibrary()
+	if err != nil {
+		t.Fatalf("DefaultLibrary: %v", err)
+	}
 	results := lib.RunAll(context.Background())
 	rep := GenerateReport(results)
 	if rep.Total != 5 {
@@ -499,7 +511,10 @@ func TestGenerateReport_ByRoleBySeverity(t *testing.T) {
 // -----------------------------------------------------------------------------
 
 func TestFormatReport(t *testing.T) {
-	lib := DefaultLibrary()
+	lib, err := DefaultLibrary()
+	if err != nil {
+		t.Fatalf("DefaultLibrary: %v", err)
+	}
 	results := lib.RunAll(context.Background())
 	rep := GenerateReport(results)
 	got := rep.FormatReport()
@@ -512,7 +527,10 @@ func TestFormatReport(t *testing.T) {
 }
 
 func TestFormatResults(t *testing.T) {
-	lib := DefaultLibrary()
+	lib, err := DefaultLibrary()
+	if err != nil {
+		t.Fatalf("DefaultLibrary: %v", err)
+	}
 	results := lib.RunAll(context.Background())
 	got := FormatResults(results)
 	if !strings.Contains(got, "Scenario") {
@@ -572,7 +590,10 @@ func TestSpecCoverage_AllRoles(t *testing.T) {
 	// DefaultLibrary must have at least one scenario for at least 5 of 6 roles
 	// (the 6th role, @devils-advocate, is documented in the roster but has no
 	// concrete scenario in §12.4).
-	lib := DefaultLibrary()
+	lib, err := DefaultLibrary()
+	if err != nil {
+		t.Fatalf("DefaultLibrary: %v", err)
+	}
 	covered := 0
 	for _, role := range AllRoles() {
 		if len(lib.ScenariosForRole(role)) > 0 {
@@ -585,7 +606,10 @@ func TestSpecCoverage_AllRoles(t *testing.T) {
 }
 
 func TestSpecCoverage_AllSeverities(t *testing.T) {
-	lib := DefaultLibrary()
+	lib, err := DefaultLibrary()
+	if err != nil {
+		t.Fatalf("DefaultLibrary: %v", err)
+	}
 	all := lib.All()
 	hasMedium, hasHigh, hasCritical := false, false, false
 	for _, s := range all {
