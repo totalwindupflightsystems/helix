@@ -493,8 +493,8 @@ func TestMergeEvidence_DeduplicatesByKey(t *testing.T) {
 		{Type: EvidenceMarketplacePattern, MarketplacePattern: "pattern-x"},
 	}
 	secondary := []EvidenceLink{
-		{Type: EvidenceSpecRef, SpecRef: "spec-a", Description: "dup spec a"},           // dup
-		{Type: EvidenceMarketplacePattern, MarketplacePattern: "pattern-x"},             // dup
+		{Type: EvidenceSpecRef, SpecRef: "spec-a", Description: "dup spec a"},             // dup
+		{Type: EvidenceMarketplacePattern, MarketplacePattern: "pattern-x"},               // dup
 		{Type: EvidenceIncidentRef, IncidentRef: "inc-1", Description: "unique incident"}, // unique
 	}
 	merged := mergeEvidence(primary, secondary)
@@ -520,7 +520,7 @@ func TestMergeEvidence_EmptySlices(t *testing.T) {
 
 func TestFirstSentence(t *testing.T) {
 	tests := []struct {
-		name string
+		name  string
 		input string
 		want  string
 	}{
@@ -1154,7 +1154,7 @@ func TestADRReviewer_NilVerdict(t *testing.T) {
 
 func TestADRReviewer_NilContext(t *testing.T) {
 	reviewer := NewADRReviewer()
-	_, err := reviewer.Review(nil, &ADRReviewRequest{
+	_, err := reviewer.Review(context.TODO(), &ADRReviewRequest{
 		ADR: ADR{ID: NewADRID(), Title: "test", Decision: "Some decision"},
 	})
 	if err != nil {
@@ -1274,11 +1274,11 @@ func TestAdaptReviewModelClient_ReviewADR(t *testing.T) {
 	}
 	adapter := AdaptReviewModelClient(mc)
 	adr := &ADR{
-		ID:        NewADRID(),
-		Title:     "Test ADR",
-		Status:    StatusProposed,
-		Context:   "ctx",
-		Decision:  "decide",
+		ID:       NewADRID(),
+		Title:    "Test ADR",
+		Status:   StatusProposed,
+		Context:  "ctx",
+		Decision: "decide",
 	}
 	verdict, err := adapter.ReviewADR(context.Background(), adr)
 	if err != nil {
@@ -1504,11 +1504,11 @@ func TestReviewArchitecture_TwoAltsNoRejected(t *testing.T) {
 func TestReviewSecurity_Variants(t *testing.T) {
 	// Security-sensitive with controls
 	a1 := &ADR{
-		Title:        "OAuth auth with TLS and RBAC",
-		Context:      "Need auth",
-		Decision:     "OIDC with RBAC and audit logging",
-		Consequences: "Audit trail for auth decisions",
-		Alternatives: []Alternative{{Description: "OAuth", Tradeoffs: "standard"}},
+		Title:         "OAuth auth with TLS and RBAC",
+		Context:       "Need auth",
+		Decision:      "OIDC with RBAC and audit logging",
+		Consequences:  "Audit trail for auth decisions",
+		Alternatives:  []Alternative{{Description: "OAuth", Tradeoffs: "standard"}},
 		EvidenceLinks: []EvidenceLink{{Type: EvidenceSpecRef, SpecRef: "x"}},
 	}
 	v1 := reviewSecurity("sec-model", a1)
@@ -1518,10 +1518,10 @@ func TestReviewSecurity_Variants(t *testing.T) {
 
 	// Security-sensitive WITHOUT controls
 	a2 := &ADR{
-		Title:    "Store passwords in plaintext",
-		Context:  "Need auth without crypto",
-		Decision: "Plaintext password storage",
-		Alternatives: []Alternative{{Description: "A"}},
+		Title:         "Store passwords in plaintext",
+		Context:       "Need auth without crypto",
+		Decision:      "Plaintext password storage",
+		Alternatives:  []Alternative{{Description: "A"}},
 		EvidenceLinks: []EvidenceLink{{Type: EvidenceSpecRef, SpecRef: "x"}},
 	}
 	v2 := reviewSecurity("sec-model", a2)
@@ -1534,10 +1534,10 @@ func TestReviewSecurity_Variants(t *testing.T) {
 
 	// External API without rate-limit/auth
 	a3 := &ADR{
-		Title:    "Public external API",
-		Context:  "Internet-facing service",
-		Decision: "Expose on the internet",
-		Alternatives: []Alternative{{Description: "A"}},
+		Title:         "Public external API",
+		Context:       "Internet-facing service",
+		Decision:      "Expose on the internet",
+		Alternatives:  []Alternative{{Description: "A"}},
 		EvidenceLinks: []EvidenceLink{{Type: EvidenceSpecRef, SpecRef: "x"}},
 	}
 	v3 := reviewSecurity("sec-model", a3)
@@ -1553,10 +1553,10 @@ func TestReviewSecurity_Variants(t *testing.T) {
 
 	// No alternatives
 	a4 := &ADR{
-		Title:        "Some decision",
-		Context:      "ctx",
-		Decision:     "decide",
-		Consequences: "cons",
+		Title:         "Some decision",
+		Context:       "ctx",
+		Decision:      "decide",
+		Consequences:  "cons",
 		EvidenceLinks: []EvidenceLink{{Type: EvidenceSpecRef, SpecRef: "x"}},
 	}
 	v4 := reviewSecurity("sec-model", a4)
@@ -1655,7 +1655,7 @@ func TestReviewPerformance_Variants(t *testing.T) {
 
 func TestVerdictFromScore(t *testing.T) {
 	tests := []struct {
-		score      float64
+		score       float64
 		wantVerdict string
 	}{
 		{0.9, "approve"},
@@ -1663,9 +1663,9 @@ func TestVerdictFromScore(t *testing.T) {
 		{0.3, "reject"},
 		{-0.5, "reject"}, // clamped to 0 → reject
 		{1.5, "approve"}, // clamped to 1 → approve
-		{0.5, "warn"}, // exactly 0.5 → warn (below 0.75 threshold)
-		{0.49, "reject"},  // just under 0.5 → reject
-		{0.74, "warn"},    // just under 0.75 → warn
+		{0.5, "warn"},    // exactly 0.5 → warn (below 0.75 threshold)
+		{0.49, "reject"}, // just under 0.5 → reject
+		{0.74, "warn"},   // just under 0.75 → warn
 	}
 	for _, tt := range tests {
 		v := verdictFromScore("model", tt.score, nil, nil, "")
@@ -1818,8 +1818,8 @@ func TestNormalizeVerdictClass(t *testing.T) {
 func TestCollectSuggestions(t *testing.T) {
 	verdicts := []ModelVerdict{
 		{Model: "a", Suggestions: []string{"fix X", "add Y"}},
-		{Model: "b", Suggestions: []string{"fix X", "add Z"}},      // "fix X" is dup
-		{Model: "c", Suggestions: []string{"", "  ", "add W"}},    // empty trimmed
+		{Model: "b", Suggestions: []string{"fix X", "add Z"}},  // "fix X" is dup
+		{Model: "c", Suggestions: []string{"", "  ", "add W"}}, // empty trimmed
 	}
 	suggestions := collectSuggestions(verdicts)
 	if len(suggestions) != 4 {

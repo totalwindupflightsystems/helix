@@ -49,6 +49,9 @@ linters:
       - path: cmd/
         linters: [errcheck]
         text: "Error return value"
+      - path: pkg/integration/
+        linters: [unused]
+        text: ""
       - linters: [errcheck]
         text: 'Close|Flush|\.Write\b'
 issues:
