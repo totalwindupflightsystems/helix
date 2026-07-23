@@ -2,8 +2,8 @@
 
 > **Core purpose:** Agent-First Code Platform — humans and AI agents as equal participants in the SDLC. Forgejo integration, sandboxed execution, adversarial review, trust-tiered task assignment.
 >
-> **Foreman:** deepseek-v4-flash @ deepseek | **DuckBrain:** helix (MCP unavailable this tick)
-> **Last tick:** 2026-07-22 08:23 UTC | **Tick #20** | **Build:** ⚠️ (host thread exhaustion from concurrent foremen) | **Commit:** 97c3771
+> **Foreman:** deepseek-v4-flash @ deepseek | **DuckBrain:** helix (MCP degraded — recall fails, list_keys connection error)
+> **Last tick:** 2026-07-22 20:33 UTC | **Tick #21** | **Build:** ✅ | **Commit:** HEAD (pending)
 
 ```
 ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
@@ -17,7 +17,7 @@ ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
 || INT-001b | Write 3 E2E test scenarios (happy path, 409 idempotent, error path) using helpers from c6355c7 | High | 4 | INT-001 | ++testing, ++integration | DeepSeek V4 Pro | High | GPT-5.6 Sol |
 || INT-002 | Chimera multi-model review E2E: real LLM calls, not stubs | High | 5 | INT-001 | ++testing, ++api-use, ++multi-step-reasoning | GLM-5.2 | High | DeepSeek V4 Pro |
 || PROD-003 | Metrics + tracing (OpenTelemetry) | Low | 4 | — | ++backend, ++infra | DeepSeek V4 Pro | Medium | GLM-5.2 |
-|| DEPS-002 | Update AWS SDK eventstream (v1.6.2→v1.7.8) — GO-2026-5764 panic DoS via SOPS transitive dep | Med | 2 | — | ++deps, ++terminal | DeepSeek V4 Flash | Low | Step-3.7 Flash |
+||| ~~DEPS-002~~ | Update AWS SDK eventstream (v1.6.2→v1.7.8) — GO-2026-5764 panic DoS via SOPS transitive dep (SOPS v3.9.0→v3.13.2, age v1.2.0→v1.3.1 — ALL 4 vulns resolved) | Med | 2 | — | ++deps, ++terminal | DeepSeek V4 Flash | Low | Step-3.7 Flash |
 || COVERAGE-001 | Improve pkg/contract test coverage (53.7% → 80%) — breaking.go, generate.go, store.go, validate.go, types.go | Med | 3 | — | ++testing, ++go | MiniMax-M3 | Medium | GLM-5.2 |
 || COVERAGE-002 | Improve pkg/adr test coverage (65.2% → 80%) — coauthor.go, review.go, types.go | Med | 3 | — | ++testing, ++go | MiniMax-M3 | Medium | GLM-5.2 |
 || ~~COVERAGE-003~~ | Add tests for pkg/security/store: Path(), KeyPath(), Provider() accessors + error wrappers (0% coverage) | Med | 1 | 97c3771 | MiniMax-M3 |
@@ -55,7 +55,35 @@ INT-003 (SOPS CLI deploy command) is already implemented by `helix secrets init`
 
 **No worker spawned this tick.** Host cannot reliably fork compile processes. COVERAGE-001, COVERAGE-002, and REFACTOR-001 remain pending for a future tick with lower host contention.
 
-**Next:** COVERAGE-001 (pkg/contract 53.7%→80%) when host resources recover.
+|**Next:** DEPS-002 (SOPS transitive dep vulns) — resolved in Tick #21.
+
+## Tick #21 — 2026-07-22 20:33 UTC — DEPS-002 Complete (SOPS v3.9.0→v3.13.2, ALL vulns resolved)
+
+**Foreman-direct dep upgrade (no worker spawn):** Upgraded SOPS from v3.9.0 to v3.13.2. This cascaded through the transitive dependency chain, resolving ALL 4 blocking vulnerabilities:
+
+| Vuln | Module | Before | After | Status |
+|------|--------|--------|-------|--------|
+| GO-2026-5764 | AWS SDK eventstream | v1.6.2 | v1.7.13 | ✅ Fixed |
+| GO-2026-4945 | go-jose JWE | v4.0.2 | v4.1.4 | ✅ Fixed |
+| GO-2026-4550 | CIRCL | v1.3.9 | v1.6.4 | ✅ Fixed |
+| GO-2025-3754 | CIRCL | same chain | v1.6.4 | ✅ Fixed |
+
+Additional upgrades pulled in: filippio.io/age v1.2.0→v1.3.1, x/crypto v0.51.0→v0.53.0, x/net v0.55.0→v0.56.0, grpc v1.64.0→v1.81.1. Go toolchain bumped from 1.25.0 to 1.25.8 (required by SOPS v3.13.2).
+
+| Check | Result | Details |
+|-------|--------|---------|
+| `go build ./...` | ✅ PASS | All packages compile |
+| `go vet ./...` | ✅ PASS | No vet issues |
+| `go test -short -count=1 ./...` | ✅ PASS | All 30+ packages `ok` |
+| `govulncheck ./...` | ✅ PASS | 0 vulnerabilities affecting code |
+| Hilo graph | ✅ 3,338 edges / 549 files | Healthy (+2 edges from new deps) |
+| DuckBrain | ❌ Degraded | Recall fails (no embedding), list_keys connection error |
+| CI | ⚠️ Lint ❌ (pre-existing) | Unused E2E helpers in suite_e2e_test.go (for INT-001) |
+| Cooldown | ✅ 43200s (12h) | Re-fixed after scheduler restart (was 7200s) |
+
+**govulncheck:** 1 remaining vulnerability in modules required but not called by our code (acceptable — no action needed).
+
+**Next:** COVERAGE-001 (pkg/contract 53.7%→80%) — oldest unblocked task. Host resources recovered from Tick #20 exhaustion.
 
 ## Tick #15 — 2026-07-21 18:18 UTC — PROD-001 CLI CRUD + Config + PROD-002 Rate Limiting Complete
 
@@ -244,7 +272,10 @@ Prior worker produced partial output (interface + errors, 218 lines). Foreman co
 | ID | Task | Pri | Cpx | Commit | Model |
 |----|------|-----|-----|--------|-------|
 || U01 | Usability & coverage audit across all 55+ packages | High | 3 | 5f0de10 | DS-V4-Flash |
-|| COVERAGE-003 | Accessor + error wrapper tests for pkg/security/store | Med | 1 | 97c3771 | (foreman-direct) |
+||| COVERAGE-003 | Accessor + error wrapper tests for pkg/security/store | Med | 1 | 97c3771 | (foreman-direct) |
+||| DEPS-002 | SOPS v3.9.0→v3.13.2 (AWS eventstream, go-jose, CIRCL vulns) | Med | 2 | HEAD (pending) | (foreman-direct) |
+
+**Tick #21 (2026-07-22 20:33 UTC):** DEPS-002 — SOPS v3.9.0→v3.13.2, ALL 4 vulns resolved (AWS eventstream, go-jose, CIRCL). Foreman-direct dep upgrade. Commit pending.
 
 **Tick #20 (2026-07-22 08:16 UTC):** COVERAGE-003 — add 212 lines of tests for Path/KeyPath/Provider accessors + all 5 Wrap* error helpers + AsSecretError + sentinel identity. Host thread exhaustion (cgroup) prevents `go test` CGO test binaries; syntax verified via gofmt. Foreman-direct (no worker). Commit 97c3771.
 
