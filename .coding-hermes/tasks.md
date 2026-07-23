@@ -3,7 +3,7 @@
 > **Core purpose:** Agent-First Code Platform — humans and AI agents as equal participants in the SDLC. Forgejo integration, sandboxed execution, adversarial review, trust-tiered task assignment.
 >
 > **Foreman:** deepseek-v4-flash @ deepseek | **DuckBrain:** helix (MCP degraded — recall fails, list_keys connection error)
-> **Last tick:** 2026-07-22 20:33 UTC | **Tick #21** | **Build:** ✅ | **Commit:** HEAD (pending)
+> **Last tick:** 2026-07-22 20:42 UTC | **Tick #22** | **Build:** ✅ | **Commit:** 56ecb7d (COVERAGE-001)
 
 ```
 ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
@@ -18,8 +18,7 @@ ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
 || INT-002 | Chimera multi-model review E2E: real LLM calls, not stubs | High | 5 | INT-001 | ++testing, ++api-use, ++multi-step-reasoning | GLM-5.2 | High | DeepSeek V4 Pro |
 || PROD-003 | Metrics + tracing (OpenTelemetry) | Low | 4 | — | ++backend, ++infra | DeepSeek V4 Pro | Medium | GLM-5.2 |
 ||| ~~DEPS-002~~ | Update AWS SDK eventstream (v1.6.2→v1.7.8) — GO-2026-5764 panic DoS via SOPS transitive dep (SOPS v3.9.0→v3.13.2, age v1.2.0→v1.3.1 — ALL 4 vulns resolved) | Med | 2 | — | ++deps, ++terminal | DeepSeek V4 Flash | Low | Step-3.7 Flash |
-|| COVERAGE-001 | Improve pkg/contract test coverage (53.7% → 80%) — breaking.go, generate.go, store.go, validate.go, types.go | Med | 3 | — | ++testing, ++go | MiniMax-M3 | Medium | GLM-5.2 |
-|| COVERAGE-002 | Improve pkg/adr test coverage (65.2% → 80%) — coauthor.go, review.go, types.go | Med | 3 | — | ++testing, ++go | MiniMax-M3 | Medium | GLM-5.2 |
+||| ~~COVERAGE-001~~ | Improve pkg/contract test coverage (53.7% → 83.0%) — 35 new tests in contract_test.go | Med | 3 | — | ++testing, ++go | MiniMax-M3 | Medium | GLM-5.2 |
 || ~~COVERAGE-003~~ | Add tests for pkg/security/store: Path(), KeyPath(), Provider() accessors + error wrappers (0% coverage) | Med | 1 | 97c3771 | MiniMax-M3 |
 || REFACTOR-001 | Replace 6 panic() calls with error returns in pkg/deploy (2), pkg/learning (2), pkg/degradation (1), pkg/adversarial (1) | Med | 2 | — | ++refactor, ++error-handling, ++go | Kimi K3 | Low | MiniMax-M3 |
 
@@ -83,7 +82,42 @@ Additional upgrades pulled in: filippio.io/age v1.2.0→v1.3.1, x/crypto v0.51.0
 
 **govulncheck:** 1 remaining vulnerability in modules required but not called by our code (acceptable — no action needed).
 
-**Next:** COVERAGE-001 (pkg/contract 53.7%→80%) — oldest unblocked task. Host resources recovered from Tick #20 exhaustion.
+| **Next:** COVERAGE-002 (pkg/adr 65.2%→80%) — next oldest unblocked task.
+
+## Tick #22 — 2026-07-22 20:42 UTC — COVERAGE-001 Complete (Contract pkg 53.7%→83.0%)
+
+**Worker (MiniMax-M3 @ minimax):** Spawned for COVERAGE-001 — improve pkg/contract test coverage. Worker added 35 new tests (740 lines) covering all 0% functions and all sub-50% functions.
+
+| # | Function | Before | After | Status |
+|---|----------|--------|-------|--------|
+| 1 | detectSchemaRemovals | 0% | 97% | ✅ |
+| 2 | schemaList | 0% | 100% | ✅ |
+| 3 | indexByName | 0% | 100% | ✅ |
+| 4 | fieldName | 0% | 100% | ✅ |
+| 5 | fieldStr | 0% | 100% | ✅ |
+| 6 | Root | 0% | 100% | ✅ |
+| 7 | LoadPrevious | 0% | 90% | ✅ |
+| 8 | detectChangesByFormat | 40% | 100% | ✅ |
+| 9 | generateSchema | 40% | 100% | ✅ |
+| 10 | resolveSpecDir | 33.3% | 83.3% | ✅ |
+| 11 | resolveStoreRoot | 33.3% | 83.3% | ✅ |
+| 12 | Validate | 38.9% | 88.9% | ✅ |
+
+| Check | Result | Details |
+|-------|--------|---------|
+| `go build ./...` | ✅ PASS | All packages compile |
+| `go vet ./...` | ✅ PASS | No vet issues |
+| `go test -short -count=1 ./...` | ✅ PASS | All 30+ packages `ok` |
+| Coverage | ✅ 83.0% | Target: ≥80%. +35 tests, +740 lines |
+| Guard | ✅ PASS | Secrets, lint, build, tests all clean |
+| Hilo | ✅ 3,338 edges / 549 files | Healthy |
+| DuckBrain | ❌ Degraded | Recall + list_keys connection errors |
+| CI | ⚠️ Lint ❌ (pre-existing) | Unused E2E helpers in suite_e2e_test.go (for INT-001) |
+| Cooldown | ✅ 43200s (12h) | Maintained from Tick #21 |
+
+**Commit:** `56ecb7d` — test: COVERAGE-001 — improve pkg/contract coverage (53.7%→80%+).
+
+**Next:** COVERAGE-002 (pkg/adr 65.2%→80%) — oldest remaining unblocked task.
 
 ## Tick #15 — 2026-07-21 18:18 UTC — PROD-001 CLI CRUD + Config + PROD-002 Rate Limiting Complete
 
@@ -272,10 +306,11 @@ Prior worker produced partial output (interface + errors, 218 lines). Foreman co
 | ID | Task | Pri | Cpx | Commit | Model |
 |----|------|-----|-----|--------|-------|
 || U01 | Usability & coverage audit across all 55+ packages | High | 3 | 5f0de10 | DS-V4-Flash |
-||| COVERAGE-003 | Accessor + error wrapper tests for pkg/security/store | Med | 1 | 97c3771 | (foreman-direct) |
-||| DEPS-002 | SOPS v3.9.0→v3.13.2 (AWS eventstream, go-jose, CIRCL vulns) | Med | 2 | HEAD (pending) | (foreman-direct) |
+|| ~~COVERAGE-001~~ | Improve pkg/contract test coverage (53.7%→83.0%) — 35 new tests | Med | 3 | 56ecb7d | MiniMax-M3 |
+|| ~~COVERAGE-003~~ | Accessor + error wrapper tests for pkg/security/store | Med | 1 | 97c3771 | (foreman-direct)
+|| ~~DEPS-002~~ | SOPS v3.9.0→v3.13.2 (AWS eventstream, go-jose, CIRCL vulns) | Med | 2 | beb98e1 | (foreman-direct) |
 
-**Tick #21 (2026-07-22 20:33 UTC):** DEPS-002 — SOPS v3.9.0→v3.13.2, ALL 4 vulns resolved (AWS eventstream, go-jose, CIRCL). Foreman-direct dep upgrade. Commit pending.
+**Tick #21 (2026-07-22 20:33 UTC):** DEPS-002 — SOPS v3.9.0→v3.13.2, ALL 4 vulns resolved (AWS eventstream, go-jose, CIRCL). Foreman-direct dep upgrade. Commit beb98e1.
 
 **Tick #20 (2026-07-22 08:16 UTC):** COVERAGE-003 — add 212 lines of tests for Path/KeyPath/Provider accessors + all 5 Wrap* error helpers + AsSecretError + sentinel identity. Host thread exhaustion (cgroup) prevents `go test` CGO test binaries; syntax verified via gofmt. Foreman-direct (no worker). Commit 97c3771.
 
