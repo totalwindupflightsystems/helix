@@ -3,7 +3,7 @@
 > **Core purpose:** Agent-First Code Platform — humans and AI agents as equal participants in the SDLC. Forgejo integration, sandboxed execution, adversarial review, trust-tiered task assignment.
 >
 > **Foreman:** deepseek-v4-flash @ deepseek | **DuckBrain:** helix (MCP degraded — recall fails, list_keys connection error)
-> **Last tick:** 2026-07-23 04:39 UTC | **Tick #26** | **Build:** ✅ | **Commit:** 2599d68
+> **Last tick:** 2026-07-23 04:50 UTC | **Tick #26** | **Build:** ✅ | **Commit:** HEAD
 
 ```
 ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
@@ -17,7 +17,7 @@ ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
 || INT-001b | Write 3 E2E test scenarios (happy path, 409 idempotent, error path) using helpers from c6355c7 | High | 4 | INT-001 | ++testing, ++integration | DeepSeek V4 Pro | High | GPT-5.6 Sol |
 || INT-002 | Chimera multi-model review E2E: real LLM calls, not stubs | High | 5 | INT-001 | ++testing, ++api-use, ++multi-step-reasoning | GLM-5.2 | High | DeepSeek V4 Pro |
 |||| ~~PROD-003a~~ | OpenTelemetry tracer provider + CLI wiring — tracer.go (355 lines), observability.go (+80/-6), OTel dep promotion. Tick #26. | Low | 2 | 2599d68 | MiniMax-M3 |
-|| PROD-003b | HTTP instrumentation — wrap forgejo/chimera/deepseek HTTP clients with otelhttp | Low | 2 | PROD-003a | ++backend, ++go, ++http | MiniMax-M3 | Medium | GLM-5.2 |
+|||| ~~PROD-003b~~ | HTTP instrumentation — forgejo, chimera, deepseek HTTP clients wrapped with otelhttp. Tick #26. | Low | 2 | HEAD | MiniMax-M3 |
 ||| ~~DEPS-002~~ | Update AWS SDK eventstream (v1.6.2→v1.7.8) — GO-2026-5764 panic DoS via SOPS transitive dep (SOPS v3.9.0→v3.13.2, age v1.2.0→v1.3.1 — ALL 4 vulns resolved) | Med | 2 | — | ++deps, ++terminal | DeepSeek V4 Flash | Low | Step-3.7 Flash |
 ||| ~~COVERAGE-001~~ | Improve pkg/contract test coverage (53.7% → 83.0%) — 35 new tests in contract_test.go | Med | 3 | — | ++testing, ++go | MiniMax-M3 | Medium | GLM-5.2 |
 || ~~COVERAGE-003~~ | Add tests for pkg/security/store: Path(), KeyPath(), Provider() accessors + error wrappers (0% coverage) | Med | 1 | 97c3771 | MiniMax-M3 |
