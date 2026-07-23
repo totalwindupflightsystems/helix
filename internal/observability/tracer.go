@@ -17,6 +17,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 // =============================================================================
@@ -203,7 +204,7 @@ func SetupTracing(cfg TracerConfig) (*sdktrace.TracerProvider, error) {
 		// trace.TracerProvider interface, and short-circuits in the
 		// SDK so no exporters are started, no goroutines spawned, no
 		// network connections opened.
-		otel.SetTracerProvider(trace.NewNoopTracerProvider())
+		otel.SetTracerProvider(noop.NewTracerProvider())
 		return nil, nil
 	}
 
