@@ -3,7 +3,7 @@
 > **Core purpose:** Agent-First Code Platform — humans and AI agents as equal participants in the SDLC. Forgejo integration, sandboxed execution, adversarial review, trust-tiered task assignment.
 >
 > **Foreman:** deepseek-v4-flash @ deepseek | **DuckBrain:** helix (MCP degraded — recall fails, list_keys connection error)
-> **Last tick:** 2026-07-23 11:51 UTC | **Tick #27** | **Build:** ✅ | **Commit:** HEAD
+> **Last tick:** 2026-07-23 13:20 UTC | **Tick #28** | **Build:** ✅ | **Commit:** e789e1a
 
 ```
 ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
@@ -13,7 +13,7 @@ ID | Task | Priority | Complexity | Deps | Tags | Model | Reasoning | Fallback
 
 | ID | Task | Pri | Cpx | Deps | Tags | Model | Lvl | Fallback |
 |----|------|-----|-----|------|------|-------|-----|----------|
-|| COVERAGE-002 | Improve pkg/adr test coverage (65.2%→80%) — coauthor.go and review.go — gap from Tick #19, never completed | Med | 3 | — | ++testing, ++go | MiniMax-M3 | Medium | GLM-5.2 |
+|||| ~~COVERAGE-002~~ | Improve pkg/adr test coverage (65.2%→95.9%) — GLM-5.2 worker + 4 assertion fixes. +1607 lines in adr_test.go. e789e1a. | Med | 3 | — | ++testing, ++go | GLM-5.2 | Medium | — |
 || INT-001 | E2E integration test: Forgejo → Helix → Agent PR → Review → Merge — helpers + API methods done in c6355c7 | High | 6 | — | ++testing, ++integration, ++multi-step-reasoning, ++distributed-systems | DeepSeek V4 Pro | High | GPT-5.6 Sol |
 || INT-001b | Write 3 E2E test scenarios (happy path, 409 idempotent, error path) using helpers from c6355c7 | High | 4 | INT-001 | ++testing, ++integration | DeepSeek V4 Pro | High | GPT-5.6 Sol |
 || INT-002 | Chimera multi-model review E2E: real LLM calls, not stubs | High | 5 | INT-001 | ++testing, ++api-use, ++multi-step-reasoning | GLM-5.2 | High | DeepSeek V4 Pro |
@@ -408,6 +408,46 @@ Prior worker produced partial output (interface + errors, 218 lines). Foreman co
 
 **Next:** COVERAGE-002 (pkg/adr 65.2%→80%) — oldest remaining unblocked task.
 
+## Tick #28 — 2026-07-23 13:20 UTC — COVERAGE-002 Complete (pkg/adr 65.2%→95.9%)
+
+**Worker (GLM-5.2 @ zai-glm):** Spawned for COVERAGE-002 — improve pkg/adr test coverage. Worker wrote ~1,600 lines of tests covering all 0% functions (CoAuthorFromDraft, mergeEvidence, firstSentence, WithReviewModelClients, AdaptReviewModelClient, formatADRAsReviewPayload) and many partially-covered functions (deriveTitle/Decision/Context, estimateRisk/BlastRadius, computeConsensus, detectConflicts, etc.).
+
+**Foreman-direct fixes:** Worker's GLM-5.2 produced 4 assertion bugs in its test code:
+1. `TestEstimateRisk` — expected cap at 100, correct value is 95
+2. `TestReviewPerformance_Variants` — ADR context mentioned "lag" which defeated the async SLO concern check
+3. `TestVerdictFromScore` — score 0.5 should produce "warn" (below 0.75 threshold), not "approve"
+4. `TestCollectSuggestions` — expected 3 unique suggestions, correct dedup yields 4
+
+All 4 fixed foreman-direct. 1,607 lines added to adr_test.go (346→1,953 lines total).
+
+| # | Function | Before | After | Status |
+|---|----------|--------|-------|--------|
+| 1 | CoAuthorFromDraft | 0% | 100% | ✅ |
+| 2 | mergeEvidence | 0% | 100% | ✅ |
+| 3 | firstSentence | 0% | 100% | ✅ |
+| 4 | WithReviewModelClients | 0% | 100% | ✅ |
+| 5 | offlineADRClient.Name | 0% | 100% | ✅ |
+| 6 | AdaptReviewModelClient | 0% | 100% | ✅ |
+| 7 | reviewModelAdapter.Name | 0% | 100% | ✅ |
+| 8 | reviewModelAdapter.ReviewADR | 0% | 100% | ✅ |
+| 9 | formatADRAsReviewPayload | 0% | 100% | ✅ |
+| 10 | Overall package | 65.2% | 95.9% | ✅ |
+
+| Check | Result | Details |
+|-------|--------|---------|
+| `go build ./...` | ✅ PASS | All packages compile |
+| `go vet ./...` | ✅ PASS | No vet issues |
+| `go test -short -count=1 ./...` | ✅ PASS | All 30+ packages `ok` |
+| `gitreins guard` | ✅ PASS | Secrets, build, lint, tests all clean |
+| Hilo graph | ✅ 550+ files | Healthy |
+| DuckBrain | ❌ Degraded | MCP connection errors |
+| CI | ⚠️ Lint ❌ (pre-existing) | Unused E2E helpers in suite_e2e_test.go (for INT-001) |
+| Cooldown | ✅ 43200s (12h) | Maintained from Tick #27 |
+
+**Commit:** `e789e1a` — test: COVERAGE-002 — improve pkg/adr coverage (65.2%→95.9%).
+
+**Remaining tasks:** INT-001/001b/002 (blocked on Forgejo), NEVER-DONE (standing audit). All coverage tasks complete. Next: NEVER-DONE audit or idle tick.
+
 ## Completed
 
 | ID | Task | Pri | Cpx | Commit | Model |
@@ -416,7 +456,8 @@ Prior worker produced partial output (interface + errors, 218 lines). Foreman co
 || ~~COVERAGE-001~~ | Improve pkg/contract test coverage (53.7%→83.0%) — 35 new tests | Med | 3 | 56ecb7d | MiniMax-M3 |
 ||| ~~COVERAGE-003~~ | Accessor + error wrapper tests for pkg/security/store | Med | 1 | 97c3771 | (foreman-direct)
 ||| ~~DEPS-002~~ | SOPS v3.9.0→v3.13.2 (AWS eventstream, go-jose, CIRCL vulns) | Med | 2 | beb98e1 | (foreman-direct)
-||| ~~REFACTOR-001~~ | Replace 6 panic() calls with error returns | Med | 2 | ac1bee3 | MiniMax-M3 |
+|||| ~~REFACTOR-001~~ | Replace 6 panic() calls with error returns | Med | 2 | ac1bee3 | MiniMax-M3 |
+||| ~~COVERAGE-002~~ | Improve pkg/adr test coverage (65.2%→95.9%) | Med | 3 | e789e1a | GLM-5.2 |
 
 **Tick #21 (2026-07-22 20:33 UTC):** DEPS-002 — SOPS v3.9.0→v3.13.2, ALL 4 vulns resolved (AWS eventstream, go-jose, CIRCL). Foreman-direct dep upgrade. Commit beb98e1.
 
