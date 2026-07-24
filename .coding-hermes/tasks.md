@@ -1,6 +1,7 @@
 # Task Board — helix
 
 ## [x] Fix CI: helix — consistent CI failures (COVERAGE-002, PROD-003b)
+- **Cooldown regression confirmation (Tick #35):** Scheduler daemon restart wiped 12h cooldown (43200s) back to default (7200s/2h). Re-applied via PUT /api/v1/projects/helix with GET verification. See pitfall: `references/cooldown-reset-on-restart.md`. This is the 2nd proven reversion for this project.
 - **Issue:** CI runs #294-#295 both failing. Latest run #295 failed on Tick #28 (COVERAGE-002). Run #294 failed on PROD-003b.
 - **Root cause:** Lint job only — Build/Test/Integration ALL PASS. golangci-lint v2.12.2 found 15 issues across 3 categories.
 - **Fix applied:** 72dc8bb — 3 new issues fixed + 12 pre-existing excluded via config.
@@ -58,6 +59,40 @@
 - Scheduler daemon healthy: 25h12m uptime, 8 active ticks.
 
 **Idle tick progress:** #1 (Tick #30) → #2 (Tick #31) → #3 (Tick #32) → #4 (Tick #33) → #5 (Tick #34) → ⏸️ 12h cooldown active. Next escalation at idle tick #7 (self-pause).
+
+### Tick #35 — Discovery Sweep + NEVER-DONE Audit + 12h Cooldown Re-Applied
+
+| Check | Result | Details |
+|-------|--------|---------|
+| **1.5a — Build** | ✅ PASS | `go build ./...` + `go vet ./...` clean across 30+ packages |
+| **1.5b — Lint** | ✅ PASS | `make lint` — 0 issues (golangci-lint v2.x) |
+| **1.5c — TODOs** | ✅ PASS | Only legitimate config references |
+| **1.5d — CI** | ✅ PASS | Last 5 runs: all green (success), stable since Tick #29 |
+| **1.5e — Remote** | ✅ PASS | Up to date, no remote commits |
+| **1.5f — Vulns** | ✅ PASS | govulncheck — 0 vulns affecting code, 1 non-calling transitive |
+| **1.5g — Deps** | ✅ PASS | go mod verify clean; minor Google Cloud bumps (transitive, non-actionable) |
+| **ND-1 — Build** | ✅ PASS | go build + vet clean |
+| **ND-2 — Lint** | ✅ PASS | 0 issues |
+| **ND-3 — Tests** | ✅ PASS | 58/58 packages pass |
+| **ND-4 — Upgrades** | ✅ NONE | No critical upgrades |
+| **ND-5 — Pitfalls** | ✅ PASS | 4 `panic()` calls in MustRegister methods (intentional Go pattern, not stubs) |
+| **ND-6 — Benchmarks** | ✅ PASS | 4 benchmark files found |
+| **ND-7 — Hilo** | ✅ PASS | 3,334 edges / 550 files. Hilo=useful |
+| **ND-8 — CI/CD** | ✅ PASS | Last 5 CI runs all green |
+| **ND-9 — DuckBrain** | ⚠️ Down | Connection closed (same transport issue as Tick #34) |
+| **ND-10 — Quality** | ✅ PASS | Max file: 941 lines (pkg/vuln/scanner.go) |
+| **ND-11 — Wiring** | ✅ PASS | 22+ subcommands, CLI builds |
+
+**⚠️ Cooldown Re-Applied:** Scheduler daemon restart wiped 12h cooldown (43200s) → reverted to 7200s (2h). PUT /api/v1/projects/helix with `{"CooldownS": 43200}` → confirmed via GET. This is a known pattern: `references/cooldown-reset-on-restart.md`.
+
+**Actions taken:**
+- All static gates pass. No new work from discovery sweep.
+- No new GitHub issues, no remote commits.
+- All blocks remain (INT-001 series — need Forgejo).
+- 12h cooldown re-applied after scheduler restart reversion.
+- DuckBrain connection down — idle counter tracked via board only.
+
+**Idle tick progress:** #1 (Tick #30) → #2 (Tick #31) → #3 (Tick #32) → #4 (Tick #33) → #5 (Tick #34) → #6 (Tick #35) → 12h cooldown. Next escalation at idle tick #7 (escalate to Bane).
 
 ## Completed
 
