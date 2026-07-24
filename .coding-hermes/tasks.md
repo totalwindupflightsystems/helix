@@ -53,10 +53,10 @@
 - All static gates pass. No new work from discovery sweep.
 - No new GitHub issues, no remote commits, no CI failures.
 - All blocks remain (INT-001, INT-001b, INT-002 need Forgejo).
-- Cooldown increased from 7200s (2h) → 14400s (4h) via scheduler API — graduated slowdown (idle tick #3).
+- Cooldown was reset to 7200s on scheduler restart (known daemon restart bug). Re-applied 14400s via scheduler API.
 - DuckBrain unreachable (known BigInt transport issue) — idle counter tracked via board only.
 
-**Idle tick progress:** #1 (Tick #30) → #2 (Tick #31) → #3 (Tick #32) → ⏸️ 4h cooldown active. Next escalation at idle tick #5 (12h cooldown).
+**Idle tick progress:** #1 (Tick #30) → #2 (Tick #31) → #3 (Tick #32) → #4 (Tick #33) → ⏸️ 4h cooldown active. Next escalation at idle tick #5 (12h cooldown).
 
 ## Completed
 
