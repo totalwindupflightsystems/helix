@@ -41,11 +41,11 @@
 
 **Assumptions:** Go 1.26+. 58/58 packages pass. golangci-lint clean (0 issues). go vet clean on helix code. CI all green (last 3 runs). 0 panics in non-test code. 4 benchmark files. Hilo: 3,334 edges, 550 files (stable). DuckBrain: 50+ keys (helix namespace). 40+ outdated deps (idle drift). .gitreins/config.yaml committed with evaluator section (743408d).
 
-**Routing Notes:** All INT tasks blocked on Forgejo instance availability. Project is feature-complete and stable — idle tick #8 (tick #37), cooldown at 12h (43200s, confirmed via scheduler API). Go build+vet clean. Hilo: 3,334 edges, 550 files (stable). DuckBrain: 50+ keys (helix namespace). GitReins: 5/5 tasks complete, board ↔ GitReins consistent. E2E-001 requires delegate_task (browser worker) — foreman cron can't dispatch.
+|**Routing Notes:** All INT tasks blocked on Forgejo instance availability. Project is feature-complete and stable — idle tick #9 (tick #38), cooldown at 12h (43200s, confirmed via scheduler API — re-applied after scheduler restart wiped it). Go build+vet clean. Hilo: 3,334 edges, 550 files (stable). DuckBrain: 50+ keys (helix namespace) — intermittent MCP connection issue. GitReins: 5/5 tasks complete, board ↔ GitReins consistent. E2E-001 requires delegate_task (browser worker) — foreman cron can't dispatch.
 
 **Execution Order:** INT-001 first (unblocks all other INTs) → INT-001b → INT-002 → NEVER-DONE.
 
-**Escalation Conditions:** Forgejo unavailable → all INT tasks blocked indefinitely. Escalating: idle tick #8 reached — all INT tasks blocked on Forgejo instance. E2E-001 requires manual browser worker dispatch.
+|**Escalation Conditions:** Forgejo unavailable → all INT tasks blocked indefinitely. Escalating: idle tick #9 reached — all INT tasks blocked on Forgejo instance. E2E-001 requires manual browser worker dispatch. Cooldown re-applied to 12h (2nd reversion after scheduler restart).
 
 ## Completed
 
@@ -60,6 +60,27 @@
 | U01 | Usability & coverage audit | High | 3 | 5f0de10 | DS-V4-Flash |
 
 ## Tick Log
+
+### Tick 9 — 2026-07-26 04:27 UTC (DeepSeek V4 Flash)
+
+| # | Gate | Result | Detail |
+|---|------|--------|--------|
+| 1 | Git status | ✅ CLEAN | Working tree pristine. |
+| 2 | Go build ./... | ✅ PASS | EXIT:0 |
+| 3 | Go vet ./... | ✅ PASS | EXIT:0 (helix code clean) |
+| 4 | Go test -short | ✅ PASS | 58/58 packages pass |
+| 5 | golangci-lint | ✅ PASS | 0 issues |
+| 6 | TODO/FIXME scan | ✅ CLEAN | 4 hits — all legitimate (PromptFoo test data) |
+| 7 | Hilo graph stats | ✅ 3,334 edges | 550 files, stable |
+| 8 | CI health | ✅ GREEN | Last 5 runs all pass |
+| 9 | GitReins task_list | ✅ CONSISTENT | 5/5 complete, 0 pending |
+| 10 | DuckBrain | 🟡 INTERMITTENT | Transport OK (406ms), tools flaky |
+| 11 | GitReins evaluator config | ⚠️ UNDERSIZED | Script suggests 100 iter / 30m for 564 files |
+| 12 | Outdated deps | ⚠️ 88 | Up from ~40 (tick #8) — idle drift |
+| 13 | Forgejo | ❌ DOWN | Port 8080 returns 404 |
+| 14 | Untracked files | ✅ NONE | All 564 .go files tracked |
+
+**Verdict:** IDLE — all gates pass, all INT tasks still BLOCKED on Forgejo. Cooldown re-applied to 12h after scheduler restart wiped it (2nd reversion). DuckBrain MCP intermittent. GitReins evaluator caps undersized for 564-file codebase (script suggests 100 iter / 30m). Escalating: idle tick #9.
 
 ### Tick 8 — 2026-07-25 00:38 UTC (DeepSeek V4 Pro)
 
