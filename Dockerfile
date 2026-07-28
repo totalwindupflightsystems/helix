@@ -1,6 +1,6 @@
 # Multi-stage build for Helix platform
 # Stage 1: Build all Go binaries
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /workspace
 
