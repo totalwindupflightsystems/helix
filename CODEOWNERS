@@ -1,0 +1,37 @@
+# Helix Code Owners
+
+# Global — Bane (Alexis Okuwa) owns everything
+* @wojons
+
+# Core platform packages
+/pkg/identity/     @wojons
+/pkg/negotiate/    @wojons
+/pkg/prompt/       @wojons
+/pkg/marketplace/  @wojons
+/pkg/sandbox/       @wojons
+/pkg/dispatcher/    @wojons
+/pkg/integration/   @wojons
+/pkg/trust/         @wojons
+/pkg/verify/        @wojons
+/pkg/security/      @wojons
+/pkg/adr/           @wojons
+/pkg/contract/      @wojons
+/pkg/design/        @wojons
+/pkg/spec/          @wojons
+
+# CLI commands
+/cmd/helix-identity/    @wojons
+/cmd/helix-estimate/    @wojons
+/cmd/helix-negotiate/   @wojons
+/cmd/helix-prompt/      @wojons
+/cmd/helix-marketplace/ @wojons
+/cmd/sandbox/           @wojons
+/cmd/helix/             @wojons
+
+# Security-critical paths
+/pkg/security/    @wojons
+/pkg/sandbox/     @wojons
+
+# CI / Quality
+/.gitreins/       @wojons
+/.coding-hermes/  @wojons

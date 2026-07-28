@@ -20,4 +20,9 @@ bin/
 .vfs/graph/graph.db.wal
 .vfs/graph/.last_warm
 
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+
 .helix/
