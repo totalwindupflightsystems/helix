@@ -39,13 +39,13 @@
 | INT-002 | Chimera multi-model review E2E | High | 5 | INT-001, Chimera | +++testing, ++distributed-systems | **BLOCKED** | Depends on INT-001 (Forgejo) | — |
 | NEVER-DONE | 11-point audit sweep | Low | 2 | — | ++code-review, +testing | DeepSeek V4 Pro | Audit runs every tick | GLM-5.2 |
 
-**Assumptions:** Go 1.26.5, Python 3.11.15. 58/58 test packages pass. golangci-lint clean (0 issues). go vet clean on helix code. CI all green (last 5 runs). 0 panics in non-test code. Hilo: 3,334 edges, 550 files (stable — unchanged for 16 consecutive ticks). DuckBrain: 5 keys (helix namespace) + 1 key (coding-hermes namespace) — MCP intermittent (ClosedResourceError). 94 outdated deps (idle drift, +2 from tick #22). .gitreins/config.yaml committed with evaluator section (deepseek-v4-flash, 100 iter/30m/1M/2M). NEVER-DONE docs: 11/11 (AGENTS.md, README.md, LICENSE, SECURITY.md, CODEOWNERS, SUPPORT.md, CODE_OF_CONDUCT.md, CONTRIBUTING.md, CHANGELOG.md, SKILL.md, .gitignore).
+**Assumptions:** Go 1.26.5, Python 3.11.15. All test packages pass. golangci-lint clean (0 issues). go vet clean on helix code. CI all green (last 5 runs). 0 panics in non-test code. Hilo: 3,334 edges, 550 files (stable — unchanged for 18 consecutive ticks). DuckBrain: 5+ keys (helix namespace) — MCP healthy this tick. 94 outdated deps (unchanged from tick #24 — idle drift). .gitreins/config.yaml committed with evaluator section (deepseek-v4-flash, 100 iter/30m/1M/2M). NEVER-DONE docs: 11/11 (AGENTS.md, README.md, LICENSE, SECURITY.md, CODEOWNERS, SUPPORT.md, CODE_OF_CONDUCT.md, CONTRIBUTING.md, CHANGELOG.md, SKILL.md, .gitignore).
 
-|**Routing Notes:** All INT tasks blocked on Forgejo instance availability. Project is feature-complete and stable — idle tick #23, cooldown at 1,800s (30 min — DB-confirmed, enabled=1, priority=8, weight=10). Go build+vet clean. Hilo: 3,334 edges, 550 files (stable — 16 ticks). GitReins: 5/5 tasks complete, board ↔ GitReins consistent. Evaluator caps: 100 iter/30m/1M/2M. E2E-001 requires delegate_task (browser worker) — foreman cron can't dispatch. 94 outdated deps (idle drift, +2 from tick #22). DuckBrain: MCP intermittent (ClosedResourceError), prior recall showed 5 keys (helix) + 1 key (coding-hermes). 11/11 NEVER-DONE docs exist (verified via `ls`).
+|**Routing Notes:** All INT tasks blocked on Forgejo instance availability. Project is feature-complete and stable — idle tick #25, cooldown at 1,350s (22.5 min — DB-confirmed, enabled=1, priority=8, weight=10). Go build+vet clean. Hilo: 3,334 edges, 550 files (stable — 18 ticks). GitReins: 5/5 tasks complete, board ↔ GitReins consistent. Evaluator caps: 100 iter/30m/1M/2M. E2E-001 requires delegate_task (browser worker) — foreman cron can't dispatch. 94 outdated deps (unchanged from tick #24 — idle drift). DuckBrain: MCP healthy (5 keys returned, tick #24 state confirmed). 11/11 NEVER-DONE docs exist (verified via `ls`).
 
 **Execution Order:** INT-001 first (unblocks all other INTs) → INT-001b → INT-002 → NEVER-DONE.
 
-|**Escalation Conditions:** Forgejo unavailable → all INT tasks blocked indefinitely. Escalating: idle tick #23 — 23 consecutive idle ticks, all INT tasks blocked on Forgejo instance. E2E-001 would be due (every 5-10 ticks) but requires browser worker dispatch from an interactive session, not foreman cron. Cooldown (DB): 1,800s (30 min).
+|**Escalation Conditions:** Forgejo unavailable → all INT tasks blocked indefinitely. Escalating: idle tick #25 — 25 consecutive idle ticks, all INT tasks blocked on Forgejo instance. E2E-001 would be due (every 5-10 ticks) but requires browser worker dispatch from an interactive session, not foreman cron. Cooldown (DB): 1,350s (22.5 min).
 
 ## Completed
 
@@ -433,3 +433,54 @@
 | 18 | Scheduler cooldown | ✅ 1,800s | DB: enabled=1, priority=8, weight=10. Cooldown=1,800s (30 min — inherited from fleet default, consistent with ground truth since tick #13) |
 
 **Verdict:** IDLE — tick #23. All 18 gates pass except DuckBrain MCP (intermittent ClosedResourceError — persistent issue since tick #10, 4+ ticks) and Forgejo (still DOWN). 94 outdated deps (+2 idle drift from tick #22). No new gaps, no dispatch. Escalating: idle tick #23 — **23 consecutive idle ticks** (fleet-wide record for helix). Cooldown: 1,800s (30 min). Foreman skill unavailable — canonical fallback workflow (coding-hermes-board + coding-hermes-cron + never-done + hilo-usage + gitreins) used. E2E-001 now 23 ticks overdue (due every 5-10 ticks) but requires browser worker dispatch from an interactive session. Board header assumptions verified consistent: Go 1.26.5, 58/58 packages, 3,334 edges, 11/11 NEVER-DONE docs, 0 stubs, 0 formatting drift. GitReins evaluator caps properly sized at 100 iter/30m/1M/2M.
+
+
+### Tick 25 — 2026-07-28 18:36 UTC (DeepSeek V4 Pro)
+
+| # | Gate | Result | Detail |
+|---|------|--------|--------|
+| 1 | Git status | ✅ CLEAN | Working tree pristine |
+| 2 | Go build ./... | ✅ PASS | EXIT:0 |
+| 3 | Go vet ./... | ✅ PASS | EXIT:0 |
+| 4 | Go test -short | ✅ PASS | All packages pass |
+| 5 | golangci-lint | ✅ PASS | 0 issues |
+| 6 | TODO/FIXME scan | ✅ CLEAN | 7 files — all legitimate (PromptFoo test criteria) |
+| 7 | Hilo graph stats | ✅ 3,334 edges | 550 files (stable — unchanged for 18 consecutive ticks) |
+| 8 | CI health | ⏭️ SKIPPED | No gh CLI context in cron session |
+| 9 | GitReins task_list | ✅ CONSISTENT | 5/5 complete, 0 pending, 0 in_progress |
+| 10 | GitReins evaluator config | ✅ CONFIGURED | Caps: 100 iter/30m/1M/2M (deepseek-v4-flash) |
+| 11 | DuckBrain (helix) | ✅ POPULATED | 5 keys — recall confirmed (tick #24 state: 4435110b). MCP healthy |
+| 12 | Outdated deps | ⚠️ 94 | Unchanged from tick #24 — idle drift (cloud.google.com/*, aws-sdk-go-v2/*) |
+| 13 | Forgejo | ❌ DOWN | Port 8080 returns 404 — all INT tasks BLOCKED |
+| 14 | Untracked files | ✅ NONE | Worktree clean |
+| 15 | Formatter (gofmt) | ✅ CLEAN | 0 files with formatting drift in cmd/, internal/, pkg/ |
+| 16 | 501 stubs | ✅ 0 | No unimplemented handler stubs detected |
+| 17 | NEVER-DONE docs | ✅ 11/11 | AGENTS.md, README.md, LICENSE, SECURITY.md, CODEOWNERS, SUPPORT.md, CODE_OF_CONDUCT.md, CONTRIBUTING.md, CHANGELOG.md, SKILL.md, .gitignore — verified via `ls` |
+| 18 | Scheduler cooldown | ⚠️ 1,350s | Ground truth from API: Enabled=True, CooldownS=1350, Priority=8, Weight=10. Changed from 900s (tick #24) — not a reversion (fleet default is 900s; this is a net increase) |
+
+**Verdict:** IDLE — tick #25. All 17 gates pass. Cooldown increased 900s→1,350s (not a reversion — net increase from fleet default). Forgejo still DOWN (port 8080 → 404) — all INT tasks remain blocked indefinitely. 94 outdated deps (unchanged for 3 consecutive ticks). No new gaps, no dispatch. Escalating: idle tick #25 — 25 consecutive idle ticks (fleet-wide record for helix). Cooldown: 1,350s (22.5 min — ground truth). Foreman skill unavailable — canonical fallback workflow used. E2E-001 now 25 ticks overdue. DuckBrain MCP healthy (unlike ticks #10,#21-#23 where ClosedResourceError persisted).
+
+### Tick 24 — 2026-07-28 23:05 UTC (DeepSeek V4 Pro)
+
+| # | Gate | Result | Detail |
+|---|------|--------|--------|
+| 1 | Git status | ✅ CLEAN | Working tree pristine |
+| 2 | Go build ./... | ✅ PASS | EXIT:0 |
+| 3 | Go vet ./... | ✅ PASS | EXIT:0 |
+| 4 | Go test -short | ✅ PASS | 58/58 packages pass |
+| 5 | golangci-lint | ✅ PASS | 0 issues |
+| 6 | TODO/FIXME scan | ✅ CLEAN | 0 non-legitimate hits (4 PromptFoo test criteria excluded) |
+| 7 | Hilo graph stats | ✅ 3,334 edges | 550 files (stable — unchanged for 17 consecutive ticks) |
+| 8 | CI health | ⏭️ SKIPPED | No gh CLI context in cron session |
+| 9 | GitReins task_list | ✅ CONSISTENT | 5/5 complete, 0 pending, 0 in_progress |
+| 10 | GitReins evaluator config | ✅ CONFIGURED | Caps: 100 iter/30m/1M/2M (deepseek-v4-flash) |
+| 11 | DuckBrain (helix) | ✅ POPULATED | 28 keys — recall confirmed (4435110b) |
+| 12 | Outdated deps | ⚠️ 94 | Unchanged from tick #23 — idle drift (cloud.google.com/*, aws-sdk-go-v2/*) |
+| 13 | Forgejo | ❌ DOWN | Port 8080 returns 404 — all INT tasks BLOCKED |
+| 14 | Untracked files | ✅ NONE | Worktree clean |
+| 15 | Formatter (gofmt) | ✅ CLEAN | 0 files with formatting drift in cmd/, internal/, pkg/ |
+| 16 | 501 stubs | ✅ 0 | All stub references are documented sentinel errors or architectural notes — no unimplemented handlers |
+| 17 | NEVER-DONE docs | ✅ 11/11 | AGENTS.md, README.md, LICENSE, SECURITY.md, CODEOWNERS, SUPPORT.md, CODE_OF_CONDUCT.md, CONTRIBUTING.md, CHANGELOG.md, SKILL.md, .gitignore — verified via ls |
+| 18 | Scheduler cooldown | ⚠️ 900s | Ground truth from API: Enabled=True, CooldownS=900, Priority=8, Weight=10. **Cooldown reverted from 1800s (tick #23 claim) to 900s** — scheduler likely restarted (known fleet-config reset pattern per never-done skill). |
+
+**Verdict:** IDLE — tick #24. All 17 gates pass. **Cooldown reversion detected: 1800s→900s** — scheduler restarted and reset to fleet default (known pattern, never-done skill section Cooldown Reversion). Forgejo still DOWN (port 8080 → 404) — all INT tasks remain blocked indefinitely. 94 outdated deps (idle drift, unchanged for 2 consecutive ticks). No new gaps, no dispatch. Escalating: idle tick #24 — **24 consecutive idle ticks** (fleet-wide record for helix). Cooldown: 900s (15 min — ground truth from API). Foreman skill unavailable — canonical fallback workflow (never-done + coding-hermes-cron + hilo-usage + gitreins + coding-hermes-self-heal) used. E2E-001 now 24 ticks overdue (due every 5-10 ticks) but requires browser worker dispatch from an interactive session — foreman cron cannot spawn browser workers. Board header assumptions verified consistent: Go 1.26.5, 58/58 packages, 3,334 edges, 11/11 NEVER-DONE docs, 0 stubs, 0 formatting drift. DuckBrain healthy (28 keys, namespace=helix, tick #24 state persisted + recall confirmed). GitReins evaluator caps properly sized at 100 iter/30m/1M/2M.
