@@ -33,11 +33,19 @@ type CreateBranchRequest struct {
 // The HTTP body also includes commit/url/etc. — we expose the fields the
 // dispatcher actually consumes (Name, SHA, URL) and keep the rest accessible
 // through the raw JSON.
+//
+// Forgejo v1.21+ returns a nested "commit" object with "id" (the SHA), not
+// a flat "commit_sha" field. We extract commit.id into CommitSHA after
+// unmarshaling.
 type CreateBranchResponse struct {
-	Name      string `json:"name"` // e.g. "feature/test-agent-001"
-	Ref       string `json:"ref"`  // refs/heads/<name>
-	CommitSHA string `json:"commit_sha,omitempty"`
-	URL       string `json:"url"` // API URL to this branch object
+	Name   string `json:"name"` // e.g. "feature/test-agent-001"
+	Ref    string `json:"ref"`  // refs/heads/<name>
+	Commit struct {
+		ID      string `json:"id"`
+		Message string `json:"message"`
+	} `json:"commit"`
+	CommitSHA string `json:"-"` // populated after unmarshal from Commit.ID
+	URL       string `json:"url"`          // API URL to this branch object
 	HTMLURL   string `json:"html_url,omitempty"`
 }
 
@@ -74,9 +82,14 @@ func (c *Client) CreateBranch(ctx context.Context, owner, repo, newBranchName, f
 		return nil, err
 	}
 
-	// Some Forgejo versions omit commit_sha; backfill from ref if so.
-	if branch.CommitSHA == "" && branch.Ref != "" {
-		branch.CommitSHA = branch.Ref
+	// Forgejo v1.21+ returns the commit SHA in commit.id, not a flat field.
+	if branch.CommitSHA == "" {
+		switch {
+		case branch.Commit.ID != "":
+			branch.CommitSHA = branch.Commit.ID
+		case branch.Ref != "":
+			branch.CommitSHA = branch.Ref // fallback: older Forgejo versions
+		}
 	}
 
 	return &branch, nil

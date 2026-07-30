@@ -124,7 +124,7 @@ func TestForgejoE2E(t *testing.T) {
 	)
 	err = client.CreatePRReview(ctx, owner, repoName, pr.Number, forgejo.CreatePRReviewRequest{
 		Body:  reviewComment,
-		Event: "APPROVED",
+		Event: "COMMENT", // use COMMENT to avoid self-approve restriction (admin user = PR author)
 	})
 	require.NoError(t, err, "posting review comment")
 	t.Log("[OK] Agent review comment posted")

@@ -21,11 +21,14 @@ func TestCreateBranch_Success(t *testing.T) {
 
 	mf.mux.HandleFunc("/api/v1/repos/helix-org/helix/branches", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
-		writeJSON(w, http.StatusCreated, map[string]string{
-			"name":       "feature/wi-001",
-			"ref":        "refs/heads/feature/wi-001",
-			"commit_sha": "abc123def456",
-			"url":        mf.url() + "/api/v1/repos/helix-org/helix/branches/feature/wi-001",
+		writeJSON(w, http.StatusCreated, map[string]interface{}{
+			"name": "feature/wi-001",
+			"ref":  "refs/heads/feature/wi-001",
+			"commit": map[string]string{
+				"id":      "abc123def456",
+				"message": "Initial commit",
+			},
+			"url": mf.url() + "/api/v1/repos/helix-org/helix/branches/feature/wi-001",
 		})
 	})
 

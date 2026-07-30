@@ -175,9 +175,12 @@ func TestBranchThenPR_EndToEnd(t *testing.T) {
 	mf.mux.HandleFunc("/api/v1/repos/helix-org/helix/branches", func(w http.ResponseWriter, r *http.Request) {
 		branchCalls++
 		writeJSON(w, http.StatusCreated, map[string]any{
-			"name":       "feature/wi-007",
-			"ref":        "refs/heads/feature/wi-007",
-			"commit_sha": "deadbeef",
+			"name": "feature/wi-007",
+			"ref":  "refs/heads/feature/wi-007",
+			"commit": map[string]string{
+				"id":      "deadbeef",
+				"message": "Initial commit",
+			},
 		})
 	})
 	mf.mux.HandleFunc("/api/v1/repos/helix-org/helix/pulls", func(w http.ResponseWriter, r *http.Request) {
