@@ -44,8 +44,8 @@ type CreateBranchResponse struct {
 		ID      string `json:"id"`
 		Message string `json:"message"`
 	} `json:"commit"`
-	CommitSHA string `json:"-"` // populated after unmarshal from Commit.ID
-	URL       string `json:"url"`          // API URL to this branch object
+	CommitSHA string `json:"-"`   // populated after unmarshal from Commit.ID
+	URL       string `json:"url"` // API URL to this branch object
 	HTMLURL   string `json:"html_url,omitempty"`
 }
 
