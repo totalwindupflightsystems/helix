@@ -340,3 +340,81 @@ func (c *Client) CreatePRReview(ctx context.Context, owner, repo string, prNumbe
 		url.PathEscape(owner), url.PathEscape(repo), prNumber)
 	return c.doRequest(ctx, http.MethodPost, path, req, nil)
 }
+
+// ---------------------------------------------------------------------------
+// Repository operations
+// ---------------------------------------------------------------------------
+
+// Repository represents a Forgejo repository.
+type Repository struct {
+	ID            int64  `json:"id"`
+	Name          string `json:"name"`
+	FullName      string `json:"full_name"`
+	Description   string `json:"description"`
+	Empty         bool   `json:"empty"`
+	Private       bool   `json:"private"`
+	DefaultBranch string `json:"default_branch"`
+	HTMLURL       string `json:"html_url"`
+	CloneURL      string `json:"clone_url"`
+	SSHURL        string `json:"ssh_url"`
+}
+
+// CreateRepoRequest is the body for POST /api/v1/user/repos.
+type CreateRepoRequest struct {
+	Name          string `json:"name"`
+	Description   string `json:"description,omitempty"`
+	Private       bool   `json:"private,omitempty"`
+	AutoInit      bool   `json:"auto_init,omitempty"`
+	DefaultBranch string `json:"default_branch,omitempty"`
+}
+
+// CreateRepo creates a new repository for the authenticated user.
+func (c *Client) CreateRepo(ctx context.Context, req CreateRepoRequest) (*Repository, error) {
+	var repo Repository
+	if err := c.doRequest(ctx, http.MethodPost, "/api/v1/user/repos", req, &repo); err != nil {
+		return nil, err
+	}
+	return &repo, nil
+}
+
+// GetRepo retrieves a repository by owner and name.
+func (c *Client) GetRepo(ctx context.Context, owner, repo string) (*Repository, error) {
+	path := fmt.Sprintf("/api/v1/repos/%s/%s",
+		url.PathEscape(owner), url.PathEscape(repo))
+	var r Repository
+	if err := c.doRequest(ctx, http.MethodGet, path, nil, &r); err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
+// DeleteRepo deletes a repository. Requires owner/admin privileges.
+func (c *Client) DeleteRepo(ctx context.Context, owner, repo string) error {
+	path := fmt.Sprintf("/api/v1/repos/%s/%s",
+		url.PathEscape(owner), url.PathEscape(repo))
+	return c.doRequest(ctx, http.MethodDelete, path, nil, nil)
+}
+
+// MergePR merges a pull request.
+func (c *Client) MergePR(ctx context.Context, owner, repo string, prNumber int64) error {
+	path := fmt.Sprintf("/api/v1/repos/%s/%s/pulls/%d/merge",
+		url.PathEscape(owner), url.PathEscape(repo), prNumber)
+	return c.doRequest(ctx, http.MethodPost, path, map[string]string{
+		"do": "merge",
+	}, nil)
+}
+
+// CommitStatusRequest is the body for posting a commit status.
+type CommitStatusRequest struct {
+	State       string `json:"state"` // "pending", "success", "failure", "error", "warning"
+	TargetURL   string `json:"target_url,omitempty"`
+	Description string `json:"description,omitempty"`
+	Context     string `json:"context"`
+}
+
+// PostCommitStatus sets a CI-style status check on a commit.
+func (c *Client) PostCommitStatus(ctx context.Context, owner, repo, sha string, status CommitStatusRequest) error {
+	path := fmt.Sprintf("/api/v1/repos/%s/%s/statuses/%s",
+		url.PathEscape(owner), url.PathEscape(repo), url.PathEscape(sha))
+	return c.doRequest(ctx, http.MethodPost, path, status, nil)
+}

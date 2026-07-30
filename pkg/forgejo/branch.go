@@ -21,12 +21,12 @@ import (
 // ---------------------------------------------------------------------------
 
 // CreateBranchRequest is the body for POST /api/v1/repos/{owner}/{repo}/branches.
-// Forgejo expects `new_branch_ref` (the new branch name) and optionally
-// `old_ref` (a ref/branch/SHA to fork from). When old_ref is empty, the new
-// branch is created from the repository's default branch.
+// Forgejo expects `new_branch_name` (the new branch name) and optionally
+// `old_branch_name` (a branch name to fork from). When old_branch_name is empty,
+// the new branch is created from the repository's default branch.
 type CreateBranchRequest struct {
-	NewBranchRef string `json:"new_branch_ref"`
-	OldRef       string `json:"old_ref,omitempty"`
+	NewBranchName string `json:"new_branch_name"`
+	OldBranchName string `json:"old_branch_name,omitempty"`
 }
 
 // CreateBranchResponse mirrors the Forgejo branch payload returned on success.
@@ -65,8 +65,8 @@ func (c *Client) CreateBranch(ctx context.Context, owner, repo, newBranchName, f
 		url.PathEscape(owner), url.PathEscape(repo))
 
 	req := CreateBranchRequest{
-		NewBranchRef: newBranchName,
-		OldRef:       fromRef,
+		NewBranchName: newBranchName,
+		OldBranchName: fromRef,
 	}
 
 	var branch CreateBranchResponse
