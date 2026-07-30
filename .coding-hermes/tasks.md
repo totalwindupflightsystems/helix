@@ -25,7 +25,7 @@
 
 # Helix — Model Router Task Matrix
 
-**Core purpose:** Agent-first code platform — development toolchain integrating CI, code review, vulnerability scanning, and multi-model deliberation via Chimera. Go 1.26+, 30+ packages, 58/58 test packages pass.
+**Core purpose:** Agent-first code platform — development toolchain integrating CI, code review, vulnerability scanning, and multi-model deliberation via Chimera. Go 1.26+, 30+ packages, 58/58 test packages pass. **ID-001 COMPLETE — worker dispatched Tick #44 (hid.go + hid_test.go, 12 tests).**
 
 ## Active Tasks
 
@@ -37,7 +37,7 @@
 | INT-001 | E2E integration test: Forgejo → Helix → Agent PR → Review → Merge | High | 6 | Forgejo running | +++testing, ++integration, ++infra | MiniMax-M3 | Forgejo UP on :3030. Test full agent dispatch loop. | GLM-5.2 |
 | INT-001b | Write 3 E2E test scenarios for Forgejo integration | High | 4 | INT-001 | ++testing, +spec-writing | MiniMax-M3 | Depends on INT-001 completion | GLM-5.2 |
 | INT-002 | Chimera multi-model review E2E | High | 5 | INT-001, Chimera | +++testing, ++distributed-systems | GLM-5.2 | Depends on INT-001 | MiniMax-M3 |
-| ID-001 | Portable agent identity: pkg/identity/hid.go (Ed25519 HIDs) | High | 4 | — | +++agent-identity, ++crypto, +security | MiniMax-M3 | New spec SPEC-022. Core types + sign/verify. | GLM-5.2 |
+| ✅ ID-001 | Portable agent identity: pkg/identity/hid.go (Ed25519 HIDs) | High | 4 | — | +++agent-identity, ++crypto, +security | DeepSeek-V4-Pro | Tick #44. hid.go + hid_test.go (12 tests). Build+test pass. | GLM-5.2 |
 | ID-002 | Portable agent identity: Forgejo OAuth registration (pkg/identity/forge.go) | High | 4 | ID-001 | +++agent-identity, ++oauth, +forgejo | MiniMax-M3 | Register HID with Forgejo, prove identity. | GLM-5.2 |
 | CH-001 | Agent channels: core types + SSE streaming (pkg/channel/channel.go) | Med | 3 | ID-001 | +++channels, ++sse, ++agent-comms | GLM-5.2 | New spec SPEC-024. Channel + message types. | MiniMax-M3 |
 | SRC-001 | Multi-source integration: source config parser (pkg/source/config.go) | Med | 3 | — | +++integration, ++muster, +yaml | MiniMax-M3 | New spec SPEC-025. Parse .helix/sources.yaml. | GLM-5.2 |
@@ -63,6 +63,7 @@
 | DEPS-002 | SOPS v3.9.0→v3.13.2 vuln fixes | Med | 2 | beb98e1 | DeepSeek V4 Pro |
 | REFACTOR-001 | Replace 6 panic() calls with error returns | Med | 3 | ac1bee3 | DeepSeek V4 Pro |
 | U01 | Usability & coverage audit | High | 3 | 5f0de10 | DS-V4-Flash |
+| ID-001 | Portable agent identity: pkg/identity/hid.go (Ed25519 HIDs) | High | 4 | c809d05 | DeepSeek V4 Pro |
 
 ## Tick Log
 
