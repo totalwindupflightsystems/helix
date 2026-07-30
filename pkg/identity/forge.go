@@ -91,7 +91,6 @@ type ForgejoOAuthRegistrar struct {
 	username string
 	password string
 	client   *http.Client
-	mu       sync.Mutex // guards sequential Forgejo calls when needed
 }
 
 // NewForgejoOAuthRegistrar creates a registrar pointed at the given Forgejo

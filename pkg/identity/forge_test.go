@@ -42,7 +42,7 @@ func newOAuthMockForgejo(authUser, authPass string) *oauthMockForgejo {
 	return omf
 }
 
-func (omf *oauthMockForgejo) close() { omf.server.Close() }
+func (omf *oauthMockForgejo) close()      { omf.server.Close() }
 func (omf *oauthMockForgejo) url() string { return omf.server.URL }
 
 func writeOAuthJSON(w http.ResponseWriter, status int, v interface{}) {
@@ -230,9 +230,9 @@ func TestGetOAuthApp_Success(t *testing.T) {
 			t.Errorf("expected GET, got %s", r.Method)
 		}
 		writeOAuthJSON(w, http.StatusOK, ForgejoOAuthApp{
-			ID:        1,
-			Name:      "helix-agent-abc",
-			ClientID:  "client-id-abc",
+			ID:       1,
+			Name:     "helix-agent-abc",
+			ClientID: "client-id-abc",
 			// client_secret is NOT returned by GET
 			Created: "2026-07-30T05:00:00Z",
 		})
@@ -816,4 +816,3 @@ func TestForgejoOAuthIntegration_E2E(t *testing.T) {
 		t.Logf("Cleaned up OAuth2 app id=%d", app.ID)
 	}
 }
-
