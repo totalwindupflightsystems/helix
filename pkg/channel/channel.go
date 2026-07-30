@@ -471,7 +471,7 @@ func (s *MemMessageStore) List(msgType *MessageType) ([]*ChannelMessage, error) 
 // subscriber of a channel without blocking — if a subscriber's buffer is
 // full the message is dropped for that client.
 type SSEBroker struct {
-	mu  sync.RWMutex
+	mu   sync.RWMutex
 	subs map[string]map[string]chan ChannelMessage // channelID -> clientID -> chan
 }
 

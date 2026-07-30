@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
 
 	"gopkg.in/yaml.v3"
 )
@@ -126,8 +127,16 @@ func ParseSourcesYAML(path string) (*SourcesFile, error) {
 		return nil, fmt.Errorf("source: invalid YAML in %s: %w", path, err)
 	}
 
-	// Set the Name field from the map key and run per-source validation.
-	for name, src := range file.Sources {
+	// Validate each source in deterministic order (alphabetical by name).
+	// Map iteration is random in Go, so we sort keys to ensure the
+	// same source always fails first for reproducible error messages.
+	names := make([]string, 0, len(file.Sources))
+	for name := range file.Sources {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		src := file.Sources[name]
 		src.Name = name
 		if err := src.Validate(); err != nil {
 			return nil, err
