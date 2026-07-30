@@ -46,7 +46,7 @@ type AgentIdentity struct {
 // Signatures field so third-party attestations don't break verification).
 type HID struct {
 	Identity AgentIdentity `json:"identity"`
-	SigBytes  []byte        `json:"signature"`
+	SigBytes []byte        `json:"signature"`
 }
 
 // ForgeHandle links the agent to a specific forge instance with a
@@ -153,7 +153,7 @@ func (id *AgentIdentity) Sign(privKey ed25519.PrivateKey) (*HID, error) {
 
 	return &HID{
 		Identity: *id,
-		SigBytes:  sig,
+		SigBytes: sig,
 	}, nil
 }
 
