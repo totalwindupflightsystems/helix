@@ -41,15 +41,15 @@
 | ✅ ID-002 | Portable agent identity: Forgejo OAuth registration (pkg/identity/forge.go) | High | 4 | ID-001 | +++agent-identity, ++oauth, +forgejo | DeepSeek V4 Pro | Tick #49. forge.go + forge_test.go (26 tests). Build+vet+test pass. Commit: 2ea3dc3. | GLM-5.2 |
 || ✅ CH-001 | Agent channels: core types + SSE streaming (pkg/channel/channel.go) | Med | 3 | ID-001 | +++channels, ++sse, ++agent-comms | DeepSeek V4 Pro | ✅ Tick #34: channel.go (544 lines) + channel_test.go (39 tests). Build+test pass. Commit: 4491037. | MiniMax-M3 |
 || SRC-001 | Multi-source integration: source config parser (pkg/source/config.go) | Med | 3 | — | +++integration, ++muster, +yaml | MiniMax-M3 | ✅ Tick #50: config.go + config_test.go (28 tests). Build+vet+test pass. Commit: 67baacf. | GLM-5.2 |
-| SRC-002 | Multi-source integration: Muster bridge (pkg/source/muster_bridge.go) | Med | 4 | SRC-001, Muster | +++integration, ++muster, ++openapi | GLM-5.2 | Generate MCP tools from OpenAPI specs via Muster. | MiniMax-M3 |
+|| ✅ SRC-002 | Multi-source integration: Muster bridge (pkg/source/muster_bridge.go) | Med | 4 | SRC-001, Muster | +++integration, ++muster, ++openapi | GLM-5.2 | ✅ Tick #52: muster_bridge.go + muster_bridge_test.go (1,051 lines, 20+ tests). Build+vet+test pass. Commits: b5febc0. | MiniMax-M3 |
 | NEVER-DONE | 11-point audit sweep | Low | 2 | — | ++code-review, +testing | DeepSeek V4 Pro | Audit runs every tick | GLM-5.2 |
 
 
-**Assumptions:** Go 1.26.5, Python 3.11.15. 60/60 test packages pass (all green). golangci-lint 0 issues. Forgejo UP on localhost:3030 (v1.21.11+2, CONFIRMED tick #34 — prior ticks #8-33 checked WRONG port 8080). Hilo: 3,411 edges, 560 files. DuckBrain: helix namespace populated (tick #34 state). .gitreins/config.yaml configured (deepseek-v4-flash, 100 iter/30m/1M/2M). NEVER-DONE docs: 11/11. INT-001 COMPLETE (581a5b2). INT-001b COMPLETE (32de104). ID-002 COMPLETE (2ea3dc3). SRC-001 COMPLETE (67baacf). CH-001 COMPLETE (4491037). 95 outdated deps. Disk: 90%.
+**Assumptions:** Go 1.26.5, Python 3.11.15. 60/60 test packages pass (all green). golangci-lint 0 issues. Forgejo UP on localhost:3030 (v1.21.11+2, confirmed tick #34). Hilo: 3,433 edges, 562 files. DuckBrain: helix namespace populated (tick #52 state). .gitreins/config.yaml configured (deepseek-v4-flash, 100 iter/30m/1M/2M). NEVER-DONE docs: 11/11. INT-001 ✅ (581a5b2). INT-001b ✅ (32de104). ID-002 ✅ (2ea3dc3). SRC-001 ✅ (67baacf). CH-001 ✅ (4491037). SRC-002 ✅ (b5febc0). 95 outdated deps. Disk: 90%.
 
-|**Routing Notes:** Forgejo UP on :3030 (v1.21.11+2 — confirmed tick #34, NOT port 8080 which prior ticks incorrectly checked). INT-001 COMPLETE (581a5b2). INT-001b COMPLETE (32de104 — 3 scenarios, 637 lines). ID-002 COMPLETE (2ea3dc3 — OAuth registration). SRC-001 COMPLETE (67baacf — source config parser, 28 tests). CH-001 COMPLETE (4491037 — agent channels, 39 tests). Execution order: SRC-002 → INT-002. SPEC-023 (web UI) deferred. Cooldown: 600s (active — DB ground truth). Worker-discovered bug: MergePR sends "do":"merge" but Forgejo v1.21 needs "Do":"merge" (capital D, returns 405 otherwise).
+|**Routing Notes:** Forgejo UP on :3030 (v1.21.11+2 — confirmed). INT-001 ✅ (581a5b2). INT-001b ✅ (32de104). ID-002 ✅ (2ea3dc3). SRC-001 ✅ (67baacf). CH-001 ✅ (4491037). SRC-002 ✅ (b5febc0). Execution order: INT-002 → (complete). SPEC-023 (web UI) deferred. Cooldown: 600s (active — DB ground truth). Worker-discovered bug: MergePR sends "do":"merge" but Forgejo v1.21 needs "Do":"merge" (capital D, returns 405 otherwise).
 
-**Execution Order:** ID-001 ✅ (portable identity) → ID-002 ✅ (Forgejo OAuth) → SRC-001 ✅ (source config) → CH-001 ✅ (agent channels) → SRC-002 (Muster bridge) → INT-001 ✅ (E2E) → INT-001b ✅ → INT-002 (Chimera).
+**Execution Order:** ID-001 ✅ (portable identity) → ID-002 ✅ (Forgejo OAuth) → SRC-001 ✅ (source config) → CH-001 ✅ (agent channels) → SRC-002 ✅ (Muster bridge) → INT-001 ✅ (E2E) → INT-001b ✅ → INT-002 (Chimera).
 
 **Escalation:** None. Forgejo is running, tasks are actionable, cooldown at 600s (DB ground truth).
 
@@ -70,6 +70,7 @@
 | ID-002 | Forgejo OAuth registration: pkg/identity/forge.go | High | 4 | 2ea3dc3 | DeepSeek V4 Pro |
 | SRC-001 | Source config parser: pkg/source/config.go | Med | 3 | 67baacf | DeepSeek V4 Pro |
 | CH-001 | Agent channels: pkg/channel/channel.go | Med | 3 | 4491037 | DeepSeek V4 Pro |
+| SRC-002 | Muster bridge: pkg/source/muster_bridge.go | Med | 4 | b5febc0 | GLM-5.2 |
 
 ## Tick Log
 
@@ -1302,4 +1303,43 @@ Worker output was committed then removed due to patch corruption during foreman 
 **Next in execution order:** SRC-002 (Muster bridge) → INT-002 (Chimera review E2E).
 
 **Commit:** Board update only — CH-001 code committed as 4491037 by worker. Cooldown: 600s (active — ground truth from DB). Foreman skill unavailable — canonical fallback workflow (never-done + coding-hermes-cron + hilo-usage + gitreins) used. E2E-001 now 51 ticks overdue but requires browser worker from interactive session.
+
+
+### Tick 52 — 2026-07-30 02:19 UTC (DeepSeek V4 Pro)
+
+| # | Gate | Result | Detail |
+|---|------|--------|--------|
+| 1 | Git status | ✅ CLEAN | Post-commit: SRC-002 (b5febc0) + SRC-001 fix (7406442) |
+| 2 | Go build ./... | ✅ PASS | EXIT:0 |
+| 3 | Go vet ./... | ✅ PASS | EXIT:0 |
+| 4 | Go test -short | ✅ PASS | 60/60 packages pass |
+| 5 | golangci-lint | ✅ PASS | 0 issues (gofmt fix on channel.go applied this tick) |
+| 6 | TODO/FIXME scan | ✅ CLEAN | All legitimate (PromptFoo test criteria only) |
+| 7 | Hilo graph stats | ✅ 3,433 edges | 562 files (+22 edges, +2 files from SRC-002) |
+| 8 | CI health | ⏭️ SKIPPED | No gh CLI context in cron session |
+| 9 | GitReins task_list | ✅ CONSISTENT | 5/5 complete, 0 pending, 0 in_progress |
+| 10 | GitReins evaluator config | ✅ CONFIGURED | Caps: 100 iter/30m/1M/2M (deepseek-v4-flash @ deepseek-foreman) |
+| 11 | DuckBrain (helix) | ✅ POPULATED | Tick #52 state written + recall confirmed (namespace=helix, MCP healthy) |
+| 12 | Outdated deps | ⚠️ 95 | Unchanged from tick #51 — idle drift (cloud.google.com/*, aws-sdk-go-v2/*) |
+| 13 | Forgejo | ✅ UP :3030 | v1.21.11+2 — re-verified |
+| 14 | Untracked files | ✅ NONE | Worktree clean after commits |
+| 15 | Formatter (gofmt) | ✅ CLEAN | 0 files with formatting drift (channel.go fix committed) |
+| 16 | 501 stubs | ✅ 0 | 367 return nil hits — all legitimate error handling |
+| 17 | NEVER-DONE docs | ✅ 11/11 | AGENTS.md, README.md, LICENSE, SECURITY.md, CODEOWNERS, SUPPORT.md, CODE_OF_CONDUCT.md, CONTRIBUTING.md, CHANGELOG.md, SKILL.md, .gitignore — verified via ls |
+| 18 | Scheduler cooldown | ✅ 600s | Ground truth from DB: Enabled=True, Priority=8, Weight=10 |
+| 19 | Host disk | ⚠️ 90% | 1.6T used / 1.8T total — unchanged from tick #51 |
+
+**Verdict:** PRODUCTIVE — tick #52. **SRC-002 COMPLETE** + **SRC-001 regression fixed.**
+
+1. **SRC-001 regression detected and fixed:** TestParseSourcesYAML_FirstErrorStopsParsing was flaky due to Go map iteration randomness. Fixed by sorting source names before validation (7406442). Build+vet+test confirmed.
+
+2. **SRC-002 worker dispatched:** Produced pkg/source/muster_bridge.go (287 lines) + muster_bridge_test.go (764 lines, 20+ tests). MusterBridge wraps integration.MusterClient with spec loading, tool generation, health checks, and tool execution. Committed as b5febc0. Worker self-committed with Prompt: link.
+
+3. **CH-001 gofmt fix:** channel.go:474 had gofmt issue from tick #51 worker output. Fixed directly by foreman per self-fix rule.
+
+**Board changes:** SRC-002 → ✅ COMPLETE + added to Completed section. SRC-001 regression fix noted (7406442). Assumptions updated (3,433 edges, 562 files).
+
+**Next in execution order:** INT-002 (Chimera multi-model review E2E) — last remaining active task. Depends on INT-001 (done) and Chimera.
+
+**Commit:** 7406442 (SRC-001 fix + gofmt), b5febc0 (SRC-002 worker). Cooldown: 600s (active). Foreman skill unavailable — canonical fallback workflow (never-done + coding-hermes-cron + hilo-usage + gitreins) used. E2E-001 now 52 ticks overdue (requires browser worker from interactive session).
 
