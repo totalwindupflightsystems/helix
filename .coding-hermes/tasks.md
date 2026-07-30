@@ -1087,3 +1087,72 @@
 **Next tick should:** (1) Mark INT-001 complete on board, (2) Dispatch INT-001b (E2E test scenarios) or INT-002 (Chimera review E2E), (3) Monitor disk at 90% threshold. 94 outdated deps unchanged (26 ticks of idle drift, no severity).
 
 **Commit:** 581a5b2 — 4 files, +35/-16. Cooldown: 900s (active — correct). Foreman skill unavailable — canonical fallback workflow used.
+
+### Tick 47 — 2026-07-29 22:57 UTC (DeepSeek V4 Pro)
+
+| # | Gate | Result | Detail |
+|---|------|--------|--------|
+| 1 | Git status | ✅ CLEAN | Post-commit: gofmt fix (6c0fab8) + edges.jsonl restored |
+| 2 | Go build ./... | ✅ PASS | EXIT:0 |
+| 3 | Go vet ./... | ✅ PASS | EXIT:0 |
+| 4 | Go test -short | ✅ PASS | 58/58 packages pass |
+| 5 | golangci-lint | ✅ PASS | 0 issues (gofmt in branch.go fixed by foreman) |
+| 6 | TODO/FIXME scan | ✅ CLEAN | 0 non-legitimate hits |
+| 7 | Hilo graph stats | ✅ 3,358 edges | 553 files (+24 edges, +3 files from E2E test additions) |
+| 8 | CI health | ⏭️ SKIPPED | No gh CLI context in cron session |
+| 9 | GitReins task_list | ✅ CONSISTENT | 5/5 complete, 0 pending, 0 in_progress |
+| 10 | GitReins evaluator config | ✅ CONFIGURED | Caps: 100 iter/30m/1M/2M (deepseek-v4-flash @ deepseek-foreman) |
+| 11 | DuckBrain (helix) | ✅ POPULATED | 5+ keys — recall confirmed (4c1047d8, namespace=helix) |
+| 12 | Outdated deps | ⚠️ 94 | Unchanged — idle drift (cloud.google.com/*, aws-sdk-go-v2/*). 27 consecutive ticks unchanged. |
+| 13 | Forgejo | ✅ UP :3030 | v1.21.11+2 — re-verified. |
+| 14 | Untracked files | ✅ NONE | Worktree clean |
+| 15 | Formatter (gofmt) | ✅ FIXED | pkg/forgejo/branch.go alignment fixed (6c0fab8) |
+| 16 | 501 stubs | ✅ 0 | No unimplemented handler stubs |
+| 17 | NEVER-DONE docs | ✅ 11/11 | All exist — verified via AGENTS.md
+CHANGELOG.md
+CODEOWNERS
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+Dockerfile
+LICENSE
+Makefile
+README.md
+SECURITY.md
+SKILL.md
+SUPPORT.md
+bin
+cmd
+deploy
+docker-compose.yml
+go.mod
+go.sum
+helix
+helix-estimate
+helix-identity
+helix-marketplace
+helix-negotiate
+helix-prompt
+helix-release
+helix-sandbox
+helix-verify
+internal
+pkg
+prompts
+reports
+sandbox
+scripts
+specs |
+| 18 | Scheduler cooldown | ⚠️ API NULL | Scheduler API returned null — daemon restart. |
+| 19 | Host disk | 🔴 95% | Worsening from 90% — CRITICAL. 1.7T used / 1.8T total. |
+
+**Verdict:** ACTIVE — tick #47. **INT-001 marked complete.** Board updated: INT-001 now ✅. gofmt fix committed (6c0fab8).
+
+**INT-001b dispatch:** Worker timed out at 600s (27 API calls) but produced pkg/integration/forgejo_e2e_scenarios_test.go (851 lines, 34KB) with 3 E2E scenarios against live Forgejo. Scenario 2 (commit status pipeline) fully passes 6/6 subtests. Scenarios 1 and 3 have known issues:
+- S1: Beta agent review uses REQUEST_CHANGES event → Forgejo rejects ("reject your own pull is not allowed") — same pattern as tick #46 self-approve bug. Fix: use COMMENT event like Alpha, keep REQUEST_CHANGES content in body.
+- S3: Commit status posting uses file content SHA instead of commit SHA. PushCommit3 uses GET ?ref=branch for SHA lookup which returns 404 (Forgejo timing/ref issue). Fix: capture SHA from file create response, use branch head SHA for status posts.
+
+Worker output was committed then removed due to patch corruption during foreman fix attempt. Framework is solid — Scenario 2 proves the test harness works. Re-dispatch next tick with corrected spec.
+
+**Next tick should:** (1) Re-dispatch INT-001b with corrected spec noting COMMENT-only events and SHA capture pattern, (2) Address disk at 95% CRITICAL, (3) INT-002 (Chimera multi-model review E2E) after INT-001b. Cooldown: 900s (active). Foreman skill unavailable — canonical fallback workflow used.
+
+**Commit:** 6c0fab8 — gofmt fix. **E2E-001:** Not attempted (requires browser worker from interactive session).
