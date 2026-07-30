@@ -34,7 +34,7 @@
 
 | ID | Task | Pri | Cpx | Deps | Tags | Model | Reasoning | Fallback |
 |----|------|-----|-----|------|------|-------|-----------|----------|
-| INT-001 | E2E integration test: Forgejo → Helix → Agent PR → Review → Merge | High | 6 | Forgejo running | +++testing, ++integration, ++infra | MiniMax-M3 | Forgejo UP on :3030. Test full agent dispatch loop. | GLM-5.2 |
+| ✅ INT-001 | E2E integration test: Forgejo → Helix → Agent PR → Review → Merge | High | 6 | Forgejo running | +++testing, ++integration, ++infra | DeepSeek V4 Pro | Tick #46: Full E2E loop verified (2.77s). Repo→branch→PR→review→merge gates→cleanup. Commit: 581a5b2. | GLM-5.2 |
 | INT-001b | Write 3 E2E test scenarios for Forgejo integration | High | 4 | INT-001 | ++testing, +spec-writing | MiniMax-M3 | Depends on INT-001 completion | GLM-5.2 |
 | INT-002 | Chimera multi-model review E2E | High | 5 | INT-001, Chimera | +++testing, ++distributed-systems | GLM-5.2 | Depends on INT-001 | MiniMax-M3 |
 | ✅ ID-001 | Portable agent identity: pkg/identity/hid.go (Ed25519 HIDs) | High | 4 | — | +++agent-identity, ++crypto, +security | DeepSeek-V4-Pro | Tick #44. hid.go + hid_test.go (12 tests). Build+test pass. | GLM-5.2 |
@@ -43,10 +43,12 @@
 | SRC-001 | Multi-source integration: source config parser (pkg/source/config.go) | Med | 3 | — | +++integration, ++muster, +yaml | MiniMax-M3 | New spec SPEC-025. Parse .helix/sources.yaml. | GLM-5.2 |
 | SRC-002 | Multi-source integration: Muster bridge (pkg/source/muster_bridge.go) | Med | 4 | SRC-001, Muster | +++integration, ++muster, ++openapi | GLM-5.2 | Generate MCP tools from OpenAPI specs via Muster. | MiniMax-M3 |
 | NEVER-DONE | 11-point audit sweep | Low | 2 | — | ++code-review, +testing | DeepSeek V4 Pro | Audit runs every tick | GLM-5.2 |
+| GAP-DOCTOR | Fix TestRunDoctorWithConfig_AllPass regression — 1 of 9 checks fails | High | 2 | — | ++bugfix, +testing | DeepSeek V4 Pro | Was passing in ticks #44-#46, now 1/9 fails. Appears environmental (/proc/meminfo?). | GLM-5.2 |
+| GAP-E2E-SCENARIOS | Fix forgejo_e2e_scenarios_test.go — 3 scenarios fail (404 on file push), gofmt fixed | High | 4 | INT-001 | ++bugfix, ++testing, +forgejo | DeepSeek V4 Pro | Untracked file from INT-001b worker. Repos created but file push returns 404. | MiniMax-M3 |
 
-**Assumptions:** Go 1.26.5, Python 3.11.15. 58/58 test packages pass. golangci-lint clean (0 issues). Forgejo RUNNING on localhost:3030 (was incorrectly checked on :8080 for 43 ticks — root cause of idle loop). Admin: helio. Agent: stepfun-tester (ID #2). Hilo: 3,334 edges, 550 files (stable). DuckBrain: helix namespace populated. .gitreins/config.yaml configured (deepseek-v4-flash, 100 iter/30m/1M/2M). NEVER-DONE docs: 11/11. New specs: SPEC-022 (portable identity), SPEC-023 (web UI — deferred), SPEC-024 (agent channels), SPEC-025 (multi-source integration).
+**Assumptions:** Go 1.26.5, Python 3.11.15. 58/58 test packages pass (currently 4 fail — GAP-DOCTOR + GAP-E2E-SCENARIOS). golangci-lint 0 issues (after gofmt fix). Forgejo RUNNING on localhost:3030 (confirmed v1.21.11+2). Admin: helio. Agent: stepfun-tester (ID #2). Hilo: 3,358 edges, 553 files (+24 edges from untracked test file). DuckBrain: helix namespace populated. .gitreins/config.yaml configured (deepseek-v4-flash, 100 iter/30m/1M/2M). NEVER-DONE docs: 11/11. INT-001 COMPLETE (581a5b2). New regressions: 2 gap tasks (GAP-DOCTOR, GAP-E2E-SCENARIOS).
 
-|**Routing Notes:** Forgejo is UP on port 3030 (verified: admin helio + agent stepfun-tester). INT-001/001b/002 are now actionable. New gap tasks (ID-001/002, CH-001, SRC-001/002) address Buzz competitive gaps. SPEC-023 (web UI) deferred — large frontend build, not first priority. Cooldown reset to 900s (15 min) — active work resumed.
+|**Routing Notes:** Forgejo UP on :3030 (v1.21.11+2). INT-001 COMPLETE (581a5b2). INT-001b work product exists (untracked forgejo_e2e_scenarios_test.go — 3 scenarios fail on file push, gofmt fixed). 2 new gap tasks: GAP-DOCTOR (doctor test regression) + GAP-E2E-SCENARIOS (fix scenario tests). Execution order: GAP-DOCTOR → GAP-E2E-SCENARIOS/INT-001b → ID-002 → SRC-001 → SRC-002 → CH-001 → INT-002. SPEC-023 (web UI) deferred. Cooldown: 900s (active).
 
 **Execution Order:** ID-001 (portable identity — unblocks CH-001) → ID-002 (Forgejo OAuth) → SRC-001 (source config) → SRC-002 (Muster bridge) → CH-001 (agent channels) → INT-001 (E2E) → INT-001b → INT-002.
 
@@ -64,6 +66,7 @@
 | REFACTOR-001 | Replace 6 panic() calls with error returns | Med | 3 | ac1bee3 | DeepSeek V4 Pro |
 | U01 | Usability & coverage audit | High | 3 | 5f0de10 | DS-V4-Flash |
 | ID-001 | Portable agent identity: pkg/identity/hid.go (Ed25519 HIDs) | High | 4 | c809d05 | DeepSeek V4 Pro |
+| INT-001 | E2E integration test: Forgejo → Helix → Agent PR → Review → Merge | High | 6 | 581a5b2 | DeepSeek V4 Pro |
 
 ## Tick Log
 
@@ -1010,6 +1013,42 @@
 **Verdict:** ACTIVE — tick #45. Forgejo breakthrough confirmed (Tick #44 first discovery, #45 re-verified). gofmt regression fixed (cf446ec — hid.go alignment). INT-001 worker dispatched and produced 271 lines across 3 files (forgejo client methods + E2E test scaffold), timed out at 600s before full verification. Test scaffolding compiled and committed. 1 flaky test (TestRunDoctorWithConfig_AllPass — /proc/meminfo dependency, environmental). All INT tasks unblocked. Cooldown: 900s (active — correct). Foreman skill unavailable — canonical fallback workflow used.
 
 **Next tick should:** (1) Verify INT-001 test against live Forgejo, (2) Fix flaky doctor test (mock /proc/meminfo), (3) Dispatch INT-001b or INT-002 if INT-001 worker completed.
+
+### Tick 47 — 2026-07-29 23:09 UTC (DeepSeek V4 Pro)
+
+| # | Gate | Result | Detail |
+|---|------|--------|--------|
+| 1 | Git status | ⚠️ DIRTY | Untracked: pkg/integration/forgejo_e2e_scenarios_test.go (883 lines, from INT-001b worker) |
+| 2 | Go build ./... | ✅ PASS | EXIT:0 |
+| 3 | Go vet ./... | ✅ PASS | EXIT:0 |
+| 4 | Go test -short | ❌ 4 FAIL | TestRunDoctorWithConfig_AllPass (1/9 checks) + 3 E2E scenarios (404 on file push). See GAP-DOCTOR + GAP-E2E-SCENARIOS. |
+| 5 | golangci-lint | ⚠️ 1 issue | gofmt in forgejo_e2e_scenarios_test.go:547 — FIXED this tick (foreman-direct gofmt -w) |
+| 6 | TODO/FIXME scan | ✅ CLEAN | 7 files — all legitimate (test data, PromptFoo criteria, context.TODO()) |
+| 7 | Hilo graph stats | ✅ 3,358 edges | 553 files (+24 edges, +3 files from new untracked test file — first graph change in 40+ ticks) |
+| 8 | CI health | ⏭️ SKIPPED | No gh CLI context in cron session |
+| 9 | GitReins task_list | ✅ CONSISTENT | 5/5 complete, 0 pending, 0 in_progress |
+| 10 | GitReins evaluator config | ✅ CONFIGURED | Caps: 100 iter/30m/1M/2M (deepseek-v4-flash @ deepseek-foreman) |
+| 11 | DuckBrain (helix) | ✅ POPULATED | 5+ keys — recall confirmed (namespace=helix, MCP healthy) |
+| 12 | Outdated deps | ⚠️ 94 | Unchanged from tick #46 — idle drift (cloud.google.com/*, aws-sdk-go-v2/*). 27 consecutive ticks. |
+| 13 | Forgejo | ✅ UP :3030 | v1.21.11+2 — re-verified. Forgejo API healthy (version endpoint 200). E2E tests fail on file-push (404), not connectivity. |
+| 14 | Untracked files | ⚠️ 1 | forgejo_e2e_scenarios_test.go — INT-001b work product, not yet committed. gofmt fixed this tick. |
+| 15 | Formatter (gofmt) | ✅ CLEAN | Fixed: gofmt -w on forgejo_e2e_scenarios_test.go |
+| 16 | 501 stubs | ✅ 0 | No unimplemented handler stubs |
+| 17 | NEVER-DONE docs | ✅ 11/11 | All exist — verified via `ls` |
+| 18 | Scheduler cooldown | ✅ 900s | Ground truth from API: Enabled=True, Priority=8, Weight=10, CooldownS=900. |
+| 19 | Host disk | ⚠️ 90% | Unchanged from ticks #44-#46 |
+
+**Verdict:** ACTIVE — tick #47. **2 regressions detected from prior ticks:**
+1. **Doctor test:** TestRunDoctorWithConfig_AllPass now fails (1 of 9 checks) — was passing in ticks #44-#46. 1 HTTP check against httptest server fails. → GAP-DOCTOR created.
+2. **E2E scenarios:** forgejo_e2e_scenarios_test.go (INT-001b partial, untracked) — 3 scenarios create repos successfully but fail on file push (POST /api/v1/repos/...contents returns 404). Forgejo v1.21 may use different file API path. → GAP-E2E-SCENARIOS created.
+
+**INT-001 marked complete** on board (per Tick #46 verdict, 581a5b2). E2E test PASSES — repo→branch→PR→review→merge gates verified. INT-001b partial work exists (untracked test file with bugs). **gofmt self-fixed** (foreman-direct on untracked file).
+
+**Board changes this tick:** INT-001 → ✅ complete in Active Tasks + Completed section. GAP-DOCTOR + GAP-E2E-SCENARIOS gap tasks added. Next in execution order: GAP-DOCTOR (quick fix) → GAP-E2E-SCENARIOS (aligns with INT-001b) → INT-002 (Chimera review E2E).
+
+**Hilo graph grew** for first time in 40+ ticks: 3,334→3,358 edges (+24), 550→553 files (+3). Untracked test file added graph nodes — commit would bring graph to stable state.
+
+**Commit:** (board update only — no code changes beyond gofmt fix on untracked file). Cooldown: 900s (active). Foreman skill unavailable — canonical fallback workflow used.
 
 ### Tick 46 — 2026-07-29 22:32 UTC (DeepSeek V4 Pro)
 
