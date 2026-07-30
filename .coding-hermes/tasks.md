@@ -34,18 +34,23 @@
 
 | ID | Task | Pri | Cpx | Deps | Tags | Model | Reasoning | Fallback |
 |----|------|-----|-----|------|------|-------|-----------|----------|
-| INT-001 | E2E integration test: Forgejo → Helix → Agent PR → Review → Merge | High | 6 | Forgejo instance | +++testing, ++integration, ++infra | **BLOCKED** | Requires running Forgejo instance | — |
-| INT-001b | Write 3 E2E test scenarios for Forgejo integration | High | 4 | INT-001 | ++testing, +spec-writing | **BLOCKED** | Depends on INT-001 (Forgejo) | — |
-| INT-002 | Chimera multi-model review E2E | High | 5 | INT-001, Chimera | +++testing, ++distributed-systems | **BLOCKED** | Depends on INT-001 (Forgejo) | — |
+| INT-001 | E2E integration test: Forgejo → Helix → Agent PR → Review → Merge | High | 6 | Forgejo running | +++testing, ++integration, ++infra | MiniMax-M3 | Forgejo UP on :3030. Test full agent dispatch loop. | GLM-5.2 |
+| INT-001b | Write 3 E2E test scenarios for Forgejo integration | High | 4 | INT-001 | ++testing, +spec-writing | MiniMax-M3 | Depends on INT-001 completion | GLM-5.2 |
+| INT-002 | Chimera multi-model review E2E | High | 5 | INT-001, Chimera | +++testing, ++distributed-systems | GLM-5.2 | Depends on INT-001 | MiniMax-M3 |
+| ID-001 | Portable agent identity: pkg/identity/hid.go (Ed25519 HIDs) | High | 4 | — | +++agent-identity, ++crypto, +security | MiniMax-M3 | New spec SPEC-022. Core types + sign/verify. | GLM-5.2 |
+| ID-002 | Portable agent identity: Forgejo OAuth registration (pkg/identity/forge.go) | High | 4 | ID-001 | +++agent-identity, ++oauth, +forgejo | MiniMax-M3 | Register HID with Forgejo, prove identity. | GLM-5.2 |
+| CH-001 | Agent channels: core types + SSE streaming (pkg/channel/channel.go) | Med | 3 | ID-001 | +++channels, ++sse, ++agent-comms | GLM-5.2 | New spec SPEC-024. Channel + message types. | MiniMax-M3 |
+| SRC-001 | Multi-source integration: source config parser (pkg/source/config.go) | Med | 3 | — | +++integration, ++muster, +yaml | MiniMax-M3 | New spec SPEC-025. Parse .helix/sources.yaml. | GLM-5.2 |
+| SRC-002 | Multi-source integration: Muster bridge (pkg/source/muster_bridge.go) | Med | 4 | SRC-001, Muster | +++integration, ++muster, ++openapi | GLM-5.2 | Generate MCP tools from OpenAPI specs via Muster. | MiniMax-M3 |
 | NEVER-DONE | 11-point audit sweep | Low | 2 | — | ++code-review, +testing | DeepSeek V4 Pro | Audit runs every tick | GLM-5.2 |
 
-**Assumptions:** Go 1.26.5, Python 3.11.15. 58/58 test packages pass (disk at 90%, AT threshold — trending up from 89% tick #42). golangci-lint clean (0 issues). go vet clean on helix code. CI all green (last 5 runs). Hilo: 3,334 edges, 550 files (stable — unchanged for 36 consecutive ticks). DuckBrain: 30+ keys (helix namespace) — MCP healthy, recall confirmed (f742ba92). 94 outdated deps (unchanged for 23 consecutive ticks — idle drift). .gitreins/config.yaml committed with evaluator section (deepseek-v4-flash, 100 iter/30m/1M/2M). NEVER-DONE docs: 11/11 (AGENTS.md, README.md, LICENSE, SECURITY.md, CODEOWNERS, SUPPORT.md, CODE_OF_CONDUCT.md, CONTRIBUTING.md, CHANGELOG.md, SKILL.md, .gitignore).
+**Assumptions:** Go 1.26.5, Python 3.11.15. 58/58 test packages pass. golangci-lint clean (0 issues). Forgejo RUNNING on localhost:3030 (was incorrectly checked on :8080 for 43 ticks — root cause of idle loop). Admin: helio. Agent: stepfun-tester (ID #2). Hilo: 3,334 edges, 550 files (stable). DuckBrain: helix namespace populated. .gitreins/config.yaml configured (deepseek-v4-flash, 100 iter/30m/1M/2M). NEVER-DONE docs: 11/11. New specs: SPEC-022 (portable identity), SPEC-023 (web UI — deferred), SPEC-024 (agent channels), SPEC-025 (multi-source integration).
 
-|**Routing Notes:** All INT tasks blocked on Forgejo instance availability. Project is feature-complete and stable — idle tick #43, cooldown 6,832s (DB ground truth, plateaued 6 ticks at autoSlowdown ceiling). Go build+vet clean. Tests: 58/58 pass (host disk at 90%, AT threshold — trending up from 89%). Hilo: 3,334 edges, 550 files (stable — 36 ticks). GitReins: 5/5 tasks complete, board ↔ GitReins consistent. Evaluator caps: 100 iter/30m/1M/2M. E2E-001 requires delegate_task (browser worker) — foreman cron can't dispatch. 94 outdated deps (unchanged for 23 ticks — idle drift). DuckBrain: MCP healthy (30+ keys, recall confirmed: f742ba92). 11/11 NEVER-DONE docs exist (verified via `ls`).
+|**Routing Notes:** Forgejo is UP on port 3030 (verified: admin helio + agent stepfun-tester). INT-001/001b/002 are now actionable. New gap tasks (ID-001/002, CH-001, SRC-001/002) address Buzz competitive gaps. SPEC-023 (web UI) deferred — large frontend build, not first priority. Cooldown reset to 900s (15 min) — active work resumed.
 
-**Execution Order:** INT-001 first (unblocks all other INTs) → INT-001b → INT-002 → NEVER-DONE.
+**Execution Order:** ID-001 (portable identity — unblocks CH-001) → ID-002 (Forgejo OAuth) → SRC-001 (source config) → SRC-002 (Muster bridge) → CH-001 (agent channels) → INT-001 (E2E) → INT-001b → INT-002.
 
-**Escalation Conditions:** Forgejo unavailable → all INT tasks blocked indefinitely. Escalating: idle tick #40 — 40 consecutive idle ticks (fleet-wide record), all INT tasks blocked on Forgejo instance. E2E-001 would be due (every 5-10 ticks) but requires browser worker dispatch from an interactive session, not foreman cron. Cooldown (DB): 6,832s (113.9 min) — plateaued unchanged across ticks #38-#40 (autoSlowdown ratchet ceiling). Disk at 88% — stable, well below 90% threshold.
+**Escalation:** None. Forgejo is running, tasks are actionable, cooldown at 900s.
 
 ## Completed
 
