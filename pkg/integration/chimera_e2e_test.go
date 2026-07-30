@@ -18,8 +18,8 @@ import (
 // chimeraDeliberateResponse mirrors the Chimera MCP chimera_deliberate
 // response shape for parsing trace data in E2E tests.
 type chimeraDeliberateResponse struct {
-	Answer  string        `json:"answer"`
-	Trace   chimeraTrace  `json:"trace"`
+	Answer string       `json:"answer"`
+	Trace  chimeraTrace `json:"trace"`
 }
 
 type chimeraTrace struct {
@@ -33,19 +33,19 @@ type chimeraTrace struct {
 }
 
 type chimeraStageTrace struct {
-	StageID    string  `json:"stage_id"`
-	Kind       string  `json:"kind"`
-	Model      string  `json:"model"`
-	Response   string  `json:"response"`
-	ToksIn     int     `json:"tokens_input"`
-	ToksOut    int     `json:"tokens_output"`
-	LatencyMs  int     `json:"latency_ms"`
-	Cost       float64 `json:"cost"`
+	StageID   string  `json:"stage_id"`
+	Kind      string  `json:"kind"`
+	Model     string  `json:"model"`
+	Response  string  `json:"response"`
+	ToksIn    int     `json:"tokens_input"`
+	ToksOut   int     `json:"tokens_output"`
+	LatencyMs int     `json:"latency_ms"`
+	Cost      float64 `json:"cost"`
 }
 
 // chimeraReviewVerdict mirrors the JSON verdict structure from deliberation.
 type chimeraReviewVerdict struct {
-	Verdict  string          `json:"verdict"`
+	Verdict  string           `json:"verdict"`
 	Findings []chimeraFinding `json:"findings"`
 }
 
