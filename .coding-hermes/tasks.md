@@ -45,7 +45,7 @@
 | NEVER-DONE | 11-point audit sweep | Low | 2 | — | ++code-review, +testing | DeepSeek V4 Pro | Audit runs every tick | GLM-5.2 |
 
 
-**Assumptions:** Go 1.26.5, Python 3.11.15. 60/60 test packages pass (all green). golangci-lint 0 issues. Forgejo UP on localhost:3030 (v1.21.11+2). Chimera MCP healthy (multi-model deliberation verified). Hilo: 3,433 edges, 562 files. DuckBrain: helix namespace populated (tick #53 state). .gitreins/config.yaml configured (deepseek-v4-flash, 100 iter/30m/1M/2M). NEVER-DONE docs: 11/11. All INT tasks complete. 95 outdated deps. Disk: 90%.
+**Assumptions:** Go 1.26.5, Python 3.11.15. 60/60 test packages pass (all green). golangci-lint 0 issues. Forgejo UP on localhost:3030 (v1.21.11+2). Chimera MCP healthy (multi-model deliberation verified). Hilo: 3,433 edges, 562 files. DuckBrain: helix namespace populated (tick #53 state). .gitreins/config.yaml configured (deepseek-v4-flash, 100 iter/30m/1M/2M). NEVER-DONE docs: 11/11. All INT tasks complete. 96 outdated deps. Disk: 92%.
 
 |**Routing Notes:** Forgejo UP on :3030 (v1.21.11+2 — confirmed). Chimera MCP healthy. All active tasks complete. INT-001 ✅ (581a5b2). INT-001b ✅ (32de104). ID-002 ✅ (2ea3dc3). SRC-001 ✅ (67baacf). CH-001 ✅ (4491037). SRC-002 ✅ (b5febc0). INT-002 ✅ (2b8fcf9). SPEC-023 (web UI) deferred. Cooldown: 43,200s (12h self-pause, tick #54 — DB ground truth). Worker-discovered bug: MergePR sends "do":"merge" but Forgejo v1.21 needs "Do":"merge" (capital D, returns 405 otherwise).
 
