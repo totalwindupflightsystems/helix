@@ -26,3 +26,8 @@ bin/
 !.env.example
 
 .helix/
+
+# Coding-Hermes DuckDB board — rebuildable local cache
+.coding-hermes/board/board.db
+.coding-hermes/board/board.db.wal
+.coding-hermes/board/board.duckdb
