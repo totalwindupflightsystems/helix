@@ -57,7 +57,7 @@ pipeline:
     true:
     - pre-eval
     condition: 'true'
-    max_iterations: 100
+    max_iterations: -1  # Defer to evaluator section caps (100 iter / 30m / 1M in / 2M out)
     tools:
     - read_file
     - run_command

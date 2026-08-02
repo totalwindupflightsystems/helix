@@ -1,0 +1,87 @@
+{
+  "task_id": "CI-FIX-E2E-SKIP",
+  "task_title": "Fix CI: Forgejo E2E tests must skip (not fail) when Forgejo unreachable",
+  "task_criteria": [
+    "pkg/integration/forgejo_e2e_test.go: forgejoReachable failure \u2192 t.Skipf (not t.Fatalf)",
+    "pkg/integration/forgejo_e2e_scenarios_test.go: all 3 scenario tests skip on unreachable Forgejo",
+    "pkg/integration/chimera_e2e_test.go: skip on unreachable Forgejo",
+    "pkg/integration/suite.go TestFullLoop: skip via s.Setup(t) when services unreachable",
+    "doc.go usage comment describes actual behavior",
+    ".github/workflows/ci.yml go-version 1.22 -> 1.25.8 in all 4 jobs",
+    "go build ./... + go vet ./... pass",
+    "go test -short -count=1 ./... passes 60/60 with live Forgejo",
+    "FORGEJO_URL=http://127.0.0.1:59999 go test -count=1 ./pkg/integration/ skips (not fails)",
+    "commit includes Co-authored-by: trailer and Prompt: link"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 lint: \n  \u2713 tests: \n  \u2713 build: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 pkg/integration/forgejo_e2e_test.go: forgejoReachable failure \u2192 t.Skipf (not t.Fatalf): forgejo_e2e_test.go:38 uses t.Skipf(\"Forgejo not reachable, skipping E2E: %v\", err) instead of t.Fatalf\n  \u2713 pkg/integration/forgejo_e2e_scenarios_test.go: all 3 scenario tests skip on unreachable Forgejo: Lines 153 (MultiAgentReview), 319 (CommitStatusPipeline), 458 (FullCICDSimulation) all use t.Skipf on forgejoReachable failure\n  \u2713 pkg/integration/chimera_e2e_test.go: skip on unreachable Forgejo: chimera_e2e_test.go:200 uses t.Skipf(\"Forgejo not reachable, skipping E2E: %v\", err)\n  \u2713 pkg/integration/suite.go TestFullLoop: skip via s.Setup(t) when services unreachable: suite.go:376-377 TestFullLoop calls s.Setup(t) and t.Skipf(\"skipping integration suite (services unreachable): %v\", err) on error\n  \u2713 doc.go usage comment describes actual behavior: doc.go now states tests 'skip gracefully when the required service is unreachable' and usage comments note 'skips if Forgejo unreachable'\n  \u2713 .github/workflows/ci.yml go-version 1.22 -> 1.25.8 in all 4 jobs: ci.yml lines 18,34,47,60 all go-version: \"1.25.8\" across lint, test, build, integration jobs\n  \u2713 go build ./... + go vet ./... pass: go build ./... exit 0; go vet ./... exit 0\n  \u2713 go test -short -count=1 ./... passes 60/60 with live Forgejo: go test -short -count=1 ./... produced 60 packages 'ok', no FAIL/panic\n  \u2713 FORGEJO_URL=http://127.0.0.1:59999 go test -count=1 ./pkg/integration/ skips (not fails): Exit 0; verbose run shows all 5 E2E tests (TestForgejoE2E, MultiAgentReview, CommitStatusPipeline, FullCICDSimulation, ChimeraMultiModelReview) SKIP\n  \u2713 commit includes Co-authored-by: trailer and Prompt: link: Commit 416ffb8 includes 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' and 'Prompt: prompts/coding-hermes/v1.md'\nAll 10 criteria verified: E2E tests now skip (not fail) when Forgejo unreachable, CI go-version aligned to 1.25.8 in all 4 jobs, build/vet/tests pass, and commit includes required trailers.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 pkg/integration/forgejo_e2e_test.go: forgejoReachable failure \u2192 t.Skipf (not t.Fatalf): forgejo_e2e_test.go:38 uses t.Skipf(\"Forgejo not reachable, skipping E2E: %v\", err) instead of t.Fatalf\n  \u2713 pkg/integration/forgejo_e2e_scenarios_test.go: all 3 scenario tests skip on unreachable Forgejo: Lines 153 (MultiAgentReview), 319 (CommitStatusPipeline), 458 (FullCICDSimulation) all use t.Skipf on forgejoReachable failure\n  \u2713 pkg/integration/chimera_e2e_test.go: skip on unreachable Forgej",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: CI-FIX-E2E-SKIP\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 lint: \n  \u2713 tests: \n  \u2713 build: \n  \u2713 secrets: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 pkg/integration/forgejo_e2e_test.go: forgejoReachable failure \u2192 t.Skipf (not t.Fatalf): forgejo_e2e_test.go:38 uses t.Skipf(\"Forgejo not reachable, skipping E2E: %v\", err) instead of t.Fatalf\n  \u2713 pkg/integration/forgejo_e2e_scenarios_test.go: all 3 scenario tests skip on unreachable Forgejo: Lines 153 (MultiAgentReview), 319 (CommitStatusPipeline), 458 (FullCICDSimulation) all use t.Skipf on forgejoReachable failure\n  \u2713 pkg/integration/chimera_e2e_test.go: skip on unreachable Forgejo: chimera_e2e_test.go:200 uses t.Skipf(\"Forgejo not reachable, skipping E2E: %v\", err)\n  \u2713 pkg/integration/suite.go TestFullLoop: skip via s.Setup(t) when services unreachable: suite.go:376-377 TestFullLoop calls s.Setup(t) and t.Skipf(\"skipping integration suite (services unreachable): %v\", err) on error\n  \u2713 doc.go usage comment describes actual behavior: doc.go now states tests 'skip gracefully when the required service is unreachable' and usage comments note 'skips if Forgejo unreachable'\n  \u2713 .github/workflows/ci.yml go-version 1.22 -> 1.25.8 in all 4 jobs: ci.yml lines 18,34,47,60 all go-version: \"1.25.8\" across lint, test, build, integration jobs\n  \u2713 go build ./... + go vet ./... pass: go build ./... exit 0; go vet ./... exit 0\n  \u2713 go test -short -count=1 ./... passes 60/60 with live Forgejo: go test -short -count=1 ./... produced 60 packages 'ok', no FAIL/panic\n  \u2713 FORGEJO_URL=http://127.0.0.1:59999 go test -count=1 ./pkg/integration/ skips (not fails): Exit 0; verbose run shows all 5 E2E tests (TestForgejoE2E, MultiAgentReview, CommitStatusPipeline, FullCICDSimulation, ChimeraMultiModelReview) SKIP\n  \u2713 commit includes Co-authored-by: trailer and Prompt: link: Commit 416ffb8 includes 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' and 'Prompt: prompts/coding-hermes/v1.md'\nAll 10 criteria verified: E2E tests now skip (not fail) when Forgejo unreachable, CI go-version aligned to 1.25.8 in all 4 jobs, build/vet/tests pass, and commit includes required trailers.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-02T01:45:20.830160"
+}
