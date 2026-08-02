@@ -136,3 +136,26 @@ tasks:
   status: complete
   created_at: '2026-08-02T19:34:39.215777+00:00'
   completed_at: '2026-08-02T19:34:43.743814+00:00'
+- id: DF-003
+  title: README quickstart examples + unified CLI help use real flags
+  criteria:
+  - 'README.md Quickstart: `helix-estimate check --spec specs/task.md` replaced with
+    verified working form `helix-estimate check wojons "Write a Go HTTP server" --model
+    deepseek-v4-pro --provider deepseek` (exits 0, prints AUTO_APPROVED)'
+  - 'README.md Quickstart: `helix-identity provision --name test-agent --email agent@helix.dev`
+    replaced with positional form `helix-identity provision test-agent` (no --name/--email
+    flags)'
+  - 'cmd/helix/main.go Examples block: `%s estimate --task "Write a Go HTTP server"`
+    replaced with `%s estimate estimate "Write a Go HTTP server" --model deepseek-v4-pro
+    --provider deepseek`'
+  - "skills/helix-usage/SKILL.md pitfall #2 updated \u2014 no longer claims README\
+    \ examples are stale; documents doubled-subcommand working form + --spec-file\
+    \ note"
+  - 'commit 847f5c0 contains ONLY README.md, cmd/helix/main.go, skills/helix-usage/SKILL.md
+    (git show --stat: 3 files, 13 insertions, 14 deletions)'
+  - go build ./... exits 0; go vet ./... exits 0
+  - "go test -short -count=1 ./... passes \u2014 60/60 packages, 0 failures"
+  - 'commit 847f5c0 includes Co-authored-by trailer and Prompt: prompts/coding-hermes/v1.md'
+  status: complete
+  created_at: '2026-08-02T21:58:35.047869+00:00'
+  completed_at: '2026-08-02T21:58:37.509018+00:00'

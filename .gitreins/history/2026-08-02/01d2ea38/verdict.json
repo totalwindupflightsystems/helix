@@ -1,0 +1,85 @@
+{
+  "task_id": "DF-003",
+  "task_title": "README quickstart examples + unified CLI help use real flags",
+  "task_criteria": [
+    "README.md Quickstart: `helix-estimate check --spec specs/task.md` replaced with verified working form `helix-estimate check wojons \"Write a Go HTTP server\" --model deepseek-v4-pro --provider deepseek` (exits 0, prints AUTO_APPROVED)",
+    "README.md Quickstart: `helix-identity provision --name test-agent --email agent@helix.dev` replaced with positional form `helix-identity provision test-agent` (no --name/--email flags)",
+    "cmd/helix/main.go Examples block: `%s estimate --task \"Write a Go HTTP server\"` replaced with `%s estimate estimate \"Write a Go HTTP server\" --model deepseek-v4-pro --provider deepseek`",
+    "skills/helix-usage/SKILL.md pitfall #2 updated \u2014 no longer claims README examples are stale; documents doubled-subcommand working form + --spec-file note",
+    "commit 847f5c0 contains ONLY README.md, cmd/helix/main.go, skills/helix-usage/SKILL.md (git show --stat: 3 files, 13 insertions, 14 deletions)",
+    "go build ./... exits 0; go vet ./... exits 0",
+    "go test -short -count=1 ./... passes \u2014 60/60 packages, 0 failures",
+    "commit 847f5c0 includes Co-authored-by trailer and Prompt: prompts/coding-hermes/v1.md"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier:   File category 'code': requires provisional+, agent is provisional \u2014 OK\n\u2713 Trust tier: PASS\n\n  \u2713 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "  File category 'code': requires provisional+, agent is provisional \u2014 OK\n\u2713 Trust tier: PASS\n",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_manager import GuardManager; gm = GuardManager('.'); r = gm._check_lint(); import sys; sys.exit(0 if r.passed else 1)\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nModuleNotFoundError: No module named 'engine'\n",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_manager import GuardManager; gm = GuardManager('.'); r = gm._check_tests(); import sys; sys.exit(0 if r.passed else 1)\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nModuleNotFoundError: No module named 'engine'\n",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_manager import GuardManager; gm = GuardManager('.'); r = gm._check_secrets(); import sys; sys.exit(0 if r.passed else 1)\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nModuleNotFoundError: No module named 'engine'\n",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_manager import GuardManager; gm = GuardManager('.'); from engine.guards import check_go_build; r = check_go_build('.'); import sys; sys.exit(0 if r.passed else 1)\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nModuleNotFoundError: No module named 'engine'\n",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 README.md Quickstart: `helix-estimate check --spec specs/task.md` replaced with verified working form `helix-estimate check wojons \"Write a Go HTTP server\" --model deepseek-v4-pro --provider deepseek` (exits 0, prints AUTO_APPROVED): README.md:184 contains `helix-estimate check wojons \"Write a Go HTTP server\" --model deepseek-v4-pro --provider deepseek` (confirmed in git show 847f5c0 and working tree)\n  \u2713 README.md Quickstart: `helix-identity provision --name test-agent --email agent@helix.dev` replaced with positional form `helix-identity provision test-agent` (no --name/--email flags): README.md:181 contains `helix-identity provision test-agent` with no --name/--email flags\n  \u2713 cmd/helix/main.go Examples block: `%s estimate --task \"Write a Go HTTP server\"` replaced with `%s estimate estimate \"Write a Go HTTP server\" --model deepseek-v4-pro --provider deepseek`: cmd/helix/main.go:705 contains `%s estimate estimate \"Write a Go HTTP server\" --model deepseek-v4-pro --provider deepseek`\n  \u2713 skills/helix-usage/SKILL.md pitfall #2 updated \u2014 no longer claims README examples are stale; documents doubled-subcommand working form + --spec-file note: SKILL.md pitfall #2 now reads 'helix estimate needs a doubled subcommand (fixed in DF-003)' documenting `helix estimate estimate \"<task>\" --model <m> --provider <p>` and `--spec-file` (not `--spec`); stale claim removed\n  \u2713 commit 847f5c0 contains ONLY README.md, cmd/helix/main.go, skills/helix-usage/SKILL.md (git show --stat: 3 files, 13 insertions, 14 deletions): git show --stat 847f5c0 shows exactly 3 files (README.md, cmd/helix/main.go, skills/helix-usage/SKILL.md), 13 insertions(+), 14 deletions(-)\n  \u2713 go build ./... exits 0; go vet ./... exits 0: go build ./... exit 0; go vet ./... exit 0\n  \u2713 go test -short -count=1 ./... passes \u2014 60/60 packages, 0 failures: go test -short -count=1 ./... exit 0, 60 packages all 'ok', 0 FAIL/panic\n  \u2713 commit 847f5c0 includes Co-authored-by trailer and Prompt: prompts/coding-hermes/v1.md: git show -s --format=%B 847f5c0 contains 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' and 'Prompt: prompts/coding-hermes/v1.md'\nAll 8 criteria verified: README/main.go/SKILL.md updated to real working flags, commit 847f5c0 contains only the 3 intended files with correct trailer, and build/vet/test all pass (60/60 packages).",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 README.md Quickstart: `helix-estimate check --spec specs/task.md` replaced with verified working form `helix-estimate check wojons \"Write a Go HTTP server\" --model deepseek-v4-pro --provider deepseek` (exits 0, prints AUTO_APPROVED): README.md:184 contains `helix-estimate check wojons \"Write a Go HTTP server\" --model deepseek-v4-pro --provider deepseek` (confirmed in git show 847f5c0 and working tree)\n  \u2713 README.md Quickstart: `helix-identity provision --name test-agent --email agen",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-003\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier:   File category 'code': requires provisional+, agent is provisional \u2014 OK\n\u2713 Trust tier: PASS\n\n  \u2713 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 README.md Quickstart: `helix-estimate check --spec specs/task.md` replaced with verified working form `helix-estimate check wojons \"Write a Go HTTP server\" --model deepseek-v4-pro --provider deepseek` (exits 0, prints AUTO_APPROVED): README.md:184 contains `helix-estimate check wojons \"Write a Go HTTP server\" --model deepseek-v4-pro --provider deepseek` (confirmed in git show 847f5c0 and working tree)\n  \u2713 README.md Quickstart: `helix-identity provision --name test-agent --email agent@helix.dev` replaced with positional form `helix-identity provision test-agent` (no --name/--email flags): README.md:181 contains `helix-identity provision test-agent` with no --name/--email flags\n  \u2713 cmd/helix/main.go Examples block: `%s estimate --task \"Write a Go HTTP server\"` replaced with `%s estimate estimate \"Write a Go HTTP server\" --model deepseek-v4-pro --provider deepseek`: cmd/helix/main.go:705 contains `%s estimate estimate \"Write a Go HTTP server\" --model deepseek-v4-pro --provider deepseek`\n  \u2713 skills/helix-usage/SKILL.md pitfall #2 updated \u2014 no longer claims README examples are stale; documents doubled-subcommand working form + --spec-file note: SKILL.md pitfall #2 now reads 'helix estimate needs a doubled subcommand (fixed in DF-003)' documenting `helix estimate estimate \"<task>\" --model <m> --provider <p>` and `--spec-file` (not `--spec`); stale claim removed\n  \u2713 commit 847f5c0 contains ONLY README.md, cmd/helix/main.go, skills/helix-usage/SKILL.md (git show --stat: 3 files, 13 insertions, 14 deletions): git show --stat 847f5c0 shows exactly 3 files (README.md, cmd/helix/main.go, skills/helix-usage/SKILL.md), 13 insertions(+), 14 deletions(-)\n  \u2713 go build ./... exits 0; go vet ./... exits 0: go build ./... exit 0; go vet ./... exit 0\n  \u2713 go test -short -count=1 ./... passes \u2014 60/60 packages, 0 failures: go test -short -count=1 ./... exit 0, 60 packages all 'ok', 0 FAIL/panic\n  \u2713 commit 847f5c0 includes Co-authored-by trailer and Prompt: prompts/coding-hermes/v1.md: git show -s --format=%B 847f5c0 contains 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' and 'Prompt: prompts/coding-hermes/v1.md'\nAll 8 criteria verified: README/main.go/SKILL.md updated to real working flags, commit 847f5c0 contains only the 3 intended files with correct trailer, and build/vet/test all pass (60/60 packages).\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-02T21:59:40.656847"
+}
