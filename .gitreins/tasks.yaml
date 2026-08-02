@@ -82,3 +82,22 @@ tasks:
   status: complete
   created_at: '2026-08-01T13:04:40.030219+00:00'
   completed_at: '2026-08-01T13:04:45.899830+00:00'
+- id: CI-FIX-E2E-SKIP
+  title: 'Fix CI: Forgejo E2E tests must skip (not fail) when Forgejo unreachable'
+  criteria:
+  - "pkg/integration/forgejo_e2e_test.go: forgejoReachable failure \u2192 t.Skipf\
+    \ (not t.Fatalf)"
+  - 'pkg/integration/forgejo_e2e_scenarios_test.go: all 3 scenario tests skip on unreachable
+    Forgejo'
+  - 'pkg/integration/chimera_e2e_test.go: skip on unreachable Forgejo'
+  - 'pkg/integration/suite.go TestFullLoop: skip via s.Setup(t) when services unreachable'
+  - doc.go usage comment describes actual behavior
+  - .github/workflows/ci.yml go-version 1.22 -> 1.25.8 in all 4 jobs
+  - go build ./... + go vet ./... pass
+  - go test -short -count=1 ./... passes 60/60 with live Forgejo
+  - FORGEJO_URL=http://127.0.0.1:59999 go test -count=1 ./pkg/integration/ skips (not
+    fails)
+  - 'commit includes Co-authored-by: trailer and Prompt: link'
+  status: complete
+  created_at: '2026-08-02T01:24:44.085994+00:00'
+  completed_at: '2026-08-02T01:25:10.466449+00:00'
