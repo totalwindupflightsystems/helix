@@ -101,3 +101,19 @@ tasks:
   status: complete
   created_at: '2026-08-02T01:24:44.085994+00:00'
   completed_at: '2026-08-02T01:25:10.466449+00:00'
+- id: DF-001
+  title: "mergegate hook exits non-zero on REJECT \u2014 pre-receive gate blocks pushes"
+  criteria:
+  - 'helix mergegate hook exits 1 when any ref is rejected (live repro: branch-deletion
+    push prints REJECTED, exit code 1)'
+  - helix mergegate hook --dry-run still exits 0 on a rejecting ref (dry-run must
+    not block)
+  - main() honors errExit codes (documented contract 0 allowed / 1 blocked / 2 invocation
+    error)
+  - 'integration test TestPreReceiveHookBlocksRejectedPush: real bare repo + scripts/helix-pre-receive.sh
+    + built binary; push to protected main is REJECTED, push to feature/x succeeds'
+  - 'full suite green: TMPDIR=/home/kara/.cache/go-tmp go test -short -count=1 ./...
+    (60/60 packages)'
+  status: complete
+  created_at: '2026-08-02T12:13:28.110992+00:00'
+  completed_at: '2026-08-02T12:13:32.242697+00:00'

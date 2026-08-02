@@ -3479,3 +3479,10 @@
 {"from":"pkg/channel/channel_test.go","to":"pkg/channel/channel.go","rel":"tested_by","provenance":"heuristic","confidence":0.8}
 {"from":"pkg/identity/hid_test.go","to":"pkg/identity/hid.go","rel":"tested_by","provenance":"heuristic","confidence":0.8}
 {"from":"pkg/identity/hid.go","to":"pkg/identity/hid_test.go","rel":"tests","provenance":"heuristic","confidence":0.8}
+{"from":"cmd/helix/main.go","to":"std:errors","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/mergegate/pre_receive_integration_test.go","to":"std:fmt","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/mergegate/pre_receive_integration_test.go","to":"std:os","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/mergegate/pre_receive_integration_test.go","to":"std:os/exec","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/mergegate/pre_receive_integration_test.go","to":"std:path/filepath","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/mergegate/pre_receive_integration_test.go","to":"std:strings","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/mergegate/pre_receive_integration_test.go","to":"std:testing","rel":"imports","provenance":"ast_exact","confidence":1.0}
