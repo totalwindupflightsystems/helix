@@ -148,9 +148,9 @@ func TestForgejoE2E_MultiAgentReview(t *testing.T) {
 	adminUser := e2eAdminUser()
 	adminPass := e2eAdminPass()
 	baseURL := e2eForgejoURL()
-
+	// Verify Forgejo is reachable.
 	if err := forgejoReachable(baseURL, adminUser, adminPass); err != nil {
-		t.Fatalf("Forgejo not reachable: %v", err)
+		t.Skipf("Forgejo not reachable, skipping E2E: %v", err)
 	}
 	t.Logf("[OK] Forgejo reachable at %s", baseURL)
 
@@ -314,9 +314,9 @@ func TestForgejoE2E_CommitStatusPipeline(t *testing.T) {
 	adminUser := e2eAdminUser()
 	adminPass := e2eAdminPass()
 	baseURL := e2eForgejoURL()
-
+	// Verify Forgejo is reachable.
 	if err := forgejoReachable(baseURL, adminUser, adminPass); err != nil {
-		t.Fatalf("Forgejo not reachable: %v", err)
+		t.Skipf("Forgejo not reachable, skipping E2E: %v", err)
 	}
 	t.Logf("[OK] Forgejo reachable at %s", baseURL)
 
@@ -453,9 +453,9 @@ func TestForgejoE2E_FullCICDSimulation(t *testing.T) {
 	adminUser := e2eAdminUser()
 	adminPass := e2eAdminPass()
 	baseURL := e2eForgejoURL()
-
+	// Verify Forgejo is reachable.
 	if err := forgejoReachable(baseURL, adminUser, adminPass); err != nil {
-		t.Fatalf("Forgejo not reachable: %v", err)
+		t.Skipf("Forgejo not reachable, skipping E2E: %v", err)
 	}
 	t.Logf("[OK] Forgejo reachable at %s", baseURL)
 

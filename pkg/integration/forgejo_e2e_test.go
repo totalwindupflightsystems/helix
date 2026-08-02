@@ -31,9 +31,11 @@ func TestForgejoE2E(t *testing.T) {
 	adminPass := e2eAdminPass()
 	baseURL := e2eForgejoURL()
 
-	// Verify Forgejo is reachable before proceeding.
+	// Verify Forgejo is reachable before proceeding. If the instance is not
+	// reachable (e.g. CI without a Forgejo service), skip gracefully instead
+	// of failing — these E2E tests require a live local Forgejo.
 	if err := forgejoReachable(baseURL, adminUser, adminPass); err != nil {
-		t.Fatalf("Forgejo not reachable: %v", err)
+		t.Skipf("Forgejo not reachable, skipping E2E: %v", err)
 	}
 	t.Logf("[OK] Forgejo reachable at %s", baseURL)
 

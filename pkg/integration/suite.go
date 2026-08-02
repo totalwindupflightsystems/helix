@@ -370,6 +370,12 @@ func (s *IntegrationTestSuite) TestFullLoop(t *testing.T) {
 	if os.Getenv("GOAWAY") == "1" {
 		t.Skip("skipping integration test (GOAWAY=1)")
 	}
+	// The full loop requires live Forgejo + Chimera services. Skip gracefully
+	// when unreachable (e.g. CI without service containers) so the suite runs
+	// for real against local services and passes cleanly where they are absent.
+	if err := s.Setup(t); err != nil {
+		t.Skipf("skipping integration suite (services unreachable): %v", err)
+	}
 
 	ctx := context.Background()
 	agentName := "helix-integration-test-agent"

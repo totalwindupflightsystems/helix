@@ -197,7 +197,7 @@ func TestForgejoE2E_ChimeraMultiModelReview(t *testing.T) {
 
 	// Verify Forgejo is reachable.
 	if err := forgejoReachable(baseURL, adminUser, adminPass); err != nil {
-		t.Fatalf("Forgejo not reachable: %v", err)
+		t.Skipf("Forgejo not reachable, skipping E2E: %v", err)
 	}
 	t.Logf("[OK] Forgejo reachable at %s", baseURL)
 
