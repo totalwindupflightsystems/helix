@@ -50,9 +50,11 @@ go test -short -count=1 ./...            # unit tests (60/60 pass)
 
 1. **`helix <sub> --help` prints the ROOT menu.** Run the bare subcommand
    (`helix ci`, `helix mergegate`, `helix idea`) to see its real usage.
-2. **README quickstart examples are stale.** `helix estimate --task` and
-   `helix-estimate check --spec` fail (`--spec-file` is the flag; the
-   estimate command takes a positional task + requires `--model`).
+2. **`helix estimate` needs a doubled subcommand (fixed in DF-003).** The
+   unified CLI shells out to `helix-estimate`, so the working form is
+   `helix estimate estimate "<task>" --model <m> --provider <p>` — the
+   README quickstart now shows this; `helix estimate --task` never existed.
+   For spec-based estimates use `--spec-file` (not `--spec`).
 3. **Estimate's default pricing path is CWD-relative** — run from the repo
    root or pass `--pricing`.
 4. **Prompt files: nested layout** `prompts/<c>/<v>/prompt.md` is what

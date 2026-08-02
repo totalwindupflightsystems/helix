@@ -702,7 +702,7 @@ Global Flags:
 
 Examples:
   %s identity sync
-  %s estimate --task "Write a Go HTTP server"
+  %s estimate estimate "Write a Go HTTP server" --model deepseek-v4-pro --provider deepseek
   %s marketplace search --capability go
   %s review dashboard --pr 42 --files pkg/trust/ledger.go --repo .
   %s status

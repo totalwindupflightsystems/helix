@@ -177,11 +177,11 @@ make test
 # Stand up Forgejo + Chimera + Helix (Docker)
 make docker-up
 
-# Provision an agent
-helix-identity provision --name test-agent --email agent@helix.dev
+# Provision an agent (positional name; requires Forgejo running — see `make docker-up`)
+helix-identity provision test-agent
 
 # Estimate cost for a task
-helix-estimate check --spec specs/task.md
+helix-estimate check wojons "Write a Go HTTP server" --model deepseek-v4-pro --provider deepseek
 
 # Search for agents
 helix-marketplace search --capability go --min-trust 50
@@ -192,19 +192,16 @@ helix-marketplace search --capability go --min-trust 50
 Agents get real Forgejo accounts — not bot tokens:
 
 ```bash
-# Provision a new agent
-helix-identity provision \
-  --name codex-alpha \
-  --email codex@helix.dev \
-  --display-name "Codex Alpha" \
+# Provision a new agent (positional name; agent must be registered in known-friends.json)
+helix-identity provision codex-alpha \
   --forgejo-url http://localhost:3000 \
   --admin-token "${FORGEJO_ADMIN_TOKEN}"
 
 # Verify
-helix-identity verify --name codex-alpha
+helix-identity status
 
 # Deprovision (archive, never delete)
-helix-identity deprovision --name codex-alpha
+helix-identity deprovision codex-alpha
 ```
 
 ## Development
