@@ -24,6 +24,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -78,6 +79,14 @@ func main() {
 
 	if err := rootCmd().Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		// Honour errExit codes so subcommands can surface their documented
+		// exit-code contract (e.g. mergegate: 0 ALLOWED / 1 BLOCKED /
+		// 2 invocation error) instead of being flattened to 1. This is what
+		// makes the pre-receive hook actually block a rejected push.
+		var ee errExit
+		if errors.As(err, &ee) {
+			os.Exit(ee.code)
+		}
 		os.Exit(1)
 	}
 }

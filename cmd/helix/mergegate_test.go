@@ -288,10 +288,74 @@ func TestRunMergeGateWithDryRun_InvocationError(t *testing.T) {
 	assert.Equal(t, mgExitError, exitErr.code)
 }
 
-func TestRunMergeGateWithDryRun_BlockedNotError(t *testing.T) {
-	// BLOCKED (rc=1) should NOT be treated as error
+func TestRunMergeGateWithDryRun_Blocked(t *testing.T) {
+	// A rejecting ref (protected branch deletion) must surface as errExit
+	// with code mgExitBlock so main() exits non-zero and the pre-receive
+	// hook actually blocks the push.
+	oldStdin := setStdin(t, "abc123 0000000000000000000000000000000000000000 refs/heads/main\n")
+	defer func() { os.Stdin = oldStdin }()
+
+	var stdout, stderr bytes.Buffer
+	err := runMergeGateWithDryRun([]string{"hook", "--trust", "veteran"}, &stdout, &stderr, false)
+	require.Error(t, err, "a rejected push must surface as an error, not nil")
+	var exitErr errExit
+	require.ErrorAs(t, err, &exitErr)
+	assert.Equal(t, mgExitBlock, exitErr.code)
+	assert.Contains(t, stderr.String(), "REJECTED")
+}
+
+func TestRunMergeGateWithDryRun_BlockedDryRunReturnsNil(t *testing.T) {
+	// Dry-run must never reject: the same rejecting ref with --dry-run
+	// evaluates to ALLOWED (dry-run semantics), so rc is 0 → nil error.
+	oldStdin := setStdin(t, "abc123 0000000000000000000000000000000000000000 refs/heads/main\n")
+	defer func() { os.Stdin = oldStdin }()
+
+	var stdout, stderr bytes.Buffer
+	err := runMergeGateWithDryRun([]string{"hook", "--trust", "veteran", "--dry-run"}, &stdout, &stderr, false)
+	assert.NoError(t, err, "dry-run must not block a push")
+	assert.Contains(t, stdout.String(), "ALLOWED")
+}
+
+func TestRunMergeGateWithDryRun_GlobalDryRunDoesNotBlock(t *testing.T) {
+	// The dispatch() global-flag parser strips --dry-run from args before
+	// the subcommand sees them, so the wrapper receives globalDryRun=true
+	// with the flag absent. It must re-apply it — otherwise
+	// `helix --dry-run mergegate hook` evaluates for real and rejects.
+	oldStdin := setStdin(t, "abc123 0000000000000000000000000000000000000000 refs/heads/main\n")
+	defer func() { os.Stdin = oldStdin }()
+
+	var stdout, stderr bytes.Buffer
+	err := runMergeGateWithDryRun([]string{"hook", "--trust", "veteran"}, &stdout, &stderr, true)
+	assert.NoError(t, err, "global dry-run must not block a push")
+	assert.Contains(t, stdout.String(), "ALLOWED")
+}
+
+// setStdin swaps os.Stdin for a pipe preloaded with refs and returns the
+// previous os.Stdin value for restoration. The hook subcommand reads the
+// pre-receive refs from os.Stdin directly.
+func setStdin(t *testing.T, refs string) *os.File {
+	t.Helper()
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	if _, err := w.WriteString(refs); err != nil {
+		require.NoError(t, err)
+	}
+	require.NoError(t, w.Close())
+	oldStdin := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() { r.Close() })
+	return oldStdin
+}
+
+func TestRunMergeGateWithDryRun_BlockedIsErrExit(t *testing.T) {
+	// BLOCKED (rc=1) from the `check` path is a gate result, but it must
+	// still surface as errExit so main() exits non-zero. Previously the
+	// wrapper swallowed mgExitBlock — the exact bug behind DF-001.
 	err := runMergeGateWithDryRun([]string{"check", "--trust", "trusted", "--skip-contract", "--skip-cost"}, &bytes.Buffer{}, &bytes.Buffer{}, false)
-	assert.NoError(t, err, "BLOCKED is a valid gate result, not an invocation error")
+	require.Error(t, err)
+	var exitErr errExit
+	require.ErrorAs(t, err, &exitErr)
+	assert.Equal(t, mgExitBlock, exitErr.code)
 }
 
 // ============================================================================

@@ -364,12 +364,34 @@ func runMergeGateChecks(flags mgFlags, stdout io.Writer) int {
 }
 
 // runMergeGateWithDryRun wraps runMergeGate with the global --dry-run flag.
+// Any non-zero rc — including mgExitBlock (1, merge BLOCKED) — must surface
+// as errExit so main() exits non-zero and the pre-receive hook actually
+// blocks the push. Only rc == 0 (merge ALLOWED) returns nil.
+//
+// The dispatch() global-flag parser strips --dry-run from args wherever it
+// appears (even after the subcommand), so the hook's own --dry-run flag never
+// reaches runMergeGate — this wrapper must re-apply it from globalDryRun or
+// `helix mergegate hook --dry-run` would evaluate for real and reject.
+// EvaluateHook never rejects in dry-run mode, so dry-run always exits 0.
 func runMergeGateWithDryRun(args []string, stdout, stderr io.Writer, globalDryRun bool) error {
+	if globalDryRun && !hasArg(args, "--dry-run") {
+		args = append(args, "--dry-run")
+	}
 	rc := runMergeGate(args, stdout, stderr)
-	if rc != 0 && rc != mgExitBlock {
+	if rc != 0 {
 		return errExit{code: rc}
 	}
 	return nil
+}
+
+// hasArg reports whether args contains the exact token s.
+func hasArg(args []string, s string) bool {
+	for _, a := range args {
+		if a == s {
+			return true
+		}
+	}
+	return false
 }
 
 // runMergeGateHook runs the pre-receive hook evaluation.
