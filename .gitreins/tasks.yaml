@@ -117,3 +117,22 @@ tasks:
   status: complete
   created_at: '2026-08-02T12:13:28.110992+00:00'
   completed_at: '2026-08-02T12:13:32.242697+00:00'
+- id: DF-002
+  title: helix <subcommand> --help shows subcommand help, not root usage
+  criteria:
+  - 'helix status --help prints status-specific usage (contains ''helix-status'' and
+    --json), not root ''Usage: helix [global-flags]'''
+  - helix status -h behaves identically to --help
+  - helix --help and helix -h still print root usage
+  - helix identity --help passes --help through to the helix-identity binary (execSubcommand
+    receives ['--help'])
+  - 'Global --dry-run anywhere-stripping preserved: helix mergegate hook --dry-run
+    contract unchanged (runMergeGateWithDryRun re-injection)'
+  - New tests in cmd/helix/main_test.go cover subcommand --help passthrough for built-in
+    handler and delegated binary
+  - go build ./... and go vet ./... pass
+  - go test -short -count=1 ./... passes (full suite)
+  - 'commit c9f3089 includes Co-authored-by trailer and Prompt: prompts/coding-hermes/v1.md'
+  status: complete
+  created_at: '2026-08-02T19:34:39.215777+00:00'
+  completed_at: '2026-08-02T19:34:43.743814+00:00'

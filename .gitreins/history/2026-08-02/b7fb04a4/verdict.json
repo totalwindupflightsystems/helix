@@ -1,0 +1,86 @@
+{
+  "task_id": "DF-002",
+  "task_title": "helix <subcommand> --help shows subcommand help, not root usage",
+  "task_criteria": [
+    "helix status --help prints status-specific usage (contains 'helix-status' and --json), not root 'Usage: helix [global-flags]'",
+    "helix status -h behaves identically to --help",
+    "helix --help and helix -h still print root usage",
+    "helix identity --help passes --help through to the helix-identity binary (execSubcommand receives ['--help'])",
+    "Global --dry-run anywhere-stripping preserved: helix mergegate hook --dry-run contract unchanged (runMergeGateWithDryRun re-injection)",
+    "New tests in cmd/helix/main_test.go cover subcommand --help passthrough for built-in handler and delegated binary",
+    "go build ./... and go vet ./... pass",
+    "go test -short -count=1 ./... passes (full suite)",
+    "commit c9f3089 includes Co-authored-by trailer and Prompt: prompts/coding-hermes/v1.md"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 lint: \n  \u2713 build: \n  \u2713 tests: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 helix status --help prints status-specific usage (contains 'helix-status' and --json), not root 'Usage: helix [global-flags]': main.go dispatch() passes --help through after subcommandSeen; status.go parseStatusFlags returns flag.ErrHelp -> showHelp -> printStatusUsage prints 'Usage of helix-status:' with -json. Test TestDispatchSubcommandHelpPassthrough/status_--help_shows_status_usage PASSES.\n  \u2713 helix status -h behaves identically to --help: TestDispatchSubcommandHelpPassthrough/status_-h_behaves_identically_to_--help PASSES (outHelp==outH); both -h and --help trigger flag.ErrHelp in parseStatusFlags.\n  \u2713 helix --help and helix -h still print root usage: main.go --help/-h before subcommandSeen calls d.usage() (root); printUsage prints 'Usage: helix [global-flags]'. Test root_--help_unchanged PASSES.\n  \u2713 helix identity --help passes --help through to the helix-identity binary (execSubcommand receives ['--help']): identity case only intercepts rotate-keys; identity --help falls through to execSubcommand('helix-identity', ['--help']). TestDispatchDelegatedHelpPassthrough PASSES (fake binary echoes --help).\n  \u2713 Global --dry-run anywhere-stripping preserved: helix mergegate hook --dry-run contract unchanged (runMergeGateWithDryRun re-injection): dispatch loop still strips --dry-run anywhere (not position-sensitive). mergegate.go:376-378 runMergeGateWithDryRun re-injects --dry-run when globalDryRun && !hasArg. Test global_--dry-run_still_stripped_anywhere PASSES.\n  \u2713 New tests in cmd/helix/main_test.go cover subcommand --help passthrough for built-in handler and delegated binary: main_test.go adds TestDispatchSubcommandHelpPassthrough (built-in status handler) and TestDispatchDelegatedHelpPassthrough (delegated binary); both PASS.\n  \u2713 go build ./... and go vet ./... pass: go build ./... exit 0; go vet ./... exit 0.\n  \u2713 go test -short -count=1 ./... passes (full suite): go test -short -count=1 ./... exit 0; all packages ok including cmd/helix (11.358s).\n  \u2713 commit c9f3089 includes Co-authored-by trailer and Prompt: prompts/coding-hermes/v1.md: git log -1 c9f3089 shows 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' and 'Prompt: prompts/coding-hermes/v1.md'.\nAll 9 criteria verified: subcommand --help/-h passthrough implemented and tested, root help preserved, --dry-run anywhere-stripping intact, build/vet/tests pass, and commit c9f3089 carries the required trailers.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 helix status --help prints status-specific usage (contains 'helix-status' and --json), not root 'Usage: helix [global-flags]': main.go dispatch() passes --help through after subcommandSeen; status.go parseStatusFlags returns flag.ErrHelp -> showHelp -> printStatusUsage prints 'Usage of helix-status:' with -json. Test TestDispatchSubcommandHelpPassthrough/status_--help_shows_status_usage PASSES.\n  \u2713 helix status -h behaves identically to --help: TestDispatchSubcommandHelpPassthrough/",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-002\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 lint: \n  \u2713 build: \n  \u2713 tests: \n  \u2713 secrets: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 helix status --help prints status-specific usage (contains 'helix-status' and --json), not root 'Usage: helix [global-flags]': main.go dispatch() passes --help through after subcommandSeen; status.go parseStatusFlags returns flag.ErrHelp -> showHelp -> printStatusUsage prints 'Usage of helix-status:' with -json. Test TestDispatchSubcommandHelpPassthrough/status_--help_shows_status_usage PASSES.\n  \u2713 helix status -h behaves identically to --help: TestDispatchSubcommandHelpPassthrough/status_-h_behaves_identically_to_--help PASSES (outHelp==outH); both -h and --help trigger flag.ErrHelp in parseStatusFlags.\n  \u2713 helix --help and helix -h still print root usage: main.go --help/-h before subcommandSeen calls d.usage() (root); printUsage prints 'Usage: helix [global-flags]'. Test root_--help_unchanged PASSES.\n  \u2713 helix identity --help passes --help through to the helix-identity binary (execSubcommand receives ['--help']): identity case only intercepts rotate-keys; identity --help falls through to execSubcommand('helix-identity', ['--help']). TestDispatchDelegatedHelpPassthrough PASSES (fake binary echoes --help).\n  \u2713 Global --dry-run anywhere-stripping preserved: helix mergegate hook --dry-run contract unchanged (runMergeGateWithDryRun re-injection): dispatch loop still strips --dry-run anywhere (not position-sensitive). mergegate.go:376-378 runMergeGateWithDryRun re-injects --dry-run when globalDryRun && !hasArg. Test global_--dry-run_still_stripped_anywhere PASSES.\n  \u2713 New tests in cmd/helix/main_test.go cover subcommand --help passthrough for built-in handler and delegated binary: main_test.go adds TestDispatchSubcommandHelpPassthrough (built-in status handler) and TestDispatchDelegatedHelpPassthrough (delegated binary); both PASS.\n  \u2713 go build ./... and go vet ./... pass: go build ./... exit 0; go vet ./... exit 0.\n  \u2713 go test -short -count=1 ./... passes (full suite): go test -short -count=1 ./... exit 0; all packages ok including cmd/helix (11.358s).\n  \u2713 commit c9f3089 includes Co-authored-by trailer and Prompt: prompts/coding-hermes/v1.md: git log -1 c9f3089 shows 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' and 'Prompt: prompts/coding-hermes/v1.md'.\nAll 9 criteria verified: subcommand --help/-h passthrough implemented and tested, root help preserved, --dry-run anywhere-stripping intact, build/vet/tests pass, and commit c9f3089 carries the required trailers.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-02T19:36:21.364195"
+}
