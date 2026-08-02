@@ -700,3 +700,133 @@ func TestURLToAddr_NoSchemeNoPort(t *testing.T) {
 		t.Errorf("urlToAddr(example.com) = %q, want example.com:80", got)
 	}
 }
+
+// TestDispatchSubcommandHelpPassthrough — `helix <sub> --help` must show
+// the SUBCOMMAND's usage, not root usage. Regression test for DF-002:
+// the dispatch() global-flag loop previously consumed --help/-h at ANY
+// position, so `helix status --help` printed root usage and subcommand
+// flags were undiscoverable.
+func TestDispatchSubcommandHelpPassthrough(t *testing.T) {
+	d := rootCmd()
+
+	t.Run("status --help shows status usage", func(t *testing.T) {
+		out := captureStdout(func() {
+			err := d.dispatch([]string{"status", "--help"})
+			if err != nil {
+				t.Errorf("dispatch(status --help) error: %v", err)
+			}
+		})
+		if !strings.Contains(out, "helix status") || !strings.Contains(out, "--json") {
+			t.Errorf("dispatch(status --help) should show status usage (helix status/--json), got: %s", out)
+		}
+		if strings.Contains(out, "Usage: helix [global-flags]") {
+			t.Errorf("dispatch(status --help) should NOT show root usage, got: %s", out)
+		}
+	})
+
+	t.Run("status -h behaves identically to --help", func(t *testing.T) {
+		outHelp := captureStdout(func() { _ = d.dispatch([]string{"status", "--help"}) })
+		outH := captureStdout(func() { _ = d.dispatch([]string{"status", "-h"}) })
+		if outHelp != outH {
+			t.Errorf("status --help and -h should produce identical output\n--help: %q\n-h:    %q", outHelp, outH)
+		}
+	})
+
+	t.Run("global --dry-run still stripped anywhere", func(t *testing.T) {
+		oldDryRun := dryRun
+		dryRun = false
+		defer func() { dryRun = oldDryRun }()
+
+		out := captureStdout(func() {
+			err := d.dispatch([]string{"--dry-run", "status", "--help"})
+			if err != nil {
+				t.Errorf("dispatch(--dry-run status --help) error: %v", err)
+			}
+		})
+		if !dryRun {
+			t.Error("dispatch(--dry-run status --help) should set dryRun=true (anywhere-stripping preserved)")
+		}
+		if !strings.Contains(out, "--json") {
+			t.Errorf("dispatch(--dry-run status --help) should show status usage, got: %s", out)
+		}
+	})
+
+	t.Run("global --verbose still stripped anywhere", func(t *testing.T) {
+		oldVerbose := verbose
+		verbose = false
+		defer func() { verbose = oldVerbose }()
+
+		out := captureStdout(func() {
+			err := d.dispatch([]string{"--verbose", "status", "--help"})
+			if err != nil {
+				t.Errorf("dispatch(--verbose status --help) error: %v", err)
+			}
+		})
+		if !verbose {
+			t.Error("dispatch(--verbose status --help) should set verbose=true (anywhere-stripping preserved)")
+		}
+		if !strings.Contains(out, "--json") {
+			t.Errorf("dispatch(--verbose status --help) should show status usage, got: %s", out)
+		}
+	})
+
+	t.Run("root --help unchanged", func(t *testing.T) {
+		out := captureStdout(func() {
+			err := d.dispatch([]string{"--help"})
+			if err != nil {
+				t.Errorf("dispatch(--help) error: %v", err)
+			}
+		})
+		if !strings.Contains(out, "Usage: helix [global-flags]") {
+			t.Errorf("dispatch(--help) should show root usage, got: %s", out)
+		}
+	})
+}
+
+// TestDispatchDelegatedHelpPassthrough — `helix identity --help` must
+// reach the delegated helix-identity binary (i.e. --help is NOT swallowed
+// by the root dispatcher). Regression test for DF-002. Uses the
+// cmd/<name>/<name> lookPath pattern with a fake binary (see
+// TestLookPathCmdSubdirPattern).
+func TestDispatchDelegatedHelpPassthrough(t *testing.T) {
+	dir := t.TempDir()
+	cmdDir := filepath.Join(dir, "cmd", "helix-identity")
+	if err := os.MkdirAll(cmdDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Fake helix-identity that echoes its args so we can assert what
+	// actually reached the binary.
+	fakeBin := filepath.Join(cmdDir, "helix-identity")
+	if err := os.WriteFile(fakeBin, []byte("#!/bin/sh\necho \"$@\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	oldDir, _ := os.Getwd()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(oldDir) }()
+
+	oldVerbose := verbose
+	oldDryRun := dryRun
+	verbose = false
+	dryRun = false
+	defer func() {
+		verbose = oldVerbose
+		dryRun = oldDryRun
+	}()
+
+	d := rootCmd()
+	out := captureStdout(func() {
+		err := d.dispatch([]string{"identity", "--help"})
+		if err != nil {
+			t.Errorf("dispatch(identity --help) error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "--help") {
+		t.Errorf("dispatch(identity --help) should pass --help through to helix-identity, got: %s", out)
+	}
+	if strings.Contains(out, "Usage: helix [global-flags]") {
+		t.Errorf("dispatch(identity --help) should not show root usage, got: %s", out)
+	}
+}

@@ -122,6 +122,15 @@ func (d *dispatcher) dispatch(args []string) error {
 
 	// Parse global flags
 	filtered := make([]string, 0, len(args))
+	// subcommandSeen tracks whether a subcommand name (the first non-flag
+	// token) has been reached yet. --help/-h is position-sensitive: before
+	// the subcommand name it means ROOT help (`helix --help`); after it, it
+	// belongs to the subcommand and must be passed through so `helix <sub>
+	// --help` shows the subcommand's own usage instead of root usage
+	// (DF-002). All other global flags (--verbose, --config, --dry-run,
+	// --log-format, --banner) keep their anywhere-stripping behaviour —
+	// callers depend on it (e.g. runMergeGateWithDryRun re-injects --dry-run).
+	subcommandSeen := false
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--verbose":
@@ -149,12 +158,19 @@ func (d *dispatcher) dispatch(args []string) error {
 			// explicitly NOT on by default.
 			showBanner = true
 		case "--help", "-h":
-			d.usage()
-			return nil
+			if !subcommandSeen {
+				d.usage()
+				return nil
+			}
+			// A subcommand name has been seen — --help is the
+			// subcommand's concern (built-in handler or delegated
+			// binary), so pass it through.
+			filtered = append(filtered, args[i])
 		case "--version":
 			printVersion()
 			return nil
 		default:
+			subcommandSeen = true
 			filtered = append(filtered, args[i])
 		}
 	}
