@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Helix — Scheduler &amp; Fleet State</title>
+<style>
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f1117; color: #e6e6e6; margin: 0; padding: 28px; }
+  h1 { font-size: 22px; color: #fff; margin: 0 0 4px 0; }
+  .sub { color: #8b93a7; font-size: 12px; margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+  .card { background: #161a24; border: 1px solid #232a3a; border-radius: 10px; padding: 14px 16px; }
+  .card .label { color: #8b93a7; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .card .value { font-size: 17px; font-weight: 600; color: #fff; }
+  .card .value.green { color: #4ade80; } .card .value.amber { color: #fbbf24; } .card .value.blue { color: #60a5fa; }
+  .card .detail { font-size: 11px; color: #8b93a7; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; background: #161a24; border: 1px solid #232a3a; border-radius: 10px; overflow: hidden; }
+  th { background: #1c2230; color: #8b93a7; font-size: 11px; text-transform: uppercase; text-align: left; padding: 10px 14px; letter-spacing: 0.05em; }
+  td { padding: 9px 14px; font-size: 12.5px; border-top: 1px solid #1f2634; color: #d7dbe6; }
+  .ok { color: #4ade80; font-weight: 600; } .warn { color: #fbbf24; font-weight: 600; } .info { color: #60a5fa; font-weight: 600; }
+  .mono { font-family: 'Cascadia Code', monospace; font-size: 11.5px; }
+  .section-title { font-size: 13px; color: #fff; font-weight: 600; margin: 22px 0 10px 0; letter-spacing: 0.04em; }
+</style>
+</head>
+<body>
+<h1>Helix — Scheduler &amp; Fleet State</h1>
+<div class="sub">schedulerd daemon · live API snapshot · 2026-08-02</div>
+
+<div class="section-title">DAEMON HEALTH</div>
+<div class="grid">
+  <div class="card"><div class="label">Status</div><div class="value green">OK</div><div class="detail">db: connected</div></div>
+  <div class="card"><div class="label">Active Ticks</div><div class="value blue">5</div><div class="detail">concurrent project ticks</div></div>
+  <div class="card"><div class="label">HTTP Spawns</div><div class="value">155</div><div class="detail">sessions spawned via daemon</div></div>
+</div>
+
+<div class="section-title">HELIX PROJECT REGISTRATION</div>
+<div class="grid">
+  <div class="card"><div class="label">Provider</div><div class="value blue">deepseek-foreman</div><div class="detail">PAYG — foreman-safe</div></div>
+  <div class="card"><div class="label">Model</div><div class="value">deepseek-v4-flash</div><div class="detail">foreman model pin</div></div>
+  <div class="card"><div class="label">Cooldown</div><div class="value green">900s</div><div class="detail">15 min — active cadence</div></div>
+  <div class="card"><div class="label">Enabled</div><div class="value green">TRUE</div><div class="detail">scheduler-managed</div></div>
+  <div class="card"><div class="label">Priority / Weight</div><div class="value">8 / 10</div><div class="detail">knapsack scheduling</div></div>
+  <div class="card"><div class="label">Deliver</div><div class="value mono" style="font-size:10.5px">telegram:…56520</div><div class="detail">this thread</div></div>
+</div>
+
+<div class="section-title">LATEST TICK</div>
+<table>
+  <tr><th>Field</th><th>Value</th></tr>
+  <tr><td>Tick ID</td><td class="mono">helix-2026-08-02-04-05-15</td></tr>
+  <tr><td>Status</td><td><span class="ok">COMPLETED</span></td></tr>
+  <tr><td>Outcome</td><td><span class="ok">COMMITTED</span></td></tr>
+  <tr><td>Spawned</td><td class="mono">2026-08-02 04:07:30 -05:00</td></tr>
+  <tr><td>Exit Code</td><td class="mono">0</td></tr>
+</table>
+
+<div class="section-title">TICK HISTORY (last 5)</div>
+<table>
+  <tr><th>Tick</th><th>Verdict</th><th>Key Event</th></tr>
+  <tr><td class="mono">#63</td><td><span class="warn">IDLE</span></td><td>cheap idle-3 audit — 60/60 tests, CI green 4/4</td></tr>
+  <tr><td class="mono">#62</td><td><span class="warn">IDLE</span></td><td>full audit — deps 96 standing, 0 called vulns</td></tr>
+  <tr><td class="mono">#61</td><td><span class="warn">IDLE</span></td><td>audit — 11 gates pass, DuckDB board v2.1</td></tr>
+  <tr><td class="mono">#60</td><td><span class="ok">ACTIVE</span></td><td>CI fix — E2E skip-on-unreachable landed</td></tr>
+  <tr><td class="mono">#59</td><td><span class="ok">ACTIVE</span></td><td>double-fire protocol — 0 commits, verified</td></tr>
+</table>
+
+<div class="section-title">BOARD STATE (DuckDB v2.1)</div>
+<table>
+  <tr><th>Metric</th><th>Value</th></tr>
+  <tr><td>Tasks — complete</td><td class="mono">10</td></tr>
+  <tr><td>Tasks — pending</td><td class="mono">16 <span class="info">(15 Buzz-gap tasks added 2026-08-02)</span></td></tr>
+  <tr><td>Events logged</td><td class="mono">9</td></tr>
+  <tr><td>Codebase</td><td class="mono">578 .go files · 275 test files · 25 specs</td></tr>
+  <tr><td>Packages</td><td class="mono">43 pkg/* modules</td></tr>
+</table>
+</body>
+</html>
