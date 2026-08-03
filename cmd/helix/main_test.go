@@ -501,6 +501,35 @@ func TestLookPathCmdSubdirPattern(t *testing.T) {
 	}
 }
 
+func TestExecSubcommandNotFoundMentionsMakeInstall(t *testing.T) {
+	// DF-006: when a sibling binary cannot be resolved, the error must point
+	// the user at `make install` (in addition to the per-binary fallback).
+	// Run from a temp dir with a PATH that cannot resolve the binary so the
+	// lookup is deterministic regardless of repo-local build artifacts.
+	dir := t.TempDir()
+	oldDir, _ := os.Getwd()
+	_ = os.Chdir(dir)
+	defer func() { _ = os.Chdir(oldDir) }()
+	t.Setenv("PATH", dir)
+
+	d := &dispatcher{usage: func() {}}
+	err := d.dispatch([]string{"estimate"})
+	if err == nil {
+		t.Fatal("dispatch(estimate) should fail when helix-estimate is not resolvable")
+	}
+	msg := err.Error()
+	for _, want := range []string{
+		"not found",
+		"helix-estimate",
+		"make install",
+		"go build -o helix-estimate",
+	} {
+		if !strings.Contains(msg, want) {
+			t.Errorf("not-found error should mention %q, got:\n%s", want, msg)
+		}
+	}
+}
+
 func TestURLToAddrEdgeCases(t *testing.T) {
 	tests := []struct {
 		name     string

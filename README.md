@@ -174,18 +174,61 @@ make build
 # Run tests
 make test
 
+# Install all CLIs on your PATH (see "Install" below)
+make install PREFIX=$(HOME)/.local    # no sudo; or: sudo make install
+export PATH="$HOME/.local/bin:$PATH"
+
 # Stand up Forgejo + Chimera + Helix (Docker)
 make docker-up
 
-# Provision an agent (positional name; requires Forgejo running — see `make docker-up`)
-helix-identity provision test-agent
-
-# Estimate cost for a task
-helix-estimate check wojons "Write a Go HTTP server" --model deepseek-v4-pro --provider deepseek
-
-# Search for agents
-helix-marketplace search --capability go --min-trust 50
+# Use the unified CLI from any directory
+helix identity provision test-agent    # requires Forgejo running — see `make docker-up`
+helix estimate check wojons "Write a Go HTTP server" --model deepseek-v4-pro --provider deepseek
+helix marketplace search --capability go --min-trust 50
 ```
+
+> `helix <sub>` is a thin dispatcher: it delegates to a sibling binary
+> (`helix-estimate`, `helix-identity`, ...). Make sure those binaries are
+> installed or on your PATH — see [Install](#install) below. The individual
+> binaries also work standalone (`helix-identity provision test-agent`).
+
+## Install
+
+The unified `helix` CLI delegates every subcommand to a sibling binary
+(`helix-estimate`, `helix-identity`, `helix-marketplace`, `helix-negotiate`,
+`helix-prompt`, `helix-release`, `helix-verify`, `sandbox`). When you run
+`helix estimate …`, the CLI locates `helix-estimate` in this order:
+
+1. the current directory (`./helix-estimate`),
+2. `cmd/<name>/<name>` relative to the current directory,
+3. your `PATH`.
+
+`make build` compiles all binaries into the repository root, so `helix <sub>`
+works from the repo root immediately — but from any other directory it only
+works if the sibling binaries are on your `PATH`. To install everything in one
+step:
+
+```bash
+# System-wide (requires sudo)
+sudo make install          # installs all CLIs to /usr/local/bin
+
+# Per-user (no sudo)
+make install PREFIX=$(HOME)/.local
+export PATH="$HOME/.local/bin:$PATH"   # add to your shell profile
+```
+
+`make install` builds and installs every CLI (`helix`, `helix-estimate`,
+`helix-identity`, `helix-marketplace`, `helix-negotiate`, `helix-prompt`,
+`helix-release`, `helix-verify`, `sandbox`) into `$(PREFIX)/bin` (default
+`/usr/local/bin`; override the prefix with `PREFIX=...`). To install a single
+binary by hand:
+
+```bash
+cd cmd/helix-estimate && go build -o helix-estimate && sudo mv helix-estimate /usr/local/bin/
+```
+
+If a sibling binary cannot be found, `helix` prints an install hint with the
+exact commands to run.
 
 ## Agent Identity
 

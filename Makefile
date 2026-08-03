@@ -1,4 +1,4 @@
-.PHONY: build test lint clean docker-build docker-up docker-up all
+.PHONY: build test lint clean docker-build docker-up docker-up all install
 
 # Go tmpfs redirect — /tmp on this host is a 30G tmpfs at 80%+ util.
 # Trust ledger integration tests use t.TempDir() and hit quota. Persist via go env -w
@@ -9,9 +9,24 @@ GOTMPCACHE := /home/kara/.cache/go-build
 # Default target
 all: lint test build
 
-# Build all CLI binaries
+# Build all CLI binaries into the repository root.
+# Note: plain `go build ./cmd/...` (no -o) only compiles multi-package
+# builds and DISCARDS the executables (go1.26); `-o .` is required so the
+# binaries actually land in the repo root, where the unified `helix` CLI
+# and `make install` expect them.
 build:
-	go build ./cmd/...
+	go build -o . ./cmd/...
+
+# Install prefix for `make install` (override, e.g. `make install PREFIX=$(HOME)/.local`)
+PREFIX ?= /usr/local
+BINDIR ?= $(PREFIX)/bin
+
+# Install all CLI binaries into $(BINDIR). Requires sudo for the default
+# /usr/local/bin; use `make install PREFIX=$(HOME)/.local` for a no-sudo,
+# per-user install (then add $(BINDIR) to your PATH).
+install: build
+	install -d "$(BINDIR)"
+	install -m 0755 helix helix-identity helix-estimate helix-marketplace helix-negotiate helix-prompt helix-release helix-verify sandbox "$(BINDIR)/"
 
 # Run unit tests (short mode, no integration)
 test:

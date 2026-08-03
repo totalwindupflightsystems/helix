@@ -562,7 +562,7 @@ func execSubcommand(binary string, args []string) error {
 	// Find binary in PATH
 	binPath, err := lookPath(binary)
 	if err != nil {
-		return fmt.Errorf("subcommand %q not found (%s).\n\nInstall it with:\n  cd cmd/%s && go build -o %s\n  sudo mv %s /usr/local/bin/\n",
+		return fmt.Errorf("subcommand %q not found (%s).\n\nInstall it with:\n  make install                        # all CLIs to /usr/local/bin (sudo)\n  make install PREFIX=$(HOME)/.local  # all CLIs to ~/.local/bin (no sudo)\n\nOr install just this binary:\n  cd cmd/%s && go build -o %s\n  sudo mv %s /usr/local/bin/\n",
 			binary, binary, binary, binary, binary)
 	}
 
