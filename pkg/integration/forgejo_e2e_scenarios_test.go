@@ -593,23 +593,30 @@ func TestForgejoE2E_FullCICDSimulation(t *testing.T) {
 	t.Logf("[OK] All %d merge gate checks passed (combined: %s)", len(statuses), cs.State)
 
 	// ── Step 9: Merge PR ─────────────────────────────────────────
-	// Bug: Forgejo expects "Do":"merge" (capital D), not "do":"merge".
-	// The forgejo.Client.MergePR sends lowercase "do" which Forgejo
-	// rejects with 405. Use a direct HTTP call with correct casing.
+	// Forgejo computes PR mergeability asynchronously; a merge attempt
+	// right after the status-check storm in Step 8 can transiently fail
+	// with 405 "Please try again later" (the queue lags under host
+	// load). Retry with a dedicated budget so the client merge path is
+	// proven against a stable PR state.
 	t.Log("[STEP 9] Merging PR #", pr.Number)
-	mergeBody, _ := json.Marshal(map[string]string{"Do": "merge"})
-	mergeReq, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		fmt.Sprintf("%s/api/v1/repos/%s/%s/pulls/%d/merge",
-			baseURL, owner, repoName, pr.Number),
-		strings.NewReader(string(mergeBody)))
-	require.NoError(t, err, "building merge request")
-	mergeReq.Header.Set("Content-Type", "application/json")
-	mergeReq.SetBasicAuth(adminUser, adminPass)
-	mergeResp, err := (&http.Client{Timeout: 10 * time.Second}).Do(mergeReq)
-	require.NoError(t, err, "sending merge request")
-	mergeResp.Body.Close()
-	require.Equal(t, http.StatusOK, mergeResp.StatusCode,
-		"merge should return 200, got %d", mergeResp.StatusCode)
+	mergeCtx, mergeCancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer mergeCancel()
+	var mergeErr error
+	for attempt := 1; ; attempt++ {
+		mergeErr = client.MergePR(mergeCtx, owner, repoName, pr.Number)
+		if mergeErr == nil {
+			break
+		}
+		t.Logf("[RETRY] merge attempt %d failed: %v", attempt, mergeErr)
+		select {
+		case <-time.After(2 * time.Second):
+		case <-mergeCtx.Done():
+		}
+		if mergeCtx.Err() != nil {
+			break
+		}
+	}
+	require.NoError(t, mergeErr, "merging PR via client")
 	t.Logf("[OK] PR #%d merged successfully", pr.Number)
 
 	// Verify PR is merged

@@ -300,6 +300,25 @@ func TestListPRs_Success(t *testing.T) {
 	assert.Equal(t, "Add feature X", prs[0].Title)
 }
 
+func TestMergePR(t *testing.T) {
+	mf := newMockForgejo()
+	defer mf.close()
+
+	mf.mux.HandleFunc("/api/v1/repos/owner/repo/pulls/42/merge", func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		var body map[string]interface{}
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		assert.Equal(t, "merge", body["Do"], "payload must use capital-D \"Do\" key")
+		_, hasLowercase := body["do"]
+		assert.False(t, hasLowercase, "payload must not contain lowercase \"do\" key")
+		writeJSON(w, http.StatusOK, map[string]string{})
+	})
+
+	c := NewClient(mf.url(), "admin", "secret")
+	err := c.MergePR(context.Background(), "owner", "repo", 42)
+	require.NoError(t, err)
+}
+
 func TestGetPRReviews_Success(t *testing.T) {
 	mf := newMockForgejo()
 	defer mf.close()

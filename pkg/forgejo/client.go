@@ -400,7 +400,7 @@ func (c *Client) MergePR(ctx context.Context, owner, repo string, prNumber int64
 	path := fmt.Sprintf("/api/v1/repos/%s/%s/pulls/%d/merge",
 		url.PathEscape(owner), url.PathEscape(repo), prNumber)
 	return c.doRequest(ctx, http.MethodPost, path, map[string]string{
-		"do": "merge",
+		"Do": "merge",
 	}, nil)
 }
 
