@@ -19,13 +19,16 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -52,9 +55,15 @@ type DoctorConfig struct {
 }
 
 // DefaultDoctorConfig returns the spec-defined default service URLs.
+//
+// Forgejo's canonical API probe is http://localhost:3030/api/v1/version
+// (matches pkg/health.DefaultServices, pkg/integration DefaultForgejoURL
+// and pkg/config defaults). Port 3000 is DuckBrain HTTP, NOT Forgejo —
+// probing :3000/api/v1/version returns 404 and misreports a healthy
+// Forgejo as degraded.
 func DefaultDoctorConfig() DoctorConfig {
 	return DoctorConfig{
-		ForgejoURL:           "http://localhost:3000/api/v1/version",
+		ForgejoURL:           "http://localhost:3030/api/v1/version",
 		ChimeraURL:           "http://localhost:8765/v1/health",
 		ConscientiousnessURL: "http://localhost:8002/health",
 		HivemindURL:          "http://localhost:8003/health",
@@ -163,7 +172,18 @@ func runDoctorWithConfig(cfg DoctorConfig, stdout io.Writer) error {
 // Check Runners
 // ============================================================================
 
+// doctorHTTPTimeout is the per-check HTTP probe timeout for the
+// service checks in runAllChecks. Checks run concurrently (mirroring
+// pkg/health.Checker), so the worst-case `helix doctor` wall-time is
+// ONE timeout (~5s), not one timeout per check (~45s), even when a
+// service hangs.
+var doctorHTTPTimeout = 5 * time.Second
+
 // runAllChecks executes all diagnostic checks and returns a report.
+// The 6 HTTP service checks run concurrently (each capped at
+// doctorHTTPTimeout) so a hanging service cannot stretch the run to
+// N×timeout; the local checks (disk/memory/backup) are fast and join
+// the same wait group. Results keep declaration order for stable output.
 func runAllChecks(cfg DoctorConfig) *DoctorReport {
 	report := &DoctorReport{}
 
@@ -183,8 +203,18 @@ func runAllChecks(cfg DoctorConfig) *DoctorReport {
 		{"Backup freshness", checkBackupFreshness},
 	}
 
-	for _, check := range checks {
-		result := check.fn(cfg)
+	results := make([]DoctorResult, len(checks))
+	var wg sync.WaitGroup
+	for i, check := range checks {
+		wg.Add(1)
+		go func(idx int, fn func(DoctorConfig) DoctorResult) {
+			defer wg.Done()
+			results[idx] = fn(cfg)
+		}(i, check.fn)
+	}
+	wg.Wait()
+
+	for _, result := range results {
 		report.Results = append(report.Results, result)
 		switch result.Status {
 		case "PASS":
@@ -202,7 +232,7 @@ func runAllChecks(cfg DoctorConfig) *DoctorReport {
 // checkForgejo verifies Forgejo is reachable via its version endpoint.
 func checkForgejo(cfg DoctorConfig) DoctorResult {
 	start := time.Now()
-	ok, detail := checkHTTP(cfg.ForgejoURL, 5*time.Second)
+	ok, detail := checkHTTP(cfg.ForgejoURL, doctorHTTPTimeout)
 	return DoctorResult{
 		Name:     "Forgejo reachable",
 		Status:   statusFromBool(ok),
@@ -214,7 +244,7 @@ func checkForgejo(cfg DoctorConfig) DoctorResult {
 // checkChimera verifies Chimera health endpoint.
 func checkChimera(cfg DoctorConfig) DoctorResult {
 	start := time.Now()
-	ok, detail := checkHTTP(cfg.ChimeraURL, 5*time.Second)
+	ok, detail := checkHTTP(cfg.ChimeraURL, doctorHTTPTimeout)
 	return DoctorResult{
 		Name:     "Chimera healthy",
 		Status:   statusFromBool(ok),
@@ -226,7 +256,7 @@ func checkChimera(cfg DoctorConfig) DoctorResult {
 // checkConscientiousness verifies Conscientiousness health.
 func checkConscientiousness(cfg DoctorConfig) DoctorResult {
 	start := time.Now()
-	ok, detail := checkHTTP(cfg.ConscientiousnessURL, 5*time.Second)
+	ok, detail := checkHTTP(cfg.ConscientiousnessURL, doctorHTTPTimeout)
 	return DoctorResult{
 		Name:     "Conscientiousness healthy",
 		Status:   statusFromBool(ok),
@@ -238,7 +268,7 @@ func checkConscientiousness(cfg DoctorConfig) DoctorResult {
 // checkHivemind verifies Hivemind health.
 func checkHivemind(cfg DoctorConfig) DoctorResult {
 	start := time.Now()
-	ok, detail := checkHTTP(cfg.HivemindURL, 5*time.Second)
+	ok, detail := checkHTTP(cfg.HivemindURL, doctorHTTPTimeout)
 	return DoctorResult{
 		Name:     "Hivemind healthy",
 		Status:   statusFromBool(ok),
@@ -250,7 +280,7 @@ func checkHivemind(cfg DoctorConfig) DoctorResult {
 // checkLangFuse verifies LangFuse is reachable.
 func checkLangFuse(cfg DoctorConfig) DoctorResult {
 	start := time.Now()
-	ok, detail := checkHTTP(cfg.LangFuseURL, 5*time.Second)
+	ok, detail := checkHTTP(cfg.LangFuseURL, doctorHTTPTimeout)
 	return DoctorResult{
 		Name:     "LangFuse reachable",
 		Status:   statusFromBool(ok),
@@ -262,7 +292,7 @@ func checkLangFuse(cfg DoctorConfig) DoctorResult {
 // checkPrometheus verifies Prometheus is healthy and scraping.
 func checkPrometheus(cfg DoctorConfig) DoctorResult {
 	start := time.Now()
-	ok, detail := checkHTTP(cfg.PrometheusURL, 5*time.Second)
+	ok, detail := checkHTTP(cfg.PrometheusURL, doctorHTTPTimeout)
 	return DoctorResult{
 		Name:     "Prometheus scraping",
 		Status:   statusFromBool(ok),
@@ -434,6 +464,17 @@ func checkBackupFreshness(cfg DoctorConfig) DoctorResult {
 // ============================================================================
 
 // checkHTTP performs a GET request and returns (ok, detail).
+//
+// Detail distinguishes three outcomes so operators can tell a dead
+// service from a misconfigured probe:
+//
+//	2xx             → ok=true,  "HTTP <code>"                          (PASS)
+//	4xx             → ok=false, "HTTP <code> (route mismatch —         (FAIL)
+//	                  service reachable, wrong path)" — the service IS
+//	                  up, but this URL/path is not its API
+//	network error/  → ok=false, "unreachable: ..." /                   (FAIL)
+//	timeout            "unreachable: timed out after <t>" — no
+//	                  connection, or the probe hung past the deadline
 func checkHTTP(url string, timeout time.Duration) (bool, string) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -445,6 +486,13 @@ func checkHTTP(url string, timeout time.Duration) (bool, string) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return false, fmt.Sprintf("unreachable: timed out after %s", timeout)
+		}
+		var netErr net.Error
+		if errors.As(err, &netErr) && netErr.Timeout() {
+			return false, fmt.Sprintf("unreachable: timed out after %s", timeout)
+		}
 		return false, fmt.Sprintf("unreachable: %v", err)
 	}
 	defer resp.Body.Close()
@@ -452,6 +500,9 @@ func checkHTTP(url string, timeout time.Duration) (bool, string) {
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return true, fmt.Sprintf("HTTP %d", resp.StatusCode)
+	}
+	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+		return false, fmt.Sprintf("HTTP %d (route mismatch — service reachable, wrong path)", resp.StatusCode)
 	}
 	return false, fmt.Sprintf("HTTP %d", resp.StatusCode)
 }

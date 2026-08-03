@@ -158,6 +158,24 @@ func stubHTTPServer(t *testing.T, statusCode int, body string) *httptest.Server 
 	return srv
 }
 
+// hangingHTTPServer builds an httptest.Server whose handler blocks
+// until the test finishes, simulating a service that never responds
+// (like Chimera /v1/health hanging instead of 404ing). The release
+// channel is closed in t.Cleanup BEFORE srv.Close so the server's
+// Close never blocks on the sleeping handler.
+func hangingHTTPServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-release
+	}))
+	t.Cleanup(func() {
+		close(release)
+		srv.Close()
+	})
+	return srv
+}
+
 // TestHTTPSubsystemHealth_OK — 2xx → healthy.
 func TestHTTPSubsystemHealth_OK(t *testing.T) {
 	srv := stubHTTPServer(t, http.StatusOK, `{"version":"1.0"}`)
@@ -169,13 +187,61 @@ func TestHTTPSubsystemHealth_OK(t *testing.T) {
 	assert.Contains(t, status.Message, "HTTP 200")
 }
 
-// TestHTTPSubsystemHealth_Degraded — 4xx → degraded.
+// TestHTTPSubsystemHealth_Degraded — 4xx → degraded with route-mismatch
+// wording (service reachable, wrong path), NOT "rejecting requests".
 func TestHTTPSubsystemHealth_Degraded(t *testing.T) {
 	srv := stubHTTPServer(t, http.StatusUnauthorized, "")
 	h := httpSubsystemHealth{name: "test", url: srv.URL, timeout: 2 * time.Second}
 
 	status := h.HealthCheck(context.Background())
 	assert.Equal(t, health.StateDegraded, status.State)
+	assert.Contains(t, status.Message, "route mismatch")
+	assert.NotContains(t, status.Message, "rejecting requests")
+}
+
+// TestHTTPSubsystemHealth_RouteMismatch — a 404 on the probe path means
+// the service IS reachable but the route is wrong (e.g. probing
+// DuckBrain :3000 for Forgejo's API): degraded with a route-mismatch
+// message.
+func TestHTTPSubsystemHealth_RouteMismatch(t *testing.T) {
+	srv := stubHTTPServer(t, http.StatusNotFound, "")
+	h := httpSubsystemHealth{name: "test", url: srv.URL, timeout: 2 * time.Second}
+
+	status := h.HealthCheck(context.Background())
+	assert.Equal(t, health.StateDegraded, status.State)
+	assert.Contains(t, status.Message, "HTTP 404")
+	assert.Contains(t, status.Message, "route mismatch")
+	assert.NotContains(t, status.Message, "rejecting requests")
+}
+
+// TestHTTPSubsystemHealth_Timeout — a service that hangs (never
+// responds) must resolve at the per-service timeout and be classified
+// DOWN, never degraded and never healthy.
+func TestHTTPSubsystemHealth_Timeout(t *testing.T) {
+	srv := hangingHTTPServer(t)
+	h := httpSubsystemHealth{name: "test", url: srv.URL, timeout: 150 * time.Millisecond}
+
+	start := time.Now()
+	status := h.HealthCheck(context.Background())
+	elapsed := time.Since(start)
+
+	assert.Equal(t, health.StateDown, status.State)
+	assert.Contains(t, status.Message, "timed out")
+	assert.Less(t, elapsed, 2*time.Second, "probe must resolve at the per-service timeout, took %s", elapsed)
+}
+
+// TestDefaultSubsystemProbes_ForgejoCanonicalURL — `helix status` must
+// probe Forgejo at the canonical API URL http://localhost:3030/api/v1/version
+// (matching pkg/health.DefaultServices), NOT DuckBrain's :3000 which
+// 404s on that path and misreports Forgejo as degraded.
+func TestDefaultSubsystemProbes_ForgejoCanonicalURL(t *testing.T) {
+	for _, p := range defaultSubsystemProbes {
+		if p.name == "forgejo" {
+			assert.Equal(t, "http://localhost:3030/api/v1/version", p.url)
+			return
+		}
+	}
+	t.Fatal("defaultSubsystemProbes has no forgejo entry")
 }
 
 // TestHTTPSubsystemHealth_Down_5xx — 5xx → down.

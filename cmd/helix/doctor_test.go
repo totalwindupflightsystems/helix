@@ -84,6 +84,10 @@ func TestDefaultDoctorConfig(t *testing.T) {
 	if cfg.ForgejoURL == "" {
 		t.Error("expected non-empty ForgejoURL")
 	}
+	// Canonical Forgejo API probe — :3030, not DuckBrain's :3000.
+	if cfg.ForgejoURL != "http://localhost:3030/api/v1/version" {
+		t.Errorf("expected canonical Forgejo URL http://localhost:3030/api/v1/version, got %s", cfg.ForgejoURL)
+	}
 	if cfg.ChimeraURL == "" {
 		t.Error("expected non-empty ChimeraURL")
 	}
@@ -109,8 +113,8 @@ func TestCheckHTTP_Success(t *testing.T) {
 	if !ok {
 		t.Error("expected ok=true")
 	}
-	if detail == "" {
-		t.Error("expected non-empty detail")
+	if !strings.Contains(detail, "HTTP 200") {
+		t.Errorf("expected 'HTTP 200' in detail, got %q", detail)
 	}
 }
 
@@ -120,16 +124,66 @@ func TestCheckHTTP_ServerError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	ok, _ := checkHTTP(server.URL, 5*time.Second)
+	ok, detail := checkHTTP(server.URL, 5*time.Second)
 	if ok {
 		t.Error("expected ok=false for 500")
+	}
+	if !strings.Contains(detail, "HTTP 500") {
+		t.Errorf("expected 'HTTP 500' in detail, got %q", detail)
+	}
+}
+
+// TestCheckHTTP_RouteMismatch — a 4xx on the probe path means the
+// service IS reachable but the URL/path is wrong: FAIL with explicit
+// "route mismatch" wording, distinct from a dead service.
+func TestCheckHTTP_RouteMismatch(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	ok, detail := checkHTTP(server.URL, 5*time.Second)
+	if ok {
+		t.Error("expected ok=false for 404")
+	}
+	if !strings.Contains(detail, "route mismatch") {
+		t.Errorf("expected 'route mismatch' in detail, got %q", detail)
+	}
+	if !strings.Contains(detail, "HTTP 404") {
+		t.Errorf("expected 'HTTP 404' in detail, got %q", detail)
+	}
+}
+
+// TestCheckHTTP_Timeout — a service that hangs (never responds) must be
+// cut off at the timeout and reported as unreachable/timed out.
+func TestCheckHTTP_Timeout(t *testing.T) {
+	srv := hangingHTTPServer(t)
+
+	start := time.Now()
+	ok, detail := checkHTTP(srv.URL, 200*time.Millisecond)
+	elapsed := time.Since(start)
+
+	if ok {
+		t.Error("expected ok=false for hanging server")
+	}
+	if !strings.Contains(detail, "timed out") {
+		t.Errorf("expected 'timed out' in detail, got %q", detail)
+	}
+	if !strings.Contains(detail, "unreachable") {
+		t.Errorf("expected 'unreachable' in detail, got %q", detail)
+	}
+	if elapsed > 2*time.Second {
+		t.Errorf("checkHTTP must resolve at the timeout, took %s", elapsed)
 	}
 }
 
 func TestCheckHTTP_Unreachable(t *testing.T) {
-	ok, _ := checkHTTP("http://127.0.0.1:59999", 1*time.Second)
+	ok, detail := checkHTTP("http://127.0.0.1:59999", 1*time.Second)
 	if ok {
 		t.Error("expected ok=false for unreachable server")
+	}
+	if !strings.Contains(detail, "unreachable") {
+		t.Errorf("expected 'unreachable' in detail, got %q", detail)
 	}
 }
 
@@ -237,6 +291,43 @@ func TestRunAllChecks_ServicesDown(t *testing.T) {
 	if report.Fail == 0 {
 		t.Errorf("expected some failures with unreachable services, got %d fail", report.Fail)
 	}
+}
+
+// TestRunAllChecks_Concurrent — the 6 HTTP checks share one
+// doctorHTTPTimeout and run concurrently (mirroring pkg/health.Checker),
+// so a hanging service cannot stretch the run to N×timeout. With 6
+// checks × 400ms, sequential execution would take ≥ 2.4s; concurrent
+// execution completes in ~one timeout.
+func TestRunAllChecks_Concurrent(t *testing.T) {
+	old := doctorHTTPTimeout
+	doctorHTTPTimeout = 400 * time.Millisecond
+	defer func() { doctorHTTPTimeout = old }()
+
+	srv := hangingHTTPServer(t)
+
+	cfg := DoctorConfig{
+		ForgejoURL:           srv.URL,
+		ChimeraURL:           srv.URL,
+		ConscientiousnessURL: srv.URL,
+		HivemindURL:          srv.URL,
+		LangFuseURL:          srv.URL,
+		PrometheusURL:        srv.URL,
+		DiskPath:             t.TempDir(),
+		MaxDiskUsagePct:      99,
+		MaxMemUsagePct:       99,
+		BackupPath:           t.TempDir(),
+		MaxBackupAgeHours:    48,
+	}
+
+	start := time.Now()
+	report := runAllChecks(cfg)
+	elapsed := time.Since(start)
+
+	require.NotNil(t, report, "expected non-nil report")
+	require.Equal(t, 9, len(report.Results), "all 9 checks must run")
+	assert.Equal(t, 6, report.Fail, "all 6 HTTP checks must fail against a hanging server")
+	assert.Less(t, elapsed, 2*time.Second,
+		"concurrent checks must finish in ~one timeout (400ms), took %s", elapsed)
 }
 
 // ============================================================================
@@ -401,6 +492,28 @@ func TestCheckForgejo_Unreachable(t *testing.T) {
 	result := checkForgejo(cfg)
 	if result.Status != "FAIL" {
 		t.Errorf("expected FAIL, got %s", result.Status)
+	}
+	if !strings.Contains(result.Detail, "unreachable") {
+		t.Errorf("expected 'unreachable' in detail, got %q", result.Detail)
+	}
+}
+
+// TestCheckForgejo_RouteMismatch — Forgejo probe path returns 4xx: FAIL
+// with "route mismatch" wording (service reachable, wrong path), not a
+// generic HTTP error.
+func TestCheckForgejo_RouteMismatch(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	cfg := DoctorConfig{ForgejoURL: server.URL}
+	result := checkForgejo(cfg)
+	if result.Status != "FAIL" {
+		t.Errorf("expected FAIL, got %s", result.Status)
+	}
+	if !strings.Contains(result.Detail, "route mismatch") {
+		t.Errorf("expected 'route mismatch' in detail, got %q", result.Detail)
 	}
 }
 

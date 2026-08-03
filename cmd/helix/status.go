@@ -36,6 +36,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"sort"
@@ -183,24 +184,33 @@ func runStatusNew(args []string, stdout, stderr io.Writer, globalDryRun bool) in
 // Default subsystems
 // ============================================================================
 
+// defaultSubsystemProbes lists the canonical probe URL for every
+// registered Helix subsystem.
+//
+// Forgejo's canonical API probe is http://localhost:3030/api/v1/version
+// (matches pkg/health.DefaultServices, pkg/integration DefaultForgejoURL
+// and pkg/config defaults). Port 3000 is DuckBrain HTTP, NOT Forgejo —
+// probing :3000/api/v1/version returns 404 and misreports a healthy
+// Forgejo as "degraded HTTP 404".
+var defaultSubsystemProbes = []struct {
+	name string
+	url  string
+}{
+	{"forgejo", "http://localhost:3030/api/v1/version"},
+	{"chimera", "http://localhost:8765/v1/health"},
+	{"negotiate", "http://localhost:8765/v1/health"},
+	{"trust", "http://localhost:8765/v1/health"},
+	{"review", "http://localhost:8765/v1/health"},
+	{"verify", "http://localhost:8765/v1/health"},
+	{"marketplace", "http://localhost:8765/v1/health"},
+	{"estimate", "http://localhost:8765/v1/health"},
+}
+
 // registerDefaultSubsystems populates the aggregator with the same
 // probes cmd/helix/doctor.go runs today. Every subsystem is a
 // SubsystemHealth implementation backed by a single HTTP GET.
 func registerDefaultSubsystems(agg *health.PlatformHealthAggregator, timeout time.Duration) {
-	defaults := []struct {
-		name string
-		url  string
-	}{
-		{"forgejo", "http://localhost:3000/api/v1/version"},
-		{"chimera", "http://localhost:8765/v1/health"},
-		{"negotiate", "http://localhost:8765/v1/health"},
-		{"trust", "http://localhost:8765/v1/health"},
-		{"review", "http://localhost:8765/v1/health"},
-		{"verify", "http://localhost:8765/v1/health"},
-		{"marketplace", "http://localhost:8765/v1/health"},
-		{"estimate", "http://localhost:8765/v1/health"},
-	}
-	for _, d := range defaults {
+	for _, d := range defaultSubsystemProbes {
 		agg.Register(d.name, httpSubsystemHealth{name: d.name, url: d.url, timeout: timeout})
 	}
 }
@@ -216,8 +226,16 @@ type httpSubsystemHealth struct {
 }
 
 // HealthCheck performs the HTTP probe and converts the result into a
-// SubsystemStatus. Returns "degraded" for 4xx (subsystem is up but
-// rejecting requests) and "down" for 5xx or network errors.
+// SubsystemStatus. Classification:
+//
+//	2xx            → healthy
+//	4xx            → degraded — the service IS reachable, but the probe
+//	                 path is wrong (route mismatch: wrong path/port for
+//	                 this service), distinct from "rejecting requests"
+//	5xx            → down (server-side error)
+//	network error/ → down — connection failure or timeout; a probe that
+//	timeout           hangs is cut off at h.timeout and reported as
+//	                 unreachable, never as degraded or healthy
 func (h httpSubsystemHealth) HealthCheck(ctx context.Context) health.SubsystemStatus {
 	probeCtx, cancel := context.WithTimeout(ctx, h.timeout)
 	defer cancel()
@@ -243,7 +261,7 @@ func (h httpSubsystemHealth) HealthCheck(ctx context.Context) health.SubsystemSt
 		return health.SubsystemStatus{
 			Name:      h.name,
 			State:     health.StateDown,
-			Message:   fmt.Sprintf("probe failed: %v", err),
+			Message:   probeFailureMessage(err, h.timeout),
 			UpdatedAt: time.Now().UTC(),
 		}
 	}
@@ -261,7 +279,7 @@ func (h httpSubsystemHealth) HealthCheck(ctx context.Context) health.SubsystemSt
 		return health.SubsystemStatus{
 			Name:      h.name,
 			State:     health.StateDegraded,
-			Message:   fmt.Sprintf("HTTP %d (rejecting requests)", resp.StatusCode),
+			Message:   fmt.Sprintf("HTTP %d (route mismatch — service reachable, wrong path)", resp.StatusCode),
 			UpdatedAt: time.Now().UTC(),
 		}
 	default:
@@ -272,6 +290,20 @@ func (h httpSubsystemHealth) HealthCheck(ctx context.Context) health.SubsystemSt
 			UpdatedAt: time.Now().UTC(),
 		}
 	}
+}
+
+// probeFailureMessage renders a down-state message for a failed HTTP
+// probe, distinguishing a timeout (the service hung past the probe
+// deadline) from an ordinary connection failure.
+func probeFailureMessage(err error, timeout time.Duration) string {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return fmt.Sprintf("unreachable: probe timed out after %s", timeout)
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return fmt.Sprintf("unreachable: probe timed out after %s", timeout)
+	}
+	return fmt.Sprintf("probe failed: %v", err)
 }
 
 // ============================================================================
@@ -391,6 +423,10 @@ ENV VARS:
   HELIX_STATUS_NO_CACHE
   HELIX_STATUS_TIMEOUT
   HELIX_STATUS_CACHE_TTL
+
+NOTES:
+  Canonical Forgejo API probe: http://localhost:3030/api/v1/version
+  (port 3000 is DuckBrain HTTP, not Forgejo — it returns 404 on that path)
 
 EXIT CODES:
   0 — Every subsystem is healthy
