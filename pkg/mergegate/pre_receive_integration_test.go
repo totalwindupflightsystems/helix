@@ -107,7 +107,7 @@ func TestPreReceiveHookBlocksRejectedPush(t *testing.T) {
 		t.Fatalf("write pre-receive hook: %v", err)
 	}
 
-	hookEnv := append(os.Environ(),
+	hookEnv := append(gitEnv(),
 		"HELIX_BIN="+testHelixBin,
 		"HELIX_TRUST_TIER=provisional",
 	)

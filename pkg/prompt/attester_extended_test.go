@@ -184,6 +184,22 @@ func TestGetCommitAttestation_ErrorPaths(t *testing.T) {
 
 // findGitRoot walks up from cwd to find the .git directory.
 
+// testGitEnv returns the process environment with GIT_* variables stripped.
+// Inside a git hook (e.g. the GitReins pre-commit guard during `git commit`)
+// git exports GIT_INDEX_FILE pointing at the host repo's in-flight index;
+// leaking it into temp-repo git commands replaces the host index with the
+// temp repo's, breaking the host commit's tree build.
+func testGitEnv() []string {
+	var env []string
+	for _, kv := range os.Environ() {
+		if strings.HasPrefix(kv, "GIT_") {
+			continue
+		}
+		env = append(env, kv)
+	}
+	return env
+}
+
 // ---------------------------------------------------------------------------
 // TestVerify_HappyPath — creates a temp git repo with an attested commit
 // and verifies that Verify succeeds end-to-end.
@@ -198,6 +214,7 @@ func TestVerify_HappyPath(t *testing.T) {
 	// Init a git repo
 	initCmd := exec.Command("git", "init", "-b", "main")
 	initCmd.Dir = tmpDir
+	initCmd.Env = testGitEnv()
 	if out, err := initCmd.CombinedOutput(); err != nil {
 		t.Fatalf("git init failed: %v\n%s", err, out)
 	}
@@ -209,6 +226,7 @@ func TestVerify_HappyPath(t *testing.T) {
 	} {
 		cmd := exec.Command("git", "config", cfg[0], cfg[1])
 		cmd.Dir = tmpDir
+		cmd.Env = testGitEnv()
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git config %s failed: %v\n%s", cfg[0], err, out)
 		}
@@ -241,6 +259,7 @@ func TestVerify_HappyPath(t *testing.T) {
 	// Stage and commit with attestation in the commit message
 	stageCmd := exec.Command("git", "add", "-A")
 	stageCmd.Dir = tmpDir
+	stageCmd.Env = testGitEnv()
 	if out, err := stageCmd.CombinedOutput(); err != nil {
 		t.Fatalf("git add failed: %v\n%s", err, out)
 	}
@@ -248,6 +267,7 @@ func TestVerify_HappyPath(t *testing.T) {
 	commitMsg := "feat: test attestation\n\nPrompt: sha256:" + hash[7:] + "\nModel: test-model\nProvider: test-provider\n"
 	commitCmd := exec.Command("git", "commit", "-m", commitMsg)
 	commitCmd.Dir = tmpDir
+	commitCmd.Env = testGitEnv()
 	if out, err := commitCmd.CombinedOutput(); err != nil {
 		t.Fatalf("git commit failed: %v\n%s", err, out)
 	}

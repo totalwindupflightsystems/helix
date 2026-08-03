@@ -853,6 +853,24 @@ func TestRunAttest_WithErrors(t *testing.T) {
 // runVerify direct-call tests (spec §8.2)
 // ---------------------------------------------------------------------------
 
+// gitEnv returns the process environment with GIT_* variables stripped.
+// When the test suite runs inside a git hook (e.g. the GitReins pre-commit
+// guard during `git commit`), git exports GIT_INDEX_FILE pointing at the
+// host repo's in-flight index (next-index-*.lock). Leaking that into the
+// temp-repo git commands below makes `git commit` build trees from the
+// host index instead of the temp repo's — failing with
+// "invalid object ... Error building trees".
+func gitEnv() []string {
+	var env []string
+	for _, kv := range os.Environ() {
+		if strings.HasPrefix(kv, "GIT_") {
+			continue
+		}
+		env = append(env, kv)
+	}
+	return env
+}
+
 // initTestGitRepo creates a temp dir with git init + a single commit.
 // Returns the dir path. Required identity is injected via -c flags.
 func initTestGitRepo(t *testing.T) string {
@@ -871,6 +889,7 @@ func initTestGitRepo(t *testing.T) string {
 		full := append(append([]string{}, cFlags...), args...)
 		cmd := exec.Command("git", full...)
 		cmd.Dir = dir
+		cmd.Env = gitEnv()
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git %v failed: %v\n%s", args, err, out)
 		}
@@ -905,6 +924,7 @@ func initTestGitRepoWithAttestation(t *testing.T) string {
 		full := append(append([]string{}, cFlags...), args...)
 		cmd := exec.Command("git", full...)
 		cmd.Dir = dir
+		cmd.Env = gitEnv()
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git %v failed: %v\n%s", args, err, out)
 		}

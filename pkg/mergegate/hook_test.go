@@ -308,6 +308,25 @@ func TestCheckEvidenceOnDisk(t *testing.T) {
 	}
 }
 
+// gitEnv returns the process environment with GIT_* variables stripped.
+// When the test suite runs inside a git hook (e.g. the GitReins pre-commit
+// guard during `git commit`), git exports GIT_INDEX_FILE pointing at the
+// host repo's in-flight index (next-index-*.lock). Leaking that into the
+// temp-repo git commands below makes them replace the host index with the
+// temp repo's index — whose blobs live only in the temp object store — so
+// the host commit's tree build fails with "invalid object ... Error
+// building trees".
+func gitEnv() []string {
+	var env []string
+	for _, kv := range os.Environ() {
+		if strings.HasPrefix(kv, "GIT_") {
+			continue
+		}
+		env = append(env, kv)
+	}
+	return env
+}
+
 // TestEvaluateHookWithGitRepo runs a full integration test using a real
 // git repository to verify changed-file collection and commit attestation.
 func TestEvaluateHookWithGitRepo(t *testing.T) {
@@ -323,6 +342,7 @@ func TestEvaluateHookWithGitRepo(t *testing.T) {
 	run := func(args ...string) string {
 		cmd := exec.Command("git", args...)
 		cmd.Dir = repoDir
+		cmd.Env = gitEnv()
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out)
@@ -344,6 +364,7 @@ func TestEvaluateHookWithGitRepo(t *testing.T) {
 	runWork := func(args ...string) string {
 		cmd := exec.Command("git", args...)
 		cmd.Dir = workDir
+		cmd.Env = gitEnv()
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out)
