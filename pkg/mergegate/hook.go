@@ -221,14 +221,30 @@ func evaluateRef(cfg HookConfig, ref HookRef, stderr io.Writer) HookResult {
 		return result
 	}
 
-	// Collect changed files.
+	// New branch creation: there is no prior state to diff against, so the
+	// gate cannot evaluate the push. This is a genuine skip driven by the
+	// ref condition (ref.IsCreate()) — never by an error guess.
+	if ref.IsCreate() {
+		result.Skipped = true
+		result.Allowed = true
+		result.Reason = "new branch creation (no prior state to gate), skipping gate"
+		return result
+	}
+
+	// Collect changed files (update pushes only).
 	files, err := collectChangedFiles(cfg, ref)
 	if err != nil {
-		// If we can't collect files (e.g., new branch with no base), allow
-		// but warn — this is a common case for feature branches.
-		result.Allowed = true
-		result.Skipped = true
-		result.Reason = fmt.Sprintf("could not collect changed files: %v (allowing — likely a new branch)", err)
+		// Fail CLOSED: an internal error (exec/fork failure, git error)
+		// must never approve a push to a protected branch. Previously ANY
+		// error here was treated as "likely a new branch" and allowed.
+		if cfg.DryRun {
+			result.Allowed = true
+			result.Reason = fmt.Sprintf("dry-run: would reject — could not collect changed files: %v (internal error)", err)
+			return result
+		}
+		result.Allowed = false
+		result.Skipped = false
+		result.Reason = fmt.Sprintf("could not collect changed files: %v (internal error — push blocked, gate failed closed)", err)
 		return result
 	}
 	result.ChangedFiles = files

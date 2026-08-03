@@ -2,6 +2,7 @@ package mergegate
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -442,5 +443,230 @@ func TestMatchGlob(t *testing.T) {
 					tt.pattern, tt.s, got, tt.expect)
 			}
 		})
+	}
+}
+
+// parseHookOutput extracts the JSON HookOutput from EvaluateHook's stdout.
+// The JSON block is followed by a human-readable summary line when the
+// invocation is allowed, so the summary is cut off before unmarshalling.
+func parseHookOutput(t *testing.T, stdout string) HookOutput {
+	t.Helper()
+	s := strings.TrimSpace(stdout)
+	if idx := strings.Index(s, "\nhelix-pre-receive:"); idx >= 0 {
+		s = s[:idx]
+	}
+	var out HookOutput
+	if err := json.Unmarshal([]byte(s), &out); err != nil {
+		t.Fatalf("unmarshal hook output %q: %v", stdout, err)
+	}
+	return out
+}
+
+// writeFakeGit writes an executable fake git binary that always fails,
+// simulating an exec/fork failure or git error (e.g. EAGAIN under host
+// fork pressure).
+func writeFakeGit(t *testing.T) string {
+	t.Helper()
+	fakeGit := filepath.Join(t.TempDir(), "fake-git")
+	script := "#!/bin/sh\necho \"fatal: could not fork: resource temporarily unavailable\" >&2\nexit 128\n"
+	if err := os.WriteFile(fakeGit, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake git: %v", err)
+	}
+	return fakeGit
+}
+
+// TestEvaluateHookCollectErrorFailsClosed proves the hook fails CLOSED when
+// changed files cannot be collected on an UPDATE push: an internal error
+// (exec/fork failure, git error) must never approve a push to a protected
+// branch.
+func TestEvaluateHookCollectErrorFailsClosed(t *testing.T) {
+	cfg := DefaultHookConfig()
+	cfg.GitBinary = writeFakeGit(t)
+
+	oldSHA := strings.Repeat("a", 40)
+	newSHA := strings.Repeat("b", 40)
+	stdin := oldSHA + " " + newSHA + " refs/heads/main\n"
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	err := EvaluateHook(cfg, strings.NewReader(stdin), stdout, stderr)
+	if err == nil {
+		t.Fatal("expected error (fail CLOSED) when changed files cannot be collected, got nil")
+	}
+	if !strings.Contains(stderr.String(), "REJECTED") {
+		t.Errorf("expected REJECTED on stderr, got: %s", stderr.String())
+	}
+
+	out := parseHookOutput(t, stdout.String())
+	if out.Allowed {
+		t.Error("expected output.Allowed=false on collect error (fail CLOSED)")
+	}
+	if len(out.Rejected) != 1 {
+		t.Fatalf("expected 1 rejected ref, got %d: %v", len(out.Rejected), out.Rejected)
+	}
+	r := out.Results[0]
+	if r.Allowed {
+		t.Error("expected result.Allowed=false on collect error (fail CLOSED)")
+	}
+	if r.Skipped {
+		t.Error("expected result.Skipped=false — an internal error is not a skip")
+	}
+	if !strings.Contains(r.Reason, "could not collect changed files") {
+		t.Errorf("expected collect error in reason, got: %q", r.Reason)
+	}
+	if strings.Contains(r.Reason, "allowing") {
+		t.Errorf("reason must never print 'allowing' for an internal error, got: %q", r.Reason)
+	}
+	if !strings.Contains(r.Reason, "internal error") {
+		t.Errorf("expected explicit internal-error wording in reason, got: %q", r.Reason)
+	}
+}
+
+// TestEvaluateHookNewBranchSkipsGate proves a genuine new-branch push
+// (ref.IsCreate()) skips the gate with a clear reason — and that the skip
+// is driven by the ref condition, not by a git error (the failing fake git
+// binary is never invoked).
+func TestEvaluateHookNewBranchSkipsGate(t *testing.T) {
+	cfg := DefaultHookConfig()
+	cfg.GitBinary = writeFakeGit(t)
+
+	newSHA := strings.Repeat("b", 40)
+	zeros := strings.Repeat("0", 40)
+	stdin := zeros + " " + newSHA + " refs/heads/main\n"
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	err := EvaluateHook(cfg, strings.NewReader(stdin), stdout, stderr)
+	if err != nil {
+		t.Fatalf("expected new-branch push to be allowed (skipped), got error: %v\nstderr: %s", err, stderr.String())
+	}
+
+	out := parseHookOutput(t, stdout.String())
+	if !out.Allowed {
+		t.Error("expected output.Allowed=true for new branch")
+	}
+	if len(out.Results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(out.Results))
+	}
+	r := out.Results[0]
+	if !r.Skipped {
+		t.Error("expected result.Skipped=true for new branch")
+	}
+	if !r.Allowed {
+		t.Error("expected result.Allowed=true for new branch")
+	}
+	if !strings.Contains(r.Reason, "new branch") {
+		t.Errorf("expected new-branch reason, got: %q", r.Reason)
+	}
+	if strings.Contains(r.Reason, "could not collect") {
+		t.Errorf("new-branch skip must not reference a collect error, got: %q", r.Reason)
+	}
+	if len(out.Rejected) != 0 {
+		t.Errorf("expected no rejected refs for new branch, got: %v", out.Rejected)
+	}
+}
+
+// TestEvaluateHookSkippedVsAllowedDistinction proves the output
+// distinguishes 'skipped' (gate not applied — new branch) from 'allowed'
+// (gate applied and passed) within a single invocation.
+func TestEvaluateHookSkippedVsAllowedDistinction(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+
+	tmpDir := t.TempDir()
+	repoDir := filepath.Join(tmpDir, "test-repo")
+	if err := os.MkdirAll(repoDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll repoDir: %v", err)
+	}
+	run := func(args ...string) string {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = repoDir
+		cmd.Env = gitEnv()
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out)
+		}
+		return string(out)
+	}
+	run("init", "--bare")
+
+	workDir := filepath.Join(tmpDir, "work")
+	if err := os.MkdirAll(workDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll workDir: %v", err)
+	}
+	runWork := func(args ...string) string {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = workDir
+		cmd.Env = gitEnv()
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out)
+		}
+		return string(out)
+	}
+	runWork("init", "-b", "main")
+	runWork("config", "user.email", "test@helix.dev")
+	runWork("config", "user.name", "Test")
+	if err := os.WriteFile(filepath.Join(workDir, "README.md"), []byte("# Test\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	runWork("add", ".")
+	runWork("commit", "-m", "Initial commit\n\nCo-authored-by: test <test@helix.dev>")
+	runWork("remote", "add", "origin", repoDir)
+	runWork("push", "origin", "main")
+	sha1 := strings.TrimSpace(runWork("rev-parse", "HEAD"))
+
+	if err := os.WriteFile(filepath.Join(workDir, "feature.go"), []byte("package main\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	runWork("add", ".")
+	runWork("commit", "-m", "Add feature\n\nCo-authored-by: agent <agent@helix.dev>")
+	sha2 := strings.TrimSpace(runWork("rev-parse", "HEAD"))
+	runWork("push", "origin", "main")
+
+	cfg := DefaultHookConfig()
+	cfg.GitBinary = "git"
+	cfg.WorkingDir = repoDir
+
+	// One invocation, two refs: a new branch (create) and an update push
+	// whose commits pass all gate checks.
+	zeros := strings.Repeat("0", 40)
+	stdin := zeros + " " + sha1 + " refs/heads/release/v1\n" +
+		sha1 + " " + sha2 + " refs/heads/main\n"
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	err := EvaluateHook(cfg, strings.NewReader(stdin), stdout, stderr)
+	if err != nil {
+		t.Fatalf("expected both refs accepted, got error: %v\nstderr: %s", err, stderr.String())
+	}
+
+	out := parseHookOutput(t, stdout.String())
+	if !out.Allowed {
+		t.Error("expected output.Allowed=true")
+	}
+	if len(out.Results) != 2 {
+		t.Fatalf("expected 2 results, got %d", len(out.Results))
+	}
+
+	created := out.Results[0]
+	if !created.Skipped || !created.Allowed {
+		t.Errorf("new-branch ref: expected skipped+allowed, got skipped=%v allowed=%v",
+			created.Skipped, created.Allowed)
+	}
+	if !strings.Contains(created.Reason, "new branch") {
+		t.Errorf("new-branch ref: expected new-branch reason, got: %q", created.Reason)
+	}
+
+	updated := out.Results[1]
+	if updated.Skipped {
+		t.Error("update ref: expected Skipped=false (gate was applied)")
+	}
+	if !updated.Allowed {
+		t.Error("update ref: expected Allowed=true (gate applied and passed)")
+	}
+	if updated.Reason != "all gate checks passed" {
+		t.Errorf("update ref: expected reason %q, got: %q", "all gate checks passed", updated.Reason)
 	}
 }
