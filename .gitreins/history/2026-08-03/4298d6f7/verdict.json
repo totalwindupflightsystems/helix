@@ -1,0 +1,83 @@
+{
+  "task_id": "BUG-001",
+  "task_title": "Fix MergePR payload \"do\"\u2192\"Do\" (Forgejo v1.21 returns 405)",
+  "task_criteria": [
+    "pkg/forgejo/client.go MergePR sends JSON body with key \"Do\" (capital D) and value \"merge\" \u2014 no lowercase \"do\" key remains",
+    "pkg/forgejo/client_test.go has TestMergePR using the mockForgejo helper: asserts body key \"Do\"==\"merge\", asserts lowercase \"do\" absent, expects 200",
+    "pkg/integration/forgejo_e2e_scenarios_test.go Step 9 uses client.MergePR (no raw-HTTP workaround with direct json.Marshal of the merge body remains)",
+    "go build ./... passes and go vet ./... is clean",
+    "go test ./pkg/forgejo/ -count=1 -short passes",
+    "TestForgejoE2E_FullCICDSimulation passes against live Forgejo (localhost:3030) \u2014 merge step succeeds via the client"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 lint: \n  \u2713 tests: \n  \u2713 build: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 pkg/forgejo/client.go MergePR sends JSON body with key \"Do\" (capital D) and value \"merge\" \u2014 no lowercase \"do\" key remains: pkg/forgejo/client.go:399-405 MergePR sends map[string]string{\"Do\":\"merge\"} via doRequest; grep '\"do\"' returns no match (exit 1)\n  \u2713 pkg/forgejo/client_test.go has TestMergePR using the mockForgejo helper: asserts body key \"Do\"==\"merge\", asserts lowercase \"do\" absent, expects 200: pkg/forgejo/client_test.go:303-320 TestMergePR uses newMockForgejo(), asserts body[\"Do\"]==\"merge\" (line 311), asserts lowercase \"do\" absent (lines 312-313), expects 200 (writeJSON StatusOK line 316)\n  \u2713 pkg/integration/forgejo_e2e_scenarios_test.go Step 9 uses client.MergePR (no raw-HTTP workaround with direct json.Marshal of the merge body remains): pkg/integration/forgejo_e2e_scenarios_test.go:606 Step 9 calls client.MergePR; the json.Marshal at line 61 is in createFileOnBranch helper (file creation), not a merge-body workaround\n  \u2713 go build ./... passes and go vet ./... is clean: go build ./... exit 0; go vet ./... exit 0 (clean)\n  \u2713 go test ./pkg/forgejo/ -count=1 -short passes: go test ./pkg/forgejo/ -count=1 -short -> ok, exit 0\n  \u2713 TestForgejoE2E_FullCICDSimulation passes against live Forgejo (localhost:3030) \u2014 merge step succeeds via the client: TestForgejoE2E_FullCICDSimulation against localhost:3030 -> --- PASS (5.51s); Step 9 [OK] PR #1 merged successfully, Merge: \u2705 merged\nAll 6 criteria verified: MergePR uses capital-D \"Do\" key, TestMergePR asserts it via mockForgejo, Step 9 uses client.MergePR, build/vet clean, forgejo unit tests pass, and the live E2E merge succeeds.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 pkg/forgejo/client.go MergePR sends JSON body with key \"Do\" (capital D) and value \"merge\" \u2014 no lowercase \"do\" key remains: pkg/forgejo/client.go:399-405 MergePR sends map[string]string{\"Do\":\"merge\"} via doRequest; grep '\"do\"' returns no match (exit 1)\n  \u2713 pkg/forgejo/client_test.go has TestMergePR using the mockForgejo helper: asserts body key \"Do\"==\"merge\", asserts lowercase \"do\" absent, expects 200: pkg/forgejo/client_test.go:303-320 TestMergePR uses newMockForgejo(), asserts body",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BUG-001\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 lint: \n  \u2713 tests: \n  \u2713 build: \n  \u2713 secrets: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 pkg/forgejo/client.go MergePR sends JSON body with key \"Do\" (capital D) and value \"merge\" \u2014 no lowercase \"do\" key remains: pkg/forgejo/client.go:399-405 MergePR sends map[string]string{\"Do\":\"merge\"} via doRequest; grep '\"do\"' returns no match (exit 1)\n  \u2713 pkg/forgejo/client_test.go has TestMergePR using the mockForgejo helper: asserts body key \"Do\"==\"merge\", asserts lowercase \"do\" absent, expects 200: pkg/forgejo/client_test.go:303-320 TestMergePR uses newMockForgejo(), asserts body[\"Do\"]==\"merge\" (line 311), asserts lowercase \"do\" absent (lines 312-313), expects 200 (writeJSON StatusOK line 316)\n  \u2713 pkg/integration/forgejo_e2e_scenarios_test.go Step 9 uses client.MergePR (no raw-HTTP workaround with direct json.Marshal of the merge body remains): pkg/integration/forgejo_e2e_scenarios_test.go:606 Step 9 calls client.MergePR; the json.Marshal at line 61 is in createFileOnBranch helper (file creation), not a merge-body workaround\n  \u2713 go build ./... passes and go vet ./... is clean: go build ./... exit 0; go vet ./... exit 0 (clean)\n  \u2713 go test ./pkg/forgejo/ -count=1 -short passes: go test ./pkg/forgejo/ -count=1 -short -> ok, exit 0\n  \u2713 TestForgejoE2E_FullCICDSimulation passes against live Forgejo (localhost:3030) \u2014 merge step succeeds via the client: TestForgejoE2E_FullCICDSimulation against localhost:3030 -> --- PASS (5.51s); Step 9 [OK] PR #1 merged successfully, Merge: \u2705 merged\nAll 6 criteria verified: MergePR uses capital-D \"Do\" key, TestMergePR asserts it via mockForgejo, Step 9 uses client.MergePR, build/vet clean, forgejo unit tests pass, and the live E2E merge succeeds.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-03T06:00:45.375926"
+}
