@@ -1,0 +1,86 @@
+{
+  "task_id": "CH-002",
+  "task_title": "Channel message HID signing + verification (pkg/channel/message.go)",
+  "task_criteria": [
+    "pkg/channel/message.go exists with real HID signing/verification (SPEC-024 \u00a74/\u00a77) \u2014 the stub HIDSignature in channel.go is replaced/wired to pkg/identity (ID-001 hid.go): sign a ChannelMessage with the agent's Ed25519 private key, verify on read",
+    "SignMessage/Sign API: takes *identity.AgentIdentity + ed25519.PrivateKey, populates msg.HIDProof with KeyID (agent id or fingerprint), SigBytes (Ed25519 sig over canonical message payload), Fingerprint (id.Fingerprint())",
+    "VerifyMessage/Verify API: verifies HIDProof against the agent's public key \u2014 returns error on tampered content (mutated Content/Author/ChannelID fails), missing HIDProof for agent-authored messages is reported (nil proof \u2192 explicit error or false result)",
+    "Canonical payload is deterministic: JSON marshaling of the message fields covered by the signature (ID, ChannelID, Author, AuthorType, Type, Content, Timestamp at minimum) \u2014 field order stable so sign/verify round-trips",
+    "pkg/channel/message_test.go covers: sign\u2192verify round-trip (valid signature passes), tamper detection (mutated content fails verify), wrong-key detection (different identity's key fails), fingerprint correctness (matches identity.Fingerprint()), nil-proof handling",
+    "go build ./... exits 0 and go vet ./... is clean",
+    "go test -short -count=1 ./... passes (all packages, including existing pkg/channel tests)",
+    "No new external dependencies added: go.mod/go.sum untouched (stdlib crypto/ed25519 + existing google/uuid only)",
+    "Commit includes Co-authored-by: Alexis Okuwa <wojonstech@gmail.com> and Prompt: prompts/coding-hermes/v1.md trailers"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 tests: \n  \u2713 lint: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 pkg/channel/message.go exists with real HID signing/verification (SPEC-024 \u00a74/\u00a77) \u2014 the stub HIDSignature in channel.go is replaced/wired to pkg/identity (ID-001 hid.go): sign a ChannelMessage with the agent's Ed25519 private key, verify on read: pkg/channel/message.go (6176 bytes) defines SignMessage/VerifyMessage using ed25519.Sign/Verify, imports pkg/identity, and populates the stub HIDSignature (channel.go:200) with id.ID, id.Fingerprint(), id.PubKey. Verify on read via VerifyMessage.\n  \u2713 SignMessage/Sign API: takes *identity.AgentIdentity + ed25519.PrivateKey, populates msg.HIDProof with KeyID (agent id or fingerprint), SigBytes (Ed25519 sig over canonical message payload), Fingerprint (id.Fingerprint()): SignMessage(msg, id *identity.AgentIdentity, priv ed25519.PrivateKey) sets HIDProof.KeyID=id.ID, SigBytes=ed25519.Sign(priv,payload), Fingerprint=id.Fingerprint() (message.go).\n  \u2713 VerifyMessage/Verify API: verifies HIDProof against the agent's public key \u2014 returns error on tampered content (mutated Content/Author/ChannelID fails), missing HIDProof for agent-authored messages is reported (nil proof \u2192 explicit error or false result): VerifyMessage uses ed25519.Verify(id.PubKey, payload, SigBytes); nil HIDProof returns explicit error 'channel: message %q has no HID proof'; fingerprint mismatch errors. Tests confirm tampered Content/Author/ChannelID all fail.\n  \u2713 Canonical payload is deterministic: JSON marshaling of the message fields covered by the signature (ID, ChannelID, Author, AuthorType, Type, Content, Timestamp at minimum) \u2014 field order stable so sign/verify round-trips: signedPayload struct covers ID, ChannelID, Author, AuthorType, Type, Content, Attachments, Timestamp in stable struct field order; payloadTime normalizes timestamp to RFC3339 nano via MarshalJSON for deterministic serialization.\n  \u2713 pkg/channel/message_test.go covers: sign\u2192verify round-trip (valid signature passes), tamper detection (mutated content fails verify), wrong-key detection (different identity's key fails), fingerprint correctness (matches identity.Fingerprint()), nil-proof handling: message_test.go has TestSignMessage_VerifyRoundTrip, TestVerifyMessage_TamperedContent/Author/ChannelID, TestVerifyMessage_WrongKey, TestSignMessage_FingerprintMatchesIdentity, TestVerifyMessage_NilProof.\n  \u2713 go build ./... exits 0 and go vet ./... is clean: go build ./... exit 0; go vet ./... exit 0 (clean).\n  \u2713 go test -short -count=1 ./... passes (all packages, including existing pkg/channel tests): go test -short -count=1 ./... exit 0, 60 packages ok, no FAIL/panic; pkg/channel ok.\n  \u2713 No new external dependencies added: go.mod/go.sum untouched (stdlib crypto/ed25519 + existing google/uuid only): go.mod/go.sum unchanged in commit bffc681 (empty diff). message.go imports only stdlib crypto/ed25519, encoding/json, fmt + internal pkg/identity. Only external dep is pre-existing google/uuid.\n  \u2713 Commit includes Co-authored-by: Alexis Okuwa <wojonstech@gmail.com> and Prompt: prompts/coding-hermes/v1.md trailers: Commit bffc681 message contains 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' and 'Prompt: prompts/coding-hermes/v1.md' trailers.\nAll 9 criteria verified: real Ed25519 HID signing/verification wired to pkg/identity, deterministic canonical payload, comprehensive tests, clean build/vet/test, no new deps, and correct commit trailers.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 pkg/channel/message.go exists with real HID signing/verification (SPEC-024 \u00a74/\u00a77) \u2014 the stub HIDSignature in channel.go is replaced/wired to pkg/identity (ID-001 hid.go): sign a ChannelMessage with the agent's Ed25519 private key, verify on read: pkg/channel/message.go (6176 bytes) defines SignMessage/VerifyMessage using ed25519.Sign/Verify, imports pkg/identity, and populates the stub HIDSignature (channel.go:200) with id.ID, id.Fingerprint(), id.PubKey. Verify on read via VerifyMe",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: CH-002\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 tests: \n  \u2713 lint: \n  \u2713 secrets: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 pkg/channel/message.go exists with real HID signing/verification (SPEC-024 \u00a74/\u00a77) \u2014 the stub HIDSignature in channel.go is replaced/wired to pkg/identity (ID-001 hid.go): sign a ChannelMessage with the agent's Ed25519 private key, verify on read: pkg/channel/message.go (6176 bytes) defines SignMessage/VerifyMessage using ed25519.Sign/Verify, imports pkg/identity, and populates the stub HIDSignature (channel.go:200) with id.ID, id.Fingerprint(), id.PubKey. Verify on read via VerifyMessage.\n  \u2713 SignMessage/Sign API: takes *identity.AgentIdentity + ed25519.PrivateKey, populates msg.HIDProof with KeyID (agent id or fingerprint), SigBytes (Ed25519 sig over canonical message payload), Fingerprint (id.Fingerprint()): SignMessage(msg, id *identity.AgentIdentity, priv ed25519.PrivateKey) sets HIDProof.KeyID=id.ID, SigBytes=ed25519.Sign(priv,payload), Fingerprint=id.Fingerprint() (message.go).\n  \u2713 VerifyMessage/Verify API: verifies HIDProof against the agent's public key \u2014 returns error on tampered content (mutated Content/Author/ChannelID fails), missing HIDProof for agent-authored messages is reported (nil proof \u2192 explicit error or false result): VerifyMessage uses ed25519.Verify(id.PubKey, payload, SigBytes); nil HIDProof returns explicit error 'channel: message %q has no HID proof'; fingerprint mismatch errors. Tests confirm tampered Content/Author/ChannelID all fail.\n  \u2713 Canonical payload is deterministic: JSON marshaling of the message fields covered by the signature (ID, ChannelID, Author, AuthorType, Type, Content, Timestamp at minimum) \u2014 field order stable so sign/verify round-trips: signedPayload struct covers ID, ChannelID, Author, AuthorType, Type, Content, Attachments, Timestamp in stable struct field order; payloadTime normalizes timestamp to RFC3339 nano via MarshalJSON for deterministic serialization.\n  \u2713 pkg/channel/message_test.go covers: sign\u2192verify round-trip (valid signature passes), tamper detection (mutated content fails verify), wrong-key detection (different identity's key fails), fingerprint correctness (matches identity.Fingerprint()), nil-proof handling: message_test.go has TestSignMessage_VerifyRoundTrip, TestVerifyMessage_TamperedContent/Author/ChannelID, TestVerifyMessage_WrongKey, TestSignMessage_FingerprintMatchesIdentity, TestVerifyMessage_NilProof.\n  \u2713 go build ./... exits 0 and go vet ./... is clean: go build ./... exit 0; go vet ./... exit 0 (clean).\n  \u2713 go test -short -count=1 ./... passes (all packages, including existing pkg/channel tests): go test -short -count=1 ./... exit 0, 60 packages ok, no FAIL/panic; pkg/channel ok.\n  \u2713 No new external dependencies added: go.mod/go.sum untouched (stdlib crypto/ed25519 + existing google/uuid only): go.mod/go.sum unchanged in commit bffc681 (empty diff). message.go imports only stdlib crypto/ed25519, encoding/json, fmt + internal pkg/identity. Only external dep is pre-existing google/uuid.\n  \u2713 Commit includes Co-authored-by: Alexis Okuwa <wojonstech@gmail.com> and Prompt: prompts/coding-hermes/v1.md trailers: Commit bffc681 message contains 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' and 'Prompt: prompts/coding-hermes/v1.md' trailers.\nAll 9 criteria verified: real Ed25519 HID signing/verification wired to pkg/identity, deterministic canonical payload, comprehensive tests, clean build/vet/test, no new deps, and correct commit trailers.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-03T22:55:34.866105"
+}

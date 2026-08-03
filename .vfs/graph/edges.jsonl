@@ -3523,3 +3523,13 @@
 {"from":"cmd/helix-identity/main.go","to":"std:encoding/hex","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"cmd/helix-identity/main.go","to":"std:encoding/pem","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"pkg/mergegate/hook_test.go","to":"std:encoding/json","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/message_test.go","to":"std:crypto/ed25519","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/message_test.go","to":"std:testing","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/message_test.go","to":"std:time","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/message_test.go","to":"pkg:github.com/totalwindupflightsystems/helix/pkg/identity","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/message.go","to":"std:crypto/ed25519","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/message.go","to":"std:encoding/json","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/message.go","to":"std:fmt","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/message.go","to":"pkg:github.com/totalwindupflightsystems/helix/pkg/identity","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/message_test.go","to":"pkg/channel/message.go","rel":"tested_by","provenance":"heuristic","confidence":0.8}
+{"from":"pkg/channel/message.go","to":"pkg/channel/message_test.go","rel":"tests","provenance":"heuristic","confidence":0.8}

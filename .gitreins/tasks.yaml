@@ -329,3 +329,34 @@ tasks:
   status: complete
   created_at: '2026-08-03T20:26:17.219121+00:00'
   completed_at: '2026-08-03T20:26:20.255517+00:00'
+- id: CH-002
+  title: Channel message HID signing + verification (pkg/channel/message.go)
+  criteria:
+  - "pkg/channel/message.go exists with real HID signing/verification (SPEC-024 \xA7\
+    4/\xA77) \u2014 the stub HIDSignature in channel.go is replaced/wired to pkg/identity\
+    \ (ID-001 hid.go): sign a ChannelMessage with the agent's Ed25519 private key,\
+    \ verify on read"
+  - 'SignMessage/Sign API: takes *identity.AgentIdentity + ed25519.PrivateKey, populates
+    msg.HIDProof with KeyID (agent id or fingerprint), SigBytes (Ed25519 sig over
+    canonical message payload), Fingerprint (id.Fingerprint())'
+  - "VerifyMessage/Verify API: verifies HIDProof against the agent's public key \u2014\
+    \ returns error on tampered content (mutated Content/Author/ChannelID fails),\
+    \ missing HIDProof for agent-authored messages is reported (nil proof \u2192 explicit\
+    \ error or false result)"
+  - "Canonical payload is deterministic: JSON marshaling of the message fields covered\
+    \ by the signature (ID, ChannelID, Author, AuthorType, Type, Content, Timestamp\
+    \ at minimum) \u2014 field order stable so sign/verify round-trips"
+  - "pkg/channel/message_test.go covers: sign\u2192verify round-trip (valid signature\
+    \ passes), tamper detection (mutated content fails verify), wrong-key detection\
+    \ (different identity's key fails), fingerprint correctness (matches identity.Fingerprint()),\
+    \ nil-proof handling"
+  - go build ./... exits 0 and go vet ./... is clean
+  - go test -short -count=1 ./... passes (all packages, including existing pkg/channel
+    tests)
+  - 'No new external dependencies added: go.mod/go.sum untouched (stdlib crypto/ed25519
+    + existing google/uuid only)'
+  - 'Commit includes Co-authored-by: Alexis Okuwa <wojonstech@gmail.com> and Prompt:
+    prompts/coding-hermes/v1.md trailers'
+  status: complete
+  created_at: '2026-08-03T22:44:01.947290+00:00'
+  completed_at: '2026-08-03T22:53:56.906854+00:00'
