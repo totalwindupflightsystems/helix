@@ -1,0 +1,83 @@
+{
+  "task_id": "df-009-mergegate-fail-closed",
+  "task_title": "DF-009: mergegate fails CLOSED when changed files cannot be collected",
+  "task_criteria": [
+    "pkg/mergegate/hook.go: collectChangedFiles error on an update push to a protected branch sets Allowed=false (fail closed) with an explicit internal-error reason \u2014 no error path may set Allowed=true",
+    "The old approve-on-error path (\"allowing \u2014 likely a new branch\") is gone; no reason string contains 'allowing' for an internal error",
+    "Genuine new-branch pushes (ref.IsCreate()) skip the gate with Skipped=true and a clear new-branch reason \u2014 distinct from Allowed=true (gate applied and passed)",
+    "Output distinguishes 'skipped' from 'allowed' (e.g. dry-run reports 'would reject' instead of allowing)",
+    "pkg/mergegate tests pass: new tests cover (a) collect error on update push -> REJECTED, (b) new-branch skip path, (c) skipped-vs-allowed distinction; go test -count=1 ./pkg/mergegate/... green",
+    "Commit 9330b62 exists with trailers Co-authored-by: Alexis Okuwa <wojonstech@gmail.com> and Prompt: prompts/coding-hermes/v1.md; go build ./... and gitreins guard PASS"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_manager import GuardManager; gm = GuardManager('.'); r = gm._check_lint(); import sys; sys.exit(0 if r.passed else 1)\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nModuleNotFoundError: No module named 'engine'\n",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_manager import GuardManager; gm = GuardManager('.'); r = gm._check_secrets(); import sys; sys.exit(0 if r.passed else 1)\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nModuleNotFoundError: No module named 'engine'\n",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_manager import GuardManager; gm = GuardManager('.'); r = gm._check_tests(); import sys; sys.exit(0 if r.passed else 1)\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nModuleNotFoundError: No module named 'engine'\n",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_manager import GuardManager; gm = GuardManager('.'); from engine.guards import check_go_build; r = check_go_build('.'); import sys; sys.exit(0 if r.passed else 1)\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nModuleNotFoundError: No module named 'engine'\n",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 pkg/mergegate/hook.go: collectChangedFiles error on an update push to a protected branch sets Allowed=false (fail closed) with an explicit internal-error reason \u2014 no error path may set Allowed=true: hook.go (commit 9330b62) lines 238-247: on collectChangedFiles error for update push, result.Allowed=false, result.Skipped=false, reason 'could not collect changed files: %v (internal error \u2014 push blocked, gate failed closed)'. Only dry-run path sets Allowed=true but with 'would reject' reason (reporting mode, not approval). TestEvaluateHookCollectErrorFailsClosed verifies Allowed=false and REJECTED on stderr.\n  \u2713 The old approve-on-error path (\"allowing \u2014 likely a new branch\") is gone; no reason string contains 'allowing' for an internal error: Old path removed; new error reason is 'internal error \u2014 push blocked, gate failed closed'. Test asserts !strings.Contains(r.Reason, 'allowing'). grep confirms no 'allowing' in any reason string.\n  \u2713 Genuine new-branch pushes (ref.IsCreate()) skip the gate with Skipped=true and a clear new-branch reason \u2014 distinct from Allowed=true (gate applied and passed): hook.go lines 228-234: ref.IsCreate() sets Skipped=true, Allowed=true, reason 'new branch creation (no prior state to gate), skipping gate'. Distinct from gate-applied-and-passed (Skipped=false, reason 'all gate checks passed'). TestEvaluateHookNewBranchSkipsGate verifies.\n  \u2713 Output distinguishes 'skipped' from 'allowed' (e.g. dry-run reports 'would reject' instead of allowing): hook.go line 242 dry-run path reports 'dry-run: would reject \u2014 could not collect changed files: %v (internal error)'. TestEvaluateHookSkippedVsAllowedDistinction verifies skipped (new branch) vs allowed (update passed) distinction in output within a single invocation.\n  \u2713 pkg/mergegate tests pass: new tests cover (a) collect error on update push -> REJECTED, (b) new-branch skip path, (c) skipped-vs-allowed distinction; go test -count=1 ./pkg/mergegate/... green: Tests TestEvaluateHookCollectErrorFailsClosed (line 482), TestEvaluateHookNewBranchSkipsGate (line 529), TestEvaluateHookSkippedVsAllowedDistinction (line 572) cover all three cases. go test -count=1 ./pkg/mergegate/... passes (ok, 1.958s).\n  \u2713 Commit 9330b62 exists with trailers Co-authored-by: Alexis Okuwa <wojonstech@gmail.com> and Prompt: prompts/coding-hermes/v1.md; go build ./... and gitreins guard PASS: Commit 9330b623250682e3bc1e7c668e3cc3dd16a643b6 exists (HEAD) with trailers 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' and 'Prompt: prompts/coding-hermes/v1.md'. go build ./... passes. gitreins guard checks all pass: go test ./pkg/... green, go vet clean, no secrets, no LSP diagnostics.\nAll 6 criteria verified PASS: mergegate now fails closed on collect errors, new-branch pushes skip via ref.IsCreate(), skipped vs allowed distinguished in output, all three new tests pass, and commit 9330b62 with required trailers and passing guard exists.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 pkg/mergegate/hook.go: collectChangedFiles error on an update push to a protected branch sets Allowed=false (fail closed) with an explicit internal-error reason \u2014 no error path may set Allowed=true: hook.go (commit 9330b62) lines 238-247: on collectChangedFiles error for update push, result.Allowed=false, result.Skipped=false, reason 'could not collect changed files: %v (internal error \u2014 push blocked, gate failed closed)'. Only dry-run path sets Allowed=true but with 'would reject' ",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: df-009-mergegate-fail-closed\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 pkg/mergegate/hook.go: collectChangedFiles error on an update push to a protected branch sets Allowed=false (fail closed) with an explicit internal-error reason \u2014 no error path may set Allowed=true: hook.go (commit 9330b62) lines 238-247: on collectChangedFiles error for update push, result.Allowed=false, result.Skipped=false, reason 'could not collect changed files: %v (internal error \u2014 push blocked, gate failed closed)'. Only dry-run path sets Allowed=true but with 'would reject' reason (reporting mode, not approval). TestEvaluateHookCollectErrorFailsClosed verifies Allowed=false and REJECTED on stderr.\n  \u2713 The old approve-on-error path (\"allowing \u2014 likely a new branch\") is gone; no reason string contains 'allowing' for an internal error: Old path removed; new error reason is 'internal error \u2014 push blocked, gate failed closed'. Test asserts !strings.Contains(r.Reason, 'allowing'). grep confirms no 'allowing' in any reason string.\n  \u2713 Genuine new-branch pushes (ref.IsCreate()) skip the gate with Skipped=true and a clear new-branch reason \u2014 distinct from Allowed=true (gate applied and passed): hook.go lines 228-234: ref.IsCreate() sets Skipped=true, Allowed=true, reason 'new branch creation (no prior state to gate), skipping gate'. Distinct from gate-applied-and-passed (Skipped=false, reason 'all gate checks passed'). TestEvaluateHookNewBranchSkipsGate verifies.\n  \u2713 Output distinguishes 'skipped' from 'allowed' (e.g. dry-run reports 'would reject' instead of allowing): hook.go line 242 dry-run path reports 'dry-run: would reject \u2014 could not collect changed files: %v (internal error)'. TestEvaluateHookSkippedVsAllowedDistinction verifies skipped (new branch) vs allowed (update passed) distinction in output within a single invocation.\n  \u2713 pkg/mergegate tests pass: new tests cover (a) collect error on update push -> REJECTED, (b) new-branch skip path, (c) skipped-vs-allowed distinction; go test -count=1 ./pkg/mergegate/... green: Tests TestEvaluateHookCollectErrorFailsClosed (line 482), TestEvaluateHookNewBranchSkipsGate (line 529), TestEvaluateHookSkippedVsAllowedDistinction (line 572) cover all three cases. go test -count=1 ./pkg/mergegate/... passes (ok, 1.958s).\n  \u2713 Commit 9330b62 exists with trailers Co-authored-by: Alexis Okuwa <wojonstech@gmail.com> and Prompt: prompts/coding-hermes/v1.md; go build ./... and gitreins guard PASS: Commit 9330b623250682e3bc1e7c668e3cc3dd16a643b6 exists (HEAD) with trailers 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' and 'Prompt: prompts/coding-hermes/v1.md'. go build ./... passes. gitreins guard checks all pass: go test ./pkg/... green, go vet clean, no secrets, no LSP diagnostics.\nAll 6 criteria verified PASS: mergegate now fails closed on collect errors, new-branch pushes skip via ref.IsCreate(), skipped vs allowed distinguished in output, all three new tests pass, and commit 9330b62 with required trailers and passing guard exists.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-03T20:27:53.674662"
+}

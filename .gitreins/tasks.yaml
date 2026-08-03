@@ -308,3 +308,24 @@ tasks:
   status: complete
   created_at: '2026-08-03T17:57:43.580872+00:00'
   completed_at: '2026-08-03T18:02:51.005004+00:00'
+- id: df-009-mergegate-fail-closed
+  title: 'DF-009: mergegate fails CLOSED when changed files cannot be collected'
+  criteria:
+  - "pkg/mergegate/hook.go: collectChangedFiles error on an update push to a protected\
+    \ branch sets Allowed=false (fail closed) with an explicit internal-error reason\
+    \ \u2014 no error path may set Allowed=true"
+  - "The old approve-on-error path (\"allowing \u2014 likely a new branch\") is gone;\
+    \ no reason string contains 'allowing' for an internal error"
+  - "Genuine new-branch pushes (ref.IsCreate()) skip the gate with Skipped=true and\
+    \ a clear new-branch reason \u2014 distinct from Allowed=true (gate applied and\
+    \ passed)"
+  - Output distinguishes 'skipped' from 'allowed' (e.g. dry-run reports 'would reject'
+    instead of allowing)
+  - 'pkg/mergegate tests pass: new tests cover (a) collect error on update push ->
+    REJECTED, (b) new-branch skip path, (c) skipped-vs-allowed distinction; go test
+    -count=1 ./pkg/mergegate/... green'
+  - 'Commit 9330b62 exists with trailers Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+    and Prompt: prompts/coding-hermes/v1.md; go build ./... and gitreins guard PASS'
+  status: complete
+  created_at: '2026-08-03T20:26:17.219121+00:00'
+  completed_at: '2026-08-03T20:26:20.255517+00:00'

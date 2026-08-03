@@ -3522,3 +3522,4 @@
 {"from":"cmd/helix-identity/main.go","to":"std:crypto/x509","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"cmd/helix-identity/main.go","to":"std:encoding/hex","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"cmd/helix-identity/main.go","to":"std:encoding/pem","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/mergegate/hook_test.go","to":"std:encoding/json","rel":"imports","provenance":"ast_exact","confidence":1.0}
