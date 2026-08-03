@@ -3492,3 +3492,15 @@
 {"from":"pkg/prompt/registry_flat_test.go","to":"std:testing","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"cmd/helix-estimate/main.go","to":"std:path/filepath","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"cmd/helix-estimate/main.go","to":"std:runtime","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/identity/nostr_test.go","to":"std:crypto/ed25519","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/identity/nostr_test.go","to":"std:encoding/hex","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/identity/nostr_test.go","to":"std:encoding/json","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/identity/nostr_test.go","to":"std:testing","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/identity/nostr_test.go","to":"std:time","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/identity/nostr.go","to":"std:crypto/ed25519","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/identity/nostr.go","to":"std:encoding/hex","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/identity/nostr.go","to":"std:encoding/json","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/identity/nostr.go","to":"std:fmt","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/identity/nostr.go","to":"std:time","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/identity/nostr_test.go","to":"pkg/identity/nostr.go","rel":"tested_by","provenance":"heuristic","confidence":0.8}
+{"from":"pkg/identity/nostr.go","to":"pkg/identity/nostr_test.go","rel":"tests","provenance":"heuristic","confidence":0.8}
