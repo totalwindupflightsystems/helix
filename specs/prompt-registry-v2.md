@@ -145,7 +145,7 @@ Every persistent flag resolves as: **CLI flag > env var > default**.
 | `--prompts-dir` | `HELIX_PROMPTS_DIR` | `./prompts` |
 | `--index-path` | `HELIX_PROMPT_INDEX` | `./prompts/_index.yaml` |
 | `--audit-path` | `HELIX_PROMPT_AUDIT` | `~/.helix/prompts/audit.jsonl` |
-| `--prompt-file` | — | `prompts/<component>/<version>/prompt.md` |
+| `--prompt-file` | — | resolves `prompts/<component>/<version>/prompt.md`, falling back to flat `prompts/<component>/v<N>.md` |
 | `--model` / `--provider` | — | required for `register` |
 | `--spec-ref` | — | recommended |
 | `--commit-sha` | — | `HEAD` |

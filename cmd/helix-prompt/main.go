@@ -129,7 +129,7 @@ Use --dry-run to validate without writing.`,
 		},
 	}
 	cmd.Flags().StringVar(&opts.promptFile, "prompt-file", "",
-		"path to prompt.md (default: prompts/<component>/<version>/prompt.md)")
+		"path to prompt.md (default: resolves prompts/<component>/<version>/prompt.md, falling back to flat prompts/<component>/v<N>.md)")
 	cmd.Flags().StringVar(&opts.model, "model", "", "model that produced this prompt")
 	cmd.Flags().StringVar(&opts.provider, "provider", "", "provider name")
 	cmd.Flags().StringVar(&opts.specRef, "spec-ref", "", "link to spec file this prompt implements")
@@ -140,7 +140,14 @@ Use --dry-run to validate without writing.`,
 func runRegister(opts *registerOptions, component, version string) error {
 	promptFile := opts.promptFile
 	if promptFile == "" {
-		promptFile = fmt.Sprintf("prompts/%s/%s/prompt.md", component, version)
+		// Default: resolve the prompt file accepting both the canonical
+		// nested layout (prompts/<component>/<version>/prompt.md) and the
+		// flat layout (prompts/<component>/v<N>.md) documented in AGENTS.md.
+		resolved, err := prompt.ResolvePromptPath(component, version)
+		if err != nil {
+			return err
+		}
+		promptFile = resolved
 	}
 
 	regOpts := &prompt.RegisterOptions{
@@ -390,7 +397,7 @@ Output formats:
 		},
 	}
 	cmd.Flags().StringVar(&opts.component, "component", "", "filter by component")
-	cmd.Flags().StringVar(&opts.status, "status", "active", "filter by lifecycle status (default: active)")
+	cmd.Flags().StringVar(&opts.status, "status", "", "filter by lifecycle status (default: all)")
 	cmd.Flags().StringVar(&opts.model, "model", "", "filter by model")
 	cmd.Flags().StringVar(&opts.format, "format", "table", "output format: table|json")
 	return cmd

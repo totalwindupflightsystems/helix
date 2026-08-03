@@ -1654,8 +1654,8 @@ func TestNewListCmd_AllFlagsDefaults(t *testing.T) {
 	ff := cmd.Flags()
 
 	status, _ := ff.GetString("status")
-	if status != "active" {
-		t.Errorf("status default = %q, want active", status)
+	if status != "" {
+		t.Errorf("status default = %q, want empty (all statuses; flat unregistered prompts must appear in plain list)", status)
 	}
 	format, _ := ff.GetString("format")
 	if format != "table" {

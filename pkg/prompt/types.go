@@ -15,13 +15,14 @@ import "time"
 type LifecycleStatus string
 
 const (
-	StatusDraft      LifecycleStatus = "draft"
-	StatusProposed   LifecycleStatus = "proposed"
-	StatusReviewed   LifecycleStatus = "reviewed"
-	StatusAttested   LifecycleStatus = "attested"
-	StatusActive     LifecycleStatus = "active"
-	StatusDeprecated LifecycleStatus = "deprecated"
-	StatusRetired    LifecycleStatus = "retired"
+	StatusDraft        LifecycleStatus = "draft"
+	StatusProposed     LifecycleStatus = "proposed"
+	StatusReviewed     LifecycleStatus = "reviewed"
+	StatusAttested     LifecycleStatus = "attested"
+	StatusActive       LifecycleStatus = "active"
+	StatusDeprecated   LifecycleStatus = "deprecated"
+	StatusRetired      LifecycleStatus = "retired"
+	StatusUnregistered LifecycleStatus = "unregistered"
 )
 
 // ---------------------------------------------------------------------------

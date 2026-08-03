@@ -32,6 +32,67 @@ type ListFilter struct {
 	Model     string
 }
 
+// nestedPromptPath returns the canonical nested path for a prompt version
+// (spec §3.1): prompts/<component>/<version>/prompt.md.
+func nestedPromptPath(component, version string) string {
+	return filepath.Join(RegistryDir, component, version, "prompt.md")
+}
+
+// ResolvePromptPath resolves the on-disk prompt file for a component/version,
+// accepting both the nested layout (prompts/<component>/<version>/prompt.md)
+// and the flat layout (prompts/<component>/v<N>.md) documented in AGENTS.md.
+// The nested layout is preferred when both exist; a bare <version>.md file is
+// tolerated when no v-prefixed file exists. Returns a clear error naming the
+// attempted paths when neither layout is present.
+func ResolvePromptPath(component, version string) (string, error) {
+	nested := nestedPromptPath(component, version)
+	if _, err := os.Stat(nested); err == nil {
+		return nested, nil
+	}
+
+	flatDir := filepath.Join(RegistryDir, component)
+	candidates := []string{
+		filepath.Join(flatDir, "v"+version+".md"),
+		filepath.Join(flatDir, version+".md"),
+	}
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			return c, nil
+		}
+	}
+
+	return "", fmt.Errorf("cannot find prompt file for %s/%s: tried %s, %s, %s",
+		component, version, nested, candidates[0], candidates[1])
+}
+
+// flatPrompt describes a prompt stored in the flat layout
+// (prompts/<component>/v<N>.md) that is not (yet) registered in _index.yaml.
+type flatPrompt struct {
+	component string
+	version   string
+	path      string
+}
+
+// findFlatPrompts globs the registry for flat-layout prompt files
+// (prompts/<component>/v*.md) and derives component/version from each path
+// (v1.md → version "v1"). Nested-layout directories contain prompt.md, never
+// v*.md, so they are not matched.
+func findFlatPrompts() ([]flatPrompt, error) {
+	matches, err := filepath.Glob(filepath.Join(RegistryDir, "*", "v*.md"))
+	if err != nil {
+		return nil, err
+	}
+	flat := make([]flatPrompt, 0, len(matches))
+	for _, m := range matches {
+		flat = append(flat, flatPrompt{
+			component: filepath.Base(filepath.Dir(m)),
+			version:   strings.TrimSuffix(filepath.Base(m), ".md"),
+			path:      m,
+		})
+	}
+	return flat, nil
+}
+
 // Register reads a prompt file, computes its hash, creates the prompt
 // directory structure, writes prompt.md + metadata.yaml, and updates the
 // registry index. Returns the resolved PromptVersion (spec §18).
@@ -40,8 +101,20 @@ func Register(component, version, promptFilePath, model, provider, specRef strin
 		opts = &RegisterOptions{}
 	}
 
-	// Read prompt content
+	// Read prompt content. The default path may use either the canonical
+	// nested layout (prompts/<component>/<version>/prompt.md) or the flat
+	// layout (prompts/<component>/v<N>.md) used across this repo per
+	// AGENTS.md — fall back to flat resolution when the nested default is
+	// absent. Explicit --prompt-file paths are used as-is.
 	content, err := os.ReadFile(promptFilePath)
+	if err != nil && os.IsNotExist(err) &&
+		(promptFilePath == "" || promptFilePath == nestedPromptPath(component, version)) {
+		resolved, rerr := ResolvePromptPath(component, version)
+		if rerr != nil {
+			return nil, fmt.Errorf("cannot read prompt file %s: %w", promptFilePath, rerr)
+		}
+		content, err = os.ReadFile(resolved)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("cannot read prompt file %s: %w", promptFilePath, err)
 	}
@@ -164,13 +237,18 @@ func LookupByComponent(component, version string) (*PromptVersion, error) {
 	return entryToPromptVersion(component, version, (*idx)[component][version]), nil
 }
 
-// List returns all prompt versions matching the given filter.
+// List returns all prompt versions matching the given filter. Indexed
+// entries come from _index.yaml; flat-layout prompt files present on disk
+// (prompts/<component>/v<N>.md) that are absent from the index are included
+// as unregistered entries (StatusUnregistered). Nothing is written — flat
+// entries are derived on the fly.
 func List(filter ListFilter) ([]*PromptVersion, error) {
 	idx, err := loadIndex()
 	if err != nil {
 		return nil, err
 	}
 	result := []*PromptVersion{}
+	seen := make(map[string]bool)
 	for component, versions := range *idx {
 		if filter.Component != "" && component != filter.Component {
 			continue
@@ -182,8 +260,40 @@ func List(filter ListFilter) ([]*PromptVersion, error) {
 			if filter.Model != "" && entry.Model != filter.Model {
 				continue
 			}
+			seen[component+"\x00"+version] = true
 			result = append(result, entryToPromptVersion(component, version, entry))
 		}
+	}
+
+	// Append flat-layout prompts on disk that are missing from the index.
+	flat, err := findFlatPrompts()
+	if err != nil {
+		return nil, err
+	}
+	for _, fp := range flat {
+		if filter.Component != "" && fp.component != filter.Component {
+			continue
+		}
+		if seen[fp.component+"\x00"+fp.version] {
+			continue // already indexed — do not duplicate
+		}
+		if filter.Model != "" {
+			continue // flat entries carry no model metadata
+		}
+		if filter.Status != "" && filter.Status != StatusUnregistered {
+			continue
+		}
+		content, err := os.ReadFile(fp.path)
+		if err != nil {
+			continue // skip unreadable files rather than failing the listing
+		}
+		result = append(result, &PromptVersion{
+			Version:    fp.version,
+			Component:  fp.component,
+			Hash:       Hash(string(content)),
+			Status:     StatusUnregistered,
+			PromptPath: fp.path,
+		})
 	}
 	return result, nil
 }

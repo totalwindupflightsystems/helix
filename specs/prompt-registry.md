@@ -106,7 +106,7 @@ promptfoo:
 
 ```
 helix prompt register <component> <version> [flags]
-  --prompt-file      Path to prompt.md (default: prompts/<component>/<version>/prompt.md)
+  --prompt-file      Path to prompt.md (default: resolves prompts/<component>/<version>/prompt.md, falling back to flat prompts/<component>/v<N>.md)
   --model            Model that produced this prompt
   --provider         Provider name
   --spec-ref         Link to spec file this prompt implements
