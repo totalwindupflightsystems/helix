@@ -3504,3 +3504,7 @@
 {"from":"pkg/identity/nostr.go","to":"std:time","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"pkg/identity/nostr_test.go","to":"pkg/identity/nostr.go","rel":"tested_by","provenance":"heuristic","confidence":0.8}
 {"from":"pkg/identity/nostr.go","to":"pkg/identity/nostr_test.go","rel":"tests","provenance":"heuristic","confidence":0.8}
+{"from":"cmd/helix/status.go","to":"std:net","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"cmd/helix/doctor.go","to":"std:errors","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"cmd/helix/doctor.go","to":"std:net","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"cmd/helix/doctor.go","to":"std:sync","rel":"imports","provenance":"ast_exact","confidence":1.0}

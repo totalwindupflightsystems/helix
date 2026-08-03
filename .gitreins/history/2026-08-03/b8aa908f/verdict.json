@@ -1,0 +1,85 @@
+{
+  "task_id": "df-007-status-doctor",
+  "task_title": "Fix status/doctor misdiagnosis: canonical Forgejo URL + route-mismatch vs down classification",
+  "task_criteria": [
+    "helix status probes Forgejo at http://localhost:3030/api/v1/version (canonical, not :3000) \u2014 verify grep in cmd/helix/status.go registerDefaultSubsystems or defaultSubsystemProbes",
+    "helix doctor DefaultDoctorConfig ForgejoURL uses http://localhost:3030/api/v1/version \u2014 verify grep in cmd/helix/doctor.go",
+    "Probe classification distinguishes reachable-but-route-mismatch (4xx on connected server -> degraded with 'route mismatch' wording) from down (connection failure/timeout -> down) in status.go HealthCheck",
+    "doctor checkHTTP detail distinguishes 2xx PASS, 4xx route mismatch FAIL, unreachable/timeout FAIL with distinct wording",
+    "doctor runAllChecks runs checks concurrently (or otherwise bounded) so a hanging service does not make doctor take ~45s \u2014 worst case ~ per-check timeout",
+    "Unit tests cover: 404 -> route mismatch degraded (not 'rejecting requests'), closed port -> down, 2xx -> healthy, hanging handler -> down at timeout",
+    "go build ./... and go test -short -count=1 pass; gitreins guard passes",
+    "Live: helix status --json reports forgejo healthy (HTTP 200) in real environment"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 lint: \n  \u2713 tests: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 helix status probes Forgejo at http://localhost:3030/api/v1/version (canonical, not :3000) \u2014 verify grep in cmd/helix/status.go registerDefaultSubsystems or defaultSubsystemProbes: cmd/helix/status.go:199 defaultSubsystemProbes has {\"forgejo\", \"http://localhost:3030/api/v1/version\"}; registerDefaultSubsystems iterates it (line 202). TestDefaultSubsystemProbes_ForgejoCanonicalURL (status_test.go:237) asserts this URL.\n  \u2713 helix doctor DefaultDoctorConfig ForgejoURL uses http://localhost:3030/api/v1/version \u2014 verify grep in cmd/helix/doctor.go: cmd/helix/doctor.go:66 DefaultDoctorConfig ForgejoURL = \"http://localhost:3030/api/v1/version\". TestDefaultDoctorConfig (doctor_test.go:84) asserts this exact URL.\n  \u2713 Probe classification distinguishes reachable-but-route-mismatch (4xx on connected server -> degraded with 'route mismatch' wording) from down (connection failure/timeout -> down) in status.go HealthCheck: cmd/helix/status.go HealthCheck (lines 240-295): 2xx->healthy, 4xx->degraded with 'route mismatch \u2014 service reachable, wrong path' (line 282), 5xx/network error/timeout->down. probeFailureMessage (line 296+) distinguishes timeout from connection failure. Tests: TestHTTPSubsystemHealth_RouteMismatch (status_test.go:206), TestHTTPSubsystemHealth_Timeout (status_test.go:220).\n  \u2713 doctor checkHTTP detail distinguishes 2xx PASS, 4xx route mismatch FAIL, unreachable/timeout FAIL with distinct wording: cmd/helix/doctor.go checkHTTP (lines 478-515): 2xx->ok=true 'HTTP <code>', 4xx->ok=false 'HTTP <code> (route mismatch \u2014 service reachable, wrong path)', network error/timeout->ok=false 'unreachable: ...' or 'unreachable: timed out after <t>'. Tests: TestCheckHTTP_RouteMismatch (doctor_test.go:139), TestCheckHTTP_Timeout (doctor_test.go:159).\n  \u2713 doctor runAllChecks runs checks concurrently (or otherwise bounded) so a hanging service does not make doctor take ~45s \u2014 worst case ~ per-check timeout: cmd/helix/doctor.go runAllChecks (lines 187-225) runs all 9 checks concurrently via goroutines + sync.WaitGroup. Each HTTP check capped at doctorHTTPTimeout=5s (line 180). Worst case ~5s not ~45s. TestRunAllChecks_Concurrent (doctor_test.go:301) verifies elapsed < 2s with 6 hanging servers.\n  \u2713 Unit tests cover: 404 -> route mismatch degraded (not 'rejecting requests'), closed port -> down, 2xx -> healthy, hanging handler -> down at timeout: All 4 cases covered: (1) TestHTTPSubsystemHealth_RouteMismatch (status_test.go:206) asserts Contains 'route mismatch' and NotContains 'rejecting requests'; (2) TestHTTPSubsystemHealth_Down_NetworkError (status_test.go:257) uses closed port http://127.0.0.1:1; (3) TestHTTPSubsystemHealth_OK (status_test.go:180) 2xx->healthy; (4) TestHTTPSubsystemHealth_Timeout (status_test.go:220) uses hangingHTTPServer.\n  \u2713 go build ./... and go test -short -count=1 pass; gitreins guard passes: go build ./... passes (exit 0). go test -short -count=1 ./... passes (all packages ok). go vet ./cmd/helix/... passes. LSP diagnostics empty. Dead code detection passes. GitReins pre-commit guard (runs go test ./... -count=1 and go build ./...) passes.\n  \u2713 Live: helix status --json reports forgejo healthy (HTTP 200) in real environment: curl http://localhost:3030/api/v1/version returns HTTP 200. go run ./cmd/helix status --json reports 'overall': 'healthy' and forgejo 'state': 'healthy', 'message': 'HTTP 200'.\nAll 8 criteria verified: canonical Forgejo URL (:3030) in both status and doctor, route-mismatch vs down classification with distinct wording, concurrent doctor checks bounded to one timeout, comprehensive unit tests, passing build/tests/gitreins guard, and live status reports forgejo healthy.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 helix status probes Forgejo at http://localhost:3030/api/v1/version (canonical, not :3000) \u2014 verify grep in cmd/helix/status.go registerDefaultSubsystems or defaultSubsystemProbes: cmd/helix/status.go:199 defaultSubsystemProbes has {\"forgejo\", \"http://localhost:3030/api/v1/version\"}; registerDefaultSubsystems iterates it (line 202). TestDefaultSubsystemProbes_ForgejoCanonicalURL (status_test.go:237) asserts this URL.\n  \u2713 helix doctor DefaultDoctorConfig ForgejoURL uses http://localh",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: df-007-status-doctor\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 lint: \n  \u2713 tests: \n  \u2713 secrets: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 helix status probes Forgejo at http://localhost:3030/api/v1/version (canonical, not :3000) \u2014 verify grep in cmd/helix/status.go registerDefaultSubsystems or defaultSubsystemProbes: cmd/helix/status.go:199 defaultSubsystemProbes has {\"forgejo\", \"http://localhost:3030/api/v1/version\"}; registerDefaultSubsystems iterates it (line 202). TestDefaultSubsystemProbes_ForgejoCanonicalURL (status_test.go:237) asserts this URL.\n  \u2713 helix doctor DefaultDoctorConfig ForgejoURL uses http://localhost:3030/api/v1/version \u2014 verify grep in cmd/helix/doctor.go: cmd/helix/doctor.go:66 DefaultDoctorConfig ForgejoURL = \"http://localhost:3030/api/v1/version\". TestDefaultDoctorConfig (doctor_test.go:84) asserts this exact URL.\n  \u2713 Probe classification distinguishes reachable-but-route-mismatch (4xx on connected server -> degraded with 'route mismatch' wording) from down (connection failure/timeout -> down) in status.go HealthCheck: cmd/helix/status.go HealthCheck (lines 240-295): 2xx->healthy, 4xx->degraded with 'route mismatch \u2014 service reachable, wrong path' (line 282), 5xx/network error/timeout->down. probeFailureMessage (line 296+) distinguishes timeout from connection failure. Tests: TestHTTPSubsystemHealth_RouteMismatch (status_test.go:206), TestHTTPSubsystemHealth_Timeout (status_test.go:220).\n  \u2713 doctor checkHTTP detail distinguishes 2xx PASS, 4xx route mismatch FAIL, unreachable/timeout FAIL with distinct wording: cmd/helix/doctor.go checkHTTP (lines 478-515): 2xx->ok=true 'HTTP <code>', 4xx->ok=false 'HTTP <code> (route mismatch \u2014 service reachable, wrong path)', network error/timeout->ok=false 'unreachable: ...' or 'unreachable: timed out after <t>'. Tests: TestCheckHTTP_RouteMismatch (doctor_test.go:139), TestCheckHTTP_Timeout (doctor_test.go:159).\n  \u2713 doctor runAllChecks runs checks concurrently (or otherwise bounded) so a hanging service does not make doctor take ~45s \u2014 worst case ~ per-check timeout: cmd/helix/doctor.go runAllChecks (lines 187-225) runs all 9 checks concurrently via goroutines + sync.WaitGroup. Each HTTP check capped at doctorHTTPTimeout=5s (line 180). Worst case ~5s not ~45s. TestRunAllChecks_Concurrent (doctor_test.go:301) verifies elapsed < 2s with 6 hanging servers.\n  \u2713 Unit tests cover: 404 -> route mismatch degraded (not 'rejecting requests'), closed port -> down, 2xx -> healthy, hanging handler -> down at timeout: All 4 cases covered: (1) TestHTTPSubsystemHealth_RouteMismatch (status_test.go:206) asserts Contains 'route mismatch' and NotContains 'rejecting requests'; (2) TestHTTPSubsystemHealth_Down_NetworkError (status_test.go:257) uses closed port http://127.0.0.1:1; (3) TestHTTPSubsystemHealth_OK (status_test.go:180) 2xx->healthy; (4) TestHTTPSubsystemHealth_Timeout (status_test.go:220) uses hangingHTTPServer.\n  \u2713 go build ./... and go test -short -count=1 pass; gitreins guard passes: go build ./... passes (exit 0). go test -short -count=1 ./... passes (all packages ok). go vet ./cmd/helix/... passes. LSP diagnostics empty. Dead code detection passes. GitReins pre-commit guard (runs go test ./... -count=1 and go build ./...) passes.\n  \u2713 Live: helix status --json reports forgejo healthy (HTTP 200) in real environment: curl http://localhost:3030/api/v1/version returns HTTP 200. go run ./cmd/helix status --json reports 'overall': 'healthy' and forgejo 'state': 'healthy', 'message': 'HTTP 200'.\nAll 8 criteria verified: canonical Forgejo URL (:3030) in both status and doctor, route-mismatch vs down classification with distinct wording, concurrent doctor checks bounded to one timeout, comprehensive unit tests, passing build/tests/gitreins guard, and live status reports forgejo healthy.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-03T13:17:48.161824"
+}
