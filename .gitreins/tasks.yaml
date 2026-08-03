@@ -257,3 +257,26 @@ tasks:
   status: complete
   created_at: '2026-08-03T10:54:56.791188+00:00'
   completed_at: '2026-08-03T10:55:00.672890+00:00'
+- id: df-007-status-doctor
+  title: 'Fix status/doctor misdiagnosis: canonical Forgejo URL + route-mismatch vs
+    down classification'
+  criteria:
+  - "helix status probes Forgejo at http://localhost:3030/api/v1/version (canonical,\
+    \ not :3000) \u2014 verify grep in cmd/helix/status.go registerDefaultSubsystems\
+    \ or defaultSubsystemProbes"
+  - "helix doctor DefaultDoctorConfig ForgejoURL uses http://localhost:3030/api/v1/version\
+    \ \u2014 verify grep in cmd/helix/doctor.go"
+  - Probe classification distinguishes reachable-but-route-mismatch (4xx on connected
+    server -> degraded with 'route mismatch' wording) from down (connection failure/timeout
+    -> down) in status.go HealthCheck
+  - doctor checkHTTP detail distinguishes 2xx PASS, 4xx route mismatch FAIL, unreachable/timeout
+    FAIL with distinct wording
+  - "doctor runAllChecks runs checks concurrently (or otherwise bounded) so a hanging\
+    \ service does not make doctor take ~45s \u2014 worst case ~ per-check timeout"
+  - 'Unit tests cover: 404 -> route mismatch degraded (not ''rejecting requests''),
+    closed port -> down, 2xx -> healthy, hanging handler -> down at timeout'
+  - go build ./... and go test -short -count=1 pass; gitreins guard passes
+  - 'Live: helix status --json reports forgejo healthy (HTTP 200) in real environment'
+  status: complete
+  created_at: '2026-08-03T13:15:30.066892+00:00'
+  completed_at: '2026-08-03T13:15:33.973107+00:00'
