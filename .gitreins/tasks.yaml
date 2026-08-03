@@ -280,3 +280,31 @@ tasks:
   status: complete
   created_at: '2026-08-03T13:15:30.066892+00:00'
   completed_at: '2026-08-03T13:15:33.973107+00:00'
+- id: ID-004
+  title: "Identity CLI: helix identity create/register/verify/export/import/list (SPEC-022\
+    \ \xA74)"
+  criteria:
+  - helix-identity create --name X [--output PATH] writes a valid HID file that round-trips
+    through ImportHID; exits 0
+  - helix-identity verify --hid PATH exits 0 on valid signature and non-zero with
+    clear message on tampered HID
+  - helix-identity export --format json prints the HID JSON; --format nostr emits
+    a NIP-01 kind-0 event signed with the agent key
+  - helix-identity import --path PATH loads an HID file and prints fingerprint/agent
+    id; exits 0
+  - helix-identity register --forge URL --agent PATH verifies HID signature first,
+    reads Forgejo creds from env/flags, errors cleanly (rc=3 config taxonomy) when
+    creds missing
+  - helix-identity list --forge URL lists registered OAuth apps via pkg/identity registrar
+    ListOAuthApps; errors cleanly without creds
+  - All 6 subcommands registered in the cobra tree of cmd/helix-identity/main.go and
+    reachable via unified `helix identity <sub>` dispatch
+  - go build ./... passes, go vet ./... passes, go test -short -count=1 ./... passes
+    for all packages (60/60), gofmt clean on touched files
+  - Unit tests cover create/verify (valid + tampered)/export/import; forge tests cover
+    ListOAuthApps
+  - 'Commit message includes Co-authored-by: Alexis Okuwa <wojonstech@gmail.com> and
+    Prompt: prompts/agent-identity/v1.0.0/prompt.md trailers'
+  status: complete
+  created_at: '2026-08-03T17:57:43.580872+00:00'
+  completed_at: '2026-08-03T18:02:51.005004+00:00'

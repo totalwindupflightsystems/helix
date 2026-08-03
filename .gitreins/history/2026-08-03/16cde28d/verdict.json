@@ -1,0 +1,87 @@
+{
+  "task_id": "ID-004",
+  "task_title": "Identity CLI: helix identity create/register/verify/export/import/list (SPEC-022 \u00a74)",
+  "task_criteria": [
+    "helix-identity create --name X [--output PATH] writes a valid HID file that round-trips through ImportHID; exits 0",
+    "helix-identity verify --hid PATH exits 0 on valid signature and non-zero with clear message on tampered HID",
+    "helix-identity export --format json prints the HID JSON; --format nostr emits a NIP-01 kind-0 event signed with the agent key",
+    "helix-identity import --path PATH loads an HID file and prints fingerprint/agent id; exits 0",
+    "helix-identity register --forge URL --agent PATH verifies HID signature first, reads Forgejo creds from env/flags, errors cleanly (rc=3 config taxonomy) when creds missing",
+    "helix-identity list --forge URL lists registered OAuth apps via pkg/identity registrar ListOAuthApps; errors cleanly without creds",
+    "All 6 subcommands registered in the cobra tree of cmd/helix-identity/main.go and reachable via unified `helix identity <sub>` dispatch",
+    "go build ./... passes, go vet ./... passes, go test -short -count=1 ./... passes for all packages (60/60), gofmt clean on touched files",
+    "Unit tests cover create/verify (valid + tampered)/export/import; forge tests cover ListOAuthApps",
+    "Commit message includes Co-authored-by: Alexis Okuwa <wojonstech@gmail.com> and Prompt: prompts/agent-identity/v1.0.0/prompt.md trailers"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier:   File category 'docs': requires provisional+, agent is provisional \u2014 OK\n  File category 'code': req\n  \u2713 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "  File category 'docs': requires provisional+, agent is provisional \u2014 OK\n  File category 'code': requires provisional+, agent is provisional \u2014 OK\n\u2713 Trust tier: PASS\n",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_manager import GuardManager; gm = GuardManager('.'); r = gm._check_lint(); import sys; sys.exit(0 if r.passed else 1)\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nModuleNotFoundError: No module named 'engine'\n",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_manager import GuardManager; gm = GuardManager('.'); r = gm._check_tests(); import sys; sys.exit(0 if r.passed else 1)\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nModuleNotFoundError: No module named 'engine'\n",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_manager import GuardManager; gm = GuardManager('.'); from engine.guards import check_go_build; r = check_go_build('.'); import sys; sys.exit(0 if r.passed else 1)\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nModuleNotFoundError: No module named 'engine'\n",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_manager import GuardManager; gm = GuardManager('.'); r = gm._check_secrets(); import sys; sys.exit(0 if r.passed else 1)\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nModuleNotFoundError: No module named 'engine'\n",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 helix-identity create --name X [--output PATH] writes a valid HID file that round-trips through ImportHID; exits 0: runCreate (cmd/helix-identity/main.go:420-472) calls agent.Export(out, privKey) which signs+writes HID JSON; TestRunCreate_WritesValidHID (identity_cli_test.go:108) round-trips through ImportHID, checks 64-hex fingerprint and key mode 0600; returns nil (exit 0).\n  \u2713 helix-identity verify --hid PATH exits 0 on valid signature and non-zero with clear message on tampered HID: runVerify (main.go:542-565) calls hid.Identity.Verify(hid); valid prints 'verified', tampered returns NewConfigError (non-zero). Tests TestRunVerify_ValidHID (169) and TestRunVerify_TamperedHID (181) confirm both paths.\n  \u2713 helix-identity export --format json prints the HID JSON; --format nostr emits a NIP-01 kind-0 event signed with the agent key: runExport (main.go:587-663) json prints HID JSON; nostr emits NIP-01 kind-0 (NostrKindMetadata=0, nostr.go:14) signed with agent key via event.Sign(privKey). TestRunExport_Nostr (234) verifies event.Verify() and pubkey matches HID pubkey.\n  \u2713 helix-identity import --path PATH loads an HID file and prints fingerprint/agent id; exits 0: runImport (main.go:665-690) calls ImportHID and prints agent_id + fingerprint. TestRunImport_PrintsIdentity (296) asserts output contains both fingerprint and agent ID.\n  \u2713 helix-identity register --forge URL --agent PATH verifies HID signature first, reads Forgejo creds from env/flags, errors cleanly (rc=3 config taxonomy) when creds missing: runRegister (main.go:474-540) verifies HID signature first (refuses tampered), reads creds from env/flags; when adminUser missing returns NewConfigError which maps to ExitFileOrAuth=3 (types.go:44, ExitCode() ErrKindConfig->3).\n  \u2713 helix-identity list --forge URL lists registered OAuth apps via pkg/identity registrar ListOAuthApps; errors cleanly without creds: runList (main.go:705-760) calls registrar.ListOAuthApps (forge.go:214 real HTTP impl); without creds returns NewConfigError. TestRunList_MissingCreds (454) asserts FORGEJO_ADMIN_USER message.\n  \u2713 All 6 subcommands registered in the cobra tree of cmd/helix-identity/main.go and reachable via unified `helix identity <sub>` dispatch: create/register/verify/export/import/list registered in cobra tree (main.go:147-152). Unified dispatch: cmd/helix/main.go:64 maps 'identity'->'helix-identity', case at :356 delegates to external binary (except rotate-keys).\n  \u2713 go build ./... passes, go vet ./... passes, go test -short -count=1 ./... passes for all packages (60/60), gofmt clean on touched files: go build ./... exit 0; go vet ./... exit 0; go test -short -count=1 ./... = 60/60 ok, 0 FAIL, exit 0; gofmt -l clean on all touched files.\n  \u2713 Unit tests cover create/verify (valid + tampered)/export/import; forge tests cover ListOAuthApps: Tests cover create (108,136,155), verify valid+tampered (169,181), export json+nostr (218,234), import (296). Forge tests cover ListOAuthApps (forge_test.go:204,247,265,281).\n  \u2713 Commit message includes Co-authored-by: Alexis Okuwa <wojonstech@gmail.com> and Prompt: prompts/agent-identity/v1.0.0/prompt.md trailers: Commit 4fc1d11 message includes both 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' and 'Prompt: prompts/agent-identity/v1.0.0/prompt.md' trailers.\nAll 10 criteria verified PASS: identity CLI subcommands implemented, tested, build/vet/test (60/60) and gofmt clean, unified dispatch wired, and commit trailers present.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 helix-identity create --name X [--output PATH] writes a valid HID file that round-trips through ImportHID; exits 0: runCreate (cmd/helix-identity/main.go:420-472) calls agent.Export(out, privKey) which signs+writes HID JSON; TestRunCreate_WritesValidHID (identity_cli_test.go:108) round-trips through ImportHID, checks 64-hex fingerprint and key mode 0600; returns nil (exit 0).\n  \u2713 helix-identity verify --hid PATH exits 0 on valid signature and non-zero with clear message on tampered ",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: ID-004\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier:   File category 'docs': requires provisional+, agent is provisional \u2014 OK\n  File category 'code': req\n  \u2713 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 helix-identity create --name X [--output PATH] writes a valid HID file that round-trips through ImportHID; exits 0: runCreate (cmd/helix-identity/main.go:420-472) calls agent.Export(out, privKey) which signs+writes HID JSON; TestRunCreate_WritesValidHID (identity_cli_test.go:108) round-trips through ImportHID, checks 64-hex fingerprint and key mode 0600; returns nil (exit 0).\n  \u2713 helix-identity verify --hid PATH exits 0 on valid signature and non-zero with clear message on tampered HID: runVerify (main.go:542-565) calls hid.Identity.Verify(hid); valid prints 'verified', tampered returns NewConfigError (non-zero). Tests TestRunVerify_ValidHID (169) and TestRunVerify_TamperedHID (181) confirm both paths.\n  \u2713 helix-identity export --format json prints the HID JSON; --format nostr emits a NIP-01 kind-0 event signed with the agent key: runExport (main.go:587-663) json prints HID JSON; nostr emits NIP-01 kind-0 (NostrKindMetadata=0, nostr.go:14) signed with agent key via event.Sign(privKey). TestRunExport_Nostr (234) verifies event.Verify() and pubkey matches HID pubkey.\n  \u2713 helix-identity import --path PATH loads an HID file and prints fingerprint/agent id; exits 0: runImport (main.go:665-690) calls ImportHID and prints agent_id + fingerprint. TestRunImport_PrintsIdentity (296) asserts output contains both fingerprint and agent ID.\n  \u2713 helix-identity register --forge URL --agent PATH verifies HID signature first, reads Forgejo creds from env/flags, errors cleanly (rc=3 config taxonomy) when creds missing: runRegister (main.go:474-540) verifies HID signature first (refuses tampered), reads creds from env/flags; when adminUser missing returns NewConfigError which maps to ExitFileOrAuth=3 (types.go:44, ExitCode() ErrKindConfig->3).\n  \u2713 helix-identity list --forge URL lists registered OAuth apps via pkg/identity registrar ListOAuthApps; errors cleanly without creds: runList (main.go:705-760) calls registrar.ListOAuthApps (forge.go:214 real HTTP impl); without creds returns NewConfigError. TestRunList_MissingCreds (454) asserts FORGEJO_ADMIN_USER message.\n  \u2713 All 6 subcommands registered in the cobra tree of cmd/helix-identity/main.go and reachable via unified `helix identity <sub>` dispatch: create/register/verify/export/import/list registered in cobra tree (main.go:147-152). Unified dispatch: cmd/helix/main.go:64 maps 'identity'->'helix-identity', case at :356 delegates to external binary (except rotate-keys).\n  \u2713 go build ./... passes, go vet ./... passes, go test -short -count=1 ./... passes for all packages (60/60), gofmt clean on touched files: go build ./... exit 0; go vet ./... exit 0; go test -short -count=1 ./... = 60/60 ok, 0 FAIL, exit 0; gofmt -l clean on all touched files.\n  \u2713 Unit tests cover create/verify (valid + tampered)/export/import; forge tests cover ListOAuthApps: Tests cover create (108,136,155), verify valid+tampered (169,181), export json+nostr (218,234), import (296). Forge tests cover ListOAuthApps (forge_test.go:204,247,265,281).\n  \u2713 Commit message includes Co-authored-by: Alexis Okuwa <wojonstech@gmail.com> and Prompt: prompts/agent-identity/v1.0.0/prompt.md trailers: Commit 4fc1d11 message includes both 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' and 'Prompt: prompts/agent-identity/v1.0.0/prompt.md' trailers.\nAll 10 criteria verified PASS: identity CLI subcommands implemented, tested, build/vet/test (60/60) and gofmt clean, unified dispatch wired, and commit trailers present.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-03T18:05:30.798234"
+}

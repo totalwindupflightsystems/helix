@@ -1,0 +1,87 @@
+{
+  "task_id": "ID-004",
+  "task_title": "Identity CLI: helix identity create/register/verify/export/import/list (SPEC-022 \u00a74)",
+  "task_criteria": [
+    "helix-identity create --name X [--output PATH] writes a valid HID file that round-trips through ImportHID; exits 0",
+    "helix-identity verify --hid PATH exits 0 on valid signature and non-zero with clear message on tampered HID",
+    "helix-identity export --format json prints the HID JSON; --format nostr emits a NIP-01 kind-0 event signed with the agent key",
+    "helix-identity import --path PATH loads an HID file and prints fingerprint/agent id; exits 0",
+    "helix-identity register --forge URL --agent PATH verifies HID signature first, reads Forgejo creds from env/flags, errors cleanly (rc=3 config taxonomy) when creds missing",
+    "helix-identity list --forge URL lists registered OAuth apps via pkg/identity registrar ListOAuthApps; errors cleanly without creds",
+    "All 6 subcommands registered in the cobra tree of cmd/helix-identity/main.go and reachable via unified `helix identity <sub>` dispatch",
+    "go build ./... passes, go vet ./... passes, go test -short -count=1 ./... passes for all packages (60/60), gofmt clean on touched files",
+    "Unit tests cover create/verify (valid + tampered)/export/import; forge tests cover ListOAuthApps",
+    "Commit message includes Co-authored-by: Alexis Okuwa <wojonstech@gmail.com> and Prompt: prompts/agent-identity/v1.0.0/prompt.md trailers"
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_manager import GuardManager; gm = GuardManager('.'); from engine.guards import check_go_build; r = check_go_build('.'); import sys; sys.exit(0 if r.passed else 1)\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nModuleNotFoundError: No module named 'engine'\n",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_manager import GuardManager; gm = GuardManager('.'); r = gm._check_tests(); import sys; sys.exit(0 if r.passed else 1)\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nModuleNotFoundError: No module named 'engine'\n",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_manager import GuardManager; gm = GuardManager('.'); r = gm._check_secrets(); import sys; sys.exit(0 if r.passed else 1)\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nModuleNotFoundError: No module named 'engine'\n",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_manager import GuardManager; gm = GuardManager('.'); r = gm._check_lint(); import sys; sys.exit(0 if r.passed else 1)\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nModuleNotFoundError: No module named 'engine'\n",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n\nCap exceeded: Input token budget (2.0M) exceeded (2.0M used). Increase max_input_tokens or reduce message context.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n\nCap exceeded: Input token budget (2.0M) exceeded (2.0M used). Increase max_input_tokens or reduce message context.",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: ID-004\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n  \u2713 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from engine.guard_mana\n\nStage tier2: FAIL\n  INCOMPLETE\n\nCap exceeded: Input token budget (2.0M) exceeded (2.0M used). Increase max_input_tokens or reduce message context.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-08-03T18:00:09.787568"
+}
