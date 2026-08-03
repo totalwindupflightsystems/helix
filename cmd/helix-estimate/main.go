@@ -18,6 +18,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 	"sort"
 
 	"github.com/spf13/cobra"
@@ -119,6 +121,71 @@ func (o *estimateOptions) addFlags(cmd *cobra.Command) {
 		"path to pricing.yaml")
 }
 
+// testdataPath resolves the repo-relative testdata fixture path rel to an
+// absolute path so the default --pricing/--known-friends fallbacks work from
+// any working directory, not just the checkout root. Anchoring is tried in
+// order:
+//
+//  1. the repo root found by walking up from the current working directory
+//     looking for a go.mod marker (covers running inside a checkout);
+//  2. the repo root implied by this source file's build-time location via
+//     runtime.Caller (covers running the installed binary from any directory,
+//     e.g. from PATH or /tmp, as long as the checkout is on disk);
+//  3. "" — callers fall through to their normal CONFIG_ERROR path. A broken
+//     CWD-relative path is never silently returned.
+func testdataPath(rel string) string {
+	if root := repoRootFromCWD(); root != "" {
+		abs := filepath.Join(root, rel)
+		if _, err := os.Stat(abs); err == nil {
+			return abs
+		}
+	}
+	if root := repoRootFromSource(); root != "" {
+		abs := filepath.Join(root, rel)
+		if _, err := os.Stat(abs); err == nil {
+			return abs
+		}
+	}
+	return ""
+}
+
+// repoRootFromCWD walks up from the current working directory looking for a
+// go.mod marker and returns the directory that contains it, or "" when the
+// CWD is not inside a Go module.
+func repoRootFromCWD() string {
+	wd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	for dir := wd; ; dir = filepath.Dir(dir) {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return ""
+		}
+	}
+}
+
+// repoRootFromSource returns the repo root anchored to this source file's
+// build-time location (main.go lives at <root>/cmd/helix-estimate/main.go,
+// three path components below the repo root). Returns "" when the recorded
+// path is unusable, e.g. -trimpath builds record a module-relative path that
+// does not exist on disk.
+func repoRootFromSource() string {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok || !filepath.IsAbs(file) {
+		return ""
+	}
+	// main.go → cmd/helix-estimate → cmd → repo root.
+	root := filepath.Dir(filepath.Dir(filepath.Dir(file)))
+	if _, err := os.Stat(filepath.Join(root, "go.mod")); err != nil {
+		return ""
+	}
+	return root
+}
+
 // defaultPricingPath returns the production pricing location, falling back to
 // the testdata fixture when ~/.helix/pricing.yaml is absent.
 func defaultPricingPath() string {
@@ -129,7 +196,7 @@ func defaultPricingPath() string {
 			return p
 		}
 	}
-	return "pkg/estimate/testdata/pricing.yaml"
+	return testdataPath("pkg/estimate/testdata/pricing.yaml")
 }
 
 // defaultFriendsPath returns the known-friends.json budget registry location.
@@ -138,7 +205,7 @@ func defaultFriendsPath() string {
 	if _, err := os.Stat(prod); err == nil {
 		return prod
 	}
-	return "pkg/estimate/testdata/known-friends.json"
+	return testdataPath("pkg/estimate/testdata/known-friends.json")
 }
 
 // toTaskDesc converts the CLI options + description into an estimate.TaskDesc.

@@ -153,17 +153,91 @@ func TestNewReportCmd(t *testing.T) {
 
 func TestDefaultPricingPath(t *testing.T) {
 	path := defaultPricingPath()
-	// Should end with testdata/pricing.yaml as fallback (when ~/.helix doesn't exist)
-	if !strings.HasSuffix(path, "pricing.yaml") {
-		t.Errorf("path %q should end with pricing.yaml", path)
+	if path == "" {
+		t.Fatal("default pricing path must not be empty")
+	}
+	// A CWD-relative default only works from the checkout root (DF-004).
+	if !filepath.IsAbs(path) {
+		t.Fatalf("default pricing path %q must be absolute", path)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("default pricing path %q should exist: %v", path, err)
 	}
 }
 
 func TestDefaultFriendsPath(t *testing.T) {
 	path := defaultFriendsPath()
-	// Falls back to pkg/estimate/testdata/known-friends.json normally
-	if !strings.HasSuffix(path, "known-friends.json") {
-		t.Errorf("path %q should end with known-friends.json", path)
+	if path == "" {
+		t.Fatal("default friends path must not be empty")
+	}
+	// A CWD-relative default only works from the checkout root (DF-004).
+	if !filepath.IsAbs(path) {
+		t.Fatalf("default friends path %q must be absolute", path)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("default friends path %q should exist: %v", path, err)
+	}
+}
+
+// TestTestdataPathFromNonRepoCWD proves the testdata fallback resolves to an
+// absolute, existing path even when the CLI runs from a directory with no
+// go.mod ancestor (e.g. /tmp) — the DF-004 regression.
+func TestTestdataPathFromNonRepoCWD(t *testing.T) {
+	t.Chdir(t.TempDir())
+	got := testdataPath("pkg/estimate/testdata/pricing.yaml")
+	if got == "" {
+		t.Fatal("testdataPath from non-repo cwd = \"\", want absolute repo-anchored path")
+	}
+	if !filepath.IsAbs(got) {
+		t.Errorf("testdataPath from non-repo cwd = %q, want absolute path", got)
+	}
+	if _, err := os.Stat(got); err != nil {
+		t.Errorf("resolved testdata path %q should exist: %v", got, err)
+	}
+	if want := filepath.Join("pkg", "estimate", "testdata", "pricing.yaml"); !strings.HasSuffix(got, want) {
+		t.Errorf("resolved path %q should end with %s", got, want)
+	}
+}
+
+// TestRepoRootFromCWD covers the go.mod-walk anchoring in isolation with a
+// hermetic fake repo (no dependence on the real checkout layout).
+func TestRepoRootFromCWD(t *testing.T) {
+	t.Run("finds_go_mod_anchor_from_nested_dir", func(t *testing.T) {
+		root := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(root, "a", "b"), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module fake\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		t.Chdir(filepath.Join(root, "a", "b"))
+		if got := repoRootFromCWD(); got != root {
+			t.Errorf("repoRootFromCWD() = %q, want %q", got, root)
+		}
+	})
+	t.Run("stops_at_nearest_go_mod_marker", func(t *testing.T) {
+		// The walk must stop at the FIRST go.mod ancestor, even when a decoy
+		// go.mod exists further up (e.g. /tmp/go.mod on some machines).
+		root := t.TempDir()
+		if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module fake\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(root, "nested"), 0755); err != nil {
+			t.Fatal(err)
+		}
+		t.Chdir(filepath.Join(root, "nested"))
+		if got := repoRootFromCWD(); got != root {
+			t.Errorf("repoRootFromCWD() = %q, want %q", got, root)
+		}
+	})
+}
+
+// TestTestdataPathMissingFixture asserts the DF-004 contract: when no anchor
+// contains the requested fixture, testdataPath returns "" so the caller emits
+// its normal CONFIG_ERROR — a broken path is never silently returned.
+func TestTestdataPathMissingFixture(t *testing.T) {
+	if got := testdataPath("pkg/estimate/testdata/does-not-exist.yaml"); got != "" {
+		t.Errorf("testdataPath(missing fixture) = %q, want \"\"", got)
 	}
 }
 
