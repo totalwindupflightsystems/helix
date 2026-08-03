@@ -240,3 +240,20 @@ tasks:
   status: complete
   created_at: '2026-08-03T08:32:16.350716+00:00'
   completed_at: '2026-08-03T08:32:20.436087+00:00'
+- id: df-006
+  title: Unified helix CLI install steps + make install target
+  criteria:
+  - README Quickstart documents unified helix CLI shells out to sibling binaries and
+    how to install them (PATH requirement / make install)
+  - make install target builds all 9 CLIs into PREFIX/bin (default /usr/local/bin,
+    PREFIX override works)
+  - make build produces repo-root binaries (go build -o . ./cmd/...) so ./helix <sub>
+    works from repo root
+  - go build ./... && go vet ./... && go test -short -count=1 ./... && golangci-lint
+    run ./... all pass
+  - helix <sub> from /tmp with install dir on PATH works (live verified); not-found
+    path prints install hint and exits non-zero
+  - commit includes Co-authored-by and Prompt trailers
+  status: complete
+  created_at: '2026-08-03T10:54:56.791188+00:00'
+  completed_at: '2026-08-03T10:55:00.672890+00:00'

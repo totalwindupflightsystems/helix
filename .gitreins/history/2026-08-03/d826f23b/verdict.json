@@ -1,0 +1,83 @@
+{
+  "task_id": "df-006",
+  "task_title": "Unified helix CLI install steps + make install target",
+  "task_criteria": [
+    "README Quickstart documents unified helix CLI shells out to sibling binaries and how to install them (PATH requirement / make install)",
+    "make install target builds all 9 CLIs into PREFIX/bin (default /usr/local/bin, PREFIX override works)",
+    "make build produces repo-root binaries (go build -o . ./cmd/...) so ./helix <sub> works from repo root",
+    "go build ./... && go vet ./... && go test -short -count=1 ./... && golangci-lint run ./... all pass",
+    "helix <sub> from /tmp with install dir on PATH works (live verified); not-found path prints install hint and exits non-zero",
+    "commit includes Co-authored-by and Prompt trailers"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 lint: \n  \u2713 tests: \n  \u2713 build: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 README Quickstart documents unified helix CLI shells out to sibling binaries and how to install them (PATH requirement / make install): README.md lines 164-230: Quickstart shows `helix <sub>` usage, note that it delegates to sibling binaries on PATH, and an Install section documenting `make install PREFIX=$(HOME)/.local` / `sudo make install` and PATH export.\n  \u2713 make install target builds all 9 CLIs into PREFIX/bin (default /usr/local/bin, PREFIX override works): Makefile: `PREFIX ?= /usr/local`, `BINDIR ?= $(PREFIX)/bin`, `install: build` installs helix, helix-identity, helix-estimate, helix-marketplace, helix-negotiate, helix-prompt, helix-release, helix-verify, sandbox. Live verified: `make install PREFIX=/tmp/helix-test-install` produced all 9 binaries in /tmp/helix-test-install/bin/.\n  \u2713 make build produces repo-root binaries (go build -o . ./cmd/...) so ./helix <sub> works from repo root: Makefile build target uses `go build -o . ./cmd/...`. Live verified: after `make build`, all 9 binaries present in repo root.\n  \u2713 go build ./... && go vet ./... && go test -short -count=1 ./... && golangci-lint run ./... all pass: All four commands exit 0: go build ./... (0), go vet ./... (0), go test -short -count=1 ./... (0, all packages ok), golangci-lint run ./... (0, '0 issues').\n  \u2713 helix <sub> from /tmp with install dir on PATH works (live verified); not-found path prints install hint and exits non-zero: Live from /tmp: PATH=/tmp/helix-test-install/bin `helix release --help` works (exit 0). Not-found: PATH=/tmp/only-helix (no sibling) `helix release` prints install hint (make install / PREFIX override / per-binary fallback) and exits 1. Unit test TestExecSubcommandNotFoundMentionsMakeInstall also passes.\n  \u2713 commit includes Co-authored-by and Prompt trailers: Commit 4ce1450 body includes 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' and 'Prompt: prompts/coding-hermes/v1.md' trailers.\nAll 6 criteria for the unified helix CLI install steps + make install target are satisfied and live-verified.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 README Quickstart documents unified helix CLI shells out to sibling binaries and how to install them (PATH requirement / make install): README.md lines 164-230: Quickstart shows `helix <sub>` usage, note that it delegates to sibling binaries on PATH, and an Install section documenting `make install PREFIX=$(HOME)/.local` / `sudo make install` and PATH export.\n  \u2713 make install target builds all 9 CLIs into PREFIX/bin (default /usr/local/bin, PREFIX override works): Makefile: `PREFIX ",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: df-006\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 lint: \n  \u2713 tests: \n  \u2713 build: \n  \u2713 secrets: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 README Quickstart documents unified helix CLI shells out to sibling binaries and how to install them (PATH requirement / make install): README.md lines 164-230: Quickstart shows `helix <sub>` usage, note that it delegates to sibling binaries on PATH, and an Install section documenting `make install PREFIX=$(HOME)/.local` / `sudo make install` and PATH export.\n  \u2713 make install target builds all 9 CLIs into PREFIX/bin (default /usr/local/bin, PREFIX override works): Makefile: `PREFIX ?= /usr/local`, `BINDIR ?= $(PREFIX)/bin`, `install: build` installs helix, helix-identity, helix-estimate, helix-marketplace, helix-negotiate, helix-prompt, helix-release, helix-verify, sandbox. Live verified: `make install PREFIX=/tmp/helix-test-install` produced all 9 binaries in /tmp/helix-test-install/bin/.\n  \u2713 make build produces repo-root binaries (go build -o . ./cmd/...) so ./helix <sub> works from repo root: Makefile build target uses `go build -o . ./cmd/...`. Live verified: after `make build`, all 9 binaries present in repo root.\n  \u2713 go build ./... && go vet ./... && go test -short -count=1 ./... && golangci-lint run ./... all pass: All four commands exit 0: go build ./... (0), go vet ./... (0), go test -short -count=1 ./... (0, all packages ok), golangci-lint run ./... (0, '0 issues').\n  \u2713 helix <sub> from /tmp with install dir on PATH works (live verified); not-found path prints install hint and exits non-zero: Live from /tmp: PATH=/tmp/helix-test-install/bin `helix release --help` works (exit 0). Not-found: PATH=/tmp/only-helix (no sibling) `helix release` prints install hint (make install / PREFIX override / per-binary fallback) and exits 1. Unit test TestExecSubcommandNotFoundMentionsMakeInstall also passes.\n  \u2713 commit includes Co-authored-by and Prompt trailers: Commit 4ce1450 body includes 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' and 'Prompt: prompts/coding-hermes/v1.md' trailers.\nAll 6 criteria for the unified helix CLI install steps + make install target are satisfied and live-verified.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-03T10:57:23.293076"
+}
