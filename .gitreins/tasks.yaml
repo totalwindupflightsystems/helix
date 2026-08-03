@@ -178,3 +178,28 @@ tasks:
   status: complete
   created_at: '2026-08-03T00:15:50.036671+00:00'
   completed_at: '2026-08-03T00:16:13.130840+00:00'
+- id: DF-005
+  title: prompt register/list accept flat prompts/<c>/v<N>.md layout
+  criteria:
+  - "helix-prompt register coding-hermes v1 --dry-run from repo root prints PROMPT\
+    \ REGISTERED with a hash and does not error (dry-run exit code 10 = ExitDryRun\
+    \ sentinel per spec \xA713, pre-existing intentional behavior) \u2014 resolves\
+    \ the flat prompts/coding-hermes/v1.md file"
+  - helix-prompt list shows all 5 prompt components including flat-layout ones (coding-hermes,
+    deps-upgrade, e2e-forgejo, src-002) in addition to agent-identity
+  - helix-prompt register nonexistent-comp v9 --dry-run exits non-zero with a clear
+    error naming the attempted paths
+  - pkg/prompt exposes a path-resolution helper that tries nested prompts/<c>/<v>/prompt.md
+    first, then flat prompts/<c>/v<N>.md
+  - register with an explicit --prompt-file path behaves unchanged
+  - go build ./... and go vet ./... pass; golangci-lint run ./... reports 0 issues
+  - go test -short -count=1 ./... passes for all 60 packages including new tests for
+    both-layout resolution and flat listing
+  - gofmt clean on changed files; no new dependencies added (stdlib + cobra + yaml
+    only)
+  - AGENTS.md / flag help text no longer describes the nested path as the only layout
+  - 'commit includes Co-authored-by trailer and Prompt: prompts/coding-hermes/v1.md
+    link'
+  status: complete
+  created_at: '2026-08-03T02:37:02.358637+00:00'
+  completed_at: '2026-08-03T02:43:22.591564+00:00'

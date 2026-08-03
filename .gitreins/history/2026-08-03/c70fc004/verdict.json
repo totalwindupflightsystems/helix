@@ -1,0 +1,87 @@
+{
+  "task_id": "DF-005",
+  "task_title": "prompt register/list accept flat prompts/<c>/v<N>.md layout",
+  "task_criteria": [
+    "helix-prompt register coding-hermes v1 --dry-run exits 0 from repo root and prints PROMPT REGISTERED with a hash \u2014 resolves the flat prompts/coding-hermes/v1.md file",
+    "helix-prompt list shows all 5 prompt components including flat-layout ones (coding-hermes, deps-upgrade, e2e-forgejo, src-002) in addition to agent-identity",
+    "helix-prompt register nonexistent-comp v9 --dry-run exits non-zero with a clear error naming the attempted paths",
+    "pkg/prompt exposes a path-resolution helper that tries nested prompts/<c>/<v>/prompt.md first, then flat prompts/<c>/v<N>.md",
+    "register with an explicit --prompt-file path behaves unchanged",
+    "go build ./... and go vet ./... pass; golangci-lint run ./... reports 0 issues",
+    "go test -short -count=1 ./... passes for all 60 packages including new tests for both-layout resolution and flat listing",
+    "gofmt clean on changed files; no new dependencies added (stdlib + cobra + yaml only)",
+    "AGENTS.md / flag help text no longer describes the nested path as the only layout",
+    "commit includes Co-authored-by trailer and Prompt: prompts/coding-hermes/v1.md link"
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 tests: \n  \u2713 build: \n  \u2713 lint: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n\nCap exceeded: Input token budget (1.0M) exceeded (1.1M used). Increase max_input_tokens or reduce message context.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n\nCap exceeded: Input token budget (1.0M) exceeded (1.1M used). Increase max_input_tokens or reduce message context.",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-005\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 tests: \n  \u2713 build: \n  \u2713 lint: \n  \u2713 secrets: \n\nStage tier2: FAIL\n  INCOMPLETE\n\nCap exceeded: Input token budget (1.0M) exceeded (1.1M used). Increase max_input_tokens or reduce message context.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-08-03T02:38:46.937252"
+}

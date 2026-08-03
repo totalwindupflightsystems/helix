@@ -1,0 +1,87 @@
+{
+  "task_id": "DF-005",
+  "task_title": "prompt register/list accept flat prompts/<c>/v<N>.md layout",
+  "task_criteria": [
+    "helix-prompt register coding-hermes v1 --dry-run exits 0 from repo root and prints PROMPT REGISTERED with a hash \u2014 resolves the flat prompts/coding-hermes/v1.md file",
+    "helix-prompt list shows all 5 prompt components including flat-layout ones (coding-hermes, deps-upgrade, e2e-forgejo, src-002) in addition to agent-identity",
+    "helix-prompt register nonexistent-comp v9 --dry-run exits non-zero with a clear error naming the attempted paths",
+    "pkg/prompt exposes a path-resolution helper that tries nested prompts/<c>/<v>/prompt.md first, then flat prompts/<c>/v<N>.md",
+    "register with an explicit --prompt-file path behaves unchanged",
+    "go build ./... and go vet ./... pass; golangci-lint run ./... reports 0 issues",
+    "go test -short -count=1 ./... passes for all 60 packages including new tests for both-layout resolution and flat listing",
+    "gofmt clean on changed files; no new dependencies added (stdlib + cobra + yaml only)",
+    "AGENTS.md / flag help text no longer describes the nested path as the only layout",
+    "commit includes Co-authored-by trailer and Prompt: prompts/coding-hermes/v1.md link"
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier:   File category 'docs': requires provisional+, agent is provisional \u2014 OK\n  File category 'code': req\n  \u2713 lint: \n  \u2713 build: \n  \u2713 tests: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "  File category 'docs': requires provisional+, agent is provisional \u2014 OK\n  File category 'code': requires provisional+, agent is provisional \u2014 OK\n\u2713 Trust tier: PASS\n",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 helix-prompt register coding-hermes v1 --dry-run exits 0 from repo root and prints PROMPT REGISTERED with a hash \u2014 resolves the flat prompts/coding-hermes/v1.md file: Command prints PROMPT REGISTERED with hash (sha256:6454e7e4...) and resolves the flat file, but exits 10, not 0. cmd/helix-prompt/main.go:181 calls os.Exit(prompt.ExitDryRun) where ExitDryRun=10 (pkg/prompt/types.go:128). This pre-existing dry-run sentinel was not changed by the task, so the literal 'exits 0' requirement is unmet.\n  \u2713 helix-prompt list shows all 5 prompt components including flat-layout ones (coding-hermes, deps-upgrade, e2e-forgejo, src-002) in addition to agent-identity: Verified via CLI: list output shows agent-identity (indexed) plus coding-hermes, deps-upgrade, e2e-forgejo, src-002 as flat unregistered entries.\n  \u2713 helix-prompt register nonexistent-comp v9 --dry-run exits non-zero with a clear error naming the attempted paths: Exits 1 with error naming attempted paths: prompts/nonexistent-comp/v9/prompt.md, prompts/nonexistent-comp/vv9.md, prompts/nonexistent-comp/v9.md (ResolvePromptPath error in pkg/prompt/registry.go).\n  \u2713 pkg/prompt exposes a path-resolution helper that tries nested prompts/<c>/<v>/prompt.md first, then flat prompts/<c>/v<N>.md: Exported ResolvePromptPath (pkg/prompt/registry.go:44) tries nested first, then flat v<N>.md and bare <v>.md; covered by TestResolvePromptPath_Layouts.\n  \u2713 register with an explicit --prompt-file path behaves unchanged: register coding-hermes v1 --prompt-file prompts/coding-hermes/v1.md --dry-run works and prints PROMPT REGISTERED; explicit path used as-is (main.go runRegister only resolves when promptFile==\"\").\n  \u2713 go build ./... and go vet ./... pass; golangci-lint run ./... reports 0 issues: go build ./... exit 0; go vet ./... exit 0; golangci-lint run ./... reports '0 issues' exit 0.\n  \u2713 go test -short -count=1 ./... passes for all 60 packages including new tests for both-layout resolution and flat listing: go test -short -count=1 ./... passes for 60 packages (grep -c '^ok' = 60); TestResolvePromptPath_Layouts and TestList_IncludesFlatUnregistered pass.\n  \u2713 gofmt clean on changed files; no new dependencies added (stdlib + cobra + yaml only): gofmt -l on changed files returns empty (clean); commit 372a85b did not modify go.mod/go.sum, so no new dependencies.\n  \u2713 AGENTS.md / flag help text no longer describes the nested path as the only layout: Flag help text (cmd/helix-prompt/main.go:132) and specs now describe fallback to flat layout; AGENTS.md uses flat prompts/<name>/v<N>.md only.\n  \u2713 commit includes Co-authored-by trailer and Prompt: prompts/coding-hermes/v1.md link: Commit 372a85b message includes 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' and 'Prompt: prompts/coding-hermes/v1.md'.\nThe flat-layout resolution, listing, error handling, build/lint/tests, docs, and commit trailer all pass, but criterion 1 fails because the register --dry-run command exits 10 (pre-existing ExitDryRun sentinel) rather than the required exit 0.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 helix-prompt register coding-hermes v1 --dry-run exits 0 from repo root and prints PROMPT REGISTERED with a hash \u2014 resolves the flat prompts/coding-hermes/v1.md file: Command prints PROMPT REGISTERED with hash (sha256:6454e7e4...) and resolves the flat file, but exits 10, not 0. cmd/helix-prompt/main.go:181 calls os.Exit(prompt.ExitDryRun) where ExitDryRun=10 (pkg/prompt/types.go:128). This pre-existing dry-run sentinel was not changed by the task, so the literal 'exits 0' require",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-005\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier:   File category 'docs': requires provisional+, agent is provisional \u2014 OK\n  File category 'code': req\n  \u2713 lint: \n  \u2713 build: \n  \u2713 tests: \n  \u2713 secrets: \n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 helix-prompt register coding-hermes v1 --dry-run exits 0 from repo root and prints PROMPT REGISTERED with a hash \u2014 resolves the flat prompts/coding-hermes/v1.md file: Command prints PROMPT REGISTERED with hash (sha256:6454e7e4...) and resolves the flat file, but exits 10, not 0. cmd/helix-prompt/main.go:181 calls os.Exit(prompt.ExitDryRun) where ExitDryRun=10 (pkg/prompt/types.go:128). This pre-existing dry-run sentinel was not changed by the task, so the literal 'exits 0' requirement is unmet.\n  \u2713 helix-prompt list shows all 5 prompt components including flat-layout ones (coding-hermes, deps-upgrade, e2e-forgejo, src-002) in addition to agent-identity: Verified via CLI: list output shows agent-identity (indexed) plus coding-hermes, deps-upgrade, e2e-forgejo, src-002 as flat unregistered entries.\n  \u2713 helix-prompt register nonexistent-comp v9 --dry-run exits non-zero with a clear error naming the attempted paths: Exits 1 with error naming attempted paths: prompts/nonexistent-comp/v9/prompt.md, prompts/nonexistent-comp/vv9.md, prompts/nonexistent-comp/v9.md (ResolvePromptPath error in pkg/prompt/registry.go).\n  \u2713 pkg/prompt exposes a path-resolution helper that tries nested prompts/<c>/<v>/prompt.md first, then flat prompts/<c>/v<N>.md: Exported ResolvePromptPath (pkg/prompt/registry.go:44) tries nested first, then flat v<N>.md and bare <v>.md; covered by TestResolvePromptPath_Layouts.\n  \u2713 register with an explicit --prompt-file path behaves unchanged: register coding-hermes v1 --prompt-file prompts/coding-hermes/v1.md --dry-run works and prints PROMPT REGISTERED; explicit path used as-is (main.go runRegister only resolves when promptFile==\"\").\n  \u2713 go build ./... and go vet ./... pass; golangci-lint run ./... reports 0 issues: go build ./... exit 0; go vet ./... exit 0; golangci-lint run ./... reports '0 issues' exit 0.\n  \u2713 go test -short -count=1 ./... passes for all 60 packages including new tests for both-layout resolution and flat listing: go test -short -count=1 ./... passes for 60 packages (grep -c '^ok' = 60); TestResolvePromptPath_Layouts and TestList_IncludesFlatUnregistered pass.\n  \u2713 gofmt clean on changed files; no new dependencies added (stdlib + cobra + yaml only): gofmt -l on changed files returns empty (clean); commit 372a85b did not modify go.mod/go.sum, so no new dependencies.\n  \u2713 AGENTS.md / flag help text no longer describes the nested path as the only layout: Flag help text (cmd/helix-prompt/main.go:132) and specs now describe fallback to flat layout; AGENTS.md uses flat prompts/<name>/v<N>.md only.\n  \u2713 commit includes Co-authored-by trailer and Prompt: prompts/coding-hermes/v1.md link: Commit 372a85b message includes 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' and 'Prompt: prompts/coding-hermes/v1.md'.\nThe flat-layout resolution, listing, error handling, build/lint/tests, docs, and commit trailer all pass, but criterion 1 fails because the register --dry-run command exits 10 (pre-existing ExitDryRun sentinel) rather than the required exit 0.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-08-03T02:43:04.608518"
+}
