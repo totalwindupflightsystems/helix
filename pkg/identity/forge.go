@@ -206,6 +206,39 @@ func (r *ForgejoOAuthRegistrar) GetOAuthApp(ctx context.Context, appID int64) (*
 	return &app, nil
 }
 
+// ListOAuthApps returns every OAuth2 application registered by the
+// authenticated user — i.e. every agent that completed a `helix identity
+// register` against this Forgejo instance (registrations are named
+// helix-agent-<fingerprint-prefix>). Client secrets are NOT included:
+// Forgejo only exposes them at creation time.
+func (r *ForgejoOAuthRegistrar) ListOAuthApps(ctx context.Context) ([]ForgejoOAuthApp, error) {
+	apiURL := r.baseURL + "/api/v1/user/applications/oauth2"
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, NewInternalError("create list OAuth apps request", err)
+	}
+	httpReq.SetBasicAuth(r.username, r.password)
+	httpReq.Header.Set("Accept", "application/json")
+
+	resp, err := r.client.Do(httpReq)
+	if err != nil {
+		return nil, NewNetworkError(
+			fmt.Sprintf("GET %s failed", apiURL), err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, NewAPIError(
+			fmt.Sprintf("GET %s returned %d", apiURL, resp.StatusCode), nil)
+	}
+
+	var apps []ForgejoOAuthApp
+	if err := json.NewDecoder(resp.Body).Decode(&apps); err != nil {
+		return nil, NewInternalError("decode OAuth apps response", err)
+	}
+	return apps, nil
+}
+
 // DeleteOAuthApp removes an OAuth2 application by ID. Returns nil on
 // success (HTTP 204).
 func (r *ForgejoOAuthRegistrar) DeleteOAuthApp(ctx context.Context, appID int64) error {

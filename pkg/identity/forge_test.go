@@ -197,6 +197,100 @@ func TestRegisterOAuthApp_ServerError(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// ListOAuthApps
+// ---------------------------------------------------------------------------
+
+func TestListOAuthApps_Success(t *testing.T) {
+	omf := newOAuthMockForgejo("helio", "helio123")
+	defer omf.close()
+
+	want := []ForgejoOAuthApp{
+		{
+			ID:           1,
+			Name:         "helix-agent-abc123",
+			ClientID:     "cid-1",
+			RedirectURIs: []string{"http://127.0.0.1:3000/oauth/callback"},
+			Created:      "2026-08-03T00:00:00Z",
+		},
+		{
+			ID:           2,
+			Name:         "helix-agent-def456",
+			ClientID:     "cid-2",
+			RedirectURIs: []string{"http://127.0.0.1:3000/oauth/callback"},
+			Created:      "2026-08-03T01:00:00Z",
+		},
+	}
+	omf.mux.HandleFunc("/api/v1/user/applications/oauth2", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("expected GET, got %s", r.Method)
+		}
+		writeOAuthJSON(w, http.StatusOK, want)
+	})
+
+	r := NewForgejoOAuthRegistrar(omf.url(), "helio", "helio123")
+	apps, err := r.ListOAuthApps(context.Background())
+	if err != nil {
+		t.Fatalf("ListOAuthApps: %v", err)
+	}
+	if len(apps) != 2 {
+		t.Fatalf("len(apps) = %d, want 2", len(apps))
+	}
+	if apps[0].Name != "helix-agent-abc123" || apps[0].ClientID != "cid-1" {
+		t.Errorf("apps[0] = %+v", apps[0])
+	}
+	if apps[1].Name != "helix-agent-def456" || apps[1].ClientID != "cid-2" {
+		t.Errorf("apps[1] = %+v", apps[1])
+	}
+}
+
+func TestListOAuthApps_Empty(t *testing.T) {
+	omf := newOAuthMockForgejo("helio", "helio123")
+	defer omf.close()
+
+	omf.mux.HandleFunc("/api/v1/user/applications/oauth2", func(w http.ResponseWriter, r *http.Request) {
+		writeOAuthJSON(w, http.StatusOK, []ForgejoOAuthApp{})
+	})
+
+	r := NewForgejoOAuthRegistrar(omf.url(), "helio", "helio123")
+	apps, err := r.ListOAuthApps(context.Background())
+	if err != nil {
+		t.Fatalf("ListOAuthApps: %v", err)
+	}
+	if len(apps) != 0 {
+		t.Errorf("len(apps) = %d, want 0", len(apps))
+	}
+}
+
+func TestListOAuthApps_Unauthorized(t *testing.T) {
+	omf := newOAuthMockForgejo("helio", "helio123")
+	defer omf.close()
+
+	// No handler for oauth2 endpoint — falls through to the outer auth
+	// check which returns 401 for wrong credentials.
+	r := NewForgejoOAuthRegistrar(omf.url(), "wrong", "creds")
+	_, err := r.ListOAuthApps(context.Background())
+	if err == nil {
+		t.Fatal("expected error for unauthorized")
+	}
+	if _, ok := err.(*TypedError); !ok {
+		t.Errorf("expected TypedError, got %T", err)
+	}
+}
+
+func TestListOAuthApps_NetworkError(t *testing.T) {
+	// A registrar pointed at a closed listener yields a transport error.
+	omf := newOAuthMockForgejo("helio", "helio123")
+	url := omf.url()
+	omf.close()
+
+	r := NewForgejoOAuthRegistrar(url, "helio", "helio123")
+	_, err := r.ListOAuthApps(context.Background())
+	if err == nil {
+		t.Fatal("expected network error")
+	}
+}
+
 func TestRegisterOAuthApp_NetworkError(t *testing.T) {
 	// Point at a port that's almost certainly not listening.
 	r := NewForgejoOAuthRegistrar("http://127.0.0.1:59999", "helio", "helio123")

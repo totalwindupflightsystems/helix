@@ -8,6 +8,12 @@
 //	helix identity deprovision N  Revoke an agent's PAT, archive keys
 //	helix identity status       Show provisioned agent status table
 //	helix identity keygen N     Generate a fresh ED25519 keypair (no Forgejo)
+//	helix identity create       Create a portable agent identity (HID)
+//	helix identity register     Register an HID as a Forgejo OAuth2 app
+//	helix identity verify       Verify an HID file's signature
+//	helix identity export       Export an HID as JSON or a Nostr kind-0 event
+//	helix identity import       Import an HID file and print its identity
+//	helix identity list         List OAuth2 apps (agents) registered at a forge
 //
 // Every flag has a matching environment variable (documented below). No
 // credentials are ever read from or written to disk by this binary — the
@@ -16,7 +22,12 @@
 package main
 
 import (
+	"context"
+	"crypto/ed25519"
+	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"os"
 	"strings"
@@ -133,6 +144,12 @@ touching Forgejo.`,
 		newDeprovisionCmd(),
 		newStatusCmd(),
 		newKeygenCmd(),
+		newCreateCmd(),
+		newRegisterCmd(),
+		newVerifyCmd(),
+		newExportCmd(),
+		newImportCmd(),
+		newListCmd(),
 	)
 
 	rc := executeRoot(rootCmd)
@@ -388,6 +405,408 @@ func runKeygen(cmd *cobra.Command, args []string) error {
 	r, err := syncer.KeyGenOnly(agent)
 	renderSingleResult(r)
 	return err
+}
+
+// ---------------------------------------------------------------------------
+// identity create — SPEC-022 portable agent identity
+// ---------------------------------------------------------------------------
+
+// createFlags holds the per-command flags for `helix identity create`.
+type createFlags struct {
+	name   string
+	output string
+}
+
+func newCreateCmd() *cobra.Command {
+	var f createFlags
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "Create a new portable agent identity (HID) with a fresh Ed25519 keypair",
+		Long: `Creates a self-signed Helix Identity Document (SPEC-022 §2): a fresh
+Ed25519 keypair, a UUIDv7 agent_id, and a signed HID JSON file. The private
+key is written beside the HID as <output>.key (PKCS#8 PEM, mode 0600) so
+later commands (export --format nostr) can sign on the agent's behalf.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runCreate(f)
+		},
+	}
+	cmd.Flags().StringVar(&f.name, "name", "", "agent name (used as the default output filename)")
+	cmd.Flags().StringVar(&f.output, "output", "", "output path for the HID file (default: <name>.hid)")
+	return cmd
+}
+
+func runCreate(f createFlags) error {
+	if strings.TrimSpace(f.name) == "" {
+		return identity.NewConfigError("--name is required (e.g. --name builder-01)", nil)
+	}
+	out := f.output
+	if out == "" {
+		out = f.name + ".hid"
+	}
+	agent, privKey, err := identity.NewAgentIdentity(f.name)
+	if err != nil {
+		return err
+	}
+	if err := agent.Export(out, privKey); err != nil {
+		return err
+	}
+	if err := writePrivateKeyPEM(out+".key", privKey); err != nil {
+		return err
+	}
+	fmt.Printf("✅ created HID: %s\n", out)
+	fmt.Printf("   agent_id:    %s\n", agent.ID)
+	fmt.Printf("   fingerprint: %s\n", agent.Fingerprint())
+	fmt.Printf("   private key: %s (mode 0600 — keep secret)\n", out+".key")
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// identity register — Forgejo OAuth2 registration
+// ---------------------------------------------------------------------------
+
+// registerFlags holds the per-command flags for `helix identity register`.
+type registerFlags struct {
+	forge       string
+	agent       string
+	redirectURI string
+}
+
+func newRegisterCmd() *cobra.Command {
+	var f registerFlags
+	cmd := &cobra.Command{
+		Use:   "register",
+		Short: "Register an HID as a Forgejo OAuth2 application",
+		Long: `Registers the agent's HID with a Forgejo instance by creating an
+OAuth2 application named helix-agent-<fingerprint-prefix> (SPEC-022 §5).
+Uses FORGEJO_ADMIN_USER / FORGEJO_ADMIN_PASSWORD (or --admin-user /
+--admin-password) for BasicAuth, like sync. The HID signature is verified
+before registration; a tampered document is refused.
+
+The client_secret is printed once — Forgejo never exposes it again.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runRegister(f)
+		},
+	}
+	cmd.Flags().StringVar(&f.forge, "forge", envOr(envForgejoURL, ""),
+		"Forgejo base URL (env: "+envForgejoURL+")")
+	cmd.Flags().StringVar(&f.agent, "agent", "", "path to the agent's HID file")
+	cmd.Flags().StringVar(&f.redirectURI, "redirect-uri",
+		"http://127.0.0.1:3000/oauth/callback",
+		"OAuth2 redirect URI for the registered application")
+	return cmd
+}
+
+func runRegister(f registerFlags) error {
+	forge := strings.TrimRight(f.forge, "/")
+	if forge == "" {
+		return identity.NewConfigError("--forge URL is required (or set FORGEJO_URL)", nil)
+	}
+	if f.agent == "" {
+		return identity.NewConfigError("--agent HID_PATH is required", nil)
+	}
+	hid, err := loadHID(f.agent)
+	if err != nil {
+		return err
+	}
+	if ok, verr := hid.Identity.Verify(hid); !ok || verr != nil {
+		return identity.NewConfigError(
+			fmt.Sprintf("refusing to register invalid HID %q: %v", f.agent, verr), nil)
+	}
+	if rootFlags.adminUser == "" {
+		return identity.NewConfigError(
+			"register needs Forgejo credentials: set FORGEJO_ADMIN_USER and FORGEJO_ADMIN_PASSWORD (or --admin-user/--admin-password)", nil)
+	}
+	registrar := identity.NewForgejoOAuthRegistrar(forge, rootFlags.adminUser, rootFlags.adminPassword)
+	app, err := registrar.RegisterOAuthApp(context.Background(), hid, f.redirectURI)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("✅ registered agent at %s\n", forge)
+	fmt.Printf("   app:           %s\n", app.Name)
+	fmt.Printf("   client_id:     %s\n", app.ClientID)
+	fmt.Printf("   client_secret: %s\n", app.ClientSecret)
+	fmt.Printf("   redirect_uris: %v\n", app.RedirectURIs)
+	fmt.Println("   note: client_secret is shown once — capture it now; Forgejo never returns it again.")
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// identity verify
+// ---------------------------------------------------------------------------
+
+// verifyFlags holds the per-command flags for `helix identity verify`.
+type verifyFlags struct {
+	hid string
+}
+
+func newVerifyCmd() *cobra.Command {
+	var f verifyFlags
+	cmd := &cobra.Command{
+		Use:   "verify",
+		Short: "Verify an HID file's Ed25519 signature",
+		Long: `Checks that the signature embedded in an HID file validates against
+the identity's own public key. Exits 0 on a valid document, non-zero with
+an actionable message on a tampered or malformed one.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runVerify(f)
+		},
+	}
+	cmd.Flags().StringVar(&f.hid, "hid", "", "path to the HID file to verify")
+	return cmd
+}
+
+func runVerify(f verifyFlags) error {
+	if f.hid == "" {
+		return identity.NewConfigError("--hid PATH is required", nil)
+	}
+	hid, err := loadHID(f.hid)
+	if err != nil {
+		return err
+	}
+	if ok, verr := hid.Identity.Verify(hid); !ok || verr != nil {
+		return identity.NewConfigError(
+			fmt.Sprintf("HID %q failed verification: %v", f.hid, verr), nil)
+	}
+	fmt.Printf("✅ HID %q verified — signature valid\n", f.hid)
+	fmt.Printf("   agent_id:    %s\n", hid.Identity.ID)
+	fmt.Printf("   fingerprint: %s\n", hid.Identity.Fingerprint())
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// identity export — portable representation (JSON or Nostr kind-0)
+// ---------------------------------------------------------------------------
+
+// exportFlags holds the per-command flags for `helix identity export`.
+type exportFlags struct {
+	hid    string
+	format string
+	key    string
+}
+
+func newExportCmd() *cobra.Command {
+	var f exportFlags
+	cmd := &cobra.Command{
+		Use:   "export",
+		Short: "Export an HID as JSON or a signed Nostr kind-0 event",
+		Long: `Prints a portable representation of an HID. --format json (default)
+prints the signed HID document itself. --format nostr converts the identity
+to a NIP-01 kind-0 metadata event signed with the agent's private key
+(SPEC-022 §6); that key is NOT inside the HID file, so --key must point at
+the PKCS#8 PEM private key written by "helix identity create" (<output>.key)
+or at an agent's ~/.helix/keys/<agent>/id_ed25519.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runExport(f)
+		},
+	}
+	cmd.Flags().StringVar(&f.hid, "hid", "", "path to the HID file to export")
+	cmd.Flags().StringVar(&f.format, "format", "json", "export format: json or nostr")
+	cmd.Flags().StringVar(&f.key, "key", "", "path to the PKCS#8 PEM private key (required for --format nostr)")
+	return cmd
+}
+
+func runExport(f exportFlags) error {
+	if f.hid == "" {
+		return identity.NewConfigError("--hid PATH is required", nil)
+	}
+	format := strings.ToLower(strings.TrimSpace(f.format))
+	if format == "" {
+		format = "json"
+	}
+	switch format {
+	case "json":
+		data, err := os.ReadFile(f.hid)
+		if err != nil {
+			return identity.NewConfigError(
+				fmt.Sprintf("failed to read HID file %q", f.hid), err)
+		}
+		fmt.Println(strings.TrimRight(string(data), "\n"))
+	case "nostr":
+		agent, err := identity.ImportHID(f.hid)
+		if err != nil {
+			return err
+		}
+		if f.key == "" {
+			return identity.NewConfigError(
+				"--key PATH is required for --format nostr (the HID file does not contain the private key)", nil)
+		}
+		privKey, err := loadPrivateKeyPEM(f.key)
+		if err != nil {
+			return err
+		}
+		event, err := identity.NewNostrEventFromHID(agent)
+		if err != nil {
+			return err
+		}
+		if err := event.Sign(privKey); err != nil {
+			return err
+		}
+		data, err := event.Marshal()
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(data))
+	default:
+		return identity.NewConfigError(
+			fmt.Sprintf("unsupported --format %q (want json or nostr)", f.format), nil)
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// identity import
+// ---------------------------------------------------------------------------
+
+// importFlags holds the per-command flags for `helix identity import`.
+type importFlags struct {
+	path string
+}
+
+func newImportCmd() *cobra.Command {
+	var f importFlags
+	cmd := &cobra.Command{
+		Use:   "import",
+		Short: "Import an HID file and print its identity",
+		Long: `Loads a signed HID document from disk and prints its agent_id,
+fingerprint, public key, and creation time. Does not modify anything.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runImport(f)
+		},
+	}
+	cmd.Flags().StringVar(&f.path, "path", "", "path to the HID file to import")
+	return cmd
+}
+
+func runImport(f importFlags) error {
+	if f.path == "" {
+		return identity.NewConfigError("--path PATH is required", nil)
+	}
+	agent, err := identity.ImportHID(f.path)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("✅ imported HID %s\n", f.path)
+	fmt.Printf("   agent_id:    %s\n", agent.ID)
+	fmt.Printf("   fingerprint: %s\n", agent.Fingerprint())
+	fmt.Printf("   pubkey:      %s\n", hex.EncodeToString(agent.PubKey))
+	fmt.Printf("   created_at:  %s\n", agent.CreatedAt.UTC().Format(time.RFC3339))
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// identity list — agents registered at a forge
+// ---------------------------------------------------------------------------
+
+// listFlags holds the per-command flags for `helix identity list`.
+type listFlags struct {
+	forge string
+}
+
+func newListCmd() *cobra.Command {
+	var f listFlags
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "List OAuth2 applications (agents) registered at a Forgejo instance",
+		Long: `Lists every OAuth2 application registered by the authenticated user
+at the given forge — i.e. every agent that ran "helix identity register"
+there. Uses FORGEJO_ADMIN_USER / FORGEJO_ADMIN_PASSWORD (or
+--admin-user/--admin-password) for BasicAuth, like sync and register.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runList(f)
+		},
+	}
+	cmd.Flags().StringVar(&f.forge, "forge", envOr(envForgejoURL, ""),
+		"Forgejo base URL (env: "+envForgejoURL+")")
+	return cmd
+}
+
+func runList(f listFlags) error {
+	forge := strings.TrimRight(f.forge, "/")
+	if forge == "" {
+		return identity.NewConfigError("--forge URL is required (or set FORGEJO_URL)", nil)
+	}
+	if rootFlags.adminUser == "" {
+		return identity.NewConfigError(
+			"list needs Forgejo credentials: set FORGEJO_ADMIN_USER and FORGEJO_ADMIN_PASSWORD (or --admin-user/--admin-password)", nil)
+	}
+	registrar := identity.NewForgejoOAuthRegistrar(forge, rootFlags.adminUser, rootFlags.adminPassword)
+	apps, err := registrar.ListOAuthApps(context.Background())
+	if err != nil {
+		return err
+	}
+	if len(apps) == 0 {
+		fmt.Printf("NO_REGISTERED_AGENTS: no OAuth2 applications registered at %s\n", forge)
+		return nil
+	}
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "APP	CLIENT ID	REDIRECT URIS	CREATED")
+	for _, app := range apps {
+		fmt.Fprintf(w, "%s	%s	%s	%s\n",
+			app.Name, app.ClientID, strings.Join(app.RedirectURIs, ","), app.Created)
+	}
+	w.Flush()
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// HID + private key helpers
+// ---------------------------------------------------------------------------
+
+// loadHID reads a HID file from disk and returns the full signed document
+// (identity + signature bytes).
+func loadHID(path string) (*identity.HID, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, identity.NewConfigError(
+			fmt.Sprintf("failed to read HID file %q", path), err)
+	}
+	var hid identity.HID
+	if err := json.Unmarshal(data, &hid); err != nil {
+		return nil, identity.NewConfigError(
+			fmt.Sprintf("failed to parse HID JSON from %q", path), err)
+	}
+	return &hid, nil
+}
+
+// writePrivateKeyPEM persists an Ed25519 private key as a PKCS#8 PEM block
+// with mode 0600 — the same on-disk format the syncer uses for
+// ~/.helix/keys/<agent>/id_ed25519.
+func writePrivateKeyPEM(path string, privKey ed25519.PrivateKey) error {
+	pkcs8, err := x509.MarshalPKCS8PrivateKey(privKey)
+	if err != nil {
+		return identity.NewInternalError("marshal private key to PKCS#8", err)
+	}
+	block := &pem.Block{Type: "PRIVATE KEY", Bytes: pkcs8}
+	if err := os.WriteFile(path, pem.EncodeToMemory(block), 0o600); err != nil {
+		return identity.NewInternalError(
+			fmt.Sprintf("failed to write private key to %q", path), err)
+	}
+	return nil
+}
+
+// loadPrivateKeyPEM reads an Ed25519 private key from a PKCS#8 PEM file.
+func loadPrivateKeyPEM(path string) (ed25519.PrivateKey, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, identity.NewConfigError(
+			fmt.Sprintf("failed to read private key %q", path), err)
+	}
+	block, _ := pem.Decode(data)
+	if block == nil {
+		return nil, identity.NewConfigError(
+			fmt.Sprintf("no PEM block found in %q", path), nil)
+	}
+	parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, identity.NewConfigError(
+			fmt.Sprintf("failed to parse PKCS#8 private key in %q", path), err)
+	}
+	privKey, ok := parsed.(ed25519.PrivateKey)
+	if !ok {
+		return nil, identity.NewConfigError(
+			fmt.Sprintf("%q is not an Ed25519 private key", path), nil)
+	}
+	return privKey, nil
 }
 
 // ---------------------------------------------------------------------------

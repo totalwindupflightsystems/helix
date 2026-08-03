@@ -418,13 +418,14 @@ func TestRenderStateTable_MultipleAgentsSorted(t *testing.T) {
 // Cobra command tree tests
 // ---------------------------------------------------------------------------
 
-func TestRootCmd_HasFiveSubcommands(t *testing.T) {
+func TestRootCmd_HasAllSubcommands(t *testing.T) {
 	rootCmd := buildRootCmd()
 	names := map[string]bool{}
 	for _, c := range rootCmd.Commands() {
 		names[c.Use] = true
 	}
-	expected := []string{"sync", "provision", "deprovision", "status", "keygen"}
+	expected := []string{"sync", "provision", "deprovision", "status", "keygen",
+		"create", "register", "verify", "export", "import", "list"}
 	for _, want := range expected {
 		found := false
 		for name := range names {
@@ -473,6 +474,12 @@ func buildRootCmd() *cobra.Command {
 		newDeprovisionCmd(),
 		newStatusCmd(),
 		newKeygenCmd(),
+		newCreateCmd(),
+		newRegisterCmd(),
+		newVerifyCmd(),
+		newExportCmd(),
+		newImportCmd(),
+		newListCmd(),
 	)
 	return rootCmd
 }
