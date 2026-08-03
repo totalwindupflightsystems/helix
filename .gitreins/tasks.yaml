@@ -159,3 +159,22 @@ tasks:
   status: complete
   created_at: '2026-08-02T21:58:35.047869+00:00'
   completed_at: '2026-08-02T21:58:37.509018+00:00'
+- id: DF-004
+  title: Fix CWD-relative default --pricing path (CONFIG_ERROR outside repo root)
+  criteria:
+  - "helix-estimate estimate with default --pricing succeeds from ANY working directory\
+    \ (verified from /tmp) \u2014 no CONFIG_ERROR for the default path"
+  - helix-estimate report default --known-friends likewise resolves outside repo root
+  - ~/.helix/pricing.yaml production path still preferred when present (stat-check
+    runs first)
+  - "testdataPath() never returns a broken CWD-relative path \u2014 returns absolute\
+    \ repo-anchored path or \"\" (caller emits normal CONFIG_ERROR)"
+  - 'New tests cover: absolute+existing default paths, non-repo CWD resolution (t.Chdir
+    to temp dir), go.mod walk anchoring, missing fixture returns ""'
+  - go build ./... exits 0; go vet ./... exits 0
+  - go test -count=1 ./cmd/helix-estimate/... ./pkg/estimate/... passes (64 tests)
+  - Changes limited to cmd/helix-estimate/main.go + main_test.go
+  - 'commit includes Co-authored-by trailer and Prompt: prompts/coding-hermes/v1.md'
+  status: complete
+  created_at: '2026-08-03T00:15:50.036671+00:00'
+  completed_at: '2026-08-03T00:16:13.130840+00:00'

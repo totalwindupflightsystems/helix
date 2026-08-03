@@ -1,0 +1,86 @@
+{
+  "task_id": "DF-004",
+  "task_title": "Fix CWD-relative default --pricing path (CONFIG_ERROR outside repo root)",
+  "task_criteria": [
+    "helix-estimate estimate with default --pricing succeeds from ANY working directory (verified from /tmp) \u2014 no CONFIG_ERROR for the default path",
+    "helix-estimate report default --known-friends likewise resolves outside repo root",
+    "~/.helix/pricing.yaml production path still preferred when present (stat-check runs first)",
+    "testdataPath() never returns a broken CWD-relative path \u2014 returns absolute repo-anchored path or \"\" (caller emits normal CONFIG_ERROR)",
+    "New tests cover: absolute+existing default paths, non-repo CWD resolution (t.Chdir to temp dir), go.mod walk anchoring, missing fixture returns \"\"",
+    "go build ./... exits 0; go vet ./... exits 0",
+    "go test -count=1 ./cmd/helix-estimate/... ./pkg/estimate/... passes (64 tests)",
+    "Changes limited to cmd/helix-estimate/main.go + main_test.go",
+    "commit includes Co-authored-by trailer and Prompt: prompts/coding-hermes/v1.md"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 lint: \n  \u2713 tests: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 helix-estimate estimate with default --pricing succeeds from ANY working directory (verified from /tmp) \u2014 no CONFIG_ERROR for the default path: Ran /tmp/helix-estimate estimate from /tmp with default --pricing: exit 0, no CONFIG_ERROR. testdataPath() (main.go:139-155) resolves absolute repo-anchored path via repoRootFromCWD/repoRootFromSource.\n  \u2713 helix-estimate report default --known-friends likewise resolves outside repo root: Ran /tmp/helix-estimate report from /tmp: exit 0, no CONFIG_ERROR. defaultFriendsPath() (main.go:202-208) uses testdataPath fallback.\n  \u2713 ~/.helix/pricing.yaml production path still preferred when present (stat-check runs first): defaultPricingPath() (main.go:190-199) stats ~/.helix/pricing.yaml first and returns it if present; only falls back to testdataPath when absent.\n  \u2713 testdataPath() never returns a broken CWD-relative path \u2014 returns absolute repo-anchored path or \"\" (caller emits normal CONFIG_ERROR): testdataPath() returns filepath.Join(absRoot, rel) where both repoRootFromCWD and repoRootFromSource return absolute paths, or \"\". TestTestdataPathMissingFixture confirms \"\" for missing fixture.\n  \u2713 New tests cover: absolute+existing default paths, non-repo CWD resolution (t.Chdir to temp dir), go.mod walk anchoring, missing fixture returns \"\": main_test.go: TestDefaultPricingPath/TestDefaultFriendsPath (abs+existing), TestTestdataPathFromNonRepoCWD (t.Chdir(t.TempDir())), TestRepoRootFromCWD (2 subtests for go.mod walk), TestTestdataPathMissingFixture (returns \"\").\n  \u2713 go build ./... exits 0; go vet ./... exits 0: go build ./... exit 0; go vet ./... exit 0 (verified).\n  \u2713 go test -count=1 ./cmd/helix-estimate/... ./pkg/estimate/... passes (64 tests): Command exits 0, both packages ok. Actual test count now exceeds 64 (repo grew since task board figure), but the command passes as required.\n  \u2713 Changes limited to cmd/helix-estimate/main.go + main_test.go: git show 4ddc053 --name-only lists only cmd/helix-estimate/main.go and main_test.go. Unstaged .gitreins/tasks.yaml is the task-tracking file, expected.\n  \u2713 commit includes Co-authored-by trailer and Prompt: prompts/coding-hermes/v1.md: Commit 4ddc053 message contains 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' and 'Prompt: prompts/coding-hermes/v1.md'.\nAll 9 criteria verified: the DF-004 fix resolves default --pricing/--known-friends to absolute repo-anchored paths, works from /tmp, preserves production-path preference, adds comprehensive tests, passes build/vet/tests, limits changes to the two intended files, and includes the required commit trailers.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 helix-estimate estimate with default --pricing succeeds from ANY working directory (verified from /tmp) \u2014 no CONFIG_ERROR for the default path: Ran /tmp/helix-estimate estimate from /tmp with default --pricing: exit 0, no CONFIG_ERROR. testdataPath() (main.go:139-155) resolves absolute repo-anchored path via repoRootFromCWD/repoRootFromSource.\n  \u2713 helix-estimate report default --known-friends likewise resolves outside repo root: Ran /tmp/helix-estimate report from /tmp: exit 0, no C",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-004\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 lint: \n  \u2713 tests: \n  \u2713 secrets: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 helix-estimate estimate with default --pricing succeeds from ANY working directory (verified from /tmp) \u2014 no CONFIG_ERROR for the default path: Ran /tmp/helix-estimate estimate from /tmp with default --pricing: exit 0, no CONFIG_ERROR. testdataPath() (main.go:139-155) resolves absolute repo-anchored path via repoRootFromCWD/repoRootFromSource.\n  \u2713 helix-estimate report default --known-friends likewise resolves outside repo root: Ran /tmp/helix-estimate report from /tmp: exit 0, no CONFIG_ERROR. defaultFriendsPath() (main.go:202-208) uses testdataPath fallback.\n  \u2713 ~/.helix/pricing.yaml production path still preferred when present (stat-check runs first): defaultPricingPath() (main.go:190-199) stats ~/.helix/pricing.yaml first and returns it if present; only falls back to testdataPath when absent.\n  \u2713 testdataPath() never returns a broken CWD-relative path \u2014 returns absolute repo-anchored path or \"\" (caller emits normal CONFIG_ERROR): testdataPath() returns filepath.Join(absRoot, rel) where both repoRootFromCWD and repoRootFromSource return absolute paths, or \"\". TestTestdataPathMissingFixture confirms \"\" for missing fixture.\n  \u2713 New tests cover: absolute+existing default paths, non-repo CWD resolution (t.Chdir to temp dir), go.mod walk anchoring, missing fixture returns \"\": main_test.go: TestDefaultPricingPath/TestDefaultFriendsPath (abs+existing), TestTestdataPathFromNonRepoCWD (t.Chdir(t.TempDir())), TestRepoRootFromCWD (2 subtests for go.mod walk), TestTestdataPathMissingFixture (returns \"\").\n  \u2713 go build ./... exits 0; go vet ./... exits 0: go build ./... exit 0; go vet ./... exit 0 (verified).\n  \u2713 go test -count=1 ./cmd/helix-estimate/... ./pkg/estimate/... passes (64 tests): Command exits 0, both packages ok. Actual test count now exceeds 64 (repo grew since task board figure), but the command passes as required.\n  \u2713 Changes limited to cmd/helix-estimate/main.go + main_test.go: git show 4ddc053 --name-only lists only cmd/helix-estimate/main.go and main_test.go. Unstaged .gitreins/tasks.yaml is the task-tracking file, expected.\n  \u2713 commit includes Co-authored-by trailer and Prompt: prompts/coding-hermes/v1.md: Commit 4ddc053 message contains 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' and 'Prompt: prompts/coding-hermes/v1.md'.\nAll 9 criteria verified: the DF-004 fix resolves default --pricing/--known-friends to absolute repo-anchored paths, works from /tmp, preserves production-path preference, adds comprehensive tests, passes build/vet/tests, limits changes to the two intended files, and includes the required commit trailers.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-03T00:17:26.675739"
+}
