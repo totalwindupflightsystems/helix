@@ -203,3 +203,40 @@ tasks:
   status: complete
   created_at: '2026-08-03T02:37:02.358637+00:00'
   completed_at: '2026-08-03T02:43:22.591564+00:00'
+- id: BUG-001
+  title: "Fix MergePR payload \"do\"\u2192\"Do\" (Forgejo v1.21 returns 405)"
+  criteria:
+  - "pkg/forgejo/client.go MergePR sends JSON body with key \"Do\" (capital D) and\
+    \ value \"merge\" \u2014 no lowercase \"do\" key remains"
+  - 'pkg/forgejo/client_test.go has TestMergePR using the mockForgejo helper: asserts
+    body key "Do"=="merge", asserts lowercase "do" absent, expects 200'
+  - pkg/integration/forgejo_e2e_scenarios_test.go Step 9 uses client.MergePR (no raw-HTTP
+    workaround with direct json.Marshal of the merge body remains)
+  - go build ./... passes and go vet ./... is clean
+  - go test ./pkg/forgejo/ -count=1 -short passes
+  - "TestForgejoE2E_FullCICDSimulation passes against live Forgejo (localhost:3030)\
+    \ \u2014 merge step succeeds via the client"
+  status: complete
+  created_at: '2026-08-03T05:59:27.746826+00:00'
+  completed_at: '2026-08-03T05:59:39.133769+00:00'
+- id: ID-003
+  title: Nostr kind-0 event bridge from HID (pkg/identity/nostr.go)
+  criteria:
+  - 'pkg/identity/nostr.go defines a Nostr kind-0 (metadata) event type with NIP-01
+    JSON field names: pubkey, created_at, kind, tags, content, sig'
+  - 'AgentIdentity/HID converts to a kind-0 event: content is a JSON string carrying
+    agent metadata (name from ID, fingerprint, capabilities with strengths, trust
+    score, forge handles)'
+  - Events are signed with the HID's Ed25519 private key over the canonical serialization
+    and have a Verify method
+  - "pkg/identity/nostr_test.go covers: kind-0 generation round-trip (build\u2192\
+    sign\u2192verify), content JSON round-trip, tamper detection (mutated content\
+    \ fails verify), NIP-01 field presence (kind==0, pubkey hex, created_at set)"
+  - go build ./... exits 0 and go vet ./... is clean
+  - go test ./pkg/identity/ -count=1 passes (including new nostr tests)
+  - go test -short -count=1 ./... full suite passes (no regressions)
+  - 'No new external dependencies: go.mod/go.sum untouched'
+  - 'Commit 780db92 includes Co-authored-by trailer and Prompt: prompts/agent-identity/v1.0.0/prompt.md'
+  status: complete
+  created_at: '2026-08-03T08:32:16.350716+00:00'
+  completed_at: '2026-08-03T08:32:20.436087+00:00'
