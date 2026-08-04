@@ -13,6 +13,8 @@ package dispatcher
 import (
 	"errors"
 
+	"github.com/totalwindupflightsystems/helix/pkg/identity"
+	"github.com/totalwindupflightsystems/helix/pkg/source"
 	"github.com/totalwindupflightsystems/helix/pkg/trust"
 )
 
@@ -82,13 +84,14 @@ type Task struct {
 
 // AgentProfile describes an agent available for task assignment.
 type AgentProfile struct {
-	Name        string          `json:"name"`
-	Capability  string          `json:"capability"`
-	CurrentLoad int             `json:"current_load"`
-	MaxLoad     int             `json:"max_load"`
-	Tier        trust.TrustTier `json:"tier"`
-	TrustScore  float64         `json:"trust_score"`
-	CostProfile float64         `json:"cost_profile"`
+	Name         string                     `json:"name"`
+	Capability   string                     `json:"capability"`
+	Capabilities []identity.CapabilityClaim `json:"capabilities,omitempty"`
+	CurrentLoad  int                        `json:"current_load"`
+	MaxLoad      int                        `json:"max_load"`
+	Tier         trust.TrustTier            `json:"tier"`
+	TrustScore   float64                    `json:"trust_score"`
+	CostProfile  float64                    `json:"cost_profile"`
 }
 
 // CanAcceptLoad reports whether the agent has capacity for one more task.
@@ -108,6 +111,17 @@ type WorkItem struct {
 	Task  Task         `json:"task"`
 	Agent AgentProfile `json:"agent"`
 	Steps []Step       `json:"steps"`
+
+	// SourceTools holds the capability-gated source tool sets attached at
+	// dispatch time (SRC-005, SPEC-025 §5/§6). Each set carries its source
+	// name (ToolSet.SourceName) so execution can key rate limiting on it.
+	SourceTools []source.ToolSet `json:"source_tools,omitempty"`
+
+	// SourceToolsError records why source-tool injection failed for this
+	// work item (e.g. Muster unreachable). A non-empty value means the
+	// item's SourceTools may be incomplete or empty; dispatch itself still
+	// succeeded.
+	SourceToolsError string `json:"source_tools_error,omitempty"`
 }
 
 // DispatchResult is the outcome of dispatching a single task.
@@ -124,11 +138,27 @@ type DispatchResult struct {
 // dispatches tasks through the full pipeline.
 type Dispatcher struct {
 	Agents []AgentProfile
+
+	// SourceTools, when non-nil, injects capability-gated source tools
+	// (SRC-005, SPEC-025 §6) into every successfully assigned WorkItem at
+	// dispatch time.
+	SourceTools *SourceToolInjector
 }
 
 // NewDispatcher creates a Dispatcher with the given agent pool.
 func NewDispatcher(agents []AgentProfile) *Dispatcher {
 	return &Dispatcher{Agents: agents}
+}
+
+// WithSourceTools attaches a source-tool injector to the dispatcher and
+// returns the dispatcher for chaining. Nil-safe: calling it on a nil
+// receiver returns nil. Pass nil to disable source-tool injection.
+func (d *Dispatcher) WithSourceTools(in *SourceToolInjector) *Dispatcher {
+	if d == nil {
+		return nil
+	}
+	d.SourceTools = in
+	return d
 }
 
 // ---------------------------------------------------------------------------

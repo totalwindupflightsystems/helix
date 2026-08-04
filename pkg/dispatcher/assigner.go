@@ -1,6 +1,7 @@
 package dispatcher
 
 import (
+	"context"
 	"fmt"
 	"sort"
 
@@ -91,11 +92,22 @@ func AssignAgent(task Task, agents []AgentProfile) (*DispatchResult, error) {
 	return result, nil
 }
 
-// Dispatch assigns all tasks to agents, respecting load limits. Tasks are
-// processed in priority order (lowest Priority number first). Each task is
-// assigned independently; if one assignment fails its error is captured in the
-// DispatchResult rather than aborting the batch.
+// Dispatch assigns all tasks to agents, respecting load limits, and injects
+// capability-gated source tools when a SourceToolInjector is attached. It is
+// DispatchContext with a background context; use DispatchContext when the
+// caller controls cancellation (e.g. tool generation must stop on shutdown).
 func (d *Dispatcher) Dispatch(tasks []Task, agents []AgentProfile) ([]DispatchResult, error) {
+	return d.DispatchContext(context.Background(), tasks, agents)
+}
+
+// DispatchContext is Dispatch with a caller-controlled context. Tasks are
+// processed in priority order (lowest Priority number first). Each task is
+// assigned independently; if one assignment fails its error is captured in
+// the DispatchResult rather than aborting the batch. When d.SourceTools is
+// non-nil, every successfully assigned WorkItem also carries the agent's
+// capability-gated source tools; injection failures are recorded on the
+// WorkItem (SourceToolsError) and never fail the assignment itself.
+func (d *Dispatcher) DispatchContext(ctx context.Context, tasks []Task, agents []AgentProfile) ([]DispatchResult, error) {
 	if len(agents) == 0 {
 		return nil, ErrNoAgents
 	}
@@ -128,6 +140,17 @@ func (d *Dispatcher) Dispatch(tasks []Task, agents []AgentProfile) ([]DispatchRe
 				Error: err.Error(),
 			})
 			continue
+		}
+
+		// Inject capability-gated source tools for the assigned agent
+		// (SRC-005, SPEC-025 §6). Best-effort: a generation failure is
+		// recorded on the work item, the assignment stands.
+		if d.SourceTools != nil {
+			sets, injErr := d.SourceTools.Inject(ctx, result.WorkItem.Agent)
+			result.WorkItem.SourceTools = sets
+			if injErr != nil {
+				result.WorkItem.SourceToolsError = injErr.Error()
+			}
 		}
 
 		// Update tracked load.
