@@ -486,6 +486,13 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("spec", func() error {
 			return runSpecWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "source":
+		// `helix source <add|list|test|tools>` manages integration
+		// sources in .helix/sources.yaml, including Muster-backed MCP
+		// tool generation (SPEC-025 §7).
+		return RunWithObs("source", func() error {
+			return runSourceWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	case "design":
 		// `helix design <review>`
 		// Design review with adversarial agents (Phase 2 §2.3).
@@ -687,6 +694,7 @@ Subcommands:
   idea         Idea capture, validation, prioritization (Phase 1)
   adr          Architecture Decision Records + multi-model review (Phase 2)
   spec         Spec co-authoring with adversarial annotation (Phase 2)
+  source       Manage integration sources — add, list, test, tools (SPEC-025)
   design       Design review with adversarial agents (Phase 2)
   contract     API contract generation + breaking changes (Phase 2)
   notify       Cross-agent notification bus — publish, inbox, stream (Phase 12)

@@ -52,7 +52,12 @@ type Source struct {
 	BaseURL       string     `yaml:"base_url"`
 	Root          string     `yaml:"root"`
 	ReadOnly      bool       `yaml:"read_only"`
+	Enabled       *bool      `yaml:"enabled"`
 }
+
+// IsEnabled reports whether the source is enabled. A missing (nil)
+// enabled field means the source is enabled by default.
+func (s *Source) IsEnabled() bool { return s.Enabled == nil || *s.Enabled }
 
 // Validate checks that the source definition is complete and consistent.
 // Different source types have different required fields.

@@ -590,3 +590,59 @@ func TestSource_NameNotInYAML(t *testing.T) {
 	assert.NotContains(t, string(data), "name")
 	assert.NotContains(t, string(data), "should-not-appear")
 }
+
+// ---------------------------------------------------------------------------
+// Enabled field + IsEnabled
+// ---------------------------------------------------------------------------
+
+func TestSource_IsEnabled(t *testing.T) {
+	t.Parallel()
+	// Missing (nil) enabled field → enabled by default.
+	unset := &Source{Name: "a", Type: SourceTypeLocal, Root: "/tmp"}
+	assert.Nil(t, unset.Enabled)
+	assert.True(t, unset.IsEnabled())
+
+	// Explicit true → enabled.
+	yes := true
+	enabled := &Source{Name: "b", Type: SourceTypeLocal, Root: "/tmp", Enabled: &yes}
+	assert.True(t, enabled.IsEnabled())
+
+	// Explicit false → disabled.
+	no := false
+	disabled := &Source{Name: "c", Type: SourceTypeLocal, Root: "/tmp", Enabled: &no}
+	assert.False(t, disabled.IsEnabled())
+}
+
+func TestParseSourcesYAML_EnabledFalse(t *testing.T) {
+	t.Parallel()
+	p := writeTempSourcesYAML(t, `
+sources:
+  fs:
+    type: local
+    root: /tmp
+    enabled: false
+`)
+	file, err := ParseSourcesYAML(p)
+	require.NoError(t, err)
+
+	fs := file.Sources["fs"]
+	require.NotNil(t, fs.Enabled)
+	assert.False(t, *fs.Enabled)
+	assert.False(t, fs.IsEnabled())
+}
+
+func TestParseSourcesYAML_EnabledDefaultTrue(t *testing.T) {
+	t.Parallel()
+	p := writeTempSourcesYAML(t, `
+sources:
+  fs:
+    type: local
+    root: /tmp
+`)
+	file, err := ParseSourcesYAML(p)
+	require.NoError(t, err)
+
+	fs := file.Sources["fs"]
+	assert.Nil(t, fs.Enabled)
+	assert.True(t, fs.IsEnabled())
+}
