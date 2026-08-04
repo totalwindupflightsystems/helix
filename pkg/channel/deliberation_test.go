@@ -45,19 +45,6 @@ func newDeliberationChannel(t *testing.T, members ...string) (*Channel, *MemChan
 	return ch, cs
 }
 
-// sendMessage persists a message through a fresh MemMessageStore and
-// returns it. The store is created per-call because each test owns its own
-// message history.
-func sendMessage(t *testing.T, ch *Channel, author string, authorType AuthorType, msgType MessageType, content string) (*ChannelMessage, *MemMessageStore) {
-	t.Helper()
-	ms := NewMemMessageStore()
-	msg := NewChannelMessage(ch.ID, author, authorType, msgType, content)
-	if err := ms.Send(msg); err != nil {
-		t.Fatalf("send message: %v", err)
-	}
-	return msg, ms
-}
-
 // allMessages returns the full message list for a channel from a store.
 func allMessages(t *testing.T, store MessageStore, channelID string) []*ChannelMessage {
 	t.Helper()
