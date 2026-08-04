@@ -1,0 +1,87 @@
+{
+  "task_id": "src-003",
+  "task_title": "Source capability gating \u2014 pkg/source/gateway.go (SPEC-025 \u00a75)",
+  "task_criteria": [
+    "pkg/source/gateway.go exists and implements capability-gated MCP tool filtering per SPEC-025 \u00a75",
+    "Agent with no matching capability claim gets zero tools from that source (ToolSet dropped from result)",
+    "Low-strength claim (1-6) yields read-only tools only (GET/HEAD/OPTIONS kept, write methods stripped)",
+    "High-strength claim (7-10) yields read+write tools",
+    "Source.ReadOnly forces read-only filtering even for high-strength agents",
+    "Source.AllowedAgents (non-empty) restricts access: agent not in the list gets zero tools from that source",
+    "Filtering is deterministic (input order preserved) and total: nil/empty inputs return empty results without panics",
+    "pkg/source/gateway_test.go covers no-capability, low/high-strength tiers, read-only source, allowed_agents allow/deny, mixed multi-source, and empty-input cases",
+    "go build ./... and go vet ./... pass",
+    "go test -short -count=1 ./pkg/source/ passes with existing + new tests"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 tests: \n  \u2713 lint: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 pkg/source/gateway.go exists and implements capability-gated MCP tool filtering per SPEC-025 \u00a75: pkg/source/gateway.go exists; Gateway.Filter (lines 110-152) filters ToolSets by capability claims with strength tiers\n  \u2713 Agent with no matching capability claim gets zero tools from that source (ToolSet dropped from result): gateway.go:134 `if !ok || claim.Strength < MinReadOnlyStrength { continue }` drops ToolSet; covered by TestGateway_Filter_NoMatchingCapability\n  \u2713 Low-strength claim (1-6) yields read-only tools only (GET/HEAD/OPTIONS kept, write methods stripped): keepReadOnly (gateway.go:227) keeps GET/HEAD/OPTIONS, strips others; TestGateway_Filter_StrengthTiers covers strengths 1,4,6\n  \u2713 High-strength claim (7-10) yields read+write tools: gateway.go:137 `readWrite := claim.Strength >= MinReadWriteStrength` (7); TestGateway_Filter_StrengthTiers covers 7 and 10\n  \u2713 Source.ReadOnly forces read-only filtering even for high-strength agents: gateway.go:139 `if hasSrc && src.ReadOnly { readWrite = false }`; TestGateway_Filter_ReadOnlySourceForcesReadOnly covers strengths 7 and 10\n  \u2713 Source.AllowedAgents (non-empty) restricts access: agent not in the list gets zero tools from that source: gateway.go:127 AllowedAgents check; TestGateway_Filter_AllowedAgents covers allow/deny and case-sensitivity\n  \u2713 Filtering is deterministic (input order preserved) and total: nil/empty inputs return empty results without panics: Filter returns nil for nil/empty inputs (gateway.go:115-117), preserves order via append; TestGateway_Filter_EmptyInputs covers nil gateway, nil claims, nil toolSets\n  \u2713 pkg/source/gateway_test.go covers no-capability, low/high-strength tiers, read-only source, allowed_agents allow/deny, mixed multi-source, and empty-input cases: Tests present: NoMatchingCapability, StrengthTiers, ReadOnlySourceForcesReadOnly, AllowedAgents, MixedMultiSource, EmptyInputs\n  \u2713 go build ./... and go vet ./... pass: go build ./... exit 0; go vet ./... exit 0 (run from /home/kara/helix)\n  \u2713 go test -short -count=1 ./pkg/source/ passes with existing + new tests: go test -short -count=1 ./pkg/source/ exit 0: 'ok github.com/totalwindupflightsystems/helix/pkg/source 0.007s'\nAll 10 criteria verified: gateway.go implements capability-gated filtering with correct strength tiers, ReadOnly/AllowedAgents policy, deterministic total behavior, comprehensive tests, and passing build/vet/test.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 pkg/source/gateway.go exists and implements capability-gated MCP tool filtering per SPEC-025 \u00a75: pkg/source/gateway.go exists; Gateway.Filter (lines 110-152) filters ToolSets by capability claims with strength tiers\n  \u2713 Agent with no matching capability claim gets zero tools from that source (ToolSet dropped from result): gateway.go:134 `if !ok || claim.Strength < MinReadOnlyStrength { continue }` drops ToolSet; covered by TestGateway_Filter_NoMatchingCapability\n  \u2713 Low-strength cla",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: src-003\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 tests: \n  \u2713 lint: \n  \u2713 secrets: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 pkg/source/gateway.go exists and implements capability-gated MCP tool filtering per SPEC-025 \u00a75: pkg/source/gateway.go exists; Gateway.Filter (lines 110-152) filters ToolSets by capability claims with strength tiers\n  \u2713 Agent with no matching capability claim gets zero tools from that source (ToolSet dropped from result): gateway.go:134 `if !ok || claim.Strength < MinReadOnlyStrength { continue }` drops ToolSet; covered by TestGateway_Filter_NoMatchingCapability\n  \u2713 Low-strength claim (1-6) yields read-only tools only (GET/HEAD/OPTIONS kept, write methods stripped): keepReadOnly (gateway.go:227) keeps GET/HEAD/OPTIONS, strips others; TestGateway_Filter_StrengthTiers covers strengths 1,4,6\n  \u2713 High-strength claim (7-10) yields read+write tools: gateway.go:137 `readWrite := claim.Strength >= MinReadWriteStrength` (7); TestGateway_Filter_StrengthTiers covers 7 and 10\n  \u2713 Source.ReadOnly forces read-only filtering even for high-strength agents: gateway.go:139 `if hasSrc && src.ReadOnly { readWrite = false }`; TestGateway_Filter_ReadOnlySourceForcesReadOnly covers strengths 7 and 10\n  \u2713 Source.AllowedAgents (non-empty) restricts access: agent not in the list gets zero tools from that source: gateway.go:127 AllowedAgents check; TestGateway_Filter_AllowedAgents covers allow/deny and case-sensitivity\n  \u2713 Filtering is deterministic (input order preserved) and total: nil/empty inputs return empty results without panics: Filter returns nil for nil/empty inputs (gateway.go:115-117), preserves order via append; TestGateway_Filter_EmptyInputs covers nil gateway, nil claims, nil toolSets\n  \u2713 pkg/source/gateway_test.go covers no-capability, low/high-strength tiers, read-only source, allowed_agents allow/deny, mixed multi-source, and empty-input cases: Tests present: NoMatchingCapability, StrengthTiers, ReadOnlySourceForcesReadOnly, AllowedAgents, MixedMultiSource, EmptyInputs\n  \u2713 go build ./... and go vet ./... pass: go build ./... exit 0; go vet ./... exit 0 (run from /home/kara/helix)\n  \u2713 go test -short -count=1 ./pkg/source/ passes with existing + new tests: go test -short -count=1 ./pkg/source/ exit 0: 'ok github.com/totalwindupflightsystems/helix/pkg/source 0.007s'\nAll 10 criteria verified: gateway.go implements capability-gated filtering with correct strength tiers, ReadOnly/AllowedAgents policy, deterministic total behavior, comprehensive tests, and passing build/vet/test.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-04T04:08:48.349167"
+}

@@ -389,3 +389,25 @@ tasks:
   status: complete
   created_at: '2026-08-04T01:40:28.804096+00:00'
   completed_at: '2026-08-04T01:40:32.179692+00:00'
+- id: src-003
+  title: "Source capability gating \u2014 pkg/source/gateway.go (SPEC-025 \xA75)"
+  criteria:
+  - "pkg/source/gateway.go exists and implements capability-gated MCP tool filtering\
+    \ per SPEC-025 \xA75"
+  - Agent with no matching capability claim gets zero tools from that source (ToolSet
+    dropped from result)
+  - Low-strength claim (1-6) yields read-only tools only (GET/HEAD/OPTIONS kept, write
+    methods stripped)
+  - High-strength claim (7-10) yields read+write tools
+  - Source.ReadOnly forces read-only filtering even for high-strength agents
+  - 'Source.AllowedAgents (non-empty) restricts access: agent not in the list gets
+    zero tools from that source'
+  - 'Filtering is deterministic (input order preserved) and total: nil/empty inputs
+    return empty results without panics'
+  - pkg/source/gateway_test.go covers no-capability, low/high-strength tiers, read-only
+    source, allowed_agents allow/deny, mixed multi-source, and empty-input cases
+  - go build ./... and go vet ./... pass
+  - go test -short -count=1 ./pkg/source/ passes with existing + new tests
+  status: complete
+  created_at: '2026-08-04T04:07:17.091641+00:00'
+  completed_at: '2026-08-04T04:07:20.879231+00:00'
