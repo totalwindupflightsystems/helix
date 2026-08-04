@@ -411,3 +411,22 @@ tasks:
   status: complete
   created_at: '2026-08-04T04:07:17.091641+00:00'
   completed_at: '2026-08-04T04:07:20.879231+00:00'
+- id: src-004
+  title: Per-source rate limiting (pkg/source/ratelimit.go)
+  criteria:
+  - "pkg/source/ratelimit.go implements per-source rate limiting per SPEC-025 \xA7\
+    6: ParseRateLimit supports \"N/s\" and \"N/m\" formats, empty string means no\
+    \ limit, invalid formats return descriptive errors"
+  - RateLimitManager builds one limiter per source, is safe for concurrent Wait calls,
+    returns an error for unknown source names, and never blocks for sources without
+    a rate_limit
+  - 'pkg/source/ratelimit_test.go covers: parse cases (valid/invalid/empty), Wait
+    blocking and burst behavior, context cancellation, unknown source error, no-limit
+    immediate return, concurrency race-clean'
+  - go build ./... passes and go vet ./pkg/source/ passes
+  - go test -race -count=1 ./pkg/source/ passes
+  - No files outside pkg/source/ and prompts/src-004/ modified; no new dependencies
+    added (uses existing golang.org/x/time)
+  status: complete
+  created_at: '2026-08-04T06:30:45.393046+00:00'
+  completed_at: '2026-08-04T06:31:47.937366+00:00'

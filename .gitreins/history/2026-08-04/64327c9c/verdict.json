@@ -1,0 +1,83 @@
+{
+  "task_id": "src-004",
+  "task_title": "Per-source rate limiting (pkg/source/ratelimit.go)",
+  "task_criteria": [
+    "pkg/source/ratelimit.go implements per-source rate limiting per SPEC-025 \u00a76: ParseRateLimit supports \"N/s\" and \"N/m\" formats, empty string means no limit, invalid formats return descriptive errors",
+    "RateLimitManager builds one limiter per source, is safe for concurrent Wait calls, returns an error for unknown source names, and never blocks for sources without a rate_limit",
+    "pkg/source/ratelimit_test.go covers: parse cases (valid/invalid/empty), Wait blocking and burst behavior, context cancellation, unknown source error, no-limit immediate return, concurrency race-clean",
+    "go build ./... passes and go vet ./pkg/source/ passes",
+    "go test -race -count=1 ./pkg/source/ passes",
+    "No files outside pkg/source/ and prompts/src-004/ modified; no new dependencies added (uses existing golang.org/x/time)"
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 tests: \n  \u2713 lint: \n  \u2713 build: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n\nEvaluator error: LLM call failed: LLM request failed after 3 attempts",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n\nEvaluator error: LLM call failed: LLM request failed after 3 attempts",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: src-004\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 tests: \n  \u2713 lint: \n  \u2713 build: \n  \u2713 secrets: \n\nStage tier2: FAIL\n  INCOMPLETE\n\nEvaluator error: LLM call failed: LLM request failed after 3 attempts\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-08-04T06:30:55.506483"
+}
