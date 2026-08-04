@@ -3622,3 +3622,17 @@
 {"from":"cmd/helix/source_test.go","to":"pkg:github.com/totalwindupflightsystems/helix/pkg/source","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"cmd/helix/source.go","to":"cmd/helix/source_test.go","rel":"tests","provenance":"heuristic","confidence":0.8}
 {"from":"cmd/helix/source_test.go","to":"cmd/helix/source.go","rel":"tested_by","provenance":"heuristic","confidence":0.8}
+{"from":"pkg/channel/archive.go","to":"std:encoding/json","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/archive.go","to":"std:errors","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/archive.go","to":"std:fmt","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/archive.go","to":"pkg:github.com/totalwindupflightsystems/helix/pkg/identity","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/archive.go","to":"pkg:github.com/totalwindupflightsystems/helix/pkg/memory","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/archive_test.go","to":"std:crypto/ed25519","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/archive_test.go","to":"std:encoding/json","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/archive_test.go","to":"std:strings","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/archive_test.go","to":"std:testing","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/archive_test.go","to":"std:time","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/archive_test.go","to":"pkg:github.com/totalwindupflightsystems/helix/pkg/identity","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/archive_test.go","to":"pkg:github.com/totalwindupflightsystems/helix/pkg/memory","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/channel/archive.go","to":"pkg/channel/archive_test.go","rel":"tests","provenance":"heuristic","confidence":0.8}
+{"from":"pkg/channel/archive_test.go","to":"pkg/channel/archive.go","rel":"tested_by","provenance":"heuristic","confidence":0.8}

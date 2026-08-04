@@ -1,0 +1,85 @@
+{
+  "task_id": "ch-004",
+  "task_title": "Channel archive to DuckBrain \u2014 pkg/channel/archive.go (SPEC-024 \u00a77)",
+  "task_criteria": [
+    "pkg/channel/archive.go exists implementing DuckBrain archival of closed channels per SPEC-024 \u00a75 step 5 and \u00a77 ('all channel messages archived as signed events for audit')",
+    "Archive API (e.g. ArchiveChannel(ch *Channel, msgs []ChannelMessage, store memory.MemoryStore) error) verifies every message's HIDProof via VerifyMessage (pkg/channel/message.go) before writing; an unsigned or tampered agent message fails archival with an error naming the offending message ID (fail closed \u2014 audit integrity)",
+    "Archived events are written as memory.MemoryEntry records: domain = DomainMessage, key under /helix/platform/incidents/channels/<channel-id>/... (valid platform sub-namespace per memory.ValidateKey \u2014 \"channels\" alone is NOT recognized; use a valid leaf like incidents) that passes memory.ValidateKey, embedding_text carrying the signed event envelope (message fields + HIDProof with sig bytes + fingerprint) so audit can re-verify",
+    "Archival is idempotent: re-archiving the same channel skips entries that already exist (overwrite=false; ErrAlreadyExists \u2192 skip, not error) and reports the count written vs skipped",
+    "Archive of an unknown/empty channel: empty message list writes no entries and succeeds; nil channel or nil store returns an explicit error",
+    "pkg/channel/archive_test.go covers: N messages \u2192 N valid entries with correct key pattern/domain, tampered message fails naming the ID, unsigned message fails, idempotent re-archive (skips), empty channel no-op, nil args error",
+    "go build ./... exits 0; go vet ./... clean; go test -short -count=1 ./... passes (all packages, existing pkg/channel tests keep passing)",
+    "No new external dependencies (stdlib + existing pkg/memory + pkg/identity only); commit includes Co-authored-by: Alexis Okuwa <wojonstech@gmail.com> and Prompt: prompts/coding-hermes/v1.md trailers"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 lint: \n  \u2713 build: \n  \u2713 tests: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 pkg/channel/archive.go exists implementing DuckBrain archival of closed channels per SPEC-024 \u00a75 step 5 and \u00a77 ('all channel messages archived as signed events for audit'): pkg/channel/archive.go exists (128 lines) with ArchiveChannel implementing signed-event archival per SPEC-024 \u00a75 step 5 and \u00a77\n  \u2713 Archive API (e.g. ArchiveChannel(ch *Channel, msgs []ChannelMessage, store memory.MemoryStore) error) verifies every message's HIDProof via VerifyMessage (pkg/channel/message.go) before writing; an unsigned or tampered agent message fails archival with an error naming the offending message ID (fail closed \u2014 audit integrity): archive.go:66-69 calls VerifyMessage(msg, id) before writing; on failure returns fmt.Errorf(\"channel: archival aborted \u2014 message %q failed verification: %w\", msg.ID, err) naming the offending ID; fail closed with no partial writes\n  \u2713 Archived events are written as memory.MemoryEntry records: domain = DomainMessage, key under /helix/platform/incidents/channels/<channel-id>/... (valid platform sub-namespace per memory.ValidateKey \u2014 \"channels\" alone is NOT recognized; use a valid leaf like incidents) that passes memory.ValidateKey, embedding_text carrying the signed event envelope (message fields + HIDProof with sig bytes + fingerprint) so audit can re-verify: archiveEntry (archive.go:113-128) writes MemoryEntry with Domain=memory.DomainMessage, Key=/helix/platform/incidents/channels/<id>/messages/<id> (valid 'incidents' platform sub-namespace per ValidateKey), EmbeddingText=JSON of ChannelMessage incl. HIDProof sig bytes + fingerprint; TestArchiveChannel_BasicArchive verifies ValidateKey passes and re-verification succeeds\n  \u2713 Archival is idempotent: re-archiving the same channel skips entries that already exist (overwrite=false; ErrAlreadyExists \u2192 skip, not error) and reports the count written vs skipped: archive.go:82 store.Write(entry, false) with overwrite=false; on memory.ErrAlreadyExists increments result.Skipped and continues (archive.go:84-87); ArchiveResult reports Written vs Skipped; TestArchiveChannel_IdempotentReArchive passes (0 written/3 skipped on second pass)\n  \u2713 Archive of an unknown/empty channel: empty message list writes no entries and succeeds; nil channel or nil store returns an explicit error: Empty msgs loop writes nothing and returns zero result with no error; nil channel returns 'cannot archive nil channel', nil store returns 'cannot archive to nil store' (archive.go:48-56); tests EmptyChannel, NilChannel, NilStore, NilIdentity all pass\n  \u2713 pkg/channel/archive_test.go covers: N messages \u2192 N valid entries with correct key pattern/domain, tampered message fails naming the ID, unsigned message fails, idempotent re-archive (skips), empty channel no-op, nil args error: archive_test.go (290 lines) covers BasicArchive (N\u2192N entries, key/domain), TamperedMessageFails (names ID), UnsignedMessageFails, IdempotentReArchive (skips), EmptyChannel no-op, NilChannel/NilStore/NilIdentity errors, WrongKeyFails; all 9 TestArchiveChannel tests pass\n  \u2713 go build ./... exits 0; go vet ./... clean; go test -short -count=1 ./... passes (all packages, existing pkg/channel tests keep passing): go build ./... exits 0; go vet ./... clean; go test -short -count=1 ./... passes all packages including pkg/channel (0.718s); no LSP diagnostics\n  \u2713 No new external dependencies (stdlib + existing pkg/memory + pkg/identity only); commit includes Co-authored-by: Alexis Okuwa <wojonstech@gmail.com> and Prompt: prompts/coding-hermes/v1.md trailers: Imports only stdlib (encoding/json, errors, fmt) + pkg/identity + pkg/memory; go.mod/go.sum unchanged; commit a5d5ee8 includes Co-authored-by: Alexis Okuwa <wojonstech@gmail.com> and Prompt: prompts/coding-hermes/v1.md trailers\nAll 8 criteria verified PASS: archive.go implements signed-event DuckBrain archival with HIDProof verification, valid MemoryEntry keys/domains, idempotency, nil/empty handling, comprehensive tests, clean build/vet/test, and correct trailers with no new dependencies.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 pkg/channel/archive.go exists implementing DuckBrain archival of closed channels per SPEC-024 \u00a75 step 5 and \u00a77 ('all channel messages archived as signed events for audit'): pkg/channel/archive.go exists (128 lines) with ArchiveChannel implementing signed-event archival per SPEC-024 \u00a75 step 5 and \u00a77\n  \u2713 Archive API (e.g. ArchiveChannel(ch *Channel, msgs []ChannelMessage, store memory.MemoryStore) error) verifies every message's HIDProof via VerifyMessage (pkg/channel/message.go) befo",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: ch-004\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 lint: \n  \u2713 build: \n  \u2713 tests: \n  \u2713 secrets: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 pkg/channel/archive.go exists implementing DuckBrain archival of closed channels per SPEC-024 \u00a75 step 5 and \u00a77 ('all channel messages archived as signed events for audit'): pkg/channel/archive.go exists (128 lines) with ArchiveChannel implementing signed-event archival per SPEC-024 \u00a75 step 5 and \u00a77\n  \u2713 Archive API (e.g. ArchiveChannel(ch *Channel, msgs []ChannelMessage, store memory.MemoryStore) error) verifies every message's HIDProof via VerifyMessage (pkg/channel/message.go) before writing; an unsigned or tampered agent message fails archival with an error naming the offending message ID (fail closed \u2014 audit integrity): archive.go:66-69 calls VerifyMessage(msg, id) before writing; on failure returns fmt.Errorf(\"channel: archival aborted \u2014 message %q failed verification: %w\", msg.ID, err) naming the offending ID; fail closed with no partial writes\n  \u2713 Archived events are written as memory.MemoryEntry records: domain = DomainMessage, key under /helix/platform/incidents/channels/<channel-id>/... (valid platform sub-namespace per memory.ValidateKey \u2014 \"channels\" alone is NOT recognized; use a valid leaf like incidents) that passes memory.ValidateKey, embedding_text carrying the signed event envelope (message fields + HIDProof with sig bytes + fingerprint) so audit can re-verify: archiveEntry (archive.go:113-128) writes MemoryEntry with Domain=memory.DomainMessage, Key=/helix/platform/incidents/channels/<id>/messages/<id> (valid 'incidents' platform sub-namespace per ValidateKey), EmbeddingText=JSON of ChannelMessage incl. HIDProof sig bytes + fingerprint; TestArchiveChannel_BasicArchive verifies ValidateKey passes and re-verification succeeds\n  \u2713 Archival is idempotent: re-archiving the same channel skips entries that already exist (overwrite=false; ErrAlreadyExists \u2192 skip, not error) and reports the count written vs skipped: archive.go:82 store.Write(entry, false) with overwrite=false; on memory.ErrAlreadyExists increments result.Skipped and continues (archive.go:84-87); ArchiveResult reports Written vs Skipped; TestArchiveChannel_IdempotentReArchive passes (0 written/3 skipped on second pass)\n  \u2713 Archive of an unknown/empty channel: empty message list writes no entries and succeeds; nil channel or nil store returns an explicit error: Empty msgs loop writes nothing and returns zero result with no error; nil channel returns 'cannot archive nil channel', nil store returns 'cannot archive to nil store' (archive.go:48-56); tests EmptyChannel, NilChannel, NilStore, NilIdentity all pass\n  \u2713 pkg/channel/archive_test.go covers: N messages \u2192 N valid entries with correct key pattern/domain, tampered message fails naming the ID, unsigned message fails, idempotent re-archive (skips), empty channel no-op, nil args error: archive_test.go (290 lines) covers BasicArchive (N\u2192N entries, key/domain), TamperedMessageFails (names ID), UnsignedMessageFails, IdempotentReArchive (skips), EmptyChannel no-op, NilChannel/NilStore/NilIdentity errors, WrongKeyFails; all 9 TestArchiveChannel tests pass\n  \u2713 go build ./... exits 0; go vet ./... clean; go test -short -count=1 ./... passes (all packages, existing pkg/channel tests keep passing): go build ./... exits 0; go vet ./... clean; go test -short -count=1 ./... passes all packages including pkg/channel (0.718s); no LSP diagnostics\n  \u2713 No new external dependencies (stdlib + existing pkg/memory + pkg/identity only); commit includes Co-authored-by: Alexis Okuwa <wojonstech@gmail.com> and Prompt: prompts/coding-hermes/v1.md trailers: Imports only stdlib (encoding/json, errors, fmt) + pkg/identity + pkg/memory; go.mod/go.sum unchanged; commit a5d5ee8 includes Co-authored-by: Alexis Okuwa <wojonstech@gmail.com> and Prompt: prompts/coding-hermes/v1.md trailers\nAll 8 criteria verified PASS: archive.go implements signed-event DuckBrain archival with HIDProof verification, valid MemoryEntry keys/domains, idempotency, nil/empty handling, comprehensive tests, clean build/vet/test, and correct trailers with no new dependencies.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-04T12:08:11.946450"
+}

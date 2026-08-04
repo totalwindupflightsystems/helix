@@ -481,3 +481,36 @@ tasks:
   status: complete
   created_at: '2026-08-04T11:45:13.220744+00:00'
   completed_at: '2026-08-04T11:45:17.788130+00:00'
+- id: ch-004
+  title: "Channel archive to DuckBrain \u2014 pkg/channel/archive.go (SPEC-024 \xA7\
+    7)"
+  criteria:
+  - "pkg/channel/archive.go exists implementing DuckBrain archival of closed channels\
+    \ per SPEC-024 \xA75 step 5 and \xA77 ('all channel messages archived as signed\
+    \ events for audit')"
+  - "Archive API (e.g. ArchiveChannel(ch *Channel, msgs []ChannelMessage, store memory.MemoryStore)\
+    \ error) verifies every message's HIDProof via VerifyMessage (pkg/channel/message.go)\
+    \ before writing; an unsigned or tampered agent message fails archival with an\
+    \ error naming the offending message ID (fail closed \u2014 audit integrity)"
+  - "Archived events are written as memory.MemoryEntry records: domain = DomainMessage,\
+    \ key under /helix/platform/incidents/channels/<channel-id>/... (valid platform\
+    \ sub-namespace per memory.ValidateKey \u2014 \"channels\" alone is NOT recognized;\
+    \ use a valid leaf like incidents) that passes memory.ValidateKey, embedding_text\
+    \ carrying the signed event envelope (message fields + HIDProof with sig bytes\
+    \ + fingerprint) so audit can re-verify"
+  - "Archival is idempotent: re-archiving the same channel skips entries that already\
+    \ exist (overwrite=false; ErrAlreadyExists \u2192 skip, not error) and reports\
+    \ the count written vs skipped"
+  - 'Archive of an unknown/empty channel: empty message list writes no entries and
+    succeeds; nil channel or nil store returns an explicit error'
+  - "pkg/channel/archive_test.go covers: N messages \u2192 N valid entries with correct\
+    \ key pattern/domain, tampered message fails naming the ID, unsigned message fails,\
+    \ idempotent re-archive (skips), empty channel no-op, nil args error"
+  - go build ./... exits 0; go vet ./... clean; go test -short -count=1 ./... passes
+    (all packages, existing pkg/channel tests keep passing)
+  - 'No new external dependencies (stdlib + existing pkg/memory + pkg/identity only);
+    commit includes Co-authored-by: Alexis Okuwa <wojonstech@gmail.com> and Prompt:
+    prompts/coding-hermes/v1.md trailers'
+  status: complete
+  created_at: '2026-08-04T11:51:23.309222+00:00'
+  completed_at: '2026-08-04T12:06:30.247192+00:00'
