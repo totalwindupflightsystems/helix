@@ -493,6 +493,13 @@ func (d *dispatcher) dispatch(args []string) error {
 		return RunWithObs("source", func() error {
 			return runSourceWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
+	case "channel":
+		// `helix channel <create|join|send|list|archive|history>`
+		// manages agent communication channels in .helix/channels.yaml,
+		// with HID-signed messages (SPEC-024 §8).
+		return RunWithObs("channel", func() error {
+			return runChannelWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
+		})
 	case "design":
 		// `helix design <review>`
 		// Design review with adversarial agents (Phase 2 §2.3).
@@ -695,6 +702,7 @@ Subcommands:
   adr          Architecture Decision Records + multi-model review (Phase 2)
   spec         Spec co-authoring with adversarial annotation (Phase 2)
   source       Manage integration sources — add, list, test, tools (SPEC-025)
+  channel      Agent communication channels — create, join, send, archive (SPEC-024)
   design       Design review with adversarial agents (Phase 2)
   contract     API contract generation + breaking changes (Phase 2)
   notify       Cross-agent notification bus — publish, inbox, stream (Phase 12)
