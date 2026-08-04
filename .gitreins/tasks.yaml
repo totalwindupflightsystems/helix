@@ -457,3 +457,27 @@ tasks:
   status: complete
   created_at: '2026-08-04T09:02:01.634928+00:00'
   completed_at: '2026-08-04T09:02:05.467556+00:00'
+- id: src-006
+  title: 'Source CLI: helix source add/list/test/tools'
+  criteria:
+  - helix source add --name STRING --type [postgres|rest|local] --spec PATH is implemented
+    in cmd/helix/source.go and wired into the cmd/helix/main.go switch via RunWithObs
+  - add validates the source (source.Validate) before writing; invalid type or missing
+    required fields exit 2 and leave .helix/sources.yaml untouched
+  - add upserts into .helix/sources.yaml preserving existing sources and honors --dry-run
+    (prints intent, writes nothing)
+  - helix source list [--enabled] prints a table sorted by name and filters by IsEnabled
+    when --enabled is given (Source.Enabled *bool, missing = enabled)
+  - helix source test --name validates config, checks OpenAPI spec presence, runs
+    type-specific probes (local root dir, REST reachability, postgres TCP dial); any
+    failed check exits 2; Muster unreachable is a warning, not a failure
+  - helix source tools --name generates tools via MusterBridge.GenerateToolsFromSource
+    and prints them sorted by name; missing source or Muster unreachable exits 2 with
+    a clear error
+  - unit tests in cmd/helix/source_test.go cover flag parsing, add validation/no-write,
+    upsert, list sorting + enabled filter, test success/failure, tools error paths;
+    go build ./... && go vet ./... && go test -short -count=1 ./... all pass; gofmt
+    clean on changed files
+  status: complete
+  created_at: '2026-08-04T11:45:13.220744+00:00'
+  completed_at: '2026-08-04T11:45:17.788130+00:00'
