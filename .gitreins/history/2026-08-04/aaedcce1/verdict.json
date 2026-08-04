@@ -1,0 +1,85 @@
+{
+  "task_id": "src-005",
+  "task_title": "Dispatcher wiring: inject capability-gated source tools at task dispatch (SPEC-025 \u00a76)",
+  "task_criteria": [
+    "pkg/dispatcher/source_tools.go exists with SourceToolInjector, ToolsProvider, NewSourceToolInjector (file or map constructor), Inject(ctx, agent) ([]source.ToolSet, error), Wait(ctx, sourceName) error, WaitForTool(ctx, toolName, sets) error",
+    "AgentProfile (pkg/dispatcher/types.go) carries Capabilities []identity.CapabilityClaim; WorkItem carries SourceTools []source.ToolSet and SourceToolsError string (json omitempty)",
+    "Dispatch path attaches capability-gated tools: agent claim strength 7-10 on matching domain receives full tool set; strength 1-6 receives read-only methods only (GET/HEAD/OPTIONS preserved, write methods stripped); no matching claim yields zero source tools (SPEC-025 \u00a75)",
+    "Rate limiting wired: WaitForTool resolves the owning source by tool name within attached sets and waits; unknown source name returns an error",
+    "Muster unreachable fails cleanly: per-source generation errors are joined and returned, never a panic or hang; injector works with a static ToolsProvider (no live Muster required in tests)",
+    "pkg/source and cmd/helix unchanged by this task (git diff HEAD~1 --stat shows no pkg/source or cmd/helix or go.mod/go.sum files)",
+    "go build ./... and go vet ./... clean; golangci-lint run ./... zero issues; pkg/dispatcher tests pass (148 tests, incl. 27 new in source_tools_test.go)",
+    "All pre-existing pkg/dispatcher tests unchanged and passing"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 lint: \n  \u2713 tests: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 pkg/dispatcher/source_tools.go exists with SourceToolInjector, ToolsProvider, NewSourceToolInjector (file or map constructor), Inject(ctx, agent) ([]source.ToolSet, error), Wait(ctx, sourceName) error, WaitForTool(ctx, toolName, sets) error: pkg/dispatcher/source_tools.go (226 lines) defines type SourceToolInjector, type ToolsProvider func(ctx,*source.Source)(*source.ToolSet,error), NewSourceToolInjector(sources,opts...) plus NewSourceToolInjectorFromFile, Inject(ctx,AgentProfile)([]source.ToolSet,error) (line ~130), Wait(ctx,sourceName) error, and WaitForTool(ctx,toolName,sets) error (line ~215)\n  \u2713 AgentProfile (pkg/dispatcher/types.go) carries Capabilities []identity.CapabilityClaim; WorkItem carries SourceTools []source.ToolSet and SourceToolsError string (json omitempty): types.go: AgentProfile.Capabilities []identity.CapabilityClaim `json:\"capabilities,omitempty\"`; WorkItem.SourceTools []source.ToolSet `json:\"source_tools,omitempty\"` and SourceToolsError string `json:\"source_tools_error,omitempty\"`\n  \u2713 Dispatch path attaches capability-gated tools: agent claim strength 7-10 on matching domain receives full tool set; strength 1-6 receives read-only methods only (GET/HEAD/OPTIONS preserved, write methods stripped); no matching claim yields zero source tools (SPEC-025 \u00a75): assigner.go DispatchContext: when d.SourceTools!=nil, sets,injErr := d.SourceTools.Inject(ctx, WorkItem.Agent); sets attached and injErr recorded to SourceToolsError. Gating delegated to source.Gateway.Filter (gateway.go: MinReadOnlyStrength=1, MaxReadOnlyStrength=6, MinReadWriteStrength=7, keepReadOnly=GET/HEAD/OPTIONS). Tests confirm each tier: TestSourceToolInjector_Inject_ReadWriteStrength (strength 9\u2192all 4 tools incl POST/DELETE), Inject_ReadOnlyStrength (strength 4\u21922 read-only methods), NoMatchingClaim/NoClaims\u21920 sets, and end-to-end TestDispatcher_Dispatch_AttachesGatedTools and ReadOnlyStrengthEndToEnd\n  \u2713 Rate limiting wired: WaitForTool resolves the owning source by tool name within attached sets and waits; unknown source name returns an error: WaitForTool uses SourceForTool (iterates sets' Tools, matches tool.Name\u2192ts.SourceName) then calls Wait(ctx,srcName) which delegates to source.RateLimitManager.Wait; unknown source returns error. Tests: TestSourceToolInjector_WaitForTool_GatesExecution (2/s burst: first 2 waits pass, 3rd blocked with deadline error), Wait_UnknownSource, WaitForTool_UnknownTool/UnknownSource all expect errors\n  \u2713 Muster unreachable fails cleanly: per-source generation errors are joined and returned, never a panic or hang; injector works with a static ToolsProvider (no live Muster required in tests): Inject collects per-source errors and returns errors.Join(genErrs...) alongside any filtered sets that succeeded (partial success preserved); nil injector/provider/empty sources all return errors, never panic. WithToolsProvider static seam + WithMusterBridge; all tests use static providers and never contact Muster (Inject_ProviderError, Inject_PartialFailure, Inject_NoProvider, NilReceiver, WithMusterBridge on empty sources)\n  \u2713 pkg/source and cmd/helix unchanged by this task (git diff HEAD~1 --stat shows no pkg/source or cmd/helix or go.mod/go.sum files): git diff HEAD~1 --stat -- pkg/source cmd/helix go.mod go.sum produced empty output (exit 0); changed files are only pkg/dispatcher/{assigner.go,source_tools.go,source_tools_test.go,types.go}, .gitreins/tasks.yaml, .vfs/graph/edges.jsonl, prompts/src-005/v1.md\n  \u2713 go build ./... and go vet ./... clean; golangci-lint run ./... zero issues; pkg/dispatcher tests pass (148 tests, incl. 27 new in source_tools_test.go): go build ./... exit 0; go vet ./... exit 0; golangci-lint run ./... reported '0 issues.'; go test -v ./pkg/dispatcher/ shows 148 PASS / 0 FAIL; source_tools_test.go contains exactly 27 func Test functions\n  \u2713 All pre-existing pkg/dispatcher tests unchanged and passing: git diff HEAD~1 --name-only -- pkg/dispatcher touches only assigner.go, source_tools.go, source_tools_test.go, types.go \u2014 no pre-existing *_test.go modified; full 148-test suite passes on fresh run (go test -count=1: ok, 0.110s)\nSRC-005 is complete: source_tools.go implements the injector/provider/constructor API with capability-gated Inject, per-source Wait/WaitForTool rate limiting, and clean joined-error failure; types, dispatch wiring, and 27 new tests (148 total passing) all verified, with build/vet/lint clean and pkg/source, cmd/helix, and go.mod untouched.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 pkg/dispatcher/source_tools.go exists with SourceToolInjector, ToolsProvider, NewSourceToolInjector (file or map constructor), Inject(ctx, agent) ([]source.ToolSet, error), Wait(ctx, sourceName) error, WaitForTool(ctx, toolName, sets) error: pkg/dispatcher/source_tools.go (226 lines) defines type SourceToolInjector, type ToolsProvider func(ctx,*source.Source)(*source.ToolSet,error), NewSourceToolInjector(sources,opts...) plus NewSourceToolInjectorFromFile, Inject(ctx,AgentProfile)([",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: src-005\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 lint: \n  \u2713 tests: \n  \u2713 secrets: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 pkg/dispatcher/source_tools.go exists with SourceToolInjector, ToolsProvider, NewSourceToolInjector (file or map constructor), Inject(ctx, agent) ([]source.ToolSet, error), Wait(ctx, sourceName) error, WaitForTool(ctx, toolName, sets) error: pkg/dispatcher/source_tools.go (226 lines) defines type SourceToolInjector, type ToolsProvider func(ctx,*source.Source)(*source.ToolSet,error), NewSourceToolInjector(sources,opts...) plus NewSourceToolInjectorFromFile, Inject(ctx,AgentProfile)([]source.ToolSet,error) (line ~130), Wait(ctx,sourceName) error, and WaitForTool(ctx,toolName,sets) error (line ~215)\n  \u2713 AgentProfile (pkg/dispatcher/types.go) carries Capabilities []identity.CapabilityClaim; WorkItem carries SourceTools []source.ToolSet and SourceToolsError string (json omitempty): types.go: AgentProfile.Capabilities []identity.CapabilityClaim `json:\"capabilities,omitempty\"`; WorkItem.SourceTools []source.ToolSet `json:\"source_tools,omitempty\"` and SourceToolsError string `json:\"source_tools_error,omitempty\"`\n  \u2713 Dispatch path attaches capability-gated tools: agent claim strength 7-10 on matching domain receives full tool set; strength 1-6 receives read-only methods only (GET/HEAD/OPTIONS preserved, write methods stripped); no matching claim yields zero source tools (SPEC-025 \u00a75): assigner.go DispatchContext: when d.SourceTools!=nil, sets,injErr := d.SourceTools.Inject(ctx, WorkItem.Agent); sets attached and injErr recorded to SourceToolsError. Gating delegated to source.Gateway.Filter (gateway.go: MinReadOnlyStrength=1, MaxReadOnlyStrength=6, MinReadWriteStrength=7, keepReadOnly=GET/HEAD/OPTIONS). Tests confirm each tier: TestSourceToolInjector_Inject_ReadWriteStrength (strength 9\u2192all 4 tools incl POST/DELETE), Inject_ReadOnlyStrength (strength 4\u21922 read-only methods), NoMatchingClaim/NoClaims\u21920 sets, and end-to-end TestDispatcher_Dispatch_AttachesGatedTools and ReadOnlyStrengthEndToEnd\n  \u2713 Rate limiting wired: WaitForTool resolves the owning source by tool name within attached sets and waits; unknown source name returns an error: WaitForTool uses SourceForTool (iterates sets' Tools, matches tool.Name\u2192ts.SourceName) then calls Wait(ctx,srcName) which delegates to source.RateLimitManager.Wait; unknown source returns error. Tests: TestSourceToolInjector_WaitForTool_GatesExecution (2/s burst: first 2 waits pass, 3rd blocked with deadline error), Wait_UnknownSource, WaitForTool_UnknownTool/UnknownSource all expect errors\n  \u2713 Muster unreachable fails cleanly: per-source generation errors are joined and returned, never a panic or hang; injector works with a static ToolsProvider (no live Muster required in tests): Inject collects per-source errors and returns errors.Join(genErrs...) alongside any filtered sets that succeeded (partial success preserved); nil injector/provider/empty sources all return errors, never panic. WithToolsProvider static seam + WithMusterBridge; all tests use static providers and never contact Muster (Inject_ProviderError, Inject_PartialFailure, Inject_NoProvider, NilReceiver, WithMusterBridge on empty sources)\n  \u2713 pkg/source and cmd/helix unchanged by this task (git diff HEAD~1 --stat shows no pkg/source or cmd/helix or go.mod/go.sum files): git diff HEAD~1 --stat -- pkg/source cmd/helix go.mod go.sum produced empty output (exit 0); changed files are only pkg/dispatcher/{assigner.go,source_tools.go,source_tools_test.go,types.go}, .gitreins/tasks.yaml, .vfs/graph/edges.jsonl, prompts/src-005/v1.md\n  \u2713 go build ./... and go vet ./... clean; golangci-lint run ./... zero issues; pkg/dispatcher tests pass (148 tests, incl. 27 new in source_tools_test.go): go build ./... exit 0; go vet ./... exit 0; golangci-lint run ./... reported '0 issues.'; go test -v ./pkg/dispatcher/ shows 148 PASS / 0 FAIL; source_tools_test.go contains exactly 27 func Test functions\n  \u2713 All pre-existing pkg/dispatcher tests unchanged and passing: git diff HEAD~1 --name-only -- pkg/dispatcher touches only assigner.go, source_tools.go, source_tools_test.go, types.go \u2014 no pre-existing *_test.go modified; full 148-test suite passes on fresh run (go test -count=1: ok, 0.110s)\nSRC-005 is complete: source_tools.go implements the injector/provider/constructor API with capability-gated Inject, per-source Wait/WaitForTool rate limiting, and clean joined-error failure; types, dispatch wiring, and 27 new tests (148 total passing) all verified, with build/vet/lint clean and pkg/source, cmd/helix, and go.mod untouched.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-04T09:03:31.727736"
+}
