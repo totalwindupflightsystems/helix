@@ -514,3 +514,35 @@ tasks:
   status: complete
   created_at: '2026-08-04T11:51:23.309222+00:00'
   completed_at: '2026-08-04T12:06:30.247192+00:00'
+- id: ch-005
+  title: "Channel CLI \u2014 helix channel create/join/send/list/archive/history (SPEC-024\
+    \ \xA78)"
+  criteria:
+  - "cmd/helix/channel.go exists implementing all six SPEC-024 \xA78 subcommands:\
+    \ create (--name/--type/--members, type validated against [task|review|deliberation|incident],\
+    \ invalid \u2192 exit 2), join (idempotent member add), send (--channel/--message/--attachment\
+    \ PATH, message signed with HIDProof via channel.SignMessage, rejected for unknown/archived\
+    \ channel exit 2), list (--status active|archived filter, invalid value exit 2),\
+    \ archive (--name; verifies every message via channel.ArchiveChannel fail-closed;\
+    \ tampered/unsigned message \u2192 exit 2; marks channel archived; idempotent\
+    \ re-archive exit 0), history (--name/--limit N, timestamp ascending, default\
+    \ limit 20)"
+  - cmd/helix/channel.go persists channels + messages + CLI identity in .helix/channels.yaml
+    (HELIX_CHANNELS_FILE env override), gopkg.in/yaml.v3, explicit base64 for sig
+    bytes/keys/attachment data with fail-closed decode (exit 2 on corrupt base64);
+    no new external dependencies
+  - cmd/helix/main.go wires case "channel" into the dispatch switch via RunWithObs
+    + runChannelWithDryRun (global --dry-run respected) and adds a printUsage line;
+    no other files modified
+  - 'cmd/helix/channel_test.go covers: create success + invalid type/empty name/duplicate
+    (exit 2), list + --status filter, join idempotency, send persists signed message
+    (VerifyMessage passes with stored identity), send to archived channel exit 2,
+    history ordering + limit, archive verification + idempotent re-archive, unknown
+    subcommand exit 2, --help exit 0; tests isolate via t.TempDir() + HELIX_CHANNELS_FILE'
+  - go build ./... exits 0; go vet ./... clean; go test -short -count=1 ./... passes
+    (full suite, all packages); gofmt clean on changed files
+  - 'commit includes Co-authored-by: Alexis Okuwa <wojonstech@gmail.com> and Prompt:
+    prompts/ch-005/v1.md trailers'
+  status: complete
+  created_at: '2026-08-04T13:53:09.246775+00:00'
+  completed_at: '2026-08-04T13:53:12.159825+00:00'
