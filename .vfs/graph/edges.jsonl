@@ -3553,3 +3553,14 @@
 {"from":"pkg/channel/deliberation.go","to":"std:time","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"pkg/channel/deliberation_test.go","to":"pkg/channel/deliberation.go","rel":"tested_by","provenance":"heuristic","confidence":0.8}
 {"from":"pkg/channel/deliberation.go","to":"pkg/channel/deliberation_test.go","rel":"tests","provenance":"heuristic","confidence":0.8}
+{"from":"pkg/source/gateway_test.go","to":"std:testing","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/source/gateway_test.go","to":"pkg:github.com/stretchr/testify/assert","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/source/gateway_test.go","to":"pkg:github.com/stretchr/testify/require","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/source/gateway_test.go","to":"pkg:github.com/totalwindupflightsystems/helix/pkg/identity","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/source/gateway_test.go","to":"pkg:github.com/totalwindupflightsystems/helix/pkg/integration","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/source/gateway.go","to":"std:net/http","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/source/gateway.go","to":"std:strings","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/source/gateway.go","to":"pkg:github.com/totalwindupflightsystems/helix/pkg/identity","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/source/gateway.go","to":"pkg:github.com/totalwindupflightsystems/helix/pkg/integration","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/source/gateway_test.go","to":"pkg/source/gateway.go","rel":"tested_by","provenance":"heuristic","confidence":0.8}
+{"from":"pkg/source/gateway.go","to":"pkg/source/gateway_test.go","rel":"tests","provenance":"heuristic","confidence":0.8}
