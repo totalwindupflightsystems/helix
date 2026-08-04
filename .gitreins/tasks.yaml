@@ -360,3 +360,32 @@ tasks:
   status: complete
   created_at: '2026-08-03T22:44:01.947290+00:00'
   completed_at: '2026-08-03T22:53:56.906854+00:00'
+- id: ch-003
+  title: Chimera auto-trigger on agent disagreement (pkg/channel/deliberation.go)
+  criteria:
+  - pkg/channel/deliberation.go exists with exported Deliberator type, DeliberationClient
+    interface, DisagreementScorer interface with default keyword implementation
+  - "Trigger rules per SPEC-024 \xA75 step 4: at least 2 distinct agent authors in\
+    \ a ChannelDeliberation channel, message count > threshold (default 2), disagreement\
+    \ score > 0.3 (default threshold 0.3)"
+  - "Chimera client posts to {baseURL}/api/v1/deliberate with {prompt, formation}\
+    \ and parses {result, trace} \u2014 matches pkg/review/client_chimera.go contract"
+  - Verdict posted as ChannelMessage with Type=MsgChimeraVerdict, Author=chimera,
+    AuthorType=AuthorChimera, ChimeraTrace populated
+  - 'Trigger-loop guard: no second verdict when tail of conversation is already a
+    MsgChimeraVerdict from AuthorChimera'
+  - "VerdictHandler interface with OnVerdict \u2014 FAIL invokes handler, PASS-with-conditions\
+    \ passes conditions through, no-op default"
+  - Chimera HTTP errors (500/timeout/malformed JSON/context cancel) return error and
+    do NOT post a verdict message
+  - Non-deliberation channel types never trigger
+  - "deliberation_test.go covers all scenarios (no-trigger variants, trigger fires,\
+    \ loop guard, handler, HTTP errors, scorer units) \u2014 all tests pass"
+  - go build ./... and go vet ./... exit 0; go test -short -count=1 ./... passes 59/60
+    packages (only pre-existing environmental cmd/helix doctor disk-usage failure
+    remains, verified pre-existing at HEAD~1)
+  - Commit a4f8bd0 contains ONLY pkg/channel/deliberation.go and deliberation_test.go
+    with Co-authored-by trailer and Prompt link
+  status: complete
+  created_at: '2026-08-04T01:40:28.804096+00:00'
+  completed_at: '2026-08-04T01:40:32.179692+00:00'
