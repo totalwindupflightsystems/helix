@@ -569,3 +569,23 @@ tasks:
   status: complete
   created_at: '2026-08-05T13:55:02.723970+00:00'
   completed_at: '2026-08-05T13:55:11.722254+00:00'
+- id: spec-gap-001
+  title: 'SPEC-GAP-001: contract diff help/error text match implementation (<new>
+    <old>)'
+  criteria:
+  - cmd/helix/contract.go help text line for diff says 'helix contract diff <new>
+    <old>' (first positional = new, second = old)
+  - runContractDiff usage error message is 'contract diff requires <new-id> <old-id>'
+  - cmd/helix/contract_test.go TestRunContractDiff_UsageErrors asserts the new error
+    string and the stale NOTE comment is replaced with a one-line contract comment
+  - 'CLI behavior unchanged: first positional still loads as NEW (DetectChanges(new,
+    old) call order untouched, parseContractFlags untouched)'
+  - gitreins guard passes 4/4 (secrets, go_build, go_lint, go_tests)
+  - go build ./... and go vet ./... pass; full test suite passes with TMPDIR=/dev/shm
+    redirect
+  - commit c4fabb5 contains ONLY changes to cmd/helix/contract.go and cmd/helix/contract_test.go
+  - no '<old> <new>' or '<old-id> <new-id>' contract-diff text remains in .go/.md
+    files outside the spec-gap-001 prompt doc
+  status: complete
+  created_at: '2026-08-05T16:28:28.948779+00:00'
+  completed_at: '2026-08-05T16:28:35.615675+00:00'
