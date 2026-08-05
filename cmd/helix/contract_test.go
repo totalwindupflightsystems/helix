@@ -321,16 +321,14 @@ func TestRunContractFreeze_DryRun(t *testing.T) {
 func TestRunContractDiff_UsageErrors(t *testing.T) {
 	_, _, err := runContractCLI(t, "diff", "only-one", "--store", t.TempDir())
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "contract diff requires <old-id> <new-id>")
+	assert.Contains(t, err.Error(), "contract diff requires <new-id> <old-id>")
 
 	store := t.TempDir()
 	_, _, err = runContractCLI(t, "diff", "old-1", "new-1", "--store", store)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `load new contract "old-1"`)
 
-	// NOTE: the implementation loads the FIRST positional as the new
-	// contract and the SECOND as the old one (help text says <old> <new>;
-	// the code's effective contract is diff <new> <old>).
+	// Contract: diff <new> <old> — first positional is new, second is old.
 	seedContract(t, store, contractWithSchema("old-1", "openapi", openAPISchema(nil)))
 	_, _, err = runContractCLI(t, "diff", "old-1", "new-1", "--store", store)
 	require.Error(t, err)

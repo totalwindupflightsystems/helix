@@ -86,7 +86,7 @@ Usage:
   helix contract create <spec-id>    Generate contract from spec
   helix contract validate <id>       Validate contract consistency
   helix contract freeze <id>         Hash and make immutable
-  helix contract diff <old> <new>    Show breaking changes between versions
+  helix contract diff <new> <old>    Show breaking changes between versions
   helix contract consumer-check <id> Validate against consumer catalog
   helix contract list                List all contracts
   helix contract show <id>           Show contract details
@@ -257,7 +257,7 @@ func runContractFreeze(stdout io.Writer, store *contract.ContractStore, flags co
 
 func runContractDiff(stdout io.Writer, store *contract.ContractStore, flags contractFlags) error {
 	if flags.id == "" || flags.oldID == "" {
-		return fmt.Errorf("contract diff requires <old-id> <new-id>")
+		return fmt.Errorf("contract diff requires <new-id> <old-id>")
 	}
 
 	newC, err := store.Load(flags.id)
