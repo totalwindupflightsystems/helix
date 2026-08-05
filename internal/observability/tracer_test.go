@@ -362,7 +362,7 @@ func TestBuildResource(t *testing.T) {
 	}
 	attrs := make(map[string]string)
 	for _, kv := range res.Attributes() {
-		attrs[string(kv.Key)] = kv.Value.Emit()
+		attrs[string(kv.Key)] = kv.Value.String()
 	}
 	if attrs["service.name"] != "helix" {
 		t.Errorf("service.name = %q, want helix", attrs["service.name"])
@@ -377,7 +377,8 @@ func TestBuildResource(t *testing.T) {
 // =============================================================================
 
 func TestTraceIDFromContext(t *testing.T) {
-	if got := TraceIDFromContext(nil); got != "" {
+	var nilCtx context.Context // nil — exercises the documented nil guard
+	if got := TraceIDFromContext(nilCtx); got != "" {
 		t.Errorf("nil ctx → %q, want empty", got)
 	}
 	if got := TraceIDFromContext(context.Background()); got != "" {
