@@ -546,3 +546,15 @@ tasks:
   status: complete
   created_at: '2026-08-04T13:53:09.246775+00:00'
   completed_at: '2026-08-04T13:53:12.159825+00:00'
+- id: cov-002
+  title: 'Coverage: internal/observability >=80%'
+  criteria:
+  - go test -count=1 -cover ./internal/observability/ reports >=80% statement coverage
+  - go tool cover -func shows RunWithTrace, TracerConfigFromEnv, envBool, envFloat,
+    SetupTracing, buildOTLPExporter, buildSampler, buildResource, TraceIDFromContext,
+    ShutdownTraceProvider all >=60%
+  - go test -race -count=1 ./internal/observability/ passes
+  - go build ./... exits 0
+  status: complete
+  created_at: '2026-08-05T08:09:45.011982+00:00'
+  completed_at: '2026-08-05T08:09:54.331245+00:00'
