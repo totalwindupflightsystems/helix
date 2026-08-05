@@ -340,7 +340,7 @@ func TestRunSpecGapAnalysis_UsageErrors(t *testing.T) {
 	assert.Equal(t, specExitError, rc)
 	assert.Contains(t, stderr, "error: spec id required")
 
-	rc, _, stderr = runSpecCLI(t, "gap-analysis", "spec-nope", "--store", t.TempDir())
+	rc, _, _ = runSpecCLI(t, "gap-analysis", "spec-nope", "--store", t.TempDir())
 	assert.Equal(t, specExitError, rc)
 }
 
