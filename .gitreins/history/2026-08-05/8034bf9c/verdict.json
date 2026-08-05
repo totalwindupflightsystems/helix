@@ -1,0 +1,81 @@
+{
+  "task_id": "cov-003",
+  "task_title": "Coverage: cmd/helix spec-workflow >=65%",
+  "task_criteria": [
+    "go test -short -count=1 -cover ./cmd/helix/ reports >=65% statement coverage",
+    "go tool cover -func shows cmd/helix/spec.go, adr.go, contract.go each >=60% function coverage",
+    "go test -race -short -count=1 ./cmd/helix/ passes with no data races",
+    "go build ./... exits 0"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 lint: \n  \u2713 tests: \n  \u2713 build: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 go test -short -count=1 -cover ./cmd/helix/ reports >=65% statement coverage: go test -short -count=1 -cover ./cmd/helix/ reports 'coverage: 66.5% of statements' which is >= 65%\n  \u2713 go tool cover -func shows cmd/helix/spec.go, adr.go, contract.go each >=60% function coverage: go tool cover -func shows all functions in spec.go (min 75.0% runSpecList), adr.go (min 60.8% runAdrCreate), contract.go (min 74.1% runContractConsumerCheck) each >= 60%\n  \u2713 go test -race -short -count=1 ./cmd/helix/ passes with no data races: go test -race -short -count=1 ./cmd/helix/ passes with exit 0, 'ok ... 13.714s', no data races reported\n  \u2713 go build ./... exits 0: go build ./... exits 0\nAll four coverage criteria verified: 66.5% statement coverage, all functions in spec.go/adr.go/contract.go >=60%, race test passes, and build exits 0.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 go test -short -count=1 -cover ./cmd/helix/ reports >=65% statement coverage: go test -short -count=1 -cover ./cmd/helix/ reports 'coverage: 66.5% of statements' which is >= 65%\n  \u2713 go tool cover -func shows cmd/helix/spec.go, adr.go, contract.go each >=60% function coverage: go tool cover -func shows all functions in spec.go (min 75.0% runSpecList), adr.go (min 60.8% runAdrCreate), contract.go (min 74.1% runContractConsumerCheck) each >= 60%\n  \u2713 go test -race -short -count=1 ./cmd/",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: cov-003\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 lint: \n  \u2713 tests: \n  \u2713 build: \n  \u2713 secrets: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 go test -short -count=1 -cover ./cmd/helix/ reports >=65% statement coverage: go test -short -count=1 -cover ./cmd/helix/ reports 'coverage: 66.5% of statements' which is >= 65%\n  \u2713 go tool cover -func shows cmd/helix/spec.go, adr.go, contract.go each >=60% function coverage: go tool cover -func shows all functions in spec.go (min 75.0% runSpecList), adr.go (min 60.8% runAdrCreate), contract.go (min 74.1% runContractConsumerCheck) each >= 60%\n  \u2713 go test -race -short -count=1 ./cmd/helix/ passes with no data races: go test -race -short -count=1 ./cmd/helix/ passes with exit 0, 'ok ... 13.714s', no data races reported\n  \u2713 go build ./... exits 0: go build ./... exits 0\nAll four coverage criteria verified: 66.5% statement coverage, all functions in spec.go/adr.go/contract.go >=60%, race test passes, and build exits 0.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-05T13:56:26.993621"
+}
