@@ -293,7 +293,11 @@ func buildSampler(cfg TracerConfig) (sdktrace.Sampler, error) {
 
 // buildResource constructs the OTel resource with the static
 // service.name="helix" plus the build version from debug.ReadBuildInfo.
-// We use the semconv v1.26.0 schema (the default for OTel SDK v1.44).
+// The helix attributes are declared schemaless so they merge cleanly
+// under resource.Default()'s schema URL: resource.Merge returns an
+// ErrSchemaURLConflict when both sides carry different non-empty schema
+// URLs, and the SDK's default detectors report their own semconv version
+// (1.41.0 in SDK v1.44) which a hardcoded URL would never track.
 func buildResource() (*resource.Resource, error) {
 	version := "unknown"
 	if bi, ok := debug.ReadBuildInfo(); ok && bi != nil {
@@ -314,7 +318,7 @@ func buildResource() (*resource.Resource, error) {
 
 	return resource.Merge(
 		resource.Default(),
-		resource.NewWithAttributes("https://opentelemetry.io/schemas/1.26.0", attrs...),
+		resource.NewSchemaless(attrs...),
 	)
 }
 
