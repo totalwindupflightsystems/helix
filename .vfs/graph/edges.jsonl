@@ -3662,3 +3662,17 @@
 {"from":"cmd/helix/channel_test.go","to":"pkg:github.com/totalwindupflightsystems/helix/pkg/identity","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"cmd/helix/channel.go","to":"cmd/helix/channel_test.go","rel":"tests","provenance":"heuristic","confidence":0.8}
 {"from":"cmd/helix/channel_test.go","to":"cmd/helix/channel.go","rel":"tested_by","provenance":"heuristic","confidence":0.8}
+{"from":"internal/observability/tracer_test.go","to":"std:bytes","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"internal/observability/tracer_test.go","to":"std:context","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"internal/observability/tracer_test.go","to":"std:encoding/json","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"internal/observability/tracer_test.go","to":"std:errors","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"internal/observability/tracer_test.go","to":"std:os","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"internal/observability/tracer_test.go","to":"std:strings","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"internal/observability/tracer_test.go","to":"std:sync","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"internal/observability/tracer_test.go","to":"std:testing","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"internal/observability/tracer_test.go","to":"std:time","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"internal/observability/tracer_test.go","to":"pkg:go.opentelemetry.io/otel","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"internal/observability/tracer_test.go","to":"pkg:go.opentelemetry.io/otel/sdk/trace","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"internal/observability/tracer_test.go","to":"pkg:go.opentelemetry.io/otel/trace/noop","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"internal/observability/tracer_test.go","to":"internal/observability/tracer.go","rel":"tested_by","provenance":"heuristic","confidence":0.8}
+{"from":"internal/observability/tracer.go","to":"internal/observability/tracer_test.go","rel":"tests","provenance":"heuristic","confidence":0.8}
