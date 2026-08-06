@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // captureStdout runs f and returns captured stdout.
@@ -258,6 +259,34 @@ func TestExecSubcommand(t *testing.T) {
 			t.Error("execSubcommand(sh -c 'exit 1') should return error")
 		}
 	})
+
+	t.Run("timeout", func(t *testing.T) {
+		oldVerbose := verbose
+		oldDryRun := dryRun
+		verbose = false
+		dryRun = false
+		defer func() {
+			verbose = oldVerbose
+			dryRun = oldDryRun
+		}()
+
+		// GAP-001: a stuck child must be killed and surfaced as a clear
+		// timeout error, not hang the wrapper. Env is read at call time,
+		// so t.Setenv works per-invocation.
+		t.Setenv("HELIX_SUBCOMMAND_TIMEOUT", "1s")
+		start := time.Now()
+		err := execSubcommand("sh", []string{"-c", "sleep 30"})
+		elapsed := time.Since(start)
+		if err == nil {
+			t.Fatal("execSubcommand(sleep 30) with 1s timeout should return error")
+		}
+		if !strings.Contains(err.Error(), "timed out") {
+			t.Errorf("timeout error should contain 'timed out', got: %v", err)
+		}
+		if elapsed >= 10*time.Second {
+			t.Errorf("execSubcommand with 1s timeout took %v, want < 10s", elapsed)
+		}
+	})
 }
 
 func TestDispatch(t *testing.T) {
@@ -404,6 +433,30 @@ func TestDispatch(t *testing.T) {
 			t.Error("dispatch(bogus) should return error")
 		} else if !strings.Contains(err.Error(), "Available subcommands") {
 			t.Errorf("dispatch(bogus) error should list available subcommands, got: %v", err)
+		}
+	})
+
+	t.Run("unknown subcommand lists all builtins and delegated", func(t *testing.T) {
+		// GAP-001: the error must surface every subcommand the CLI accepts
+		// (built-in switch cases AND delegated binaries), not just the
+		// delegated map, plus a hint pointing at root help.
+		err := d.dispatch([]string{"boguscmd"})
+		if err == nil {
+			t.Fatal("dispatch(boguscmd) should return error")
+		}
+		msg := err.Error()
+		for _, want := range []string{
+			"unknown subcommand",
+			"status",   // built-in
+			"doctor",   // built-in
+			"spec",     // built-in
+			"identity", // delegated
+			"estimate", // delegated
+			"helix --help",
+		} {
+			if !strings.Contains(msg, want) {
+				t.Errorf("dispatch(boguscmd) error should contain %q, got: %v", want, err)
+			}
 		}
 	})
 

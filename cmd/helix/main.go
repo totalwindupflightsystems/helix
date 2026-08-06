@@ -24,6 +24,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -31,6 +32,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	bannerPkg "github.com/totalwindupflightsystems/helix/pkg/banner"
 )
@@ -68,6 +70,33 @@ var subcommands = map[string]string{
 	"marketplace": "helix-marketplace",
 	"sandbox":     "sandbox",
 	"release":     "helix-release",
+}
+
+// builtinSubcommands lists every subcommand handled by the big switch in
+// dispatch() above. KEEP IN SYNC with the switch cases.
+var builtinSubcommands = []string{
+	"version", "banner", "status", "doctor", "dispatch", "coapproval",
+	"adversarial", "secrets", "pipeline", "webhook", "incident", "config",
+	"alerts", "retry", "backup", "degradation", "audit", "api", "integration",
+	"trust", "forgejo", "review", "dispatcher", "mergegate", "lifecycle",
+	"verify", "security", "forcemerge", "vuln", "deploy", "ci", "recovery",
+	"memory", "idea", "adr", "spec", "source", "channel", "design", "contract",
+	"notify", "models", "learn",
+}
+
+// allSubcommandNames returns the sorted union of built-in and delegated
+// subcommand names, deduplicated. Used by the unknown-subcommand error so
+// users can see every subcommand the CLI accepts, not just the delegated
+// binaries.
+func allSubcommandNames() []string {
+	all := make(map[string]string, len(builtinSubcommands)+len(subcommands))
+	for _, name := range builtinSubcommands {
+		all[name] = ""
+	}
+	for name := range subcommands {
+		all[name] = ""
+	}
+	return sortedKeys(all)
 }
 
 // ---------------------------------------------------------------------------
@@ -553,8 +582,8 @@ func (d *dispatcher) dispatch(args []string) error {
 	// Delegate to subcommand binary
 	binary, ok := subcommands[name]
 	if !ok {
-		return fmt.Errorf("unknown subcommand %q\n\nAvailable subcommands: %s",
-			name, strings.Join(sortedKeys(subcommands), ", "))
+		return fmt.Errorf("unknown subcommand %q\n\nAvailable subcommands: %s\n\nRun 'helix --help' for subcommand descriptions.",
+			name, strings.Join(allSubcommandNames(), ", "))
 	}
 
 	return execSubcommand(binary, rest)
@@ -572,6 +601,34 @@ func printVersion() {
 // Helpers
 // ---------------------------------------------------------------------------
 
+const (
+	// defaultSubcommandTimeout bounds delegated subcommand execution so a
+	// hung sibling (e.g. a bare HTTP call waiting on the kernel TCP connect
+	// timeout) cannot hang the whole helix wrapper for minutes with zero
+	// output. Override via HELIX_SUBCOMMAND_TIMEOUT.
+	defaultSubcommandTimeout = 120 * time.Second
+	// subcommandWaitDelay bounds how long Wait may block draining the
+	// child's I/O pipes after the context fires before the child is
+	// SIGKILLed (CommandContext already kills on ctx expiry; WaitDelay is
+	// the escalation for a child that ignores the kill or stalls on pipes).
+	subcommandWaitDelay = 5 * time.Second
+)
+
+// subcommandTimeout resolves the delegated-subcommand timeout from
+// HELIX_SUBCOMMAND_TIMEOUT at call time (so tests can t.Setenv it per
+// invocation). Invalid values fall back to the default rather than erroring.
+func subcommandTimeout() time.Duration {
+	raw := os.Getenv("HELIX_SUBCOMMAND_TIMEOUT")
+	if raw == "" {
+		return defaultSubcommandTimeout
+	}
+	d, err := time.ParseDuration(raw)
+	if err != nil {
+		return defaultSubcommandTimeout
+	}
+	return d
+}
+
 func execSubcommand(binary string, args []string) error {
 	// Find binary in PATH
 	binPath, err := lookPath(binary)
@@ -588,11 +645,28 @@ func execSubcommand(binary string, args []string) error {
 		return nil
 	}
 
-	cmd := exec.Command(binPath, args...)
+	// Bound delegated execution so a hung sibling cannot hang the whole
+	// wrapper. Timeout is read at call time so tests can override it.
+	timeout := subcommandTimeout()
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, binPath, args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	cmd.WaitDelay = subcommandWaitDelay
+	if err := cmd.Run(); err != nil {
+		// CommandContext kills the child when the deadline fires, so Wait
+		// may surface "signal: killed" rather than the ctx error itself —
+		// check ctx.Err() directly to detect the timeout reliably.
+		if ctx.Err() == context.DeadlineExceeded || errors.Is(err, context.DeadlineExceeded) {
+			return fmt.Errorf("subcommand %q timed out after %s (set HELIX_SUBCOMMAND_TIMEOUT to adjust)",
+				binary, timeout)
+		}
+		return err
+	}
+	return nil
 }
 
 // urlToAddr extracts the host:port from a URL for TCP dialing.
