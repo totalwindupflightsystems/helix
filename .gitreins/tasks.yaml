@@ -589,3 +589,30 @@ tasks:
   status: complete
   created_at: '2026-08-05T16:28:28.948779+00:00'
   completed_at: '2026-08-05T16:28:35.615675+00:00'
+- id: gap-001
+  title: 'GAP-001: CLI unknown-subcommand error lists all subcommands + bounded delegated
+    exec'
+  criteria:
+  - unknown subcommand error lists ALL available subcommands (41 builtins incl status/doctor/spec
+    + 7 delegated incl identity/estimate, deduped) plus the hint line "Run 'helix
+    --help' for subcommand descriptions."
+  - "helix <unknown> exits instantly (<=1s, rc 1) with the full list \u2014 verified:\
+    \ ./helix boguscmd 0.01s rc 1, error text contains status, doctor, spec, identity,\
+    \ estimate"
+  - 'execSubcommand runs under a bounded context: default 120s, HELIX_SUBCOMMAND_TIMEOUT
+    env override read at call time, invalid env falls back to default'
+  - 'timeout returns clear error: subcommand %q timed out after %s (set HELIX_SUBCOMMAND_TIMEOUT
+    to adjust); child killed (WaitDelay 5s)'
+  - TestDispatch/unknown_subcommand_lists_all_builtins_and_delegated asserts error
+    contains builtins + delegated + help hint
+  - 'TestExecSubcommand/timeout: HELIX_SUBCOMMAND_TIMEOUT=1s + sh -c ''sleep 30''
+    returns timed-out error in ~1s (<10s asserted)'
+  - go test -short -count=1 ./... passes 60/60 with TMPDIR=/dev/shm/helix93 redirect;
+    golangci-lint ./cmd/helix/... clean; go vet clean
+  - gitreins guard passes 4/4 (secrets, go_build, go_lint, go_tests)
+  - 'live: timeout 20 ./helix status exits 3.70s rc 0; ./helix --help 0.00s; timeout
+    60 ./helix estimate --help 0.10s rc 0'
+  - commit 6dd0591 contains ONLY cmd/helix/main.go + cmd/helix/main_test.go (+131/-4)
+  status: complete
+  created_at: '2026-08-06T20:08:00.149026+00:00'
+  completed_at: '2026-08-06T20:08:03.047110+00:00'
