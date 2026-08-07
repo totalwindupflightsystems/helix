@@ -120,9 +120,10 @@ Prompts are versioned, content-hashed, and linked to commits:
 helix prompt register coding-hermes v2         # registers prompts/<component>/<version>/prompt.md
 helix prompt list                              # all registered versions
 helix prompt test coding-hermes v2             # offline PromptFoo assertions
-# helix prompt verify <commit-sha> checks sha256-style attestations; repo commits
-# use path-style trailers (Prompt: prompts/<name>/v<N>.md), so verify currently
-# reports ATTESTATION_MISSING on them — layout unification is tracked as GAP-004.
+# helix prompt verify <commit-sha> accepts both sha256: and path-style
+# trailers (flat prompts/<name>/v<N>.md or nested
+# prompts/<component>/<version>/prompt.md); path-style refs verify that the
+# referenced prompt file exists.
 ```
 
 > Layout note: the registry accepts both the nested layout

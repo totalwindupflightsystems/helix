@@ -129,6 +129,65 @@ More text below`,
 				SpecRef: "specs/prompt-registry.md",
 			},
 		},
+		{
+			name:    "path_style_flat_ref_parses",
+			msg:     "Prompt: prompts/gap-003/v1.md\nModel: deepseek-v4-pro\nProvider: deepseek\n",
+			wantErr: false,
+			want: &Attestation{
+				PromptPath: "prompts/gap-003/v1.md",
+				Model:      "deepseek-v4-pro",
+				Provider:   "deepseek",
+			},
+		},
+		{
+			name:    "path_style_nested_ref_parses",
+			msg:     "Prompt: prompts/agent-identity/v2/prompt.md\n",
+			wantErr: false,
+			want: &Attestation{
+				PromptPath: "prompts/agent-identity/v2/prompt.md",
+			},
+		},
+		{
+			name:    "path_style_ref_with_trailing_whitespace",
+			msg:     "Prompt: prompts/gap-003/v1.md   \n",
+			wantErr: false,
+			want: &Attestation{
+				PromptPath: "prompts/gap-003/v1.md",
+			},
+		},
+		{
+			name: "path_style_mixed_fields",
+			msg: `Prompt: prompts/gap-003/v1.md
+Model: deepseek-v4-pro
+Provider: deepseek
+Spec: specs/prompt-registry.md
+Cost: $0.025
+Co-authored-by: wojons <wojonstech@gmail.com>
+`,
+			wantErr: false,
+			want: &Attestation{
+				PromptPath:       "prompts/gap-003/v1.md",
+				Model:            "deepseek-v4-pro",
+				Provider:         "deepseek",
+				SpecRef:          "specs/prompt-registry.md",
+				EstimatedCostUSD: 0.025,
+				AgentAuthor:      "wojons <wojonstech@gmail.com>",
+			},
+		},
+		{
+			name:    "both_formats_hash_and_path_parsed",
+			msg:     "Prompt: sha256:abc\nPrompt: prompts/gap-003/v1.md\n",
+			wantErr: false,
+			want: &Attestation{
+				Hash:       "sha256:abc",
+				PromptPath: "prompts/gap-003/v1.md",
+			},
+		},
+		{
+			name:    "path_ref_without_md_extension_is_not_a_valid_ref",
+			msg:     "Prompt: prompts/gap-003/v1\n",
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -145,6 +204,9 @@ More text below`,
 			}
 			if att.Hash != tt.want.Hash {
 				t.Errorf("Hash = %q, want %q", att.Hash, tt.want.Hash)
+			}
+			if att.PromptPath != tt.want.PromptPath {
+				t.Errorf("PromptPath = %q, want %q", att.PromptPath, tt.want.PromptPath)
 			}
 			if att.Model != tt.want.Model {
 				t.Errorf("Model = %q, want %q", att.Model, tt.want.Model)
@@ -406,6 +468,95 @@ func TestValidateAttestation(t *testing.T) {
 				}
 				if !found {
 					t.Error("expected TAMPER_DETECTED error")
+				}
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// TestValidateAttestation_PathStyle — path-style refs (GAP-004)
+// ---------------------------------------------------------------------------
+
+func TestValidateAttestation_PathStyle(t *testing.T) {
+	tests := []struct {
+		name          string
+		promptPath    string // rel path under tmpDir to create; "" = don't create
+		att           *Attestation
+		wantHashMatch bool
+		wantErrSubstr []string // expected substrings in result.Errors; nil = zero errors
+	}{
+		{
+			name:          "flat_path_ref_existing_file",
+			promptPath:    "prompts/gap-test/v1.md",
+			att:           &Attestation{PromptPath: "prompts/gap-test/v1.md"},
+			wantHashMatch: true,
+		},
+		{
+			name:          "nested_path_ref_existing_file",
+			promptPath:    "prompts/agent-identity/v2/prompt.md",
+			att:           &Attestation{PromptPath: "prompts/agent-identity/v2/prompt.md"},
+			wantHashMatch: true,
+		},
+		{
+			name:          "missing_file_error_mentions_path",
+			promptPath:    "",
+			att:           &Attestation{PromptPath: "prompts/ghost/v1.md"},
+			wantHashMatch: false,
+			wantErrSubstr: []string{"cannot read prompt file", "prompts/ghost/v1.md"},
+		},
+		{
+			name:       "hash_takes_precedence_over_path",
+			promptPath: "prompts/gap-test/v1.md",
+			att: &Attestation{
+				Hash:       "sha256:nonexistent",
+				PromptPath: "prompts/gap-test/v1.md",
+			},
+			wantHashMatch: false,
+			wantErrSubstr: []string{"PROMPT_NOT_FOUND"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+
+			if tt.promptPath != "" {
+				p := filepath.Join(tmpDir, tt.promptPath)
+				if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+					t.Fatalf("mkdir: %v", err)
+				}
+				if err := os.WriteFile(p, []byte("path-style prompt content"), 0o644); err != nil {
+					t.Fatalf("write prompt: %v", err)
+				}
+			}
+
+			result, err := ValidateAttestation(tt.att, tmpDir)
+			if err != nil {
+				t.Fatalf("ValidateAttestation returned error: %v", err)
+			}
+			if result.HashMatch != tt.wantHashMatch {
+				t.Errorf("HashMatch = %v, want %v", result.HashMatch, tt.wantHashMatch)
+			}
+			if tt.wantErrSubstr == nil {
+				if len(result.Errors) != 0 {
+					t.Errorf("expected zero errors, got: %v", result.Errors)
+				}
+				if !result.LifecycleOK {
+					t.Error("expected LifecycleOK=true for path-style ref (no lifecycle gate applies)")
+				}
+			} else {
+				for _, sub := range tt.wantErrSubstr {
+					found := false
+					for _, e := range result.Errors {
+						if strings.Contains(e, sub) {
+							found = true
+							break
+						}
+					}
+					if !found {
+						t.Errorf("expected error containing %q, got: %v", sub, result.Errors)
+					}
 				}
 			}
 		})

@@ -942,6 +942,42 @@ func initTestGitRepoWithAttestation(t *testing.T) string {
 	return dir
 }
 
+// initTestGitRepoWithPathRef creates a git repo with a commit whose message
+// includes a path-style "Prompt: prompts/<name>/v<N>.md" attestation line
+// (the AGENTS.md commit-rule format).
+func initTestGitRepoWithPathRef(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+
+	cFlags := []string{
+		"-c", "user.email=test@example.com",
+		"-c", "user.name=Test",
+		"-c", "commit.gpgsign=false",
+		"-c", "init.defaultBranch=main",
+	}
+
+	run := func(args ...string) {
+		full := append(append([]string{}, cFlags...), args...)
+		cmd := exec.Command("git", full...)
+		cmd.Dir = dir
+		cmd.Env = gitEnv()
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v failed: %v\n%s", args, err, out)
+		}
+	}
+
+	run("init")
+	dummyPath := filepath.Join(dir, "dummy.txt")
+	if err := os.WriteFile(dummyPath, []byte("hello"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	run("add", "dummy.txt")
+	// Commit with a path-style attestation trailer (AGENTS.md format)
+	commitMsg := "feat: initial commit\n\nPrompt: prompts/gap-test/v1.md\n\nCo-authored-by: Test <test@example.com>"
+	run("commit", "-m", commitMsg)
+	return dir
+}
+
 func TestRunVerify_HappyPath(t *testing.T) {
 	_, cleanup := setupRegistry(t)
 	defer cleanup()
@@ -978,6 +1014,90 @@ func TestRunVerify_HappyPath(t *testing.T) {
 	// Hash check fails (attestation hash != computed hash) — but HASH line still printed
 	if !strings.Contains(out, "HASH:") {
 		t.Errorf("output should contain HASH line: %s", out)
+	}
+}
+
+func TestRunVerify_PathStyleRef(t *testing.T) {
+	_, cleanup := setupRegistry(t)
+	defer cleanup()
+
+	gitDir := initTestGitRepoWithPathRef(t)
+
+	// Create the referenced prompt file relative to the repo root so the
+	// path-style validation (filepath.Join(workDir, att.PromptPath)) succeeds.
+	promptDir := filepath.Join(gitDir, "prompts", "gap-test")
+	if err := os.MkdirAll(promptDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(promptDir, "v1.md"), []byte("prompt content"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	oldCwd, _ := os.Getwd()
+	if err := os.Chdir(gitDir); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(oldCwd) }()
+
+	opts := &verifyOptions{
+		globalOptions: &globalOptions{},
+	}
+
+	var out, errOut string
+	out = captureOutput(func() {
+		errOut = captureStderr(func() {
+			if err := runVerify(opts, "HEAD"); err != nil {
+				t.Fatalf("runVerify returned error: %v", err)
+			}
+		})
+	})
+
+	if !strings.Contains(out, "PROMPT:    prompts/gap-test/v1.md") {
+		t.Errorf("output should contain path-style PROMPT line: %s", out)
+	}
+	if !strings.Contains(out, "HASH:    verified") {
+		t.Errorf("output should contain HASH: verified: %s", out)
+	}
+	if strings.Contains(out, "ATTESTATION_MISSING") || strings.Contains(errOut, "ATTESTATION_MISSING") {
+		t.Errorf("output should not contain ATTESTATION_MISSING: %s / %s", out, errOut)
+	}
+	if strings.Contains(errOut, "cannot read prompt file") {
+		t.Errorf("stderr should not contain 'cannot read prompt file': %s", errOut)
+	}
+}
+
+func TestRunVerify_PathStyleRefMissingFile(t *testing.T) {
+	_, cleanup := setupRegistry(t)
+	defer cleanup()
+
+	// Commit references prompts/ghost/v1.md but the file is never created.
+	gitDir := initTestGitRepoWithPathRef(t)
+	_ = os.RemoveAll(filepath.Join(gitDir, "prompts"))
+
+	oldCwd, _ := os.Getwd()
+	if err := os.Chdir(gitDir); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(oldCwd) }()
+
+	opts := &verifyOptions{
+		globalOptions: &globalOptions{},
+	}
+
+	var out, errOut string
+	out = captureOutput(func() {
+		errOut = captureStderr(func() {
+			if err := runVerify(opts, "HEAD"); err != nil {
+				t.Fatalf("runVerify returned error: %v", err)
+			}
+		})
+	})
+
+	if !strings.Contains(out, "HASH:    MISMATCH") {
+		t.Errorf("output should contain HASH: MISMATCH for missing file: %s", out)
+	}
+	if !strings.Contains(errOut, "cannot read prompt file") {
+		t.Errorf("stderr should contain 'cannot read prompt file': %s", errOut)
 	}
 }
 

@@ -123,16 +123,9 @@ func TestVerify(t *testing.T) {
 			wantErrMsg: "git log failed",
 		},
 		{
-			name:       "head_commit_with_no_sha256_attestation",
-			commitRef:  "HEAD",
-			wantErr:    true,
-			wantErrMsg: "ATTESTATION_MISSING",
-		},
-		{
-			name:       "HEAD_slash_missing_attestation",
-			commitRef:  "HEAD",
-			wantErr:    true,
-			wantErrMsg: "ATTESTATION_MISSING",
+			name:      "head_commit_with_path_style_attestation",
+			commitRef: "HEAD",
+			wantErr:   false,
 		},
 	}
 
@@ -140,7 +133,7 @@ func TestVerify(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			RegistryDir = repoRoot
 
-			_, err := Verify(tt.commitRef)
+			att, err := Verify(tt.commitRef)
 			if tt.wantErr {
 				if err == nil {
 					t.Error("expected error, got nil")
@@ -150,6 +143,9 @@ func TestVerify(t *testing.T) {
 			} else {
 				if err != nil {
 					t.Errorf("unexpected error: %v", err)
+				}
+				if att == nil {
+					t.Error("expected non-nil attestation")
 				}
 			}
 		})

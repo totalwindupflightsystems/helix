@@ -276,6 +276,10 @@ func newVerifyCmd(gOpts *globalOptions) *cobra.Command {
 		Long: `Verify the prompt attestation on a commit. Checks hash integrity, lifecycle
 status, PromptFoo results, and optionally the full provenance chain.
 
+Accepts both attestation trailer formats: "Prompt: sha256:<hash>" (checked
+against the registry) and path-style "Prompt: prompts/<name>/v<N>.md"
+(verified against the referenced file).
+
 Use --full-chain to trace: commit → prompt → spec → work item → intent.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -301,8 +305,16 @@ func runVerify(opts *verifyOptions, commitSHA string) error {
 		return err
 	}
 
+	// Path-style refs ("Prompt: prompts/<name>/v<N>.md") carry a prompt path
+	// instead of a hash; there is no registry entry to check against.
+	isPathRef := att.Hash == "" && att.PromptPath != ""
+
+	promptRef := att.Hash
+	if isPathRef {
+		promptRef = att.PromptPath
+	}
 	fmt.Fprintf(os.Stdout, "COMMIT:      %s\n", commitSHA)
-	fmt.Fprintf(os.Stdout, "  PROMPT:    %s\n", att.Hash)
+	fmt.Fprintf(os.Stdout, "  PROMPT:    %s\n", promptRef)
 
 	// If no specific checks requested, run all
 	runHash := opts.checkHash || (!opts.checkHash && !opts.checkLifecycle && !opts.checkPromptfoo && !opts.fullChain)
@@ -320,14 +332,18 @@ func runVerify(opts *verifyOptions, commitSHA string) error {
 		}
 	}
 	if runLifecycle {
-		if result.LifecycleOK {
+		if isPathRef {
+			fmt.Fprintf(os.Stdout, "    STATUS:  n/a (path-style reference, not in registry)\n")
+		} else if result.LifecycleOK {
 			fmt.Fprintf(os.Stdout, "    STATUS:  %s OK\n", result.Status)
 		} else {
 			fmt.Fprintf(os.Stdout, "    STATUS:  %s REJECTED\n", result.Status)
 		}
 	}
 	if runPromptfoo {
-		if result.PromptfooPass {
+		if isPathRef {
+			fmt.Fprintf(os.Stdout, "    PROMPTFOO: n/a (path-style reference, not in registry)\n")
+		} else if result.PromptfooPass {
 			fmt.Fprintf(os.Stdout, "    PROMPTFOO: pass\n")
 		} else {
 			fmt.Fprintf(os.Stdout, "    PROMPTFOO: FAIL\n")

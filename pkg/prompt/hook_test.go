@@ -380,4 +380,46 @@ func TestRunCommitMsgHook(t *testing.T) {
 			t.Errorf("unexpected error for full message: %v", err)
 		}
 	})
+
+	t.Run("path-style reference to existing nested prompt passes", func(t *testing.T) {
+		dir := t.TempDir()
+		setupHookRegistry(t, dir, "test-comp", "v1.0.0", "Path-style content.", StatusActive, "")
+
+		msgPath := writeCommitMsgFile(t, dir, "feat: path-style\n\nPrompt: prompts/test-comp/v1.0.0/prompt.md\nModel: deepseek-v4-pro")
+		err := RunCommitMsgHook(msgPath)
+		if err != nil {
+			t.Errorf("unexpected error for existing path-style prompt: %v", err)
+		}
+	})
+
+	t.Run("path-style reference to existing flat prompt passes", func(t *testing.T) {
+		dir := t.TempDir()
+		setRegistryDir(t, dir)
+		if err := os.MkdirAll(filepath.Join(dir, "gap-test"), 0755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "gap-test", "v1.md"), []byte("flat prompt"), 0644); err != nil {
+			t.Fatalf("write flat prompt: %v", err)
+		}
+
+		msgPath := writeCommitMsgFile(t, dir, "feat: flat path-style\n\nPrompt: prompts/gap-test/v1.md\nModel: deepseek-v4-pro")
+		err := RunCommitMsgHook(msgPath)
+		if err != nil {
+			t.Errorf("unexpected error for existing flat path-style prompt: %v", err)
+		}
+	})
+
+	t.Run("path-style reference to missing prompt rejected", func(t *testing.T) {
+		dir := t.TempDir()
+		setupHookRegistry(t, dir, "test-comp", "v1.0.0", "content", StatusActive, "")
+
+		msgPath := writeCommitMsgFile(t, dir, "feat: ghost\n\nPrompt: prompts/ghost/v1.md\nModel: deepseek-v4-pro")
+		err := RunCommitMsgHook(msgPath)
+		if err == nil {
+			t.Error("expected error for missing path-style prompt")
+		}
+		if !strings.Contains(err.Error(), "PROMPT_FILE_NOT_FOUND") {
+			t.Errorf("error should contain PROMPT_FILE_NOT_FOUND, got: %v", err)
+		}
+	})
 }

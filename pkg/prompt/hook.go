@@ -3,14 +3,17 @@ package prompt
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
 // RunCommitMsgHook implements the 7-step GitReins commit-msg hook from
 // spec §8.2:
-//  1. Parse commit message for "Prompt: sha256:<hash>" line
+//  1. Parse commit message for "Prompt: sha256:<hash>" or
+//     "Prompt: prompts/<name>/v<N>.md" line
 //  2. If missing → REJECT
-//  3. Look up hash in prompts/_index.yaml
+//  3. Hash format: look up hash in prompts/_index.yaml; path format: verify
+//     the referenced prompt file exists
 //  4. If not found → REJECT
 //  5. Check prompt status (active/attested → PASS, deprecated → WARN,
 //     others → REJECT)
@@ -29,13 +32,28 @@ func RunCommitMsgHook(commitMsgFile string) error {
 	att, parseErr := ParseCommitMessage(msg)
 
 	// Step 2: Missing attestation → REJECT
-	if parseErr != nil || att.Hash == "" {
-		fmt.Fprintf(os.Stderr, "[FAIL] Attestation: missing 'Prompt: sha256:<hash>' in commit message\n")
+	if parseErr != nil || (att.Hash == "" && att.PromptPath == "") {
+		fmt.Fprintf(os.Stderr, "[FAIL] Attestation: missing 'Prompt: sha256:<hash>' or 'Prompt: prompts/<name>/v<N>.md' in commit message\n")
 		fmt.Fprintf(os.Stderr, "\nCommit rejected. To override: git commit --no-verify\n")
-		return fmt.Errorf("ATTESTATION_MISSING: commit message must include 'Prompt: sha256:<hash>'")
+		return fmt.Errorf("ATTESTATION_MISSING: commit message must include 'Prompt: sha256:<hash>' or 'Prompt: prompts/<name>/v<N>.md'")
 	}
 
-	// Step 3: Lookup hash in registry
+	// Step 3: Path-style reference — verify the referenced prompt file exists
+	// (mirrors AttestationValidator.VerifyPromptExists semantics; flat
+	// unregistered task prompts are not in _index.yaml).
+	if att.Hash == "" && att.PromptPath != "" {
+		promptPath := filepath.Join(RegistryDir, strings.TrimPrefix(att.PromptPath, "prompts/"))
+		if _, err := os.Stat(promptPath); err != nil {
+			fmt.Fprintf(os.Stderr, "[FAIL] Prompt file not found: %s\n", att.PromptPath)
+			fmt.Fprintf(os.Stderr, "\nCommit rejected. To override: git commit --no-verify\n")
+			return fmt.Errorf("PROMPT_FILE_NOT_FOUND: %s", att.PromptPath)
+		}
+		fmt.Fprintf(os.Stderr, "[PASS] Attestation: prompt file exists: %s\n", att.PromptPath)
+		fmt.Fprintf(os.Stderr, "[PASS] All checks passed. Commit allowed.\n")
+		return nil
+	}
+
+	// Step 3 (hash format): Lookup hash in registry
 	pv, err := Lookup(att.Hash)
 	if err != nil {
 		// Step 4: Not found → REJECT
