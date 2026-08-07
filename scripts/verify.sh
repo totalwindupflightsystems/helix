@@ -41,7 +41,7 @@ fi
 
 # 4. Forgejo
 echo -n "Checking Forgejo... "
-FORGEJO_URL="${FORGEJO_URL:-http://localhost:3000}"
+FORGEJO_URL="${FORGEJO_URL:-http://localhost:3030}"
 if curl -sf "${FORGEJO_URL}/api/v1/version" >/dev/null 2>&1; then
     pass "Forgejo reachable"
 else

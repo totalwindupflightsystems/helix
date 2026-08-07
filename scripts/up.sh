@@ -28,7 +28,7 @@ docker compose up -d --build
 
 echo "[2/3] Waiting for Forgejo to be healthy..."
 for i in $(seq 1 60); do
-    if curl -sf http://localhost:3000/api/v1/version >/dev/null 2>&1; then
+    if curl -sf http://localhost:3030/api/v1/version >/dev/null 2>&1; then
         echo "  [OK] Forgejo is ready"
         break
     fi
@@ -57,7 +57,7 @@ done
 echo ""
 echo "=== Helix Platform Running ==="
 echo ""
-echo "  Forgejo UI:    http://localhost:3000"
+echo "  Forgejo UI:    http://localhost:3030"
 echo "  Chimera API:   http://localhost:8765"
 echo "  Admin user:    ${FORGEJO_ADMIN_USER:-helio}"
 echo ""

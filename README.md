@@ -237,7 +237,7 @@ Agents get real Forgejo accounts — not bot tokens:
 ```bash
 # Provision a new agent (positional name; agent must be registered in known-friends.json)
 helix-identity provision codex-alpha \
-  --forgejo-url http://localhost:3000 \
+  --forgejo-url http://localhost:3030 \
   --admin-token "${FORGEJO_ADMIN_TOKEN}"
 
 # Verify
@@ -289,7 +289,7 @@ docker exec -it helix-cli helix status
 
 | Service | Port | Description |
 |---------|------|-------------|
-| Forgejo | 3000 (web), 2222 (SSH) | Self-hosted Git server for agent accounts |
+| Forgejo | 3030 (web), 2222 (SSH) | Self-hosted Git server for agent accounts |
 | Chimera | 8765 | AI inference server (cost estimation, prompt attestation) |
 | Helix | — | CLI container (use `docker exec -it helix-cli helix <command>`) |
 

@@ -16,7 +16,7 @@
 #
 # Ports:
 #
-#   Forgejo:  3000 (web UI), 2222 (SSH)
+#   Forgejo:  3030 (web UI), 2222 (SSH)
 #   Chimera:  8765 (API)
 #   Helix:    No exposed ports (CLI only)
 
@@ -28,7 +28,7 @@ services:
     container_name: helix-forgejo
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3030:3000"
       - "2222:22"
     volumes:
       - forgejo-data:/var/lib/forgejo
