@@ -688,6 +688,32 @@ func urlToAddr(rawURL string) string {
 }
 
 func lookPath(name string) (string, error) {
+	exePath, err := os.Executable()
+	if err != nil {
+		// Fall back to the cwd/PATH chain; execSubcommand surfaces a
+		// not-found error if nothing resolves.
+		exePath = ""
+	}
+	return lookPathWithExec(name, exePath)
+}
+
+// lookPathWithExec resolves a subcommand binary, preferring a sibling next
+// to the running helix executable (so `helix estimate|identity|sandbox`
+// work from any directory, not just the repo root), then project-local
+// binaries, then PATH. exePath is injectable for tests; lookPath passes
+// os.Executable().
+func lookPathWithExec(name string, exePath string) (string, error) {
+	// Prefer a sibling binary next to the running executable: make build
+	// drops all CLIs at the repo root, and the unified wrapper must find
+	// them even when invoked from another directory. The path is absolute,
+	// so no "./" prefix is needed for exec.Command.
+	if exePath != "" {
+		sibling := filepath.Join(filepath.Dir(exePath), name)
+		if fi, err := os.Stat(sibling); err == nil && fi.Mode().IsRegular() {
+			return sibling, nil
+		}
+	}
+
 	// Prefer project-local binaries. Ensure paths that don't contain a
 	// separator get a "./" prefix so exec.Command treats them as local
 	// filesystem paths instead of falling back to a PATH lookup.

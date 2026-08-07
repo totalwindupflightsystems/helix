@@ -186,6 +186,81 @@ func TestLookPath(t *testing.T) {
 	})
 }
 
+func TestLookPathWithExec(t *testing.T) {
+	// GAP-005: the unified helix wrapper must resolve sibling subcommand
+	// binaries next to the running executable, so `helix estimate` works
+	// from any directory — not just the repo root where make build drops
+	// them. lookPathWithExec lets tests inject the executable path instead
+	// of relying on os.Executable() (which points at the test binary under
+	// /tmp/go-buildXXX/ during `go test`).
+
+	t.Run("sibling next to executable", func(t *testing.T) {
+		exeDir := t.TempDir()   // dir B: holds the fake helix executable + sibling
+		emptyDir := t.TempDir() // third dir: cwd with nothing in it
+
+		fakeBin := filepath.Join(exeDir, "fake-cmd")
+		if err := os.WriteFile(fakeBin, []byte("#!/bin/sh\necho ok"), 0755); err != nil {
+			t.Fatalf("write fake sibling binary: %v", err)
+		}
+		exePath := filepath.Join(exeDir, "helix")
+		if err := os.WriteFile(exePath, []byte("#!/bin/sh\necho ok"), 0755); err != nil {
+			t.Fatalf("write fake helix executable: %v", err)
+		}
+
+		oldDir, _ := os.Getwd()
+		if err := os.Chdir(emptyDir); err != nil {
+			t.Fatalf("chdir to empty dir: %v", err)
+		}
+		defer func() { _ = os.Chdir(oldDir) }()
+
+		got, err := lookPathWithExec("fake-cmd", exePath)
+		if err != nil {
+			t.Fatalf("lookPathWithExec(fake-cmd, exePath) = error: %v", err)
+		}
+		if got != fakeBin {
+			t.Errorf("lookPathWithExec(fake-cmd, exePath) = %q, want %q (sibling next to exe)", got, fakeBin)
+		}
+	})
+
+	t.Run("falls back to cwd when exe dir has no sibling", func(t *testing.T) {
+		exeDir := t.TempDir()  // exe dir WITHOUT the requested sibling
+		workDir := t.TempDir() // cwd WITH the binary
+
+		fakeBin := filepath.Join(workDir, "fake-cmd")
+		if err := os.WriteFile(fakeBin, []byte("#!/bin/sh\necho ok"), 0755); err != nil {
+			t.Fatalf("write fake cwd binary: %v", err)
+		}
+		exePath := filepath.Join(exeDir, "helix")
+		if err := os.WriteFile(exePath, []byte("#!/bin/sh\necho ok"), 0755); err != nil {
+			t.Fatalf("write fake helix executable: %v", err)
+		}
+
+		oldDir, _ := os.Getwd()
+		if err := os.Chdir(workDir); err != nil {
+			t.Fatalf("chdir to work dir: %v", err)
+		}
+		defer func() { _ = os.Chdir(oldDir) }()
+
+		got, err := lookPathWithExec("fake-cmd", exePath)
+		if err != nil {
+			t.Fatalf("lookPathWithExec(fake-cmd, exePath) = error: %v", err)
+		}
+		if got != "./fake-cmd" {
+			t.Errorf("lookPathWithExec(fake-cmd, exePath) = %q, want ./fake-cmd (cwd fallback)", got)
+		}
+	})
+
+	t.Run("empty exePath still resolves via cwd/PATH", func(t *testing.T) {
+		got, err := lookPathWithExec("sh", "")
+		if err != nil {
+			t.Fatalf("lookPathWithExec(sh, \"\") = error: %v", err)
+		}
+		if got == "" {
+			t.Error("lookPathWithExec(sh, \"\") returned empty string")
+		}
+	})
+}
+
 func TestExecSubcommand(t *testing.T) {
 	t.Run("missing binary", func(t *testing.T) {
 		stderr := captureStderr(func() {
