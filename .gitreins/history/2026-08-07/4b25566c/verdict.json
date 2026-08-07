@@ -1,0 +1,79 @@
+{
+  "task_id": "gap-004",
+  "task_title": "GAP-004 \u2014 prompt layout unification: verify accepts path-style trailers",
+  "task_criteria": [
+    "helix prompt verify HEAD exits 0 with HASH: verified and no ATTESTATION_MISSING / cannot read prompt file errors on repo commits carrying path-style Prompt: prompts/<name>/v<N>.md trailers",
+    "AGENTS.md commit-rule example (Prompt: prompts/<name>/v<N>.md) matches CLI behavior \u2014 the CLI accepts and verifies path-style refs (flat and nested layouts)"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 lint: \n  \u2713 tests: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": ""
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 helix prompt verify HEAD exits 0 with HASH: verified and no ATTESTATION_MISSING / cannot read prompt file errors on repo commits carrying path-style Prompt: prompts/<name>/v<N>.md trailers: TestRunVerify_PathStyleRef (cmd/helix-prompt/main_test.go) creates a git repo with a commit carrying 'Prompt: prompts/gap-test/v1.md', runs runVerify(opts,'HEAD'), and asserts output contains 'HASH:    verified' with no ATTESTATION_MISSING and no 'cannot read prompt file' \u2014 test PASSES. ValidateAttestation (pkg/prompt/attester.go) sets HashMatch=true for path refs, so main.go:329 prints 'HASH:    verified'; Verify() returns nil error. TestVerify extended case 'head_commit_with_path_style_attestation' (attester_extended_test.go) confirms Verify('HEAD') succeeds (wantErr:false).\n  \u2713 AGENTS.md commit-rule example (Prompt: prompts/<name>/v<N>.md) matches CLI behavior \u2014 the CLI accepts and verifies path-style refs (flat and nested layouts): AGENTS.md lines 64 & 93 specify 'Prompt: prompts/<name>/v<N>.md'. CLI regex reAttestPath = (?m)^Prompt:\\s*(prompts/[^\\s]+\\.md)\\s*$ (pkg/prompt/attester.go) accepts both flat prompts/<name>/v<N>.md and nested prompts/<component>/<version>/prompt.md. Tests path_style_flat_ref_parses and path_style_nested_ref_parses (attester_test.go) confirm both layouts parse; hook_test.go confirms both flat and nested path refs pass the commit-msg hook. GETTING-STARTED GAP-004 caveat removed.\nGAP-004 is fully implemented in commit 34e473d: the prompt verify CLI, ParseCommitMessage, ValidateAttestation, and commit-msg hook all accept and verify path-style Prompt trailers (flat and nested), matching the AGENTS.md commit rule, with passing tests for both criteria.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 helix prompt verify HEAD exits 0 with HASH: verified and no ATTESTATION_MISSING / cannot read prompt file errors on repo commits carrying path-style Prompt: prompts/<name>/v<N>.md trailers: TestRunVerify_PathStyleRef (cmd/helix-prompt/main_test.go) creates a git repo with a commit carrying 'Prompt: prompts/gap-test/v1.md', runs runVerify(opts,'HEAD'), and asserts output contains 'HASH:    verified' with no ATTESTATION_MISSING and no 'cannot read prompt file' \u2014 test PASSES. ValidateA",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: gap-004\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 lint: \n  \u2713 tests: \n  \u2713 secrets: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 helix prompt verify HEAD exits 0 with HASH: verified and no ATTESTATION_MISSING / cannot read prompt file errors on repo commits carrying path-style Prompt: prompts/<name>/v<N>.md trailers: TestRunVerify_PathStyleRef (cmd/helix-prompt/main_test.go) creates a git repo with a commit carrying 'Prompt: prompts/gap-test/v1.md', runs runVerify(opts,'HEAD'), and asserts output contains 'HASH:    verified' with no ATTESTATION_MISSING and no 'cannot read prompt file' \u2014 test PASSES. ValidateAttestation (pkg/prompt/attester.go) sets HashMatch=true for path refs, so main.go:329 prints 'HASH:    verified'; Verify() returns nil error. TestVerify extended case 'head_commit_with_path_style_attestation' (attester_extended_test.go) confirms Verify('HEAD') succeeds (wantErr:false).\n  \u2713 AGENTS.md commit-rule example (Prompt: prompts/<name>/v<N>.md) matches CLI behavior \u2014 the CLI accepts and verifies path-style refs (flat and nested layouts): AGENTS.md lines 64 & 93 specify 'Prompt: prompts/<name>/v<N>.md'. CLI regex reAttestPath = (?m)^Prompt:\\s*(prompts/[^\\s]+\\.md)\\s*$ (pkg/prompt/attester.go) accepts both flat prompts/<name>/v<N>.md and nested prompts/<component>/<version>/prompt.md. Tests path_style_flat_ref_parses and path_style_nested_ref_parses (attester_test.go) confirm both layouts parse; hook_test.go confirms both flat and nested path refs pass the commit-msg hook. GETTING-STARTED GAP-004 caveat removed.\nGAP-004 is fully implemented in commit 34e473d: the prompt verify CLI, ParseCommitMessage, ValidateAttestation, and commit-msg hook all accept and verify path-style Prompt trailers (flat and nested), matching the AGENTS.md commit rule, with passing tests for both criteria.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-07T04:22:11.123151"
+}
