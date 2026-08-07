@@ -1,8 +1,8 @@
 # Helix Feature 5 — Agent Marketplace
 
-**Status:** v1 specification (build-ready, zero implementation)
+**Status:** v1 implemented (2026-08-06) — full CLI + package suite live; see §15
 **Spec version:** 1.0
-**Last updated:** 2026-06-19
+**Last updated:** 2026-08-06
 **Depends on:** Feature 1 (Identity), Feature 2 (Cost Estimator), Feature 3 (Negotiation), Feature 4 (Prompt Registry)
 **Blocks:** Nothing (this is the last feature in the 5-feature roadmap)
 
@@ -485,18 +485,18 @@ Test fixtures (in `pkg/marketplace/testdata/`):
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| CLI (4 subcommands) | ⏳ Stub | list, show, search, rate |
-| Agent manifest parser/validator | ⏳ Stub | YAML schema, required fields |
-| Master index (_index.yaml) | ⏳ Stub | Fast lookup, sorted by trust |
-| Trust score calculator | ⏳ Stub | Formula with all components |
-| Daily recalibration cron | ⏳ Stub | Queries GitReins, Chimera, H4F, Forgejo |
-| Capability search engine | ⏳ Stub | AND/OR filter, trust threshold |
-| Human rating system | ⏳ Stub | 1-5, verified human-only |
-| Axiom integration interface | ⏳ Stub | FindAgents() for swarm assembly |
-| Agent lifecycle manager | ⏳ Stub | Active → deprecated → retired |
-| Load balancer | ⏳ Stub | Active tasks, budget utilization |
-| Dry-run mode | ⏳ Stub | All subcommands |
-| Audit logger | ⏳ Stub | Lifecycle events, ratings | 
+| CLI (4 subcommands) | ✅ Live | list, show, search, rate (+ review) |
+| Agent manifest parser/validator | ✅ Live | YAML schema, required fields (types.go, registry.go) |
+| Master index (_index.yaml) | ✅ Live | Fast lookup, sorted by trust (index.go) |
+| Trust score calculator | ✅ Live | Formula with all components (scorer.go) |
+| Daily recalibration cron | ✅ Live | Queries GitReins, Chimera, H4F, Forgejo (scorer.go DailyRecalculation) |
+| Capability search engine | ✅ Live | AND/OR filter, trust threshold (search.go) |
+| Human rating system | ✅ Live | 1-5, verified human-only (ratings.go) |
+| Axiom integration interface | ✅ Live | FindAgents() for swarm assembly (discovery.go) |
+| Agent lifecycle manager | ✅ Live | Active → deprecated → retired (lifecycle.go) |
+| Load balancer | ✅ Live | Active tasks, budget utilization (discovery.go LoadBalance) |
+| Dry-run mode | ✅ Live | All subcommands |
+| Audit logger | ✅ Live | Lifecycle events, ratings (lifecycle.go history) |
 
 ---
 

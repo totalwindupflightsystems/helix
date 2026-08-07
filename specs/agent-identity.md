@@ -1,8 +1,8 @@
 # Helix Feature 1 — Agent Identity in Forgejo
 
-**Status:** v1 stub (build-ready, transport pending review)
+**Status:** v1 implemented (2026-08-06) — full CLI + package suite live, Forgejo transport real; see §17
 **Spec version:** 1.0
-**Last updated:** 2026-06-19
+**Last updated:** 2026-08-06
 **Depends on:** known-friends.json (H4F), a self-hosted Forgejo instance
 **Blocks:** Feature 2 (Cost Estimator), Feature 3 (PR Negotiation), Feature 4 (Prompt Registry), Feature 5 (Marketplace)
 
@@ -450,11 +450,12 @@ Test fixtures (to be created in `pkg/identity/testdata/`):
 | Error taxonomy | ✅ Live | 5 kinds → 4 exit codes |
 | Rate limiter structure | ✅ Live | Token bucket (Acquire is no-op stub) |
 | Retry policy structure | ✅ Live | Constants + BackoffFor() |
-| Forgejo HTTP transport | ⏳ Stub | All methods return `ErrNotImplemented` |
+| Forgejo HTTP transport | ✅ Live | Real OAuth registrar (forge.go): RegisterOAuthApp, GetOAuthApp, ListOAuthApps, DeleteOAuthApp, ExchangeToken + binding proofs + credential store; Provisioner admin API (provisioner.go) |
 
-The transport is the only piece between this spec and a working integration.
-Drop-in replacement: implement the 6 methods in `provisioner.go` without
-touching any caller.
+The transport is implemented (see `pkg/identity/forge.go` +
+`pkg/identity/provisioner.go`). `ErrNotImplemented` is a legacy sentinel kept
+for compatibility — all transport methods have real calls (verified tick #95
+E2E against live Forgejo :3030).
 
 ---
 

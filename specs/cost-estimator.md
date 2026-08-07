@@ -1,8 +1,8 @@
 # Helix Feature 2 — Pre-Flight Cost Estimator
 
-**Status:** v1 specification (build-ready, zero implementation)
+**Status:** v1 implemented (2026-08-06) — full CLI + package suite live; see §15
 **Spec version:** 1.0
-**Last updated:** 2026-06-19
+**Last updated:** 2026-08-06
 **Depends on:** Feature 1 (Agent Identity), GitReins v0.4.1+ (cache token tracking), OpenRouter API
 **Blocks:** Feature 3 (PR Negotiation), Feature 5 (Marketplace)
 
@@ -565,19 +565,19 @@ Test fixtures (in `pkg/estimate/testdata/`):
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| CLI (3 subcommands) | ⏳ Stub | Flag/env binding, help text |
-| pricing.yaml loader | ⏳ Stub | gopkg.in/yaml.v3, validation |
-| Estimation algorithm | ⏳ Stub | Cache-aware formula, all 5 task types |
-| Budget enforcement | ⏳ Stub | Approval gates, period management |
-| OpenRouter API client | ⏳ Stub | GET /api/v1/key, parse response |
-| Cache ratio recalibration | ⏳ Stub | Weekly cron, drift detection |
-| Error taxonomy | ⏳ Stub | 7 exit codes, typed errors |
-| Dry-run mode | ⏳ Stub | Full estimation, no enforcement |
-| JSON/table/summary output | ⏳ Stub | 3 output formats |
-| Reconciliation (post-hoc) | ⏳ Stub | GitReins LLMUsage → actual cost |
+| CLI (3 subcommands) | ✅ Live | estimate, check, report; flag/env binding, help text |
+| pricing.yaml loader | ✅ Live | gopkg.in/yaml.v3, validation |
+| Estimation algorithm | ✅ Live | Cache-aware formula, all 5 task types |
+| Budget enforcement | ✅ Live | Approval gates, period management |
+| OpenRouter API client | ✅ Live | GET /api/v1/key, parse response |
+| Cache ratio recalibration | ✅ Live | Weekly cron, drift detection |
+| Error taxonomy | ✅ Live | 7 exit codes, typed errors |
+| Dry-run mode | ✅ Live | Full estimation, no enforcement |
+| JSON/table/summary output | ✅ Live | 3 output formats |
+| Reconciliation (post-hoc) | ✅ Live | GitReins LLMUsage → actual cost |
 
-Unlike Feature 1 (which was implemented as stubs with real CLI/logic),
-Feature 2 is currently a PURE specification. All components are stubs.
+Feature 2 is fully implemented. All components above are live and tested in
+`pkg/estimate/` + `cmd/helix-estimate/` (13 package files, 12 test files).
 
 ---
 
@@ -707,7 +707,7 @@ github.com/totalwindupflightsystems/helix/
 │   ├── pricing.go                   PricingYAML, ProviderPricing, ModelPrice, LoadPricing()
 │   ├── estimator.go                 Estimate(task TaskDesc) → CostEstimate
 │   ├── budget.go                    BudgetTracker, CheckBudget(), ApproveOrBlock()
-│   ├── openrouter.go                OpenRouter client (v1 stub: ErrNotImplemented)
+│   ├── openrouter.go                OpenRouter client (live: GetKeyUsage/Limit/Remaining/Info)
 │   ├── reconciliation.go            Reconcile(estimate, actual LLMUsage) → drift
 │   ├── calibrator.go                RecalibrateCacheRatios() from historical data
 │   └── testdata/

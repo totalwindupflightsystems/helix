@@ -1,8 +1,8 @@
 # Helix Feature 4 — Prompt Registry
 
-**Status:** v1 specification (build-ready, zero implementation)
+**Status:** v1 implemented (2026-08-06) — full CLI + package suite live; see §16
 **Spec version:** 1.0
-**Last updated:** 2026-06-19
+**Last updated:** 2026-08-06
 **Depends on:** Feature 1 (Agent Identity), Feature 2 (Cost Estimator), GitReins v0.3.0+ (commit-msg hook)
 **Blocks:** Feature 5 (Marketplace — prompt quality feeds reputation)
 
@@ -525,17 +525,17 @@ Test fixtures (in `pkg/prompt/testdata/`):
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| CLI (4 subcommands) | ⏳ Stub | register, attest, verify, list |
-| SHA-256 hasher with normalization | ⏳ Stub | 5-step normalize pipeline |
-| Registry (_index.yaml) | ⏳ Stub | Read/write/query |
-| Metadata validator | ⏳ Stub | YAML schema validation |
-| Lifecycle state machine | ⏳ Stub | 7 states, all transitions |
-| GitReins commit-msg hook integration | ⏳ Stub | Parse → verify → pass/reject |
-| PromptFoo CI action | ⏳ Stub | Forgejo Action YAML |
-| Provenance chain verifier | ⏳ Stub | commit → prompt → spec → work item → intent |
-| Tamper detector | ⏳ Stub | Hash mismatch detection |
-| Audit logger (JSONL) | ⏳ Stub | All operations logged |
-| Dry-run mode | ⏳ Stub | All subcommands support --dry-run |
+| CLI (4 subcommands) | ✅ Live | register, attest, verify, list (+ postci, test) |
+| SHA-256 hasher with normalization | ✅ Live | 5-step normalize pipeline (hasher.go, normalize.go) |
+| Registry (_index.yaml) | ✅ Live | Read/write/query (registry.go) |
+| Metadata validator | ✅ Live | YAML schema validation (types.go, consistency.go) |
+| Lifecycle state machine | ✅ Live | 7 states, all transitions (lifecycle.go) |
+| GitReins commit-msg hook integration | ✅ Live | Parse → verify → pass/reject (hook.go, attester.go) |
+| PromptFoo CI action | ✅ Live | promptfoo.go + postci status writeback |
+| Provenance chain verifier | ✅ Live | commit → prompt → spec → work item → intent (provenance.go) |
+| Tamper detector | ✅ Live | Hash mismatch detection (consistency.go) |
+| Audit logger (JSONL) | ✅ Live | All operations logged (audit.go) |
+| Dry-run mode | ✅ Live | All subcommands support --dry-run |
 
 ---
 

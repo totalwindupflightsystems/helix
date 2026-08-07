@@ -1,8 +1,8 @@
 # Helix Feature 3 — Agent-to-Agent PR Negotiation
 
-**Status:** v1 specification (build-ready, zero implementation)
+**Status:** v1 implemented (2026-08-06) — full CLI + package suite live; see §17
 **Spec version:** 1.0
-**Last updated:** 2026-06-19
+**Last updated:** 2026-08-06
 **Depends on:** Feature 1 (Agent Identity), Feature 2 (Cost Estimator), Chimera (arbiter formation)
 **Blocks:** Feature 5 (Marketplace — negotiation history feeds reputation)
 
@@ -508,17 +508,17 @@ Test fixtures (in `pkg/negotiate/testdata/`):
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| CLI (2 subcommands) | ⏳ Stub | Flag/env binding, help text |
-| Negotiation state machine | ⏳ Stub | All 6 states, all transitions |
-| Debate round manager | ⏳ Stub | 3 rounds, evidence validation, strike system |
-| Forgejo review API client | ⏳ Stub | GET/POST reviews |
-| Chimera arbiter client | ⏳ Stub | POST /deliberate, verdict parsing |
-| Trust adjustment engine | ⏳ Stub | All delta calculations |
-| Timeout watcher | ⏳ Stub | Per-round + global timeout |
-| Evidence validator | ⏳ Stub | Minimum 2 items, 1 spec ref required |
-| Audit logging (JSONL) | ⏳ Stub | Incremental write |
-| Dry-run mode | ⏳ Stub | Full simulation, no Forgejo calls |
-| Error taxonomy | ⏳ Stub | 7 exit codes |
+| CLI (2 subcommands) | ✅ Live | debate <pr-url>, resolve [pr-url] |
+| Negotiation state machine | ✅ Live | All 6 states, all transitions (negotiator.go) |
+| Debate round manager | ✅ Live | 3 rounds, evidence validation, strike system (debate.go) |
+| Forgejo review API client | ✅ Live | pkg/forgejo client (GET/POST reviews, MergePR) |
+| Chimera arbiter client | ✅ Live | POST /deliberate, verdict parsing (arbiter.go) |
+| Trust adjustment engine | ✅ Live | All delta calculations (trust.go, trust_adjustment.go) |
+| Timeout watcher | ✅ Live | Per-round + global timeout (timeout.go) |
+| Evidence validator | ✅ Live | Minimum 2 items, 1 spec ref required (debate_validator.go) |
+| Audit logging (JSONL) | ✅ Live | Incremental write (audit.go, transcript.go) |
+| Dry-run mode | ✅ Live | Full simulation, no Forgejo calls (dry_run.go) |
+| Error taxonomy | ✅ Live | 7 exit codes (errors.go) |
 
 ---
 

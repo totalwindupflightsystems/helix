@@ -1,8 +1,8 @@
 # Helix Feature 4 — Prompt Registry (v2)
 
-**Status:** v2.0 specification (build-ready, zero implementation)
+**Status:** v2.0 implemented (2026-08-06) — full CLI + package suite live; see §16
 **Spec version:** 2.0
-**Last updated:** 2026-06-20
+**Last updated:** 2026-08-06
 **Depends on:** Feature 1 (Agent Identity), Feature 2 (Cost Estimator), GitReins v0.3.0+ (commit-msg hook), Forgejo Actions
 **Blocks:** Feature 5 (Marketplace — prompt quality feeds reputation)
 **Supersedes:** `specs/prompt-registry.md` (v1)
@@ -614,14 +614,14 @@ pr-negotiation   v0.9.0    draft       kimi-for-coding unknown    0
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| CLI (4 subcommands) | ⏳ Stub | register, attest, verify, list |
-| SHA-256 hasher (5-step norm, fence-aware, frontmatter stripped) | ⏳ Stub | §8.2 |
-| Registry (`_index.yaml` + atomic writes) + metadata/index validator | ⏳ Stub | read/write/query/rebuild, INDEX_STALE |
-| Lifecycle state machine (7 states, full transition table) | ⏳ Stub | §10 |
-| GitReins commit-msg hook (8-step algorithm) | ⏳ Stub | §9.2 |
-| PromptFoo CI action + postci (status writeback) | ⏳ Stub | §11 |
-| Provenance chain verifier + rename-robust tamper detector | ⏳ Stub | §12 |
-| Audit logger (append-only JSONL) + dry-run mode | ⏳ Stub | all ops + overrides |
+| CLI (4 subcommands) | ✅ Live | register, attest, verify, list (+ postci, test) |
+| SHA-256 hasher (5-step norm, fence-aware, frontmatter stripped) | ✅ Live | hasher.go, normalize.go (§8.2) |
+| Registry (`_index.yaml` + atomic writes) + metadata/index validator | ✅ Live | registry.go, consistency.go — read/write/query/rebuild, INDEX_STALE |
+| Lifecycle state machine (7 states, full transition table) | ✅ Live | lifecycle.go (§10) |
+| GitReins commit-msg hook (8-step algorithm) | ✅ Live | hook.go, attester.go (§9.2) |
+| PromptFoo CI action + postci (status writeback) | ✅ Live | promptfoo.go + postci cmd (§11) |
+| Provenance chain verifier + rename-robust tamper detector | ✅ Live | provenance.go, consistency.go (§12) |
+| Audit logger (append-only JSONL) + dry-run mode | ✅ Live | audit.go — all ops + overrides |
 
 ---
 
