@@ -627,3 +627,17 @@ tasks:
   status: complete
   created_at: '2026-08-07T04:20:49.948385+00:00'
   completed_at: '2026-08-07T04:20:53.097428+00:00'
+- id: gap-005
+  title: "GAP-005 \u2014 unified CLI resolves sibling binaries next to the helix executable"
+  criteria:
+  - cd /tmp && /home/kara/helix/helix estimate estimate "hello" --model deepseek-v4-pro
+    --provider deepseek exits 0 and prints a cost estimate (not "subcommand not found")
+  - cd /tmp && /home/kara/helix/helix identity status resolves the helix-identity
+    sibling (no "subcommand not found" error; post-resolution config errors are acceptable)
+  - lookPath prefers a sibling binary in the running executable's directory, then
+    cwd-relative (./<name>, cmd/<name>/<name>), then PATH
+  - go test -count=1 -short ./cmd/helix/ passes with new tests covering exe-dir sibling
+    resolution and fallbacks
+  status: complete
+  created_at: '2026-08-07T13:25:00.000000+00:00'
+  completed_at: '2026-08-07T13:22:42.959996+00:00'
