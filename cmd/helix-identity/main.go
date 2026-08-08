@@ -30,6 +30,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -125,7 +126,7 @@ touching Forgejo.`,
 		envOr(envAdminPassword, ""),
 		"Forgejo admin password for BasicAuth token ops (env: "+envAdminPassword+")")
 	rootCmd.PersistentFlags().StringVar(&rootFlags.knownFriends, "known-friends",
-		envOr(envKnownFriends, identity.DefaultKnownFriendsPath),
+		envOr(envKnownFriends, defaultKnownFriendsPath()),
 		"path to known-friends.json (env: "+envKnownFriends+")")
 	rootCmd.PersistentFlags().StringVar(&rootFlags.sshKeyDir, "ssh-key-dir",
 		envOr(envSSHKeyDir, identity.DefaultSSHKeyDir),
@@ -261,6 +262,10 @@ func runProvision(cmd *cobra.Command, args []string) error {
 	kf, err := identity.LoadKnownFriends(cfg.KnownFriendsPath)
 	if err != nil {
 		return err
+	}
+	if len(kf.Agents) == 0 {
+		fmt.Println("NO_AGENTS: known-friends.json contains no agents")
+		return nil
 	}
 	agent, ok := kf.Agents[name]
 	if !ok || agent == nil {
@@ -836,6 +841,22 @@ func envOr(name, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// defaultKnownFriendsPath returns the best known-friends.json location: the
+// production path if it exists, otherwise ~/.helix/known-friends.json (the
+// user-local default). Falling back to a user-local path keeps error
+// messages pointing at a sensible location instead of a cross-deployment
+// prod path when the file is absent (GAP-008).
+func defaultKnownFriendsPath() string {
+	const prod = "/opt/hermes-demo/.hermes/h4f/known-friends.json"
+	if _, err := os.Stat(prod); err == nil {
+		return prod
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		return filepath.Join(home, ".helix", "known-friends.json")
+	}
+	return prod
 }
 
 // ---------------------------------------------------------------------------

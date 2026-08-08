@@ -30,6 +30,7 @@ package identity
 // exit code reflects partial failure (ExitPartialFailure = 4).
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -115,21 +116,27 @@ func (s *Syncer) State() *StateFile { return s.state }
 
 // LoadKnownFriends reads and validates known-friends.json from the configured
 // path. It returns a TypedError of kind config (exit 3) if the file is
-// missing or unparseable, and a TypedError of kind config (exit 3) with a
-// specific "NO_AGENTS" message if the file is valid but empty — matching
-// the §15 contract (empty agents → exit 0 with NO_AGENTS, handled by caller).
+// missing or unparseable, and a nil error with an empty agent map if the
+// file is empty (callers print NO_AGENTS and exit 0) — matching the §15
+// contract (empty agents → exit 0 with NO_AGENTS, handled by caller).
 func LoadKnownFriends(path string) (*KnownFriends, error) {
 	path = expandHome(path)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, NewConfigError(
-				fmt.Sprintf("FILE_NOT_FOUND: %s", path), err)
+				fmt.Sprintf("FILE_NOT_FOUND: %s (pass --known-friends or set HELIX_KNOWN_FRIENDS to point at your known-friends.json)", path), err)
 		}
 		return nil, NewConfigError(
 			fmt.Sprintf("cannot read %s: %v", path, err), err)
 	}
 	var kf KnownFriends
+	if len(bytes.TrimSpace(data)) == 0 {
+		// An empty file means "no agents", not malformed JSON. Callers
+		// print NO_AGENTS and exit 0 — an empty known-friends file should
+		// never surface as a confusing parse error (GAP-008).
+		return &KnownFriends{Agents: map[string]*Agent{}}, nil
+	}
 	if err := json.Unmarshal(data, &kf); err != nil {
 		return nil, NewConfigError(
 			fmt.Sprintf("malformed known-friends.json at %s: %v", path, err), err)

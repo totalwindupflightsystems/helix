@@ -176,6 +176,22 @@ func TestLoadKnownFriends(t *testing.T) {
 // 2. expandHome
 // -----------------------------------------------------------------------------
 
+func TestLoadKnownFriends_EmptyFile(t *testing.T) {
+	// GAP-008: an empty known-friends file means "no agents" (nil error,
+	// empty agent map), not malformed JSON.
+	path := filepath.Join(t.TempDir(), "empty.json")
+	if err := os.WriteFile(path, nil, 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	kf, err := LoadKnownFriends(path)
+	if err != nil {
+		t.Fatalf("empty file should load with no error, got: %v", err)
+	}
+	if kf == nil || len(kf.Agents) != 0 {
+		t.Errorf("expected empty agent map, got %+v", kf)
+	}
+}
+
 func TestExpandHome(t *testing.T) {
 	home, err := os.UserHomeDir()
 	if err != nil {

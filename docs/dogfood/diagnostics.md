@@ -20,11 +20,11 @@ records.
 - **Why two layers:** each component was built as a standalone tool first,
   then unified. The cost: the "unified" binary's behavior depends on sibling
   binaries being discoverable (cwd/PATH) — a real footgun for users (DF-006).
-- **Board:** `.coding-hermes/board/board.db` (DuckDB) is the task board;
-  `tasks.parquet`/`events.parquet` are the git-tracked exports the foreman
-  commits each tick. `schema.sql` (v2.1) documents the intended schema, but
-  the live `tasks` table was created before PK constraints — **no unique
-  constraints on the live table** (use plain INSERTs, not `ON CONFLICT`).
+- **Board:** `.coding-hermes/board/tasks.jsonl` (JSONL canonical) is the task
+  board; `board.jsonl` carries the header, `events.jsonl` the event stream,
+  `fixtures.jsonl` the recurring fixtures, and `schema.sql` documents the
+  DuckDB v2.1 schema. The live DuckDB cache and the `tasks.parquet`/
+  `events.parquet` exports are untracked and regenerated each tick.
 - **Quality:** GitReins hooks (commit-msg requires `Co-authored-by:` +
   `Prompt: prompts/<name>/v<N>.md`; pre-commit runs secrets/lint/tests/build
   in diff mode). Tests: 60/60 unit tests green; CI 4/4 (Forgejo Actions);

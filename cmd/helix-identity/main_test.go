@@ -460,7 +460,7 @@ func buildRootCmd() *cobra.Command {
 	rootCmd.PersistentFlags().StringVar(&rootFlags.adminPassword, "admin-password",
 		envOr("FORGEJO_ADMIN_PASSWORD", ""), "")
 	rootCmd.PersistentFlags().StringVar(&rootFlags.knownFriends, "known-friends",
-		envOr("HELIX_KNOWN_FRIENDS", identity.DefaultKnownFriendsPath), "")
+		envOr("HELIX_KNOWN_FRIENDS", defaultKnownFriendsPath()), "")
 	rootCmd.PersistentFlags().StringVar(&rootFlags.sshKeyDir, "ssh-key-dir",
 		envOr("HELIX_SSH_KEY_DIR", identity.DefaultSSHKeyDir), "")
 	rootCmd.PersistentFlags().StringVar(&rootFlags.statePath, "state-path",
@@ -557,6 +557,50 @@ func withRootFlags(t *testing.T, fn func()) {
 	rootFlags.dryRun = true
 	rootFlags.verbose = false
 	fn()
+}
+
+func TestRunProvision_EmptyKnownFriends(t *testing.T) {
+	// GAP-008: an empty known-friends file must produce the NO_AGENTS
+	// message and exit 0 (nil error), not a malformed-JSON error.
+	withRootFlags(t, func() {
+		kfPath := rootFlags.knownFriends
+		if err := os.WriteFile(kfPath, nil, 0644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := &cobra.Command{Use: "provision"}
+		var runErr error
+		out := captureOutput(func() {
+			runErr = runProvision(cmd, []string{"test-agent"})
+		})
+		if runErr != nil {
+			t.Fatalf("runProvision on empty known-friends: %v", runErr)
+		}
+		if !strings.Contains(out, "NO_AGENTS") {
+			t.Errorf("expected NO_AGENTS marker, got: %q", out)
+		}
+	})
+}
+
+func TestDefaultKnownFriendsPath_FallsBackToUserLocal(t *testing.T) {
+	// GAP-008: when the prod path is absent (the normal case), the default
+	// resolves to ~/.helix/known-friends.json so error messages point at a
+	// sensible user-local location instead of a cross-deployment prod path.
+	const prod = "/opt/hermes-demo/.hermes/h4f/known-friends.json"
+	if _, err := os.Stat(prod); err == nil {
+		t.Skip("prod known-friends path present on this host")
+	}
+	got := defaultKnownFriendsPath()
+	if got == prod {
+		t.Errorf("default resolved to prod path %q — should fall back to user-local", got)
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(home, ".helix", "known-friends.json")
+	if got != want {
+		t.Errorf("defaultKnownFriendsPath() = %q, want %q", got, want)
+	}
 }
 
 func TestRunSync_DryRun(t *testing.T) {
