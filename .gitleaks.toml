@@ -11,4 +11,11 @@ paths = [
   '''\.gitreins/history/''',
   '''.*\.log$''',
   '''vendor/''',
+  # Test fixtures with deliberate dummy credentials (identity sync fixtures).
+  # The gitreins builtin secrets scanner (GR-GAP-005) flags these as
+  # [hardcoded password] on every staging of identity code; gitleaks inline
+  # //gitleaks:allow comments are NOT honored by that scanner — path
+  # allowlist is the supported exemption (see guard_manager.py
+  # _builtin_secrets_scan / _load_gitleaks_allowlist).
+  '''pkg/identity/(syncer|extra_coverage|provisioner_http)_test\.go''',
 ]
