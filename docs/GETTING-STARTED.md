@@ -83,16 +83,16 @@ export FORGEJO_ADMIN_TOKEN="<admin-token>"            # from your Forgejo admin 
 # (scripts/bootstrap.sh creates the admin user with FORGEJO_ADMIN_USER/PASSWORD,
 #  defaults helio / changeme — see docker-compose.yml)
 
-helix identity create codex-alpha                      # generate HID (Ed25519)
+helix identity create --name codex-alpha               # generate HID (Ed25519)
 helix identity provision codex-alpha \
   --forgejo-url http://localhost:3030 \
   --admin-token "${FORGEJO_ADMIN_TOKEN}"
-helix identity verify codex-alpha                      # attest the key pair
+helix identity verify --hid codex-alpha.hid            # attest the key pair
 helix identity list                                    # see all agents
 ```
 
 `helix identity register` stores the agent in `known-friends.json`; export and
-import move identities between machines (`helix identity export codex-alpha`).
+import move identities between machines (`helix identity export --hid codex-alpha.hid`).
 
 ## 6. Estimate a task before running it
 
