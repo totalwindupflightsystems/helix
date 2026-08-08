@@ -671,3 +671,18 @@ tasks:
   status: complete
   created_at: '2026-08-08T12:18:47.534981+00:00'
   completed_at: '2026-08-08T12:18:54.484196+00:00'
+- id: GITLEAKS-FIXTURE-ANNOTATE
+  title: Allowlist identity test fixtures in .gitleaks.toml
+  criteria:
+  - pkg/identity/syncer_test.go, extra_coverage_test.go, provisioner_http_test.go
+    are exempted via .gitleaks.toml [allowlist] paths (guard builtin scanner skips
+    them when staged)
+  - "The .gitleaks.toml allowlist entry is scoped to pkg/identity/(syncer|extra_coverage|provisioner_http)_test\\\
+    .go \u2014 no broad docs/specs/markdown re-narrowing"
+  - gitreins guard passes 4/4 with the change staged (secrets clean, build ok, lint
+    ok, tests ok)
+  - "Full test suite passes (go test -count=1 -timeout 300s ./... \u2192 60/60 packages\
+    \ ok)"
+  status: complete
+  created_at: '2026-08-08T19:39:32.060498+00:00'
+  completed_at: '2026-08-08T19:39:37.141062+00:00'

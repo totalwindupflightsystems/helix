@@ -3714,3 +3714,5 @@
 {"from":"cmd/helix/main.go","to":"std:time","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"pkg/prompt/hook.go","to":"std:path/filepath","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"pkg/prompt/attester.go","to":"std:path/filepath","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"cmd/helix-identity/main.go","to":"std:path/filepath","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"pkg/identity/syncer.go","to":"std:bytes","rel":"imports","provenance":"ast_exact","confidence":1.0}
