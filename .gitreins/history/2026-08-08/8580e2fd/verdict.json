@@ -1,0 +1,131 @@
+{
+  "task_id": "gap-007",
+  "task_title": "GAP-007: dispatcher decomposes Helix's own spec files",
+  "task_criteria": [
+    "DecomposeSpec (pkg/dispatcher/decomposer.go) accepts an H1 heading matching \"^# Helix Feature\" (case-insensitive) as a section marker \u2014 each feature H1 starts one Task with priority by section ordering.",
+    "Existing ## PHASE / ## Feature H2 detection is unchanged and its tests (reads phase sections, reads feature sections) still pass.",
+    "A spec with only \"# Helix Feature N \u2014 Title\" H1 plus non-keyword H2 sections (e.g. ## 1. Mission) decomposes into exactly 1 task whose Description is the H1 text and Priority is 1.",
+    "A spec with no Phase/Feature H2 sections and no \"# Helix Feature\" H1 still returns ErrDecomposeFailed (no-section error path preserved).",
+    "Live CLI PASS: ./helix dispatcher list-tasks --spec specs/agent-identity.md prints a task list and exits 0 (not the decompose-failed error)."
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 tests: \n  \u2713 secrets: \n  \u2713 lint: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 DecomposeSpec (pkg/dispatcher/decomposer.go) accepts an H1 heading matching \"^# Helix Feature\" (case-insensitive) as a section marker \u2014 each feature H1 starts one Task with priority by section ordering.: decomposer.go: strings.ToUpper(trimmed) + HasPrefix \"# HELIX FEATURE\" (case-insensitive); each H1 calls flush() which priority++ and assigns Priority. Custom test confirmed lowercase 'helix feature' and uppercase 'HELIX FEATURE' both detected with priorities 1,2 by ordering.\n  \u2713 Existing ## PHASE / ## Feature H2 detection is unchanged and its tests (reads phase sections, reads feature sections) still pass.: decomposer.go H2 detection unchanged (strings.Contains(upper,\"PHASE\")||\"FEATURE\"). go test ./pkg/dispatcher/ -run TestDecomposeSpec: 'reads phase sections' and 'reads feature sections' both PASS.\n  \u2713 A spec with only \"# Helix Feature N \u2014 Title\" H1 plus non-keyword H2 sections (e.g. ## 1. Mission) decomposes into exactly 1 task whose Description is the H1 text and Priority is 1.: dispatcher_test.go 'reads helix feature H1 sections' PASSES: exactly 1 task, Description='Helix Feature 1 \u2014 Agent Identity in Forgejo', Priority=1.\n  \u2713 A spec with no Phase/Feature H2 sections and no \"# Helix Feature\" H1 still returns ErrDecomposeFailed (no-section error path preserved).: dispatcher_test.go 'no phase or feature sections' PASSES: spec with '# Empty Spec' + '## Overview' returns ErrDecomposeFailed (len(tasks)==0 path in decomposer.go).\n  \u2713 Live CLI PASS: ./helix dispatcher list-tasks --spec specs/agent-identity.md prints a task list and exits 0 (not the decompose-failed error).: Command output: 'Spec specs/agent-identity.md \u2014 1 task(s)' with 'task-001 \u2014 Helix Feature 1 \u2014 Agent Identity in Forgejo', EXIT CODE: 0.\nAll 5 criteria verified: H1 '# Helix Feature' case-insensitive detection with priority-by-ordering works, existing H2 detection unchanged with passing tests, single-H1 spec decomposes to 1 task with correct Description/Priority, no-section path returns ErrDecomposeFailed, and the live CLI command prints a task list and exits 0.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 DecomposeSpec (pkg/dispatcher/decomposer.go) accepts an H1 heading matching \"^# Helix Feature\" (case-insensitive) as a section marker \u2014 each feature H1 starts one Task with priority by section ordering.: decomposer.go: strings.ToUpper(trimmed) + HasPrefix \"# HELIX FEATURE\" (case-insensitive); each H1 calls flush() which priority++ and assigns Priority. Custom test confirmed lowercase 'helix feature' and uppercase 'HELIX FEATURE' both detected with priorities 1,2 by ordering.\n  \u2713 Exi",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "DecomposeSpec (pkg/dispatcher/decomposer.go) accepts an H1 heading matching \"^# Helix Feature\" (case-insensitive) as a section marker \u2014 each feature H1 starts one Task with priority by section ordering.",
+                "status": "PASS",
+                "detail": "decomposer.go: strings.ToUpper(trimmed) + HasPrefix \"# HELIX FEATURE\" (case-insensitive); each H1 calls flush() which priority++ and assigns Priority. Custom test confirmed lowercase 'helix feature' and uppercase 'HELIX FEATURE' both detected with priorities 1,2 by ordering."
+              },
+              {
+                "criterion": "Existing ## PHASE / ## Feature H2 detection is unchanged and its tests (reads phase sections, reads feature sections) still pass.",
+                "status": "PASS",
+                "detail": "decomposer.go H2 detection unchanged (strings.Contains(upper,\"PHASE\")||\"FEATURE\"). go test ./pkg/dispatcher/ -run TestDecomposeSpec: 'reads phase sections' and 'reads feature sections' both PASS."
+              },
+              {
+                "criterion": "A spec with only \"# Helix Feature N \u2014 Title\" H1 plus non-keyword H2 sections (e.g. ## 1. Mission) decomposes into exactly 1 task whose Description is the H1 text and Priority is 1.",
+                "status": "PASS",
+                "detail": "dispatcher_test.go 'reads helix feature H1 sections' PASSES: exactly 1 task, Description='Helix Feature 1 \u2014 Agent Identity in Forgejo', Priority=1."
+              },
+              {
+                "criterion": "A spec with no Phase/Feature H2 sections and no \"# Helix Feature\" H1 still returns ErrDecomposeFailed (no-section error path preserved).",
+                "status": "PASS",
+                "detail": "dispatcher_test.go 'no phase or feature sections' PASSES: spec with '# Empty Spec' + '## Overview' returns ErrDecomposeFailed (len(tasks)==0 path in decomposer.go)."
+              },
+              {
+                "criterion": "Live CLI PASS: ./helix dispatcher list-tasks --spec specs/agent-identity.md prints a task list and exits 0 (not the decompose-failed error).",
+                "status": "PASS",
+                "detail": "Command output: 'Spec specs/agent-identity.md \u2014 1 task(s)' with 'task-001 \u2014 Helix Feature 1 \u2014 Agent Identity in Forgejo', EXIT CODE: 0."
+              }
+            ],
+            "summary": "All 5 criteria verified: H1 '# Helix Feature' case-insensitive detection with priority-by-ordering works, existing H2 detection unchanged with passing tests, single-H1 spec decomposes to 1 task with correct Description/Priority, no-section path returns ErrDecomposeFailed, and the live CLI command prints a task list and exits 0."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: gap-007\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 tests: \n  \u2713 secrets: \n  \u2713 lint: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 DecomposeSpec (pkg/dispatcher/decomposer.go) accepts an H1 heading matching \"^# Helix Feature\" (case-insensitive) as a section marker \u2014 each feature H1 starts one Task with priority by section ordering.: decomposer.go: strings.ToUpper(trimmed) + HasPrefix \"# HELIX FEATURE\" (case-insensitive); each H1 calls flush() which priority++ and assigns Priority. Custom test confirmed lowercase 'helix feature' and uppercase 'HELIX FEATURE' both detected with priorities 1,2 by ordering.\n  \u2713 Existing ## PHASE / ## Feature H2 detection is unchanged and its tests (reads phase sections, reads feature sections) still pass.: decomposer.go H2 detection unchanged (strings.Contains(upper,\"PHASE\")||\"FEATURE\"). go test ./pkg/dispatcher/ -run TestDecomposeSpec: 'reads phase sections' and 'reads feature sections' both PASS.\n  \u2713 A spec with only \"# Helix Feature N \u2014 Title\" H1 plus non-keyword H2 sections (e.g. ## 1. Mission) decomposes into exactly 1 task whose Description is the H1 text and Priority is 1.: dispatcher_test.go 'reads helix feature H1 sections' PASSES: exactly 1 task, Description='Helix Feature 1 \u2014 Agent Identity in Forgejo', Priority=1.\n  \u2713 A spec with no Phase/Feature H2 sections and no \"# Helix Feature\" H1 still returns ErrDecomposeFailed (no-section error path preserved).: dispatcher_test.go 'no phase or feature sections' PASSES: spec with '# Empty Spec' + '## Overview' returns ErrDecomposeFailed (len(tasks)==0 path in decomposer.go).\n  \u2713 Live CLI PASS: ./helix dispatcher list-tasks --spec specs/agent-identity.md prints a task list and exits 0 (not the decompose-failed error).: Command output: 'Spec specs/agent-identity.md \u2014 1 task(s)' with 'task-001 \u2014 Helix Feature 1 \u2014 Agent Identity in Forgejo', EXIT CODE: 0.\nAll 5 criteria verified: H1 '# Helix Feature' case-insensitive detection with priority-by-ordering works, existing H2 detection unchanged with passing tests, single-H1 spec decomposes to 1 task with correct Description/Priority, no-section path returns ErrDecomposeFailed, and the live CLI command prints a task list and exits 0.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-08T02:48:28.297637"
+}

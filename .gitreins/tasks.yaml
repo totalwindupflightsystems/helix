@@ -641,3 +641,21 @@ tasks:
   status: complete
   created_at: '2026-08-07T13:25:00.000000+00:00'
   completed_at: '2026-08-07T13:22:42.959996+00:00'
+- id: gap-007
+  title: 'GAP-007: dispatcher decomposes Helix''s own spec files'
+  criteria:
+  - "DecomposeSpec (pkg/dispatcher/decomposer.go) accepts an H1 heading matching \"\
+    ^# Helix Feature\" (case-insensitive) as a section marker \u2014 each feature\
+    \ H1 starts one Task with priority by section ordering."
+  - 'Existing ## PHASE / ## Feature H2 detection is unchanged and its tests (reads
+    phase sections, reads feature sections) still pass.'
+  - "A spec with only \"# Helix Feature N \u2014 Title\" H1 plus non-keyword H2 sections\
+    \ (e.g. ## 1. Mission) decomposes into exactly 1 task whose Description is the\
+    \ H1 text and Priority is 1."
+  - A spec with no Phase/Feature H2 sections and no "# Helix Feature" H1 still returns
+    ErrDecomposeFailed (no-section error path preserved).
+  - 'Live CLI PASS: ./helix dispatcher list-tasks --spec specs/agent-identity.md prints
+    a task list and exits 0 (not the decompose-failed error).'
+  status: complete
+  created_at: '2026-08-08T02:47:42.045604+00:00'
+  completed_at: '2026-08-08T02:47:45.904599+00:00'
