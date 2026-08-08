@@ -1,0 +1,125 @@
+{
+  "task_id": "GITLEAKS-FIXTURE-ANNOTATE",
+  "task_title": "Allowlist identity test fixtures in .gitleaks.toml",
+  "task_criteria": [
+    "pkg/identity/syncer_test.go, extra_coverage_test.go, provisioner_http_test.go are exempted via .gitleaks.toml [allowlist] paths (guard builtin scanner skips them when staged)",
+    "The .gitleaks.toml allowlist entry is scoped to pkg/identity/(syncer|extra_coverage|provisioner_http)_test\\.go \u2014 no broad docs/specs/markdown re-narrowing",
+    "gitreins guard passes 4/4 with the change staged (secrets clean, build ok, lint ok, tests ok)",
+    "Full test suite passes (go test -count=1 -timeout 300s ./... \u2192 60/60 packages ok)"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 lint: \n  \u2713 secrets: \n  \u2713 tests: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 pkg/identity/syncer_test.go, extra_coverage_test.go, provisioner_http_test.go are exempted via .gitleaks.toml [allowlist] paths (guard builtin scanner skips them when staged): .gitleaks.toml line 20: '''pkg/identity/(syncer|extra_coverage|provisioner_http)_test\\.go''' matches all 3 fixture files (verified via grep); all 3 test files exist in pkg/identity/. GR-GAP-005 builtin scanner reads this allowlist via _load_gitleaks_allowlist to skip them when staged.\n  \u2713 The .gitleaks.toml allowlist entry is scoped to pkg/identity/(syncer|extra_coverage|provisioner_http)_test\\.go \u2014 no broad docs/specs/markdown re-narrowing: Allowlist paths list contains only \\.git/, \\.gitreins/, \\.gitreins/history/, .*\\.log$, vendor/, and the scoped identity pattern. No docs/specs/md patterns. Verified regex does NOT match docs/guide.md, other test files, or non-test source. Tick #109 narrowing preserved.\n  \u2713 gitreins guard passes 4/4 with the change staged (secrets clean, build ok, lint ok, tests ok): Secrets scan: no secret patterns in .gitleaks.toml (grep exit 1). Build: go build ./... exit 0. Lint: go vet ./... exit 0. Tests: go test -count=1 ./... 60/60 ok. Commit message confirms guard PASS 4/4 (diff mode, full-suite safety trigger).\n  \u2713 Full test suite passes (go test -count=1 -timeout 300s ./... \u2192 60/60 packages ok): go test -count=1 -timeout 300s ./... with TMPDIR=/home/kara/.cache/go-tmp \u2192 60/60 packages ok, 0 FAIL (output /tmp/testout2.txt).\nAll 4 criteria verified: .gitleaks.toml allowlist scoped to the 3 identity fixture files, no broad docs/specs/md patterns, guard 4/4 passes, and full test suite 60/60 packages ok.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 pkg/identity/syncer_test.go, extra_coverage_test.go, provisioner_http_test.go are exempted via .gitleaks.toml [allowlist] paths (guard builtin scanner skips them when staged): .gitleaks.toml line 20: '''pkg/identity/(syncer|extra_coverage|provisioner_http)_test\\.go''' matches all 3 fixture files (verified via grep); all 3 test files exist in pkg/identity/. GR-GAP-005 builtin scanner reads this allowlist via _load_gitleaks_allowlist to skip them when staged.\n  \u2713 The .gitleaks.toml al",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "pkg/identity/syncer_test.go, extra_coverage_test.go, provisioner_http_test.go are exempted via .gitleaks.toml [allowlist] paths (guard builtin scanner skips them when staged)",
+                "status": "PASS",
+                "detail": ".gitleaks.toml line 20: '''pkg/identity/(syncer|extra_coverage|provisioner_http)_test\\.go''' matches all 3 fixture files (verified via grep); all 3 test files exist in pkg/identity/. GR-GAP-005 builtin scanner reads this allowlist via _load_gitleaks_allowlist to skip them when staged."
+              },
+              {
+                "criterion": "The .gitleaks.toml allowlist entry is scoped to pkg/identity/(syncer|extra_coverage|provisioner_http)_test\\.go \u2014 no broad docs/specs/markdown re-narrowing",
+                "status": "PASS",
+                "detail": "Allowlist paths list contains only \\.git/, \\.gitreins/, \\.gitreins/history/, .*\\.log$, vendor/, and the scoped identity pattern. No docs/specs/md patterns. Verified regex does NOT match docs/guide.md, other test files, or non-test source. Tick #109 narrowing preserved."
+              },
+              {
+                "criterion": "gitreins guard passes 4/4 with the change staged (secrets clean, build ok, lint ok, tests ok)",
+                "status": "PASS",
+                "detail": "Secrets scan: no secret patterns in .gitleaks.toml (grep exit 1). Build: go build ./... exit 0. Lint: go vet ./... exit 0. Tests: go test -count=1 ./... 60/60 ok. Commit message confirms guard PASS 4/4 (diff mode, full-suite safety trigger)."
+              },
+              {
+                "criterion": "Full test suite passes (go test -count=1 -timeout 300s ./... \u2192 60/60 packages ok)",
+                "status": "PASS",
+                "detail": "go test -count=1 -timeout 300s ./... with TMPDIR=/home/kara/.cache/go-tmp \u2192 60/60 packages ok, 0 FAIL (output /tmp/testout2.txt)."
+              }
+            ],
+            "summary": "All 4 criteria verified: .gitleaks.toml allowlist scoped to the 3 identity fixture files, no broad docs/specs/md patterns, guard 4/4 passes, and full test suite 60/60 packages ok."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: GITLEAKS-FIXTURE-ANNOTATE\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 lint: \n  \u2713 secrets: \n  \u2713 tests: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 pkg/identity/syncer_test.go, extra_coverage_test.go, provisioner_http_test.go are exempted via .gitleaks.toml [allowlist] paths (guard builtin scanner skips them when staged): .gitleaks.toml line 20: '''pkg/identity/(syncer|extra_coverage|provisioner_http)_test\\.go''' matches all 3 fixture files (verified via grep); all 3 test files exist in pkg/identity/. GR-GAP-005 builtin scanner reads this allowlist via _load_gitleaks_allowlist to skip them when staged.\n  \u2713 The .gitleaks.toml allowlist entry is scoped to pkg/identity/(syncer|extra_coverage|provisioner_http)_test\\.go \u2014 no broad docs/specs/markdown re-narrowing: Allowlist paths list contains only \\.git/, \\.gitreins/, \\.gitreins/history/, .*\\.log$, vendor/, and the scoped identity pattern. No docs/specs/md patterns. Verified regex does NOT match docs/guide.md, other test files, or non-test source. Tick #109 narrowing preserved.\n  \u2713 gitreins guard passes 4/4 with the change staged (secrets clean, build ok, lint ok, tests ok): Secrets scan: no secret patterns in .gitleaks.toml (grep exit 1). Build: go build ./... exit 0. Lint: go vet ./... exit 0. Tests: go test -count=1 ./... 60/60 ok. Commit message confirms guard PASS 4/4 (diff mode, full-suite safety trigger).\n  \u2713 Full test suite passes (go test -count=1 -timeout 300s ./... \u2192 60/60 packages ok): go test -count=1 -timeout 300s ./... with TMPDIR=/home/kara/.cache/go-tmp \u2192 60/60 packages ok, 0 FAIL (output /tmp/testout2.txt).\nAll 4 criteria verified: .gitleaks.toml allowlist scoped to the 3 identity fixture files, no broad docs/specs/md patterns, guard 4/4 passes, and full test suite 60/60 packages ok.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-08T19:43:56.206039"
+}
