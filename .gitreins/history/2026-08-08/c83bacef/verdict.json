@@ -1,0 +1,119 @@
+{
+  "task_id": "GAP-008",
+  "task_title": "Known-friends default path fallback + NO_AGENTS on empty file",
+  "task_criteria": [
+    "helix identity provision with HELIX_KNOWN_FRIENDS pointing at an empty file exits 0 and prints a clear NO_AGENTS message (no hermes-demo prod-path error)",
+    "The --known-friends flag default resolves via os.Stat-based fallback (prod path if present, else ~/.helix/known-friends.json)",
+    "A missing known-friends file yields an error that includes a hint to pass --known-friends or set HELIX_KNOWN_FRIENDS"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 tests: \n  \u2713 lint: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 helix identity provision with HELIX_KNOWN_FRIENDS pointing at an empty file exits 0 and prints a clear NO_AGENTS message (no hermes-demo prod-path error): cmd/helix-identity/main.go:265-268 runProvision prints 'NO_AGENTS: known-friends.json contains no agents' and returns nil (exit 0) when len(kf.Agents)==0; pkg/identity/syncer.go:134-138 LoadKnownFriends returns empty agent map with nil error for empty files. Test TestRunProvision_EmptyKnownFriends PASS.\n  \u2713 The --known-friends flag default resolves via os.Stat-based fallback (prod path if present, else ~/.helix/known-friends.json): cmd/helix-identity/main.go:851-860 defaultKnownFriendsPath() uses os.Stat(prod); returns prod if present else filepath.Join(home,'.helix','known-friends.json'). Flag default is envOr(envKnownFriends, defaultKnownFriendsPath()) at line 129. Test TestDefaultKnownFriendsPath_FallsBackToUserLocal PASS.\n  \u2713 A missing known-friends file yields an error that includes a hint to pass --known-friends or set HELIX_KNOWN_FRIENDS: pkg/identity/syncer.go:128 FILE_NOT_FOUND error message includes '(pass --known-friends or set HELIX_KNOWN_FRIENDS to point at your known-friends.json)'. Existing TestLoadKnownFriends nonexistent_file subtest verifies FILE_NOT_FOUND substring.\nAll three GAP-008 criteria are implemented in the working tree (commit befd59c) and verified by passing tests: NO_AGENTS on empty file with exit 0, os.Stat-based default path fallback, and FILE_NOT_FOUND hint for missing known-friends file.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 helix identity provision with HELIX_KNOWN_FRIENDS pointing at an empty file exits 0 and prints a clear NO_AGENTS message (no hermes-demo prod-path error): cmd/helix-identity/main.go:265-268 runProvision prints 'NO_AGENTS: known-friends.json contains no agents' and returns nil (exit 0) when len(kf.Agents)==0; pkg/identity/syncer.go:134-138 LoadKnownFriends returns empty agent map with nil error for empty files. Test TestRunProvision_EmptyKnownFriends PASS.\n  \u2713 The --known-friends fla",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "helix identity provision with HELIX_KNOWN_FRIENDS pointing at an empty file exits 0 and prints a clear NO_AGENTS message (no hermes-demo prod-path error)",
+                "status": "PASS",
+                "detail": "cmd/helix-identity/main.go:265-268 runProvision prints 'NO_AGENTS: known-friends.json contains no agents' and returns nil (exit 0) when len(kf.Agents)==0; pkg/identity/syncer.go:134-138 LoadKnownFriends returns empty agent map with nil error for empty files. Test TestRunProvision_EmptyKnownFriends PASS."
+              },
+              {
+                "criterion": "The --known-friends flag default resolves via os.Stat-based fallback (prod path if present, else ~/.helix/known-friends.json)",
+                "status": "PASS",
+                "detail": "cmd/helix-identity/main.go:851-860 defaultKnownFriendsPath() uses os.Stat(prod); returns prod if present else filepath.Join(home,'.helix','known-friends.json'). Flag default is envOr(envKnownFriends, defaultKnownFriendsPath()) at line 129. Test TestDefaultKnownFriendsPath_FallsBackToUserLocal PASS."
+              },
+              {
+                "criterion": "A missing known-friends file yields an error that includes a hint to pass --known-friends or set HELIX_KNOWN_FRIENDS",
+                "status": "PASS",
+                "detail": "pkg/identity/syncer.go:128 FILE_NOT_FOUND error message includes '(pass --known-friends or set HELIX_KNOWN_FRIENDS to point at your known-friends.json)'. Existing TestLoadKnownFriends nonexistent_file subtest verifies FILE_NOT_FOUND substring."
+              }
+            ],
+            "summary": "All three GAP-008 criteria are implemented in the working tree (commit befd59c) and verified by passing tests: NO_AGENTS on empty file with exit 0, os.Stat-based default path fallback, and FILE_NOT_FOUND hint for missing known-friends file."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: GAP-008\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 tests: \n  \u2713 lint: \n  \u2713 secrets: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 helix identity provision with HELIX_KNOWN_FRIENDS pointing at an empty file exits 0 and prints a clear NO_AGENTS message (no hermes-demo prod-path error): cmd/helix-identity/main.go:265-268 runProvision prints 'NO_AGENTS: known-friends.json contains no agents' and returns nil (exit 0) when len(kf.Agents)==0; pkg/identity/syncer.go:134-138 LoadKnownFriends returns empty agent map with nil error for empty files. Test TestRunProvision_EmptyKnownFriends PASS.\n  \u2713 The --known-friends flag default resolves via os.Stat-based fallback (prod path if present, else ~/.helix/known-friends.json): cmd/helix-identity/main.go:851-860 defaultKnownFriendsPath() uses os.Stat(prod); returns prod if present else filepath.Join(home,'.helix','known-friends.json'). Flag default is envOr(envKnownFriends, defaultKnownFriendsPath()) at line 129. Test TestDefaultKnownFriendsPath_FallsBackToUserLocal PASS.\n  \u2713 A missing known-friends file yields an error that includes a hint to pass --known-friends or set HELIX_KNOWN_FRIENDS: pkg/identity/syncer.go:128 FILE_NOT_FOUND error message includes '(pass --known-friends or set HELIX_KNOWN_FRIENDS to point at your known-friends.json)'. Existing TestLoadKnownFriends nonexistent_file subtest verifies FILE_NOT_FOUND substring.\nAll three GAP-008 criteria are implemented in the working tree (commit befd59c) and verified by passing tests: NO_AGENTS on empty file with exit 0, os.Stat-based default path fallback, and FILE_NOT_FOUND hint for missing known-friends file.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-08T12:20:09.902074"
+}

@@ -659,3 +659,15 @@ tasks:
   status: complete
   created_at: '2026-08-08T02:47:42.045604+00:00'
   completed_at: '2026-08-08T02:47:45.904599+00:00'
+- id: GAP-008
+  title: Known-friends default path fallback + NO_AGENTS on empty file
+  criteria:
+  - helix identity provision with HELIX_KNOWN_FRIENDS pointing at an empty file exits
+    0 and prints a clear NO_AGENTS message (no hermes-demo prod-path error)
+  - The --known-friends flag default resolves via os.Stat-based fallback (prod path
+    if present, else ~/.helix/known-friends.json)
+  - A missing known-friends file yields an error that includes a hint to pass --known-friends
+    or set HELIX_KNOWN_FRIENDS
+  status: complete
+  created_at: '2026-08-08T12:18:47.534981+00:00'
+  completed_at: '2026-08-08T12:18:54.484196+00:00'
