@@ -14,6 +14,11 @@ import (
 // The spec file is expected to use ## headings. A line like "## PHASE 1: Title"
 // or "## Feature: Title" starts a new task. The heading text becomes the task
 // description; the body until the next heading is captured as context.
+//
+// Helix's own specs (specs/*.md) use a different layout: an H1 title of the
+// form "# Helix Feature N — Title" with H2 sections ("## 1. Mission", etc.)
+// that carry no Phase/Feature keywords. An H1 matching "^# Helix Feature"
+// (case-insensitive) also starts a new task so those specs decompose cleanly.
 func DecomposeSpec(specPath string) ([]Task, error) {
 	data, err := os.ReadFile(specPath)
 	if err != nil {
@@ -45,6 +50,16 @@ func DecomposeSpec(specPath string) ([]Task, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		trimmed := strings.TrimSpace(line)
+
+		// Detect H1 "# Helix Feature N — Title" headings — Helix's own specs
+		// use this layout (specs/*.md) with H2 sections that carry no
+		// Phase/Feature keywords. Each feature H1 starts a new task.
+		upperLine := strings.ToUpper(trimmed)
+		if strings.HasPrefix(upperLine, "# HELIX FEATURE") {
+			flush()
+			currentHeading = strings.TrimPrefix(trimmed, "# ")
+			continue
+		}
 
 		// Detect ## headings
 		if strings.HasPrefix(trimmed, "## ") {

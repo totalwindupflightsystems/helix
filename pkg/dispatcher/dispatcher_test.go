@@ -152,6 +152,39 @@ Add RBAC.
 		}
 	})
 
+	t.Run("reads helix feature H1 sections", func(t *testing.T) {
+		dir := t.TempDir()
+		specPath := filepath.Join(dir, "agent-identity.md")
+		content := `# Helix Feature 1 — Agent Identity in Forgejo
+
+## 1. Mission
+Provide identity for agents.
+
+## 2. Scope
+In scope (v1).
+
+## 3. Inputs
+Agent registry.
+`
+		if err := os.WriteFile(specPath, []byte(content), 0o644); err != nil {
+			t.Fatalf("WriteFile failed: %v", err)
+		}
+
+		tasks, err := DecomposeSpec(specPath)
+		if err != nil {
+			t.Fatalf("DecomposeSpec() error: %v", err)
+		}
+		if len(tasks) != 1 {
+			t.Fatalf("DecomposeSpec() returned %d tasks, want 1", len(tasks))
+		}
+		if tasks[0].Description != "Helix Feature 1 — Agent Identity in Forgejo" {
+			t.Errorf("task[0].Description = %q, want %q", tasks[0].Description, "Helix Feature 1 — Agent Identity in Forgejo")
+		}
+		if tasks[0].Priority != 1 {
+			t.Errorf("task[0].Priority = %d, want 1", tasks[0].Priority)
+		}
+	})
+
 	t.Run("file not found", func(t *testing.T) {
 		_, err := DecomposeSpec("/nonexistent/spec.md")
 		if err == nil {
