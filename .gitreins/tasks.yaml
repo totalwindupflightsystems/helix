@@ -686,3 +686,29 @@ tasks:
   status: complete
   created_at: '2026-08-08T19:39:32.060498+00:00'
   completed_at: '2026-08-08T19:39:37.141062+00:00'
+- id: gap-010
+  title: "GETTING-STARTED prompt example v2\u2192v1 + runner flat-layout"
+  criteria:
+  - GETTING-STARTED.md step 7 documents helix prompt register coding-hermes v1 and
+    helix prompt test coding-hermes v1 (not v2); grep -n 'coding-hermes v2' docs/GETTING-STARTED.md
+    returns nothing
+  - .promptfoo.yaml prompts list includes file://prompts/coding-hermes/v1.md and a
+    test case whose description contains coding-hermes
+  - Running ./helix prompt test coding-hermes v1 from repo root exits 0
+  - pkg/prompt/runner.go parsePromptsPath parses flat prompts/<component>/v<N>.md
+    (nested still works); TestParsePromptsPath_FlatLayout passes
+  status: complete
+  created_at: '2026-08-09T12:11:33.522560+00:00'
+  completed_at: '2026-08-09T12:12:26.058950+00:00'
+- id: gap-011
+  title: "Dead /opt/hermes-demo known-friends path \u2192 ~/.helix in specs/config/CLI"
+  criteria:
+  - grep -rn 'hermes-demo' specs/ pkg/config/ cmd/ returns 0 (excluding test assertions
+    about the old default)
+  - pkg/config/defaults.go Identity.KnownFriendsPath defaults to ~/.helix/known-friends.json
+  - cmd/helix-estimate defaultFriendsPath, cmd/helix-identity defaultKnownFriendsPath,
+    cmd/helix-negotiate defaultConfigPath no longer reference /opt/hermes-demo
+  - go build ./... + go test ./... 60/60 packages pass
+  status: complete
+  created_at: '2026-08-09T12:12:05.640318+00:00'
+  completed_at: '2026-08-09T12:12:26.058950+00:00'
