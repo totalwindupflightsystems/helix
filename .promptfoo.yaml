@@ -3,6 +3,7 @@
 
 prompts:
   - file://prompts/agent-identity/v1.0.0/prompt.md
+  - file://prompts/coding-hermes/v1.md
 
 providers:
   - id: deepseek:deepseek-v4-flash
@@ -25,5 +26,12 @@ tests:
     assert:
       - type: not-contains
         value: "api.openai.com"
+      - type: not-contains
+        value: "TODO"
+
+  - description: "coding-hermes/v1: onboarding prompt is self-consistent"
+    assert:
+      - type: contains
+        value: "You are coding-hermes"
       - type: not-contains
         value: "TODO"

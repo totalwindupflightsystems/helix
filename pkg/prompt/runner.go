@@ -268,6 +268,7 @@ func resolvePromptPath(root, ref string) string {
 }
 
 // parsePromptsPath parses `prompts/<component>/<version>/prompt.md`
+// (nested) or `prompts/<component>/v<N>.md` (flat layout, per AGENTS.md)
 // into (component, version, ok). Returns ok=false for any other shape.
 // `file://` prefix is stripped before parsing.
 func parsePromptsPath(file string) (string, string, bool) {
@@ -277,11 +278,16 @@ func parsePromptsPath(file string) (string, string, bool) {
 	}
 	clean = strings.TrimPrefix(clean, "prompts/")
 	parts := strings.SplitN(clean, "/", 4)
-	// Expected: ["<component>", "<version>", "prompt.md"]
-	if len(parts) != 3 || parts[2] != "prompt.md" {
-		return "", "", false
+	// Nested: ["<component>", "<version>", "prompt.md"]
+	if len(parts) == 3 && parts[2] == "prompt.md" {
+		return parts[0], parts[1], true
 	}
-	return parts[0], parts[1], true
+	// Flat: ["<component>", "v<N>.md"] → version keeps the "v" prefix
+	// (matches findFlatPrompts and ResolvePromptPath conventions).
+	if len(parts) == 2 && strings.HasPrefix(parts[1], "v") && strings.HasSuffix(parts[1], ".md") {
+		return parts[0], strings.TrimSuffix(parts[1], ".md"), true
+	}
+	return "", "", false
 }
 
 // testTargetsPrompt returns true if the YAML test should run against

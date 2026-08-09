@@ -117,9 +117,9 @@ README's Install section).
 Prompts are versioned, content-hashed, and linked to commits:
 
 ```bash
-helix prompt register coding-hermes v2         # registers prompts/<component>/<version>/prompt.md
+helix prompt register coding-hermes v1         # registers prompts/<component>/v<N>.md (or nested prompt.md)
 helix prompt list                              # all registered versions
-helix prompt test coding-hermes v2             # offline PromptFoo assertions
+helix prompt test coding-hermes v1             # offline PromptFoo assertions
 # helix prompt verify <commit-sha> accepts both sha256: and path-style
 # trailers (flat prompts/<name>/v<N>.md or nested
 # prompts/<component>/<version>/prompt.md); path-style refs verify that the

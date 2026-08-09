@@ -451,6 +451,20 @@ func TestParsePromptsPath_WithFilePrefix(t *testing.T) {
 	assert.Equal(t, "v1", v)
 }
 
+// TestParsePromptsPath_FlatLayout — flat prompts/<c>/v<N>.md (per
+// AGENTS.md) parses with the "v" prefix preserved in the version.
+func TestParsePromptsPath_FlatLayout(t *testing.T) {
+	c, v, ok := parsePromptsPath("prompts/coding-hermes/v1.md")
+	require.True(t, ok)
+	assert.Equal(t, "coding-hermes", c)
+	assert.Equal(t, "v1", v)
+
+	c2, v2, ok2 := parsePromptsPath("file://prompts/coding-hermes/v1.md")
+	require.True(t, ok2)
+	assert.Equal(t, "coding-hermes", c2)
+	assert.Equal(t, "v1", v2)
+}
+
 // TestParsePromptsPath_WrongShape — anything else returns ok=false.
 func TestParsePromptsPath_WrongShape(t *testing.T) {
 	cases := []string{
