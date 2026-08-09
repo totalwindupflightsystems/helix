@@ -161,7 +161,7 @@ gitreins --version
 
 ### 5.1 Verify known-friends.json
 ```bash
-cat /opt/hermes-demo/.hermes/h4f/known-friends.json
+cat ~/.helix/known-friends.json
 # Must contain: wojons, llopez, dtoole, jrestrepo
 # If missing or empty ({}): populate from H4F production host
 ```
@@ -177,7 +177,7 @@ The H4F bridge cron (`every 5 min`) handles:
 For local Helix development without H4F:
 ```bash
 # Simulate agent identity without full H4F deployment
-cp /opt/hermes-demo/.hermes/h4f/known-friends.json ~/.helix/known-friends.json
+cp ~/.helix/known-friends.json ~/.helix/known-friends.json
 ```
 
 ---
@@ -316,7 +316,7 @@ curl -s http://localhost:8765/v1/health | python3 -c "import sys,json; assert js
 cd /home/kara/helix && go build ./cmd/... && echo "BUILD OK"
 
 # 4. Helix identity dry-run works (Feature 1)
-./helix-identity sync --dry-run --known-friends /opt/hermes-demo/.hermes/h4f/known-friends.json
+./helix-identity sync --dry-run --known-friends ~/.helix/known-friends.json
 
 # 5. Helix sandbox dry-run works
 ./helix-sandbox run --dry-run -- echo "hello"

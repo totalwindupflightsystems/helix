@@ -458,7 +458,7 @@ func CheckServices() error {
 - **Forgejo:** `/data/gitea/gitea.db` (SQLite), `/data/git/repositories/` (git repos)
 - **LangFuse:** PostgreSQL database
 - **Hivemind:** `/data/memory-bank/` (agent memory)
-- **known-friends.json:** `/opt/hermes-demo/.hermes/h4f/known-friends.json`
+- **known-friends.json:** `~/.helix/known-friends.json`
 
 ### Backup script:
 ```bash
@@ -470,7 +470,7 @@ BACKUP_DIR=/opt/helix/backups/$DATE
 mkdir -p $BACKUP_DIR
 docker exec forgejo-helix tar czf - /data > $BACKUP_DIR/forgejo.tar.gz
 docker exec langfuse-db-helix pg_dump -U langfuse langfuse > $BACKUP_DIR/langfuse.sql
-cp /opt/hermes-demo/.hermes/h4f/known-friends.json $BACKUP_DIR/
+cp ~/.helix/known-friends.json $BACKUP_DIR/
 ```
 
 ---

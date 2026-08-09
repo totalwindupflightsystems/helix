@@ -37,7 +37,9 @@ import (
 
 // DefaultKnownFriendsPath is the canonical location of known-friends.json on
 // the H4F host. It is overridable via --known-friends / HELIX_KNOWN_FRIENDS.
-const DefaultKnownFriendsPath = "/opt/hermes-demo/.hermes/h4f/known-friends.json"
+// GAP-011: the old cross-deployment /opt/hermes-demo path is dead — the
+// user-local ~/.helix location is the default (expanded at use sites).
+const DefaultKnownFriendsPath = "~/.helix/known-friends.json"
 
 // DefaultSSHKeyDir is the default root for per-agent key material. The
 // syncer creates ~/.helix/keys/<agent>/ beneath this path.

@@ -173,7 +173,7 @@ cp ~/.helix/state.json ~/.helix/state.json.bak.$(date +%Y%m%d)
 
 # 2. Remove and re-sync
 rm ~/.helix/state.json
-./helix-identity sync --known-friends /opt/hermes-demo/.hermes/h4f/known-friends.json
+./helix-identity sync --known-friends ~/.helix/known-friends.json
 ```
 
 ### HC-004: SSH Key Conflict

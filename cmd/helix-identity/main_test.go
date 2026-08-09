@@ -582,17 +582,9 @@ func TestRunProvision_EmptyKnownFriends(t *testing.T) {
 }
 
 func TestDefaultKnownFriendsPath_FallsBackToUserLocal(t *testing.T) {
-	// GAP-008: when the prod path is absent (the normal case), the default
-	// resolves to ~/.helix/known-friends.json so error messages point at a
-	// sensible user-local location instead of a cross-deployment prod path.
-	const prod = "/opt/hermes-demo/.hermes/h4f/known-friends.json"
-	if _, err := os.Stat(prod); err == nil {
-		t.Skip("prod known-friends path present on this host")
-	}
+	// GAP-008/GAP-011: the default resolves to ~/.helix/known-friends.json
+	// (user-local) — no cross-deployment prod path is consulted at all.
 	got := defaultKnownFriendsPath()
-	if got == prod {
-		t.Errorf("default resolved to prod path %q — should fall back to user-local", got)
-	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		t.Fatal(err)

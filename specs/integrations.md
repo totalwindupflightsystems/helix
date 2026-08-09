@@ -860,8 +860,8 @@ func (h *H4FAdapter) ContainerStatus(name string) (*ContainerInfo, error)
 
 ```yaml
 # h4f.yaml
-known_friends_path: "/opt/hermes-demo/.hermes/h4f/known-friends.json"
-compose_dir: "/opt/hermes-demo"
+known_friends_path: "~/.helix/known-friends.json"
+compose_dir: "~/.helix"
 bridge_endpoint: "http://bridge:9000"
 ```
 

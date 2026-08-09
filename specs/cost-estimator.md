@@ -57,7 +57,7 @@ estimation algorithm, dry-run mode, error taxonomy) implemented.
 
 ### 3.1 Agent Budget Registry — known-friends.json
 
-Source: `/opt/hermes-demo/.hermes/h4f/known-friends.json` (H4F host).
+Source: `~/.helix/known-friends.json` (H4F host).
 
 Budget-relevant fields per agent:
 
@@ -368,7 +368,7 @@ is a projection. Reconciliation:
 ### Inputs
 ```
 ~/.helix/pricing.yaml              Provider pricing data (manual updates)
-/opt/hermes-demo/.hermes/h4f/
+~/.helix/
   known-friends.json               Agent budget + tier data
 ```
 

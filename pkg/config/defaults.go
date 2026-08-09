@@ -32,7 +32,7 @@ func Defaults() *Config {
 			TestMode:      "diff",
 		},
 		Identity: IdentityConfig{
-			KnownFriendsPath: "/opt/hermes-demo/.hermes/h4f/known-friends.json",
+			KnownFriendsPath: "~/.helix/known-friends.json",
 			SSHKeyDir:        "~/.helix/keys",
 			StatePath:        "~/.helix/state.json",
 		},

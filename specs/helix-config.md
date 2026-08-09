@@ -82,7 +82,7 @@ gitreins:
 
 # ── Agent Identity (Feature 1) ─────────────────────────────
 identity:
-  known_friends_path: "/opt/hermes-demo/.hermes/h4f/known-friends.json"
+  known_friends_path: "~/.helix/known-friends.json"
   ssh_key_dir: "~/.helix/keys"
   state_path: "~/.helix/state.json"
 

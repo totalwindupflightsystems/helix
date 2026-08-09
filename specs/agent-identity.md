@@ -53,7 +53,7 @@ error taxonomy) implemented and exercised.
 
 ### 3.1 Agent Registry — known-friends.json
 
-Location: `/opt/hermes-demo/.hermes/h4f/known-friends.json` (H4F host:
+Location: `~/.helix/known-friends.json` (H4F host:
 37.27.250.128). Overridable via `--known-friends` / `HELIX_KNOWN_FRIENDS`.
 
 ```json
@@ -187,7 +187,7 @@ Every persistent flag resolves as: **CLI flag > env var > default**.
 | `--admin-token` | `FORGEJO_ADMIN_TOKEN` | (none — required) |
 | `--admin-user` | `FORGEJO_ADMIN_USER` | (none — required for sync) |
 | `--admin-password` | `FORGEJO_ADMIN_PASSWORD` | (none — required for sync) |
-| `--known-friends` | `HELIX_KNOWN_FRIENDS` | `/opt/hermes-demo/.hermes/h4f/known-friends.json` |
+| `--known-friends` | `HELIX_KNOWN_FRIENDS` | `~/.helix/known-friends.json` |
 | `--ssh-key-dir` | `HELIX_SSH_KEY_DIR` | `~/.helix/keys` |
 | `--state-path` | `HELIX_STATE_PATH` | `~/.helix/state.json` |
 | `--dry-run` | — | `false` |
@@ -304,7 +304,7 @@ Every operation is safe to re-run:
 
 ### Inputs
 ```
-/opt/hermes-demo/.hermes/h4f/known-friends.json   (or --known-friends path)
+~/.helix/known-friends.json   (or --known-friends path)
 ```
 
 ### Outputs (per agent)

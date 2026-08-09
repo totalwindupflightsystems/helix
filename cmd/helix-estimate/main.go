@@ -200,10 +200,14 @@ func defaultPricingPath() string {
 }
 
 // defaultFriendsPath returns the known-friends.json budget registry location.
+// The user-local path (~/.helix/known-friends.json) is preferred when it
+// exists; otherwise the repo testdata fixture is used (GAP-011).
 func defaultFriendsPath() string {
-	const prod = "/opt/hermes-demo/.hermes/h4f/known-friends.json"
-	if _, err := os.Stat(prod); err == nil {
-		return prod
+	if home, err := os.UserHomeDir(); err == nil {
+		p := filepath.Join(home, ".helix", "known-friends.json")
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
 	}
 	return testdataPath("pkg/estimate/testdata/known-friends.json")
 }

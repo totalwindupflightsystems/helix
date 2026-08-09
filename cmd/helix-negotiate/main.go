@@ -399,10 +399,6 @@ func defaultConfigPath() string {
 			return p
 		}
 	}
-	const prod = "/opt/hermes-demo/.hermes/h4f/known-friends.json"
-	if _, err := os.Stat(prod); err == nil {
-		return prod
-	}
 	return "pkg/estimate/testdata/known-friends.json"
 }
 

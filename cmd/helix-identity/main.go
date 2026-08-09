@@ -843,20 +843,15 @@ func envOr(name, fallback string) string {
 	return fallback
 }
 
-// defaultKnownFriendsPath returns the best known-friends.json location: the
-// production path if it exists, otherwise ~/.helix/known-friends.json (the
-// user-local default). Falling back to a user-local path keeps error
-// messages pointing at a sensible location instead of a cross-deployment
-// prod path when the file is absent (GAP-008).
+// defaultKnownFriendsPath returns the user-local known-friends.json location
+// (~/.helix/known-friends.json). Keeping the default user-local means error
+// messages point at a sensible location instead of a cross-deployment prod
+// path when the file is absent (GAP-008, GAP-011).
 func defaultKnownFriendsPath() string {
-	const prod = "/opt/hermes-demo/.hermes/h4f/known-friends.json"
-	if _, err := os.Stat(prod); err == nil {
-		return prod
-	}
 	if home, err := os.UserHomeDir(); err == nil {
 		return filepath.Join(home, ".helix", "known-friends.json")
 	}
-	return prod
+	return "~/.helix/known-friends.json"
 }
 
 // ---------------------------------------------------------------------------

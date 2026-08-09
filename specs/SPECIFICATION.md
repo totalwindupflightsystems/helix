@@ -1122,13 +1122,13 @@ This section specifies each of the 17 Helix components in implementation detail:
 | **Language** | Docker Compose + Shell |
 | **Tests** | 255+ tests (provisioning pipeline) |
 | **Repo** | `Hermes4Friends/infrastructure` → `/home/kara/hermes4friends-infra/` |
-| **Production** | `/opt/hermes-demo/` on Hetzner host |
+| **Production** | `~/.helix/` on local host |
 
 **Interfaces:**
 
 1. **Provisioning pipeline** — `provision_friend(name, tier)`, `offboard_friend(name)`, `update_friend(name)`, `provision_openrouter_key(name, tier)`.
 2. **Doctor/auto-repair** — `doctor.fix_dead_keys()` runs every 5 min via bridge cron. Detects 401 keys, re-provisions.
-3. **known-friends.json** — Identity registry: `{"friend_name": {"tier": "pro|flash", "status": "active|offboarded", ...}}`. Source of truth at `/opt/hermes-demo/.hermes/h4f/known-friends.json`.
+3. **known-friends.json** — Identity registry: `{"friend_name": {"tier": "pro|flash", "status": "active|offboarded", ...}}`. Source of truth at `~/.helix/known-friends.json`.
 4. **Bridge** — Nextcloud bridge for identity sync. Bidirectional: NC ↔ workspace ↔ container.
 5. **Consistency layer** — Storage Box ↔ container env ↔ `.env` file sync. Runs every cron cycle.
 6. **Guardrail enforcer** — OpenRouter key guardrail assignment. Auto-assigns unassigned keys to Flash tier.
@@ -1906,7 +1906,7 @@ Helix agents are first-class actors with real identities, scoped permissions, an
 
 ### 5.1 Identity Source: known-friends.json
 
-**Source of truth:** `/opt/hermes-demo/.hermes/h4f/known-friends.json` (production, Hetzner host).
+**Source of truth:** `~/.helix/known-friends.json` (production, Hetzner host).
 
 **Local copy:** `/home/kara/.hermes/h4f/known-friends.json` (currently empty `{}` — use production as ground truth).
 

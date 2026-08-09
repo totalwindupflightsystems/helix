@@ -1332,8 +1332,8 @@ func TestDefaultPricingPath_WithHome(t *testing.T) {
 	}
 }
 
-// TestDefaultFriendsPath_Always returns a path — both the prod-path-hit and
-// fallback-testdata-hit branches produce a valid filename.
+// TestDefaultFriendsPath_Always returns a path — both the user-local-path-hit
+// and fallback-testdata-hit branches produce a valid filename.
 func TestDefaultFriendsPath_Always(t *testing.T) {
 	path := defaultFriendsPath()
 	if path == "" {
@@ -1342,11 +1342,11 @@ func TestDefaultFriendsPath_Always(t *testing.T) {
 	if !strings.HasSuffix(path, "known-friends.json") {
 		t.Errorf("defaultFriendsPath should end with known-friends.json: %q", path)
 	}
-	// Branches: either /opt/hermes-demo/.hermes/h4f/known-friends.json OR
-	// pkg/estimate/testdata/known-friends.json
-	if !strings.Contains(path, "opt/hermes-demo/.hermes/h4f/known-friends.json") &&
+	// Branches: either ~/.helix/known-friends.json (user-local default) OR
+	// pkg/estimate/testdata/known-friends.json (repo fixture fallback)
+	if !strings.Contains(path, ".helix/known-friends.json") &&
 		!strings.Contains(path, "pkg/estimate/testdata/known-friends.json") {
-		t.Errorf("unexpected defaultFriendsPath: %q (want prod or testdata fallback)", path)
+		t.Errorf("unexpected defaultFriendsPath: %q (want user-local or testdata fallback)", path)
 	}
 }
 
