@@ -18,6 +18,9 @@ bin/
 # Hilo — local cache files (rebuildable)
 .vfs/graph/graph.db
 .vfs/graph/graph.db.wal
+
+# Stray local tool DBs
+dagger.db
 .vfs/graph/.last_warm
 
 # Secrets and environment files
