@@ -364,6 +364,61 @@ func TestExecSubcommand(t *testing.T) {
 	})
 }
 
+// sleep30PIDs returns the current set of PIDs whose command line matches
+// `sleep 30` (pgrep -f). pgrep exit code 1 means "no matches" and yields
+// an empty set; any other failure fails the test so the BUG-002
+// regression check cannot pass vacuously.
+func sleep30PIDs(t *testing.T) map[string]bool {
+	t.Helper()
+	pids := map[string]bool{}
+	out, err := exec.Command("pgrep", "-f", "sleep 30").Output()
+	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok && ee.ExitCode() == 1 {
+			return pids
+		}
+		t.Fatalf("pgrep -f \"sleep 30\" failed: %v", err)
+	}
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if line != "" {
+			pids[line] = true
+		}
+	}
+	return pids
+}
+
+func TestExecSubcommandNoOrphanedGrandchild(t *testing.T) {
+	oldVerbose := verbose
+	oldDryRun := dryRun
+	verbose = false
+	dryRun = false
+	defer func() {
+		verbose = oldVerbose
+		dryRun = oldDryRun
+	}()
+
+	// BUG-002 regression: `sh -c sleep 30` forks a grandchild that can
+	// outlive the direct child. If the timeout kills only the direct
+	// child, the orphaned `sleep 30` keeps the test binary's stdout
+	// pipe open, failing the whole package at exit ("Test I/O
+	// incomplete"). Snapshot before/after and assert no NEW `sleep 30`
+	// process appears (host may legitimately have unrelated ones).
+	before := sleep30PIDs(t)
+	t.Setenv("HELIX_SUBCOMMAND_TIMEOUT", "1s")
+	err := execSubcommand("sh", []string{"-c", "sleep 30"})
+	if err == nil {
+		t.Fatal("execSubcommand(sleep 30) with 1s timeout should return error")
+	}
+	if !strings.Contains(err.Error(), "timed out") {
+		t.Errorf("timeout error should contain 'timed out', got: %v", err)
+	}
+	after := sleep30PIDs(t)
+	for pid := range after {
+		if !before[pid] {
+			t.Errorf("orphaned `sleep 30` process %s left behind after subcommand timeout", pid)
+		}
+	}
+}
+
 func TestDispatch(t *testing.T) {
 	d := rootCmd()
 

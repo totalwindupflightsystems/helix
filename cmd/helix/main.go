@@ -32,6 +32,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 
 	bannerPkg "github.com/totalwindupflightsystems/helix/pkg/banner"
@@ -656,6 +657,21 @@ func execSubcommand(binary string, args []string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.WaitDelay = subcommandWaitDelay
+	// BUG-002: CommandContext kills ONLY the direct child when the
+	// deadline fires. A shell that forks (e.g. `sh -c sleep 30`) leaves
+	// the grandchild alive, holding our stdout pipe open — which stalls
+	// Wait until the WaitDelay escalation and can fail the whole test
+	// binary at exit ("Test I/O incomplete"). Run the subcommand as its
+	// own process-group leader (pgid == child pid) and make the context
+	// cancel kill the ENTIRE group so grandchildren die with the child.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error {
+		if cmd.Process == nil {
+			return nil
+		}
+		// Negative pid signals the whole process group.
+		return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+	}
 	if err := cmd.Run(); err != nil {
 		// CommandContext kills the child when the deadline fires, so Wait
 		// may surface "signal: killed" rather than the ctx error itself —
