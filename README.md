@@ -4,52 +4,64 @@
 
 ## Thesis
 
-Every existing dev tool treats AI as an assistant — a smarter autocomplete. Helix treats agents as **first-class team members** with real Forgejo accounts, SSH keys, scoped permissions, budgets, and earned trust. Agents open PRs. Other agents review them. Agents can veto a merge with evidence. And agents build reputation over time — just like humans.
+Every existing dev tool treats AI as an assistant — a smarter autocomplete.
+Helix treats agents as **first-class team members** with real Forgejo accounts,
+SSH keys, scoped permissions, budgets, and earned trust. Agents open PRs.
+Other agents review them. Agents can veto a merge with evidence. And agents
+build reputation over time — just like humans.
 
-**Cursor Origin:** Trust no single model. Require multi-model agreement, adversarial review, traceable identity, prompt provenance, cost tracking, and earned trust. Helix is not "vibe coding with guardrails" — it's a disciplined software delivery system where every commit is attributed, reviewed, and attested.
+**Cursor Origin:** Trust no single model. Require multi-model agreement,
+adversarial review, traceable identity, prompt provenance, cost tracking, and
+earned trust. Helix is not "vibe coding with guardrails" — it's a disciplined
+software delivery system where every commit is attributed, reviewed, and
+attested.
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    HUMAN INTERFACE                       │
-│  Continue.dev / Cursor / CLI / Telegram (Hermes4Friends) │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────┐
-│                  ORCHESTRATION LAYER                     │
-│  Helix Dispatcher: Ralph Loop engine, task decomposition │
-│  Hivemind: persistent memory, task scheduling            │
-│  Kobayashi-Maru: stress testing, no-win validation       │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────┐
-│                   EXECUTION LAYER                        │
-│  OpenCode: isolated worktrees per agent/task             │
-│  Ralph Loop: acquire lock → worktree → commit → merge    │
-│  Muster: auto-generated MCP tools for any API            │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────┐
-│                    GIT FORGE (Forgejo)                   │
-│  Repos, PRs, issues, actions, Pages, packages            │
-│  GitReins hooks: block commits that fail quality gates   │
-│  .promptfoo.yaml: eval as CI on every prompt change      │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────┐
-│                  QUALITY & REVIEW LAYER                  │
-│  Chimera: multi-model formation → judge + audit PRs      │
-│  GitReins evaluator: Tier 1 (static) + Tier 2 (agentic)  │
-│  PromptFoo: prompt regression tests in CI                │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────┐
-│               OBSERVABILITY & MEMORY                     │
-│  LangFuse: traces, costs, prompt versions                │
-│  DuckBrain: persistent agent memory (git-backed)         │
-└─────────────────────────────────────────────────────────┘
++---------------------------------------------------------+
+|                    HUMAN INTERFACE                       |
+|  Continue.dev / Cursor / CLI / Telegram (Hermes4Friends) |
+|  Web UI (agent roster/PR review): hermes-canopy repo     |
++----------------------+----------------------------------+
+                       |
++----------------------v----------------------------------+
+|                  ORCHESTRATION LAYER                     |
+|  Helix Dispatcher: Ralph Loop engine, task decomposition |
+|  Hivemind: persistent memory, task scheduling            |
+|  Kobayashi-Maru: stress testing, no-win validation       |
++----------------------+----------------------------------+
+                       |
++----------------------v----------------------------------+
+|                   EXECUTION LAYER                        |
+|  OpenCode: isolated worktrees per agent/task             |
+|  Ralph Loop: acquire lock -> worktree -> commit -> merge    |
+|  Muster: auto-generated MCP tools for any API            |
++----------------------+----------------------------------+
+                       |
++----------------------v----------------------------------+
+|                    GIT FORGE (Forgejo)                   |
+|  Repos, PRs, issues, actions, Pages, packages            |
+|  GitReins hooks: block commits that fail quality gates   |
+|  .promptfoo.yaml: eval as CI on every prompt change      |
++----------------------+----------------------------------+
+                       |
++----------------------v----------------------------------+
+|                  QUALITY & REVIEW LAYER                  |
+|  Chimera: multi-model formation -> judge + audit PRs      |
+|  GitReins evaluator: Tier 1 (static) + Tier 2 (agentic)  |
+|  PromptFoo: prompt regression tests in CI                |
++----------------------+----------------------------------+
+                       |
++----------------------v----------------------------------+
+|               OBSERVABILITY & MEMORY                     |
+|  LangFuse: traces, costs, prompt versions                |
+|  DuckBrain: persistent agent memory (git-backed)         |
++---------------------------------------------------------+
 ```
+
+> The shared-workspace web UI (agent roster, PR review dashboard) lives in the
+> separate hermes-canopy project — Helix itself ships CLI-only (UI-001..004).
 
 ## The Helix Loop
 
@@ -247,6 +259,11 @@ helix-identity status
 helix-identity deprovision codex-alpha
 ```
 
+## Documentation
+
+- [Getting Started](docs/GETTING-STARTED.md) — onboarding guide
+- [API Reference](docs/api/) — `pkg/forgejo`, `pkg/estimate`, `pkg/identity`
+
 ## Development
 
 ```bash
@@ -307,4 +324,3 @@ See `docker-compose.yml` for the full service definition and environment variabl
 ## License
 
 MIT
-// lsp test
