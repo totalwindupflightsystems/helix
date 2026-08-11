@@ -76,7 +76,7 @@ go test -short -count=1 ./...            # unit tests (60/60 pass)
 - **Getting unblocked:** when a subcommand's flags are unknown, read
   `cmd/helix/<sub>.go` for the `usage`/flag block — it's accurate where
   `--help` is not.
-- **Board:** tasks live in `.coding-hermes/board/board.db` (DuckDB) with
-  git-tracked `tasks.parquet`/`events.parquet` exports. IDs follow
-  `<AREA>-NNN` (e.g. DF-001). The board has no PK constraints — use plain
-  INSERTs, and refresh parquet with `COPY tasks TO '…' (FORMAT PARQUET)`.
+- **Board:** tasks live in `.coding-hermes/board/tasks.jsonl` (JSONL
+  canonical, git-tracked) with audit events in `events.jsonl`. The DuckDB
+  cache is untracked and rebuildable — never write to it directly. IDs
+  follow `<AREA>-NNN` (e.g. DF-001).
