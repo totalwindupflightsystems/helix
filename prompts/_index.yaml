@@ -1,6 +1,12 @@
 agent-identity:
-  v1.0.0:
-    hash: sha256:initial-registration
-    status: active
-    model: deepseek-v4-pro
-    provider: deepseek
+    v1.0.0:
+        hash: sha256:initial-registration
+        status: active
+        model: deepseek-v4-pro
+        provider: deepseek
+coding-hermes:
+    v1:
+        hash: sha256:95b54f583afa3a55b40edde840eb306628540a529bd031d32cd4d1ef1eda09dc
+        status: draft
+        model: ""
+        provider: ""

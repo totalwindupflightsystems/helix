@@ -37,3 +37,7 @@ dagger.db
 
 .coding-hermes/board/*.parquet
 .coding-hermes/board/*.duckdb
+
+# stand-in PM gap-hunter artifacts (test HID + SSH key) — never commit
+/test-gap-hunter.hid
+/test-gap-hunter.hid.key
