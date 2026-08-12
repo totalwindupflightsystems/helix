@@ -78,3 +78,62 @@ records.
   a push (exit 0 on reject + fail-open on error), so "gates that gate" — the
   platform's reason for existing — is not yet true. That, not test colors, is
   what the board's DF-001/DF-009 tasks track.
+
+---
+
+# Addendum — 2026-08-12 dogfood (second run)
+
+## What changed since 2026-08-02
+
+The 2026-08-02 verdict's blockers are **fixed in reality** (re-verified live,
+not just via tests): `mergegate hook` exits 1 on reject (DF-001), `--help`
+shows subcommand usage (DF-002), CLI works from /tmp (GAP-005), `status`
+completes in 3.4s (GAP-001), prompt attestation accepts both layouts
+(GAP-004), dispatcher decomposes Helix specs (GAP-007). New surface landed:
+identity lifecycle (ID-004), channels (CH-005), sources (SRC-006), contracts,
+spec/adr workflow.
+
+## How the flagship flow is built (identity provisioning)
+
+`helix-identity provision` (cobra, pkg/identity/provisioner.go) does:
+create Forgejo user via admin API → register Ed25519 SSH key → create scoped
+PAT via **admin BasicAuth** (not the admin token) → write idempotency state
+(file: version/last_sync/agents[name]{forgejo_account_id, ssh_key_id, pat_id,
+last_provisioned}). The happy path is ~1s and verified live (user id 5,
+key "Helix Agent — <a> (flash)", PAT `helix-identity-pat`).
+
+**Why the idempotency check lies (DF-011):** the "unchanged" decision comes
+from an admin-list user-existence probe, not from reconciling the state file
+against live resources. After a partial failure (user+key created, PAT step
+failed), state has no agent record, Forgejo has no PAT, but the user exists
+→ every retry reports `unchanged` + exit 0. The platform's own trust theme
+applies to itself: it does not detect that a provisioned agent is
+half-provisioned. Right way: on "unchanged", verify pat_id (and key) still
+exist server-side; repair or report.
+
+**Why deprovision leaves the key (DF-012):** deprovision revokes the PAT
+(delete token by pat_id) and tries to archive the local key via `os.Rename`
+into `archive/<date>/` — but never creates that directory (no MkdirAll), so
+the rename fails with a WARN and the key stays live both locally and in
+Forgejo (server-side key deletion is not implemented). Right way: MkdirAll
+before rename; delete the Forgejo key (by ssh_key_id) as part of deprovision.
+
+**Why `source test` false-fails Forgejo (DF-013):** the REST probe does
+`GET <base-url>` and requires 200. Forgejo's `/api/v1` root is 404 by
+design — the spec (from `/swagger.v1.json`) is valid and every real endpoint
+works. Right way: probe a GET path taken from the spec, or make the base
+probe informational when spec paths respond.
+
+**Contract naming (DF-014):** `contract create <spec-id>` appends the format
+to the id (`agent-identity-openapi`) but create output doesn't echo the full
+id, and validate/freeze/diff with the bare id fail "not found". The generated
+OpenAPI is also an empty scaffold (0 paths) — generation from prose specs
+doesn't extract endpoints yet.
+
+## Environment notes (2026-08-12)
+
+- Forgejo :3030 live (v1.21.11, admin helio/helio123 per scripts/bootstrap.sh —
+  dev instance; never commit these). :3000 node stub gone (404). Chimera :8765
+  responds, providers degraded (missing creds). SSH port 2222 NOT exposed on
+  this host — SSH-as-agent verification impossible here.
+- Host: 82% disk, `go build` fine with `TMPDIR=/home/kara/.cache/go-tmp`.

@@ -32,7 +32,7 @@ go build ./cmd/...                       # 58 packages
 go test -short -count=1 ./...            # unit tests (60/60 pass)
 ```
 
-## Working invocations (verified 2026-08-02)
+## Working invocations (verified 2026-08-02 + 2026-08-12)
 
 | Task | Command |
 |---|---|
@@ -45,6 +45,29 @@ go test -short -count=1 ./...            # unit tests (60/60 pass)
 | Sandbox | build `cmd/sandbox`, put on PATH → `helix sandbox run -- <cmd>` |
 | Merge gate | `helix mergegate checks`; `helix mergegate hook --trust <tier>` reads refs from stdin |
 | Security/ops | `helix vuln scan`, `helix recovery`, `helix backup status`, `helix incident list` |
+| Agent identity | `helix identity create --name A` → `verify --hid A.hid` → `export --hid A.hid [--key A.hid.key] --format json\|nostr` |
+| Provision (live Forgejo) | `helix-identity provision A --forgejo-url http://localhost:3030 --admin-token $T --admin-user U --admin-password P --known-friends kf.json --state-path s.json` |
+| Deprovision | `helix-identity deprovision A` (same creds) — revokes PAT only; SSH key stays (DF-012) |
+| Channels | `helix channel create --name C --type task --members A` → `send --channel C --message M` → `history --name C` → `archive --name C` |
+| Sources | `helix source add --name S --type rest --spec openapi.json --base-url URL [--read-only]`, `source list`, `source test --name S`, `source tools --name S` |
+| Contracts | `helix contract create <spec-id>` → registered id is `<spec-id>-openapi`; `validate/freeze/diff <spec-id>-openapi`; `diff <new> <old>` arg order is <new> <old> |
+
+## Identity provisioning — the right way (field-tested 2026-08-12)
+
+The flagship flow works end-to-end against a live Forgejo v1.21+ (~1s):
+user + SSH key + `helix-identity-pat` token, state recorded. Requirements
+that are NOT in the README:
+
+1. **known-friends.json `agents` is a MAP** (name → {display_name, status,
+   active, tier, ...}), not an array — see `pkg/identity/testdata/known-friends.json`.
+2. **PAT creation needs BasicAuth**: pass `--admin-user` + `--admin-password`
+   IN ADDITION to `--admin-token`, or CreateToken fails *after* the user and
+   key were already created (partial state, exit 4).
+3. **Idempotency is user-existence-only**: if a provision partially failed,
+   a retry reports `action=unchanged` and exits 0 WITHOUT repairing the
+   missing PAT/key (DF-011). After any failure, verify server-side:
+   `GET /api/v1/users/<a>/tokens` (BasicAuth) must show 1 token.
+4. `--state-path` expects a **file** path, not a directory.
 
 ## Pitfalls (all hit in real use)
 
@@ -70,6 +93,19 @@ go test -short -count=1 ./...            # unit tests (60/60 pass)
 8. **Commit convention is enforced by GitReins hooks:** every commit needs
    `Co-authored-by: Name <email>` and `Prompt: prompts/<name>/v<N>.md` in the
    body, or the commit-msg hook blocks it.
+9. **`helix identity verify/export` take `--hid <path>`** — `--name` does not
+   exist there (only on create/provision/deprovision). Run the bare
+   subcommand for accurate usage.
+10. **Contract ids get a `-openapi` suffix on create** — `contract create
+    agent-identity` registers `agent-identity-openapi`; validating with the
+    bare id says "not found".
+11. **`helix source test` false-fails REST sources whose base URL returns
+    non-200** (live Forgejo `/api/v1` → 404 → test fails even though the
+    source works). Treat base 404 as a warning and probe a spec path
+    (DF-013).
+12. **Unknown flags are silently dropped** by the hand-rolled parser (e.g.
+    `contract validate --file x.yaml` treats x.yaml as the id). Typos become
+    confusing lookup errors, not flag errors (DF-016).
 
 ## Right-way patterns
 
