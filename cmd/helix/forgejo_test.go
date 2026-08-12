@@ -179,16 +179,28 @@ func TestRunForgejo_Help(t *testing.T) {
 	}
 }
 
-func TestRunForgejo_MissingURL(t *testing.T) {
-	// Clear env vars for this test so --url is required.
+func TestRunForgejo_ExplicitEmptyURLStillErrors(t *testing.T) {
+	// An explicit `--url ""` still trips the required-check gate; only the
+	// unset/env-missing case falls back to the localhost default (GAP-022).
 	t.Setenv("FORGEJO_URL", "")
 	var out, errBuf bytes.Buffer
-	rc := runForgejo([]string{"ping"}, &out, &errBuf)
+	rc := runForgejo([]string{"ping", "--url", ""}, &out, &errBuf)
 	if rc != fgoExitError {
 		t.Fatalf("expected rc=2, got %d", rc)
 	}
 	if !strings.Contains(errBuf.String(), "--url is required") {
 		t.Fatalf("expected '--url is required', got %q", errBuf.String())
+	}
+}
+
+func TestParseForgejoFlags_DefaultURL(t *testing.T) {
+	t.Setenv("FORGEJO_URL", "")
+	f, _, rc := parseForgejoFlags([]string{"ping"})
+	if rc != fgoExitOK {
+		t.Fatalf("rc=%d", rc)
+	}
+	if f.url != "http://localhost:3030" {
+		t.Fatalf("default url = %q, want http://localhost:3030", f.url)
 	}
 }
 

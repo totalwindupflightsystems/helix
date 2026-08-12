@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "updated_at": "2026-08-12T00:00:00Z",
+  "agents": {
+    "test-agent": {
+      "display_name": "Test Agent",
+      "status": "active",
+      "tier": "flash",
+      "model_preferences": {
+        "chat": "deepseek-v4-flash",
+        "vision": "deepseek-v4-flash"
+      }
+    }
+  }
+}

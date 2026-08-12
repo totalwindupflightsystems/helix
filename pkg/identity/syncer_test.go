@@ -392,6 +392,23 @@ func TestNewSyncer(t *testing.T) {
 			t.Fatal("expected error for empty ForgejoURL")
 		}
 	})
+	t.Run("readonly_allows_empty_url_and_creds", func(t *testing.T) {
+		// GAP-022: local-only commands (identity status/keygen) must not
+		// demand Forgejo URL or admin credentials.
+		cfg := validDryRunConfig(t)
+		cfg.ForgejoURL = ""
+		cfg.AdminToken = ""
+		cfg.AdminUser = ""
+		cfg.AdminPassword = ""
+		cfg.ReadOnly = true
+		s, err := NewSyncer(cfg, nil)
+		if err != nil {
+			t.Fatalf("NewSyncer(ReadOnly): %v", err)
+		}
+		if s == nil {
+			t.Fatal("NewSyncer returned nil syncer")
+		}
+	})
 	t.Run("nil_logger_uses_default", func(t *testing.T) {
 		cfg := validDryRunConfig(t)
 		s, err := NewSyncer(cfg, nil)

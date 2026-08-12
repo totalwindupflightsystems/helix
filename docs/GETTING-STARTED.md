@@ -88,12 +88,11 @@ agent object; the map key is the agent's name:
   "version": 1,
   "updated_at": "2026-06-20T00:00:00Z",
   "agents": {
-    "codex-alpha": {
-      "display_name": "Codex Alpha",
+    "test-agent": {
+      "display_name": "Test Agent",
       "status": "active",
-      "tier": "pro",
-      "openrouter_key": "sk-or-v1-...",
-      "model_preferences": { "chat": "deepseek-v4-pro" }
+      "tier": "flash",
+      "model_preferences": { "chat": "deepseek-v4-flash" }
     },
     "retired-bot": {
       "display_name": "Retired Bot",
@@ -106,7 +105,10 @@ agent object; the map key is the agent's name:
 
 `status` is one of `active` (provisioned), `pending` (skipped), or
 `offboarded` (deprovisioned on the next run); `tier` is `pro` or `flash`.
-See `pkg/identity/testdata/known-friends.json` for a full example.
+The repo ships `known-friends.example.json` (a ready-to-use roster with a
+registered `test-agent`) — copy it to `~/.helix/known-friends.json` and
+you can skip writing your own for local development.
+See `pkg/identity/testdata/known-friends.json` for a fuller example.
 
 Provisioning needs **both** Forgejo admin credentials:
 
@@ -125,12 +127,12 @@ export FORGEJO_ADMIN_PASSWORD="<admin-password>"
 > with the credentials and the idempotency probe repairs the missing PAT.
 
 ```bash
-helix identity create --name codex-alpha               # generate HID (Ed25519)
-helix identity provision codex-alpha \
+helix identity create --name test-agent               # generate HID (Ed25519)
+helix identity provision test-agent \
   --forgejo-url http://localhost:3030 \
   --admin-user "${FORGEJO_ADMIN_USER}" \
   --admin-password "${FORGEJO_ADMIN_PASSWORD}"
-helix identity verify --hid codex-alpha.hid            # attest the key pair
+helix identity verify --hid test-agent.hid            # attest the key pair
 helix identity list                                    # see all agents
 ```
 
@@ -139,7 +141,7 @@ key, and the PAT server-side, and repairs whatever is missing (a re-run after
 a partial failure reports `action=updated`, not `unchanged`).
 
 `helix identity register` stores the agent in `known-friends.json`; export and
-import move identities between machines (`helix identity export --hid codex-alpha.hid`).
+import move identities between machines (`helix identity export --hid test-agent.hid`).
 
 ## 6. Estimate a task before running it
 

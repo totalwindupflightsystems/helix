@@ -193,6 +193,13 @@ export PATH="$HOME/.local/bin:$PATH"
 # Stand up Forgejo + Chimera + Helix (Docker)
 make docker-up
 
+# Register the example agent roster (includes `test-agent`) and the Forgejo
+# admin credentials from docker-compose (defaults helio/changeme — override
+# them in your shell profile, not in the repo)
+mkdir -p ~/.helix
+cp known-friends.example.json ~/.helix/known-friends.json
+export FORGEJO_ADMIN_USER=helio FORGEJO_ADMIN_PASSWORD=changeme
+
 # Use the unified CLI from any directory
 helix identity provision test-agent    # requires Forgejo running — see `make docker-up`
 helix estimate check wojons "Write a Go HTTP server" --model deepseek-v4-pro --provider deepseek
@@ -247,7 +254,10 @@ exact commands to run.
 Agents get real Forgejo accounts — not bot tokens. Each agent is declared in
 `known-friends.json` as an entry in the top-level **`agents` map, keyed by
 agent name** (a JSON object, not an array — a list-shaped file fails with
-`cannot unmarshal array into map[string]*identity.Agent`). See
+`cannot unmarshal array into map[string]*identity.Agent`). The repo ships
+`known-friends.example.json` (a ready-to-use roster with a registered
+`test-agent` entry) — copy it to `~/.helix/known-friends.json` (the CLI's
+default location) to get started. See
 [Getting Started §5](docs/GETTING-STARTED.md) for the full schema and an
 example.
 
@@ -259,7 +269,7 @@ leaving a half-provisioned state; re-running with the credentials repairs it:
 
 ```bash
 # Provision a new agent (positional name; agent must be registered in known-friends.json)
-helix-identity provision codex-alpha \
+helix-identity provision test-agent \
   --forgejo-url http://localhost:3030 \
   --admin-user "${FORGEJO_ADMIN_USER}" \
   --admin-password "${FORGEJO_ADMIN_PASSWORD}"
@@ -268,7 +278,7 @@ helix-identity provision codex-alpha \
 helix-identity status
 
 # Deprovision (revokes PAT, deletes the SSH key server-side, archives local keys — never deletes the account)
-helix-identity deprovision codex-alpha
+helix-identity deprovision test-agent
 ```
 
 ## Documentation

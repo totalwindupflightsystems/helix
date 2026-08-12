@@ -52,13 +52,13 @@ import (
 //	HELIX_STATE_PATH         → --state-path
 
 const (
-	envForgejoURL    = "FORGEJO_URL"
-	envAdminToken    = "FORGEJO_ADMIN_TOKEN"
-	envAdminUser     = "FORGEJO_ADMIN_USER"
-	envAdminPassword = "FORGEJO_ADMIN_PASSWORD"
-	envKnownFriends  = "HELIX_KNOWN_FRIENDS"
-	envSSHKeyDir     = "HELIX_SSH_KEY_DIR"
-	envStatePath     = "HELIX_STATE_PATH"
+	envForgejoURL       = "FORGEJO_URL"
+	envAdminToken       = "FORGEJO_ADMIN_TOKEN"
+	envAdminUser        = "FORGEJO_ADMIN_USER"
+	envAdminPasswordKey = "FORGEJO_ADMIN_PASSWORD"
+	envKnownFriends     = "HELIX_KNOWN_FRIENDS"
+	envSSHKeyDir        = "HELIX_SSH_KEY_DIR"
+	envStatePath        = "HELIX_STATE_PATH"
 )
 
 // flagHolder keeps every CLI flag in one struct so subcommand funcs can
@@ -114,8 +114,8 @@ touching Forgejo.`,
 		SilenceErrors: true,
 	}
 	rootCmd.PersistentFlags().StringVar(&rootFlags.forgejoURL, "forgejo-url",
-		envOr(envForgejoURL, ""),
-		"Forgejo base URL (env: "+envForgejoURL+")")
+		envOr(envForgejoURL, "http://localhost:3030"),
+		"Forgejo base URL (env: "+envForgejoURL+", default http://localhost:3030 — matches `helix status` probes)")
 	rootCmd.PersistentFlags().StringVar(&rootFlags.adminToken, "admin-token",
 		envOr(envAdminToken, ""),
 		"Forgejo admin token (env: "+envAdminToken+")")
@@ -123,8 +123,8 @@ touching Forgejo.`,
 		envOr(envAdminUser, ""),
 		"Forgejo admin username for BasicAuth token ops (env: "+envAdminUser+")")
 	rootCmd.PersistentFlags().StringVar(&rootFlags.adminPassword, "admin-password",
-		envOr(envAdminPassword, ""),
-		"Forgejo admin password for BasicAuth token ops (env: "+envAdminPassword+")")
+		envOr(envAdminPasswordKey, ""),
+		"Forgejo admin password for BasicAuth token ops (env: "+envAdminPasswordKey+")")
 	rootCmd.PersistentFlags().StringVar(&rootFlags.knownFriends, "known-friends",
 		envOr(envKnownFriends, defaultKnownFriendsPath()),
 		"path to known-friends.json (env: "+envKnownFriends+")")
@@ -362,6 +362,10 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	// status is a purely local view (state file) — it never contacts
+	// Forgejo, so it must not demand FORGEJO_URL / admin credentials
+	// (GAP-022 split-brain).
+	cfg.ReadOnly = true
 	syncer, err := identity.NewSyncer(cfg, nil)
 	if err != nil {
 		return err
@@ -401,6 +405,9 @@ func runKeygen(cmd *cobra.Command, args []string) error {
 		Status:      identity.StatusActive,
 		Tier:        identity.TierPro,
 	}
+	// keygen is local-only (no Forgejo contact) — same ReadOnly treatment
+	// as status (GAP-022).
+	cfg.ReadOnly = true
 	syncer, err := identity.NewSyncer(cfg, nil)
 	if err != nil {
 		return err

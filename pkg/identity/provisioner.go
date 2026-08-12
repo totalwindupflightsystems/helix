@@ -98,6 +98,13 @@ type ProvisionerConfig struct {
 
 	// BurstRate is the token-bucket burst size.
 	BurstRate int
+
+	// ReadOnly, when true, relaxes Validate() for local-only commands
+	// (identity status, keygen): ForgejoURL and admin credentials are not
+	// required because no Forgejo API call is made. Network-capable
+	// commands (provision, deprovision, sync) leave it false so the full
+	// config contract still holds (GAP-022).
+	ReadOnly bool
 }
 
 // DefaultProvisionerConfig returns a config populated with the documented
@@ -124,16 +131,18 @@ func DefaultProvisionerConfig() ProvisionerConfig {
 // credentials (username + temp password) are validated at use time inside
 // RegisterKey / CreateToken, because they are agent-specific.
 func (c *ProvisionerConfig) Validate() error {
-	if c.ForgejoURL == "" {
-		return NewConfigError(
-			"FORGEJO_URL not set (use --forgejo-url or FORGEJO_URL env var)", nil)
-	}
-	if _, err := url.Parse(c.ForgejoURL); err != nil {
-		return NewConfigError(fmt.Sprintf("invalid ForgejoURL %q: %v", c.ForgejoURL, err), nil)
-	}
-	if c.AdminToken == "" && (c.AdminUser == "" || c.AdminPassword == "") {
-		return NewConfigError(
-			"FORGEJO_ADMIN_TOKEN or FORGEJO_ADMIN_USER+FORGEJO_ADMIN_PASSWORD must be set", nil)
+	if !c.ReadOnly {
+		if c.ForgejoURL == "" {
+			return NewConfigError(
+				"FORGEJO_URL not set (use --forgejo-url or FORGEJO_URL env var)", nil)
+		}
+		if _, err := url.Parse(c.ForgejoURL); err != nil {
+			return NewConfigError(fmt.Sprintf("invalid ForgejoURL %q: %v", c.ForgejoURL, err), nil)
+		}
+		if c.AdminToken == "" && (c.AdminUser == "" || c.AdminPassword == "") {
+			return NewConfigError(
+				"FORGEJO_ADMIN_TOKEN or FORGEJO_ADMIN_USER+FORGEJO_ADMIN_PASSWORD must be set", nil)
+		}
 	}
 	if c.KnownFriendsPath == "" {
 		return NewConfigError("known-friends path is empty", nil)

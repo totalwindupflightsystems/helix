@@ -74,6 +74,12 @@ type fgoFlags struct {
 func parseForgejoFlags(args []string) (fgoFlags, bool, int) {
 	var f fgoFlags
 	f.url = os.Getenv("FORGEJO_URL")
+	// Default to the canonical local Forgejo endpoint — the same URL
+	// `helix status` probes (GAP-022: config split-brain). Explicit
+	// `--url ""` still trips the required-check below.
+	if f.url == "" {
+		f.url = "http://localhost:3030"
+	}
 	f.user = os.Getenv("FORGEJO_ADMIN_USER")
 	if f.user == "" {
 		f.user = "admin"
@@ -179,7 +185,7 @@ Subcommands:
   help          Show this help.
 
 Flags:
-  --url URL         Forgejo base URL (default: $FORGEJO_URL).
+  --url URL         Forgejo base URL (default: $FORGEJO_URL or http://localhost:3030).
   --user NAME       Admin username (default: $FORGEJO_ADMIN_USER or "admin").
   --password PWD    Admin password (use $FORGEJO_ADMIN_PASSWORD env var in CI).
   --owner ORG       Repository owner (default: $FORGEJO_OWNER or "helix-org").
@@ -189,7 +195,7 @@ Flags:
   --help, -h        Show this help.
 
 Environment Variables:
-  FORGEJO_URL                Default --url value.
+  FORGEJO_URL                Default --url value (falls back to http://localhost:3030, matching helix status probes).
   FORGEJO_ADMIN_USER         Default --user value (override "admin").
   FORGEJO_ADMIN_PASSWORD     Default --password value (PREFERRED in CI).
   FORGEJO_OWNER              Default --owner value (override "helix-org").

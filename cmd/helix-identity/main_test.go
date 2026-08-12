@@ -452,7 +452,7 @@ func buildRootCmd() *cobra.Command {
 		SilenceErrors: true,
 	}
 	rootCmd.PersistentFlags().StringVar(&rootFlags.forgejoURL, "forgejo-url",
-		envOr("FORGEJO_URL", ""), "")
+		envOr("FORGEJO_URL", "http://localhost:3030"), "")
 	rootCmd.PersistentFlags().StringVar(&rootFlags.adminToken, "admin-token",
 		envOr("FORGEJO_ADMIN_TOKEN", ""), "")
 	rootCmd.PersistentFlags().StringVar(&rootFlags.adminUser, "admin-user",
