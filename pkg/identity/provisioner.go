@@ -358,6 +358,21 @@ func (p *Provisioner) userKeysURL() string {
 	return strings.TrimRight(p.cfg.ForgejoURL, "/") + "/api/v1/user/keys"
 }
 
+// userKeysListURL is GET /api/v1/users/{name}/keys — lists a given user's
+// public keys. Works with admin BasicAuth even for visibility:limited
+// accounts (the admin key-list endpoint 405s on Forgejo v1.21).
+func (p *Provisioner) userKeysListURL(name string) string {
+	return strings.TrimRight(p.cfg.ForgejoURL, "/") + "/api/v1/users/" +
+		url.PathEscape(name) + "/keys"
+}
+
+// adminUserKeyURL is DELETE /api/v1/admin/users/{name}/keys/{id} — the admin
+// endpoint for removing a public key on behalf of a user.
+func (p *Provisioner) adminUserKeyURL(name string, id int64) string {
+	return strings.TrimRight(p.cfg.ForgejoURL, "/") + "/api/v1/admin/users/" +
+		url.PathEscape(name) + "/keys/" + fmt.Sprintf("%d", id)
+}
+
 // userTokensURL is POST /api/v1/users/{name}/tokens (BasicAuth as admin).
 func (p *Provisioner) userTokensURL(name string) string {
 	return strings.TrimRight(p.cfg.ForgejoURL, "/") + "/api/v1/users/" +
@@ -652,6 +667,79 @@ func (p *Provisioner) RegisterKey(agentName, tempPassword, publicKey, title stri
 	}
 }
 
+// ListUserKeys returns the SSH public keys registered for a Forgejo user.
+// It uses GET /api/v1/users/{name}/keys with admin auth — the public
+// per-user key-list endpoint — because the admin key-list endpoint
+// (GET /api/v1/admin/users/{name}/keys) returns 405 on Forgejo v1.21.
+// Used by the idempotency probe (DF-011) and the deprovision path (DF-012).
+func (p *Provisioner) ListUserKeys(name string) ([]SSHKey, error) {
+	if name == "" {
+		return nil, NewConfigError("ListUserKeys: empty agent name", nil)
+	}
+	if p.cfg.DryRun {
+		return nil, nil // dry-run: assume nothing registered
+	}
+	p.limiter.Acquire()
+
+	resp, err := p.doWithRetry(http.MethodGet, p.userKeysListURL(name), nil,
+		func(r *http.Request) {
+			p.setAdminAuth(r)
+		})
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body := readAndCloseBody(resp)
+		return nil, NewAPIError(
+			fmt.Sprintf("ListUserKeys(%s): unexpected HTTP %d: %s",
+				name, resp.StatusCode, body), nil)
+	}
+	var keys []SSHKey
+	if decErr := json.NewDecoder(resp.Body).Decode(&keys); decErr != nil {
+		return nil, NewInternalError(
+			fmt.Sprintf("ListUserKeys(%s): failed to decode key list", name), decErr)
+	}
+	return keys, nil
+}
+
+// DeleteUserKey removes a user's SSH public key server-side via
+// DELETE /api/v1/admin/users/{name}/keys/{id} (admin auth). Used by the
+// deprovision path so an offboarded agent cannot SSH-auth anymore (DF-012).
+func (p *Provisioner) DeleteUserKey(name string, keyID int64) error {
+	if name == "" {
+		return NewConfigError("DeleteUserKey: empty agent name", nil)
+	}
+	if keyID <= 0 {
+		return NewConfigError(
+			fmt.Sprintf("DeleteUserKey(%s): invalid key id %d", name, keyID), nil)
+	}
+	if p.cfg.DryRun {
+		return nil
+	}
+	p.limiter.Acquire()
+
+	resp, err := p.doWithRetry(http.MethodDelete, p.adminUserKeyURL(name, keyID), nil,
+		func(r *http.Request) {
+			p.setAdminAuth(r)
+		})
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusNoContent:
+		return nil
+	default:
+		body := readAndCloseBody(resp)
+		return NewAPIError(
+			fmt.Sprintf("DeleteUserKey(%s, %d): unexpected HTTP %d: %s",
+				name, keyID, resp.StatusCode, body), nil)
+	}
+}
+
 // CreateToken calls POST /api/v1/users/{name}/tokens. Returns the new PAT;
 // the caller MUST capture .Token immediately — Forgejo only returns the
 // plaintext token on creation. Auth: HTTP Basic Auth as the admin user
@@ -709,6 +797,48 @@ func (p *Provisioner) CreateToken(agentName, adminUser, adminPassword string, re
 			fmt.Sprintf("CreateToken(%s): unexpected HTTP %d: %s",
 				agentName, resp.StatusCode, body), nil)
 	}
+}
+
+// ListUserTokens returns the PATs registered for a Forgejo user via
+// GET /api/v1/users/{name}/tokens (BasicAuth as the admin user — the same
+// auth the token-create endpoint requires). Used by the idempotency probe
+// to detect a missing/revoked PAT even when the state file records one
+// (DF-011). The plaintext token is never returned by this endpoint, only
+// the id/name/scopes/sha1.
+func (p *Provisioner) ListUserTokens(agentName, adminUser, adminPassword string) ([]AccessToken, error) {
+	if agentName == "" {
+		return nil, NewConfigError("ListUserTokens: empty agent name", nil)
+	}
+	if p.cfg.DryRun {
+		return nil, nil // dry-run: assume nothing registered
+	}
+	if adminUser == "" || adminPassword == "" {
+		return nil, NewConfigError(
+			fmt.Sprintf("ListUserTokens(%s): missing admin BasicAuth credentials — pass --admin-user/--admin-password (FORGEJO_ADMIN_USER/FORGEJO_ADMIN_PASSWORD) so the PAT can be verified server-side", agentName), nil)
+	}
+	p.limiter.Acquire()
+
+	resp, err := p.doWithRetry(http.MethodGet, p.userTokensURL(agentName), nil,
+		func(r *http.Request) {
+			r.SetBasicAuth(adminUser, adminPassword)
+		})
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body := readAndCloseBody(resp)
+		return nil, NewAPIError(
+			fmt.Sprintf("ListUserTokens(%s): unexpected HTTP %d: %s",
+				agentName, resp.StatusCode, body), nil)
+	}
+	var tokens []AccessToken
+	if decErr := json.NewDecoder(resp.Body).Decode(&tokens); decErr != nil {
+		return nil, NewInternalError(
+			fmt.Sprintf("ListUserTokens(%s): failed to decode token list", agentName), decErr)
+	}
+	return tokens, nil
 }
 
 // RevokeToken calls DELETE /api/v1/users/{name}/tokens/{id}. Returns nil on

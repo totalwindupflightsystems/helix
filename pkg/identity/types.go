@@ -368,7 +368,11 @@ type AccessToken struct {
 	Name   string   `json:"name"`
 	Scopes []string `json:"scopes"`
 	SHA1   string   `json:"sha1,omitempty"` // legacy field, kept for compatibility
-	Token  string   `json:"token,omitempty"`
+	// TokenLastEight is returned by token-list endpoints (Forgejo
+	// v1.21+: "token_last_eight") — enough to display/verify identity
+	// without the plaintext. Never the full token.
+	TokenLastEight string `json:"token_last_eight,omitempty"`
+	Token          string `json:"token,omitempty"`
 }
 
 // PATName is the symbolic name registered with every agent PAT.

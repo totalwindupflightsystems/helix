@@ -426,11 +426,13 @@ func TestSync_PerAgentFailure_Branch(t *testing.T) {
 
 // TestProvisionAgent_ExistingAccount covers the "existing != nil" branch in
 // provisionAgent (GetAccount returns the agent, so we skip CreateUser).
-// Result must be ActionUnchanged + the existing account attached + prior
-// state copied forward.
+// The idempotency probe now also verifies the SSH key + PAT server-side
+// (DF-011): with both present the result must be ActionUnchanged + the
+// existing account attached + prior state copied forward.
 func TestProvisionAgent_ExistingAccount(t *testing.T) {
-	// Track that we did NOT call CreateUser (only GetAccount).
-	var getCalls, createCalls int
+	// Track that we did NOT call CreateUser (only the probe GETs).
+	var createCalls int
+	var keysListed, tokensListed bool
 
 	existing := ForgejoAccount{
 		ID:        42,
@@ -439,14 +441,27 @@ func TestProvisionAgent_ExistingAccount(t *testing.T) {
 		Email:     "bob@example.com",
 	}
 	existingJSON, _ := json.Marshal([]ForgejoAccount{existing})
+	keysJSON, _ := json.Marshal([]SSHKey{{
+		ID: 77, Key: "ssh-ed25519 AAAA", Title: "bob-key",
+		Fingerprint: "SHA256:present", Created: "2026-06-01T00:00:00Z",
+	}})
+	tokensJSON, _ := json.Marshal([]AccessToken{{
+		ID: 88, Name: PATName, Scopes: []string{"read:repository"},
+	}})
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		switch {
-		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/users"):
-			getCalls++
-			w.Header().Set("Content-Type", "application/json")
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/admin/users":
+			// GetAccount — admin user list.
 			_, _ = w.Write(existingJSON)
-		case r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/users"):
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/users/bob/keys":
+			keysListed = true
+			_, _ = w.Write(keysJSON)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/users/bob/tokens":
+			tokensListed = true
+			_, _ = w.Write(tokensJSON)
+		case r.Method == http.MethodPost && r.URL.Path == "/api/v1/admin/users":
 			createCalls++
 			w.WriteHeader(http.StatusCreated)
 		default:
@@ -485,11 +500,186 @@ func TestProvisionAgent_ExistingAccount(t *testing.T) {
 	if r.SSHKeyID != 77 || r.SSHFingerprint != "SHA256:prior" {
 		t.Errorf("carry-forward state lost: SSHKeyID=%d fingerprint=%q", r.SSHKeyID, r.SSHFingerprint)
 	}
-	if getCalls == 0 {
-		t.Error("GetAccount was not called")
+	if !keysListed {
+		t.Error("ListUserKeys was not called (probe must verify the SSH key server-side)")
+	}
+	if !tokensListed {
+		t.Error("ListUserTokens was not called (probe must verify the PAT server-side)")
 	}
 	if createCalls != 0 {
 		t.Errorf("CreateUser was called %d times, want 0 (account already exists)", createCalls)
+	}
+}
+
+// TestProvisionAgent_RepairMissingPAT covers the DF-011 repair path: the
+// user + SSH key exist server-side but the PAT is missing (a previous run
+// died between RegisterKey and CreateToken, or the PAT was revoked
+// manually). The re-run must mint a fresh PAT, report ActionUpdated, and
+// overwrite the stale state (pat_id reconciliation).
+func TestProvisionAgent_RepairMissingPAT(t *testing.T) {
+	var createTokenCalls int
+	existing := ForgejoAccount{ID: 42, Login: "carol", LoginName: "carol", Email: "carol@example.com"}
+	existingJSON, _ := json.Marshal([]ForgejoAccount{existing})
+	keysJSON, _ := json.Marshal([]SSHKey{{
+		ID: 77, Key: "ssh-ed25519 AAAA", Title: "carol-key",
+		Fingerprint: "SHA256:carol", Created: "2026-06-01T00:00:00Z",
+	}})
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/admin/users":
+			_, _ = w.Write(existingJSON)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/users/carol/keys":
+			_, _ = w.Write(keysJSON)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/users/carol/tokens":
+			// No PAT server-side.
+			_, _ = w.Write([]byte(`[]`))
+		case r.Method == http.MethodPost && r.URL.Path == "/api/v1/users/carol/tokens":
+			createTokenCalls++
+			w.WriteHeader(http.StatusCreated)
+			_, _ = fmt.Fprintf(w, `{"id":909,"name":"%s","scopes":["read:repository"],"token":"plaintext-token-abcdef"}`,
+				PATName)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+	s, _ := newHttptestSyncer(t, handler)
+
+	// State records a pat_id that no longer exists server-side.
+	s.state.Agents["carol"] = &AgentState{
+		ForgejoAccountID: 42,
+		SSHKeyID:         77,
+		SSHFingerprint:   "SHA256:carol",
+		PATLastEight:     "****stalePAT",
+		PATID:            123, // stale — server has no such token
+		LastProvisioned:  time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC),
+	}
+
+	a := &Agent{Name: "carol", Status: StatusActive, Tier: TierPro}
+	r, err := s.ProvisionOne(a, SyncOptions{AdminUser: "helio", AdminPassword: "helio123"})
+	if err != nil {
+		t.Fatalf("ProvisionOne: %v", err)
+	}
+	if r.Action != ActionUpdated {
+		t.Errorf("Action = %q, want %q (missing PAT must be repaired)", r.Action, ActionUpdated)
+	}
+	if createTokenCalls != 1 {
+		t.Errorf("CreateToken called %d times, want 1", createTokenCalls)
+	}
+	if r.PATID != 909 {
+		t.Errorf("PATID = %d, want 909 (fresh PAT must be recorded)", r.PATID)
+	}
+	if r.PATLastEight == "" {
+		t.Error("PATLastEight should be set from the fresh token")
+	}
+	// State must be reconciled: stale pat_id replaced.
+	st := s.state.Agents["carol"]
+	if st == nil {
+		t.Fatal("state entry for carol missing after repair")
+	}
+	if st.PATID != 909 {
+		t.Errorf("state PATID = %d, want 909 (stale pat_id must be reconciled)", st.PATID)
+	}
+	if st.SSHKeyID != 77 {
+		t.Errorf("state SSHKeyID = %d, want 77 (existing key preserved)", st.SSHKeyID)
+	}
+}
+
+// TestProvisionAgent_RepairMissingKey covers the DF-011 repair path for a
+// missing SSH key: user + PAT exist server-side but no key is registered.
+// The re-run must generate a keypair, register it, and report ActionUpdated.
+func TestProvisionAgent_RepairMissingKey(t *testing.T) {
+	var registerKeyCalls int
+	existing := ForgejoAccount{ID: 55, Login: "dave", LoginName: "dave", Email: "dave@example.com"}
+	existingJSON, _ := json.Marshal([]ForgejoAccount{existing})
+	tokensJSON, _ := json.Marshal([]AccessToken{{
+		ID: 66, Name: PATName, Scopes: []string{"read:repository"},
+	}})
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/admin/users":
+			_, _ = w.Write(existingJSON)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/users/dave/keys":
+			// No SSH key server-side.
+			_, _ = w.Write([]byte(`[]`))
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/users/dave/tokens":
+			_, _ = w.Write(tokensJSON)
+		case r.Method == http.MethodPost && r.URL.Path == "/api/v1/admin/users/dave/keys":
+			registerKeyCalls++
+			w.WriteHeader(http.StatusCreated)
+			_, _ = fmt.Fprintf(w, `{"id":313,"key":"ssh-ed25519 AAAA","title":"dave-key","fingerprint":"SHA256:dave"}`)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+	s, _ := newHttptestSyncer(t, handler)
+
+	a := &Agent{Name: "dave", Status: StatusActive, Tier: TierPro}
+	r, err := s.ProvisionOne(a, SyncOptions{AdminUser: "helio", AdminPassword: "helio123"})
+	if err != nil {
+		t.Fatalf("ProvisionOne: %v", err)
+	}
+	if r.Action != ActionUpdated {
+		t.Errorf("Action = %q, want %q (missing SSH key must be repaired)", r.Action, ActionUpdated)
+	}
+	if registerKeyCalls != 1 {
+		t.Errorf("RegisterKey called %d times, want 1", registerKeyCalls)
+	}
+	if r.SSHKeyID != 313 {
+		t.Errorf("SSHKeyID = %d, want 313", r.SSHKeyID)
+	}
+	if r.SSHFingerprint == "" {
+		t.Error("SSHFingerprint should be set after key repair")
+	}
+	// The local keypair must have been written so the agent can SSH-auth.
+	privPath := filepath.Join(s.cfg.SSHKeyDir, "dave", "id_ed25519")
+	if _, err := os.Stat(privPath); err != nil {
+		t.Errorf("private key not written during repair: %v", err)
+	}
+	// PAT must be carried forward untouched.
+	if r.PATID != 66 {
+		t.Errorf("PATID = %d, want 66 (existing PAT preserved)", r.PATID)
+	}
+}
+
+// TestProvisionAgent_RepairProbeFailsWithoutBasicAuth covers the DF-011
+// probe requiring admin BasicAuth: when the PAT cannot be verified (missing
+// credentials), the run must fail loudly instead of reporting unchanged.
+func TestProvisionAgent_RepairProbeFailsWithoutBasicAuth(t *testing.T) {
+	existing := ForgejoAccount{ID: 42, Login: "erin", LoginName: "erin", Email: "erin@example.com"}
+	existingJSON, _ := json.Marshal([]ForgejoAccount{existing})
+	keysJSON, _ := json.Marshal([]SSHKey{{
+		ID: 77, Key: "ssh-ed25519 AAAA", Title: "erin-key",
+		Fingerprint: "SHA256:erin", Created: "2026-06-01T00:00:00Z",
+	}})
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/admin/users":
+			_, _ = w.Write(existingJSON)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/users/erin/keys":
+			_, _ = w.Write(keysJSON)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+	s, _ := newHttptestSyncer(t, handler)
+
+	a := &Agent{Name: "erin", Status: StatusActive, Tier: TierPro}
+	// No admin BasicAuth creds — the PAT probe cannot run.
+	r, err := s.ProvisionOne(a, SyncOptions{})
+	if err == nil {
+		t.Fatal("expected error from ProvisionOne (PAT probe without BasicAuth)")
+	}
+	if r.Action != ActionFailed {
+		t.Errorf("Action = %q, want %q", r.Action, ActionFailed)
+	}
+	if !strings.Contains(r.Error, "BasicAuth") {
+		t.Errorf("Error = %q, want mention of BasicAuth", r.Error)
 	}
 }
 

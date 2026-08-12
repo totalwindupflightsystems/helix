@@ -17,13 +17,20 @@ package identity
 // State machine (per active agent):
 //
 //   Load → Validate → GetAccount
-//     ├─ exists   → ActionUnchanged (record, skip keygen)
-//     └─ 404      → CreateUser → GenerateKeyPair → write files
-//                    → RegisterKey → CreateToken → ActionCreated
+//     ├─ missing    → CreateUser → GenerateKeyPair → write files
+//     │               → RegisterKey → CreateToken → ActionCreated
+//     └─ exists     → ListUserKeys + ListUserTokens (server-side probe)
+//         ├─ key+PAT present → ActionUnchanged
+//         └─ missing piece   → repair it (register key / mint PAT)
+//                              → ActionUpdated (DF-011: the probe used to
+//                              check user existence only, so a partial
+//                              provision reported "unchanged" and never
+//                              repaired the missing PAT/key)
 //
 // For offboarded agents:
 //
-//   Load → RevokeToken (if PAT known) → archive keys → ActionDeprovisioned
+//   Load → RevokeToken (if PAT known) → delete SSH keys server-side
+//          → archive keys → ActionDeprovisioned (DF-012)
 //
 // Failures at any step are recorded as ActionFailed but do NOT abort the
 // rest of the run — the sync is best-effort across agents, and the final
@@ -264,7 +271,11 @@ func (s *Syncer) provisionAgent(a *Agent, opts SyncOptions) ProvisioningResult {
 	start := time.Now()
 	r := ProvisioningResult{AgentName: a.Name, Status: a.Status}
 
-	// Step 1: idempotency probe.
+	// Step 1: idempotency probe — the probe verifies the FULL identity
+	// surface, not just user existence (DF-011). A user that exists may
+	// still be missing its SSH key or PAT (e.g. a previous run died after
+	// CreateUser/RegisterKey but before CreateToken, or the PAT was revoked
+	// manually in the Forgejo UI). Missing pieces are repaired below.
 	existing, err := s.prov.GetAccount(a.Name)
 	if err != nil {
 		r.Action = ActionFailed
@@ -274,7 +285,6 @@ func (s *Syncer) provisionAgent(a *Agent, opts SyncOptions) ProvisioningResult {
 	}
 	if existing != nil {
 		r.Account = existing
-		r.Action = ActionUnchanged
 		// Carry forward any previously-recorded state for display.
 		if st := s.state.Agents[a.Name]; st != nil {
 			r.SSHKeyID = st.SSHKeyID
@@ -282,7 +292,105 @@ func (s *Syncer) provisionAgent(a *Agent, opts SyncOptions) ProvisioningResult {
 			r.PATID = st.PATID
 			r.PATLastEight = st.PATLastEight
 		}
+
+		keys, err := s.prov.ListUserKeys(a.Name)
+		if err != nil {
+			r.Action = ActionFailed
+			r.Error = err.Error()
+			r.Duration = time.Since(start)
+			return r
+		}
+		tokens, err := s.prov.ListUserTokens(a.Name, opts.AdminUser, opts.AdminPassword)
+		if err != nil {
+			r.Action = ActionFailed
+			r.Error = err.Error()
+			r.Duration = time.Since(start)
+			return r
+		}
+
+		needKey := len(keys) == 0
+		needPAT := len(tokens) == 0
+		if !needKey && !needPAT {
+			// Everything present server-side — genuinely unchanged.
+			r.Action = ActionUnchanged
+			r.Duration = time.Since(start)
+			return r
+		}
+
+		// Repair path: at least one piece of the identity is missing
+		// server-side. Re-run must fix it instead of reporting unchanged.
+		s.log.Printf("identity: REPAIR agent=%s missing=[%s]", a.Name,
+			strings.Join(missingPieces(needKey, needPAT), ","))
+
+		if needKey {
+			kp, err := s.writeKeyFiles(a)
+			if err != nil {
+				r.Action = ActionFailed
+				r.Error = err.Error()
+				r.Duration = time.Since(start)
+				return r
+			}
+			r.SSHFingerprint = kp.Fingerprint
+			key, err := s.prov.RegisterKey(a.Name, "", kp.PublicKeyOpenSSH, a.KeyTitle())
+			if err != nil {
+				r.Action = ActionFailed
+				r.Error = err.Error()
+				r.Duration = time.Since(start)
+				return r
+			}
+			if key != nil {
+				r.SSHKeyID = key.ID
+			}
+		} else if r.SSHKeyID == 0 && len(keys) > 0 {
+			// Key exists server-side but state has no record of it —
+			// adopt the server's key id so state matches reality.
+			r.SSHKeyID = keys[0].ID
+			if r.SSHFingerprint == "" {
+				r.SSHFingerprint = keys[0].Fingerprint
+			}
+		}
+
+		if needPAT {
+			// Reconcile: state may record a pat_id that no longer exists
+			// server-side — mint a fresh PAT and overwrite the stale id.
+			tok, err := s.prov.CreateToken(a.Name, opts.AdminUser, opts.AdminPassword,
+				NewCreateTokenRequest(a))
+			if err != nil {
+				r.Action = ActionFailed
+				r.Error = err.Error()
+				r.Duration = time.Since(start)
+				return r
+			}
+			if tok != nil {
+				r.PATID = tok.ID
+				if tok.Token != "" {
+					r.PATLastEight = MaskToken(tok.Token)
+				}
+			}
+		} else if r.PATID == 0 && len(tokens) > 0 {
+			// PAT exists server-side but state has no record of it —
+			// adopt the server's token id/last-eight so state matches
+			// reality (the list endpoint never returns the plaintext).
+			r.PATID = tokens[0].ID
+			if r.PATLastEight == "" {
+				r.PATLastEight = tokens[0].TokenLastEight
+			}
+		}
+
+		r.Action = ActionUpdated
 		r.Duration = time.Since(start)
+
+		// Record the repaired state for idempotency (only when not dry-run).
+		if !s.cfg.DryRun {
+			s.state.Agents[a.Name] = &AgentState{
+				ForgejoAccountID: accountID(existing),
+				SSHKeyID:         r.SSHKeyID,
+				SSHFingerprint:   r.SSHFingerprint,
+				PATLastEight:     r.PATLastEight,
+				PATID:            r.PATID,
+				LastProvisioned:  time.Now().UTC(),
+			}
+		}
 		return r
 	}
 
@@ -366,6 +474,19 @@ func (s *Syncer) provisionAgent(a *Agent, opts SyncOptions) ProvisioningResult {
 		}
 	}
 	return r
+}
+
+// missingPieces names the identity components that are absent server-side,
+// for the REPAIR log line. Order is stable: key, then PAT.
+func missingPieces(needKey, needPAT bool) []string {
+	out := make([]string, 0, 2)
+	if needKey {
+		out = append(out, "ssh-key")
+	}
+	if needPAT {
+		out = append(out, "pat")
+	}
+	return out
 }
 
 // deprovisionAgent revokes an offboarded agent's PAT and archives their keys.
