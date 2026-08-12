@@ -729,3 +729,67 @@ tasks:
   status: complete
   created_at: '2026-08-10T02:04:59.562394+00:00'
   completed_at: '2026-08-10T02:05:02.340470+00:00'
+- id: df-011
+  title: helix-identity provision idempotency lies (partial state never repaired)
+  criteria:
+  - Provision re-run after partial failure (user+key exist, no PAT) detects the missing
+    PAT and repairs it, reporting action=updated not unchanged
+  - Idempotency probe verifies user, SSH key AND PAT all present server-side
+  - Stale pat_id in state file reconciled against live token list
+  - Unit tests cover missing-PAT and missing-key repair paths
+  status: complete
+  created_at: '2026-08-12T11:48:33.833068+00:00'
+  completed_at: '2026-08-12T11:48:50.050852+00:00'
+- id: df-012
+  title: helix-identity deprovision leaves SSH key registered + key archive fails
+  criteria:
+  - Deprovision deletes the agent's SSH keys server-side (Forgejo key count -> 0)
+  - Local key archived into dated archive dir with no WARN (MkdirAll before rename)
+  - Unit tests cover server-side key deletion and archive-dir creation
+  status: complete
+  created_at: '2026-08-12T11:48:33.923999+00:00'
+  completed_at: '2026-08-12T11:51:19.084143+00:00'
+- id: df-013
+  title: helix source test false-FAILS valid REST sources with non-200 base URL
+  criteria:
+  - helix source test with live Forgejo REST source (base /api/v1, spec from /swagger.v1.json)
+    exits 0
+  - Deliberately broken base URL still fails the test
+  - Probe first GET path from spec or --probe-path override; base 404 warns when spec
+    paths probe fine
+  - Unit tests cover the probe logic
+  status: complete
+  created_at: '2026-08-12T11:48:34.020358+00:00'
+  completed_at: '2026-08-12T11:52:51.328957+00:00'
+- id: df-014
+  title: helix contract create/validate id mismatch + empty generated OpenAPI
+  criteria:
+  - 'contract create X followed by contract validate X with the same id succeeds (no
+    ''contract: X not found'')'
+  - contract list output is unambiguous about registered ids
+  - Generated OpenAPI is non-empty or explicitly labeled scaffold (x-helix-scaffold)
+  - Unit tests cover create->validate round-trip and id normalization
+  status: complete
+  created_at: '2026-08-12T11:48:42.511703+00:00'
+  completed_at: '2026-08-12T11:54:53.542397+00:00'
+- id: df-015
+  title: 'Provisioning docs gap: known-friends.json schema + BasicAuth requirement
+    undocumented'
+  criteria:
+  - GETTING-STARTED.md documents known-friends.json schema (agents is a map name->agent)
+    with an example
+  - GETTING-STARTED.md documents the required --admin-user/--admin-password flags
+    for token creation
+  - CreateToken error message mentions BasicAuth credentials upfront
+  status: pending
+  created_at: '2026-08-12T11:48:42.604715+00:00'
+- id: df-016
+  title: Hand-rolled flag parser silently ignores unknown flags
+  criteria:
+  - 'contract validate --file x errors ''unknown flag: --file'' with non-zero exit'
+  - contract validate --bogus-flag errors with an unknown-flag message, not fall-through
+  - Valid flags behave identically to before
+  - Unit tests cover unknown-flag rejection per subcommand
+  status: complete
+  created_at: '2026-08-12T11:48:42.698692+00:00'
+  completed_at: '2026-08-12T11:55:49.298842+00:00'
