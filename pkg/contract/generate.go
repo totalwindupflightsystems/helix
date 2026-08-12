@@ -61,17 +61,19 @@ func generateSchema(format ContractFormat, specRef string) interface{} {
 			"info": map[string]interface{}{
 				"title":       specRef + " API",
 				"version":     "1.0.0",
-				"description": "Generated contract for spec " + specRef,
+				"description": "Generated contract for spec " + specRef + " — SCAFFOLD: no endpoints derived from spec; populate paths/ manually",
 			},
-			"paths":      map[string]interface{}{},
-			"components": map[string]interface{}{},
+			"paths":            map[string]interface{}{},
+			"components":       map[string]interface{}{},
+			"x-helix-scaffold": true,
 		}
 	case FormatProtobuf:
 		return map[string]interface{}{
-			"syntax":   "proto3",
-			"package":  specRef,
-			"services": []interface{}{},
-			"messages": []interface{}{},
+			"syntax":           "proto3",
+			"package":          specRef,
+			"services":         []interface{}{},
+			"messages":         []interface{}{},
+			"x-helix-scaffold": true,
 		}
 	case FormatGraphQL:
 		return map[string]interface{}{
@@ -80,7 +82,8 @@ func generateSchema(format ContractFormat, specRef string) interface{} {
 				"mutation":     "Mutation",
 				"subscription": "Subscription",
 			},
-			"types": []interface{}{},
+			"types":            []interface{}{},
+			"x-helix-scaffold": true,
 		}
 	}
 	return nil

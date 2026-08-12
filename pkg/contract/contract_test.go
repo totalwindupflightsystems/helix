@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -177,6 +178,88 @@ func TestContractStore(t *testing.T) {
 	c2.Hash = "" // different hash
 	if err := store.Save(&c2); err == nil {
 		t.Error("expected frozen contract mutation to be rejected")
+	}
+}
+
+func TestContractStore_Resolve_BareSpecAlias(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewContractStore(dir)
+	if err != nil {
+		t.Fatalf("NewContractStore: %v", err)
+	}
+	c := &Contract{
+		ID:      "agent-identity-openapi",
+		SpecRef: "agent-identity",
+		Format:  FormatOpenAPI,
+		Schema:  json.RawMessage(`{"openapi":"3.0.3","info":{"title":"t"},"paths":{}}`),
+		Version: 1,
+	}
+	if err := store.Save(c); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	// Full id resolves to itself.
+	resolved, err := store.Resolve("agent-identity-openapi")
+	if err != nil {
+		t.Fatalf("Resolve(full id): %v", err)
+	}
+	if resolved.ID != "agent-identity-openapi" {
+		t.Errorf("expected agent-identity-openapi, got %q", resolved.ID)
+	}
+
+	// Bare spec id resolves to the <spec>-<format> contract (DF-014).
+	resolved, err = store.Resolve("agent-identity")
+	if err != nil {
+		t.Fatalf("Resolve(bare spec id): %v", err)
+	}
+	if resolved.ID != "agent-identity-openapi" {
+		t.Errorf("expected agent-identity-openapi, got %q", resolved.ID)
+	}
+}
+
+func TestContractStore_Resolve_Ambiguous(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewContractStore(dir)
+	if err != nil {
+		t.Fatalf("NewContractStore: %v", err)
+	}
+	schemas := []struct {
+		id     string
+		format ContractFormat
+		raw    string
+	}{
+		{"test-spec-openapi", FormatOpenAPI, `{"openapi":"3.0.3","info":{"title":"t"},"paths":{}}`},
+		{"test-spec-protobuf", FormatProtobuf, `{"syntax":"proto3","package":"test-spec","services":[],"messages":[]}`},
+	}
+	for _, s := range schemas {
+		c := &Contract{ID: s.id, SpecRef: "test-spec", Format: s.format, Schema: json.RawMessage(s.raw), Version: 1}
+		if err := store.Save(c); err != nil {
+			t.Fatalf("Save %s: %v", s.id, err)
+		}
+	}
+
+	_, err = store.Resolve("test-spec")
+	if err == nil {
+		t.Fatal("expected ambiguous error for bare id with multiple formats")
+	}
+	if !strings.Contains(err.Error(), "ambiguous") {
+		t.Errorf("expected ambiguous error, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "test-spec-openapi") || !strings.Contains(err.Error(), "test-spec-protobuf") {
+		t.Errorf("ambiguous error should list matches, got %v", err)
+	}
+}
+
+func TestContractStore_Resolve_Missing(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewContractStore(dir)
+	if err != nil {
+		t.Fatalf("NewContractStore: %v", err)
+	}
+	if _, err := store.Resolve("nope"); err == nil {
+		t.Error("expected error for missing id")
+	} else if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("expected not-found error, got %v", err)
 	}
 }
 

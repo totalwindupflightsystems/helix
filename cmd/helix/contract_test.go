@@ -222,6 +222,86 @@ func TestRunContractCreate_NonDefaultFormat(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// DF-014: create→validate round-trip with bare spec ids
+// ---------------------------------------------------------------------------
+
+func TestRunContractCreateValidate_BareIDRoundTrip(t *testing.T) {
+	// DF-014: create registers <spec-id>-<format>; validate/freeze/diff/show
+	// accept the bare spec id as an alias for the same contract.
+	store := t.TempDir()
+	stdout, _, err := runContractCLI(t, "create", "agent-identity", "--store", store)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "✓ contract agent-identity-openapi created")
+
+	stdout, _, err = runContractCLI(t, "validate", "agent-identity", "--store", store)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, `✓ contract "agent-identity-openapi" is consistent`)
+
+	stdout, _, err = runContractCLI(t, "show", "agent-identity", "--store", store)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "ID:       agent-identity-openapi")
+
+	stdout, _, err = runContractCLI(t, "freeze", "agent-identity", "--store", store)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, `✓ contract "agent-identity-openapi" frozen`)
+
+	// diff accepts bare ids on both sides.
+	_, _, err = runContractCLI(t, "create", "agent-marketplace", "--store", store)
+	require.NoError(t, err)
+	stdout, _, err = runContractCLI(t, "diff", "agent-marketplace", "agent-identity", "--store", store)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, `✓ no breaking changes between "agent-identity-openapi" and "agent-marketplace-openapi"`)
+}
+
+func TestRunContract_BareIDAliasStillResolvesFullID(t *testing.T) {
+	// The full registered id keeps working after the alias is introduced.
+	store := t.TempDir()
+	_, _, err := runContractCLI(t, "create", "SPEC-9", "--store", store)
+	require.NoError(t, err)
+
+	stdout, _, err := runContractCLI(t, "validate", "SPEC-9-openapi", "--store", store)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, `✓ contract "SPEC-9-openapi" is consistent`)
+
+	stdout, _, err = runContractCLI(t, "validate", "SPEC-9", "--store", store)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, `✓ contract "SPEC-9-openapi" is consistent`)
+}
+
+func TestRunContract_BareIDAmbiguous(t *testing.T) {
+	// A bare id matching contracts in multiple formats is rejected with the
+	// matches listed, instead of silently picking one.
+	store := t.TempDir()
+	_, _, err := runContractCLI(t, "create", "SPEC-9", "--store", store)
+	require.NoError(t, err)
+	_, _, err = runContractCLI(t, "create", "SPEC-9", "--format", "protobuf", "--store", store)
+	require.NoError(t, err)
+
+	_, _, err = runContractCLI(t, "validate", "SPEC-9", "--store", store)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "ambiguous")
+	assert.Contains(t, err.Error(), "SPEC-9-openapi")
+	assert.Contains(t, err.Error(), "SPEC-9-protobuf")
+}
+
+func TestRunContractCreate_ScaffoldLabeled(t *testing.T) {
+	// DF-014: the generated OpenAPI is explicitly labeled a scaffold instead
+	// of being a silently empty contract.
+	store := t.TempDir()
+	stdout, _, err := runContractCLI(t, "create", "SPEC-9", "--store", store)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "scaffold")
+
+	s, err := contract.NewContractStore(store)
+	require.NoError(t, err)
+	c, err := s.Load("SPEC-9-openapi")
+	require.NoError(t, err)
+	var schema map[string]interface{}
+	require.NoError(t, json.Unmarshal(c.Schema, &schema))
+	assert.Equal(t, true, schema["x-helix-scaffold"])
+}
+
+// ---------------------------------------------------------------------------
 // runContractValidate
 // ---------------------------------------------------------------------------
 

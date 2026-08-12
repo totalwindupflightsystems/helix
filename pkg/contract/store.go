@@ -84,6 +84,40 @@ func (s *ContractStore) Load(id string) (*Contract, error) {
 	return &c, nil
 }
 
+// Resolve loads a contract by id, accepting a bare spec id as an alias for
+// the contract registered as <spec-id>-<format>. A bare id that matches
+// contracts in more than one format is ambiguous and returns an error
+// listing the matches. If the id itself loads (or errors for a reason other
+// than a missing alias, e.g. a corrupt file), that result is returned
+// unchanged.
+func (s *ContractStore) Resolve(id string) (*Contract, error) {
+	c, err := s.Load(id)
+	if err == nil {
+		return c, nil
+	}
+	origErr := err
+
+	var matches []*Contract
+	for _, format := range []ContractFormat{FormatOpenAPI, FormatProtobuf, FormatGraphQL} {
+		if m, err := s.Load(contractID(id, format)); err == nil {
+			matches = append(matches, m)
+		}
+	}
+	switch len(matches) {
+	case 1:
+		return matches[0], nil
+	case 0:
+		return nil, origErr
+	default:
+		ids := make([]string, 0, len(matches))
+		for _, m := range matches {
+			ids = append(ids, m.ID)
+		}
+		return nil, fmt.Errorf("contract: %s is ambiguous — matches %s; use a full contract id",
+			id, strings.Join(ids, ", "))
+	}
+}
+
 // List returns all contract IDs.
 func (s *ContractStore) List() ([]string, error) {
 	entries, err := os.ReadDir(s.root)

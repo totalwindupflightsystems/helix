@@ -177,6 +177,7 @@ func runContractCreate(stdout io.Writer, stderr io.Writer, store *contract.Contr
 		return err
 	}
 	fmt.Fprintf(stdout, "✓ contract %s created (format: %s, version: %d)\n", c.ID, flags.format, c.Version)
+	fmt.Fprintln(stdout, "  note: scaffold contract — no endpoints derived from spec; populate the schema paths or extend the spec to fill them in")
 	return nil
 }
 
@@ -185,13 +186,13 @@ func runContractValidate(stdout io.Writer, store *contract.ContractStore, flags 
 		return fmt.Errorf("contract validate requires <contract-id>")
 	}
 
-	c, err := store.Load(flags.id)
+	c, err := store.Resolve(flags.id)
 	if err != nil {
 		return fmt.Errorf("load contract %q: %w", flags.id, err)
 	}
 
 	validator := contract.NewContractValidator()
-	prev, _ := store.LoadPrevious(flags.id) // optional
+	prev, _ := store.LoadPrevious(c.ID) // optional
 	consumers, _ := store.LoadConsumerCatalog()
 	consumerNames := make([]string, 0, len(consumers))
 	for name := range consumers {
@@ -210,9 +211,9 @@ func runContractValidate(stdout io.Writer, store *contract.ContractStore, flags 
 	}
 
 	if report.Consistent {
-		fmt.Fprintf(stdout, "✓ contract %q is consistent\n", flags.id)
+		fmt.Fprintf(stdout, "✓ contract %q is consistent\n", c.ID)
 	} else {
-		fmt.Fprintf(stdout, "✗ contract %q has %d issue(s)\n", flags.id, len(report.BreakingChanges))
+		fmt.Fprintf(stdout, "✗ contract %q has %d issue(s)\n", c.ID, len(report.BreakingChanges))
 	}
 	for _, bc := range report.BreakingChanges {
 		fmt.Fprintf(stdout, "  - %s: %s (%s → %s)\n", bc.Field, bc.ChangeType, bc.OldType, bc.NewType)
@@ -228,20 +229,20 @@ func runContractFreeze(stdout io.Writer, store *contract.ContractStore, flags co
 		return fmt.Errorf("contract freeze requires <contract-id>")
 	}
 
-	c, err := store.Load(flags.id)
+	c, err := store.Resolve(flags.id)
 	if err != nil {
 		return fmt.Errorf("load contract %q: %w", flags.id, err)
 	}
 
 	if c.IsFrozen() {
-		fmt.Fprintf(stdout, "contract %q is already frozen (hash: %s)\n", flags.id, c.Hash)
+		fmt.Fprintf(stdout, "contract %q is already frozen (hash: %s)\n", c.ID, c.Hash)
 		return nil
 	}
 
 	hash := contract.ComputeHash(c)
 
 	if flags.dryRun {
-		fmt.Fprintf(stdout, "[DRY-RUN] would freeze contract %q with hash %s\n", flags.id, hash)
+		fmt.Fprintf(stdout, "[DRY-RUN] would freeze contract %q with hash %s\n", c.ID, hash)
 		return nil
 	}
 
@@ -251,7 +252,7 @@ func runContractFreeze(stdout io.Writer, store *contract.ContractStore, flags co
 	if err := store.Save(c); err != nil {
 		return err
 	}
-	fmt.Fprintf(stdout, "✓ contract %q frozen (hash: %s, version: %d)\n", flags.id, hash, c.Version)
+	fmt.Fprintf(stdout, "✓ contract %q frozen (hash: %s, version: %d)\n", c.ID, hash, c.Version)
 	return nil
 }
 
@@ -260,11 +261,11 @@ func runContractDiff(stdout io.Writer, store *contract.ContractStore, flags cont
 		return fmt.Errorf("contract diff requires <new-id> <old-id>")
 	}
 
-	newC, err := store.Load(flags.id)
+	newC, err := store.Resolve(flags.id)
 	if err != nil {
 		return fmt.Errorf("load new contract %q: %w", flags.id, err)
 	}
-	oldC, err := store.Load(flags.oldID)
+	oldC, err := store.Resolve(flags.oldID)
 	if err != nil {
 		return fmt.Errorf("load old contract %q: %w", flags.oldID, err)
 	}
@@ -277,11 +278,11 @@ func runContractDiff(stdout io.Writer, store *contract.ContractStore, flags cont
 	}
 
 	if len(changes) == 0 {
-		fmt.Fprintf(stdout, "✓ no breaking changes between %q and %q\n", flags.oldID, flags.id)
+		fmt.Fprintf(stdout, "✓ no breaking changes between %q and %q\n", oldC.ID, newC.ID)
 		return nil
 	}
 
-	fmt.Fprintf(stdout, "%d breaking change(s) between %q and %q:\n", len(changes), flags.oldID, flags.id)
+	fmt.Fprintf(stdout, "%d breaking change(s) between %q and %q:\n", len(changes), oldC.ID, newC.ID)
 	for _, bc := range changes {
 		fmt.Fprintf(stdout, "  - %s: %s (%s → %s)\n", bc.Field, bc.ChangeType, bc.OldType, bc.NewType)
 	}
@@ -308,7 +309,7 @@ func runContractConsumerCheck(stdout io.Writer, store *contract.ContractStore, f
 		return nil
 	}
 
-	c, err := store.Load(flags.id)
+	c, err := store.Resolve(flags.id)
 	if err != nil {
 		return fmt.Errorf("load contract %q: %w", flags.id, err)
 	}
@@ -361,7 +362,7 @@ func runContractShow(stdout io.Writer, store *contract.ContractStore, flags cont
 		return fmt.Errorf("contract show requires <contract-id>")
 	}
 
-	c, err := store.Load(flags.id)
+	c, err := store.Resolve(flags.id)
 	if err != nil {
 		return fmt.Errorf("load contract %q: %w", flags.id, err)
 	}
