@@ -19,7 +19,7 @@ without reading Go source first.
 
 ## Conventions
 
-- All packages are Go 1.24+, importable as
+- All packages are Go 1.25+, importable as
   `github.com/totalwindupflightsystems/helix/pkg/<name>`.
 - Errors are returned as Go `error` values; `pkg/forgejo` and `pkg/identity`
   expose typed errors (`APIError`, `TypedError`) for classification.

@@ -43,7 +43,7 @@ prompts/             Prompt files (linked in commits via GitReins)
 
 ## Tech Stack
 
-- **Language:** Go 1.24 (cobra/viper CLIs)
+- **Language:** Go 1.25 (cobra/viper CLIs; `go.mod` requires ≥1.25.8)
 - **Forge:** Forgejo REST API (agent identity)
 - **Review:** Chimera multi-model deliberation (PR negotiation)
 - **Quality:** GitReins (6 gates + Tier 2 evaluator)

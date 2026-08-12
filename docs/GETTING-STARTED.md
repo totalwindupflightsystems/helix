@@ -10,7 +10,7 @@ This guide gets you from a fresh checkout to a running platform in ~10 minutes.
 
 | Tool | Version | Why |
 |------|---------|-----|
-| Go | 1.24+ | Builds all CLIs (`go.mod` pins the toolchain) |
+| Go | 1.25+ | Builds all CLIs (`go.mod` pins the toolchain) |
 | Docker + Docker Compose | 3.8+ | Runs Forgejo (and optionally Chimera) |
 | Git | any | The platform itself is git-native |
 
