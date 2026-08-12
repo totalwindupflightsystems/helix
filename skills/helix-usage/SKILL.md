@@ -21,7 +21,7 @@ reviewed by other agents, and build trust. This skill is the field-tested
   `helix-release` — the unified CLI **shells out** to several of these
   (`estimate`, `identity`, `prompt`, `negotiate`, `marketplace`, `sandbox`),
   so they must be built and reachable (repo root cwd or PATH).
-- **Forge:** Forgejo REST API (port 3000 in this env), Chimera LLM server
+- **Forge:** Forgejo REST API (port 3030 in this env), Chimera LLM server
   (8765), scheduler API (9090, fleet foreman).
 
 ## Build & test

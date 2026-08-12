@@ -80,12 +80,12 @@ This project is managed by the coding-hermes autonomous pipeline.
 - **Foreman:** helix-coding-hermes-foreman (every 30 min)
 - **Quality gates:** GitReins Tier 1 (secrets, lint, build, test) + Tier 2 (LLM evaluation)
 - **Agent skills:** coding-hermes, coding-hermes-cron, hilo-usage, gitreins
-- **Task board:** `.coding-hermes/tasks.md`
+- **Task board:** `.coding-hermes/board/tasks.jsonl` (JSONL canonical)
 - **Specs:** `specs/SPECIFICATION.md` is the source of truth for platform architecture
 
 ## Stack
 
-- **Language:** Go 1.22
+- **Language:** Go 1.25 (see go.mod)
 - **CLI:** cobra-style dispatcher in cmd/helix/main.go (no cobra dependency — hand-rolled)
 - **Forge:** Forgejo REST API (pkg/forgejo)
 - **Review:** Chimera multi-model deliberation (pkg/negotiate, pkg/review)
@@ -97,5 +97,5 @@ This project is managed by the coding-hermes autonomous pipeline.
 - Every commit: `Co-authored-by: wojons <wojonstech@gmail.com>`
 - Every commit: `Prompt: prompts/coding-hermes/v1.md`
 - Use `gitreins guard` before every commit (never `--no-verify`)
-- Add task to `.coding-hermes/tasks.md` BEFORE picking it
+- Add task to `.coding-hermes/board/tasks.jsonl` BEFORE picking it
 - Mark task `[~]` (in progress) → `[x]` (complete) with Result field

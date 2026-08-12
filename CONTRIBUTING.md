@@ -58,7 +58,7 @@ Every commit MUST:
 3. Pass GitReins quality gates (secrets, lint, tests, build, attestation, prompt link)
 
 **Never** use `--no-verify` for code changes. Board-only commits
-(`.coding-hermes/tasks.md` only) may use `--no-verify` when the guard's
+(`.coding-hermes/board/tasks.jsonl` only) may use `--no-verify` when the guard's
 test step can't build without changed code.
 
 ## Quality Gates
