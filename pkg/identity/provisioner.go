@@ -761,7 +761,7 @@ func (p *Provisioner) CreateToken(agentName, adminUser, adminPassword string, re
 	}
 	if adminUser == "" || adminPassword == "" {
 		return nil, NewConfigError(
-			fmt.Sprintf("CreateToken(%s): missing admin BasicAuth credentials", agentName), nil)
+			fmt.Sprintf("CreateToken(%s): missing admin BasicAuth credentials (--admin-user/--admin-password or FORGEJO_ADMIN_USER/FORGEJO_ADMIN_PASSWORD) — Forgejo requires BasicAuth to mint PATs; the account and SSH key may already have been created by this run, re-run with the credentials to repair", agentName), nil)
 	}
 	p.limiter.Acquire()
 

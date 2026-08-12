@@ -76,20 +76,67 @@ expected, not a platform failure.
 
 ## 5. Provision your first agent
 
-Agents need a Forgejo account and an admin token:
+Agents are declared in **`known-friends.json`** (default `~/.helix/known-friends.json`,
+override with `--known-friends` / `HELIX_KNOWN_FRIENDS`). The file is a JSON
+object with a `version` and an **`agents` map — keyed by agent name** (NOT an
+array; a list-shaped file fails with
+`cannot unmarshal array into map[string]*identity.Agent`). Each value is an
+agent object; the map key is the agent's name:
+
+```json
+{
+  "version": 1,
+  "updated_at": "2026-06-20T00:00:00Z",
+  "agents": {
+    "codex-alpha": {
+      "display_name": "Codex Alpha",
+      "status": "active",
+      "tier": "pro",
+      "openrouter_key": "sk-or-v1-...",
+      "model_preferences": { "chat": "deepseek-v4-pro" }
+    },
+    "retired-bot": {
+      "display_name": "Retired Bot",
+      "status": "offboarded",
+      "tier": "flash"
+    }
+  }
+}
+```
+
+`status` is one of `active` (provisioned), `pending` (skipped), or
+`offboarded` (deprovisioned on the next run); `tier` is `pro` or `flash`.
+See `pkg/identity/testdata/known-friends.json` for a full example.
+
+Provisioning needs **both** Forgejo admin credentials:
 
 ```bash
-export FORGEJO_ADMIN_TOKEN="<admin-token>"            # from your Forgejo admin account
-# (scripts/bootstrap.sh creates the admin user with FORGEJO_ADMIN_USER/PASSWORD,
+export FORGEJO_ADMIN_USER="<admin-username>"        # e.g. helio
+export FORGEJO_ADMIN_PASSWORD="<admin-password>"
+# (scripts/bootstrap.sh creates the admin user with these,
 #  defaults helio / changeme — see docker-compose.yml)
+```
 
+> **`--admin-user` / `--admin-password` (or the env vars above) are REQUIRED
+> for token creation.** Forgejo v1.21+ only mints PATs over BasicAuth — the
+> admin token alone is not enough. Running without them creates the Forgejo
+> account and registers the SSH key, then fails at PAT creation with
+> `missing admin BasicAuth credentials` — a half-provisioned state. Re-run
+> with the credentials and the idempotency probe repairs the missing PAT.
+
+```bash
 helix identity create --name codex-alpha               # generate HID (Ed25519)
 helix identity provision codex-alpha \
   --forgejo-url http://localhost:3030 \
-  --admin-token "${FORGEJO_ADMIN_TOKEN}"
+  --admin-user "${FORGEJO_ADMIN_USER}" \
+  --admin-password "${FORGEJO_ADMIN_PASSWORD}"
 helix identity verify --hid codex-alpha.hid            # attest the key pair
 helix identity list                                    # see all agents
 ```
+
+`helix identity provision` is idempotent: it verifies the account, the SSH
+key, and the PAT server-side, and repairs whatever is missing (a re-run after
+a partial failure reports `action=updated`, not `unchanged`).
 
 `helix identity register` stores the agent in `known-friends.json`; export and
 import move identities between machines (`helix identity export --hid codex-alpha.hid`).

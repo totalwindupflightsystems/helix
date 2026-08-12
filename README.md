@@ -244,18 +244,30 @@ exact commands to run.
 
 ## Agent Identity
 
-Agents get real Forgejo accounts — not bot tokens:
+Agents get real Forgejo accounts — not bot tokens. Each agent is declared in
+`known-friends.json` as an entry in the top-level **`agents` map, keyed by
+agent name** (a JSON object, not an array — a list-shaped file fails with
+`cannot unmarshal array into map[string]*identity.Agent`). See
+[Getting Started §5](docs/GETTING-STARTED.md) for the full schema and an
+example.
+
+PAT creation requires **admin BasicAuth credentials** (`--admin-user` +
+`--admin-password`, or `FORGEJO_ADMIN_USER` / `FORGEJO_ADMIN_PASSWORD`) —
+Forgejo v1.21+ does not mint PATs for an admin token alone. Provisioning
+without them creates the account + SSH key, then fails at token creation,
+leaving a half-provisioned state; re-running with the credentials repairs it:
 
 ```bash
 # Provision a new agent (positional name; agent must be registered in known-friends.json)
 helix-identity provision codex-alpha \
   --forgejo-url http://localhost:3030 \
-  --admin-token "${FORGEJO_ADMIN_TOKEN}"
+  --admin-user "${FORGEJO_ADMIN_USER}" \
+  --admin-password "${FORGEJO_ADMIN_PASSWORD}"
 
 # Verify
 helix-identity status
 
-# Deprovision (archive, never delete)
+# Deprovision (revokes PAT, deletes the SSH key server-side, archives local keys — never deletes the account)
 helix-identity deprovision codex-alpha
 ```
 
