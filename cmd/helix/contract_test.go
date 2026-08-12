@@ -119,23 +119,98 @@ func TestParseContractFlags(t *testing.T) {
 func TestParseContractFlags_Values(t *testing.T) {
 	f, _, rc := parseContractFlags([]string{
 		"consumer-check", "spec-1", "--consumer", "webapp",
-		"--format", "protobuf", "--store", "/tmp/contracts", "--json", "--dry-run",
+		"--store", "/tmp/contracts", "--json", "--dry-run",
 	})
 	require.Equal(t, contractExitOK, rc)
 	assert.Equal(t, "consumer-check", f.subcommand)
 	assert.Equal(t, "spec-1", f.id)
 	assert.Equal(t, "webapp", f.consumer)
-	assert.Equal(t, "protobuf", f.format)
 	assert.Equal(t, "/tmp/contracts", f.storePath)
 	assert.True(t, f.jsonOut)
 	assert.True(t, f.dryRun)
+
+	// --format is a create-only flag (DF-016).
+	f, _, rc = parseContractFlags([]string{"create", "spec-2", "--format", "protobuf"})
+	require.Equal(t, contractExitOK, rc)
+	assert.Equal(t, "protobuf", f.format)
 }
 
-func TestParseContractFlags_UnknownFlagSilentlyIgnored(t *testing.T) {
-	// Unlike spec/adr, unknown flags do not abort parsing.
+func TestParseContractFlags_UnknownFlagRejected(t *testing.T) {
+	// DF-016: unknown flags abort parsing with a named-flag error instead of
+	// being silently ignored or consumed as positional ids.
 	f, _, rc := parseContractFlags([]string{"list", "--bogus"})
+	require.Equal(t, contractExitError, rc)
+	assert.Contains(t, f.parseErr, "unknown flag: --bogus")
+}
+
+func TestParseContractFlags_UnknownFlagRejected_PerSubcommand(t *testing.T) {
+	// Every subcommand rejects flags outside its whitelist.
+	subs := []string{"create", "validate", "freeze", "diff", "show", "consumer-check", "list"}
+	for _, sub := range subs {
+		t.Run(sub, func(t *testing.T) {
+			f, _, rc := parseContractFlags([]string{sub, "--bogus"})
+			require.Equal(t, contractExitError, rc)
+			assert.Contains(t, f.parseErr, "unknown flag: --bogus")
+		})
+	}
+}
+
+func TestParseContractFlags_UnknownFlagNotConsumedAsID(t *testing.T) {
+	// DF-016: `validate --file x` must reject the flag, not treat x as <id>.
+	f, _, rc := parseContractFlags([]string{"validate", "--file", "/tmp/x.yaml"})
+	require.Equal(t, contractExitError, rc)
+	assert.Contains(t, f.parseErr, "unknown flag: --file")
+	assert.Equal(t, "", f.id)
+}
+
+func TestParseContractFlags_FlagWrongForSubcommand(t *testing.T) {
+	// --format is create-only; on validate it is unknown.
+	f, _, rc := parseContractFlags([]string{"validate", "--format", "openapi"})
+	require.Equal(t, contractExitError, rc)
+	assert.Contains(t, f.parseErr, "unknown flag: --format")
+
+	// --consumer is consumer-check-only.
+	f, _, rc = parseContractFlags([]string{"list", "--consumer", "webapp"})
+	require.Equal(t, contractExitError, rc)
+	assert.Contains(t, f.parseErr, "unknown flag: --consumer")
+
+	// The same flags still parse on their owning subcommands.
+	f, _, rc = parseContractFlags([]string{"create", "spec-1", "--format", "openapi"})
+	require.Equal(t, contractExitOK, rc)
+	assert.Equal(t, "openapi", f.format)
+	f, _, rc = parseContractFlags([]string{"consumer-check", "spec-1", "--consumer", "webapp"})
+	require.Equal(t, contractExitOK, rc)
+	assert.Equal(t, "webapp", f.consumer)
+}
+
+func TestParseContractFlags_UnknownFlagBeforeSubcommand(t *testing.T) {
+	// Flags before the subcommand are validated once it is known.
+	f, _, rc := parseContractFlags([]string{"--bogus", "list"})
+	require.Equal(t, contractExitError, rc)
+	assert.Contains(t, f.parseErr, "unknown flag: --bogus")
+
+	// Valid flags before the subcommand still parse.
+	f, _, rc = parseContractFlags([]string{"--json", "list"})
 	require.Equal(t, contractExitOK, rc)
 	assert.Equal(t, "list", f.subcommand)
+	assert.True(t, f.jsonOut)
+
+	// Valid-but-wrong-for-subcommand flags before it are rejected too.
+	f, _, rc = parseContractFlags([]string{"--format", "openapi", "validate", "spec-1"})
+	require.Equal(t, contractExitError, rc)
+	assert.Contains(t, f.parseErr, "unknown flag: --format")
+}
+
+func TestParseContractFlags_MissingValueNamesFlag(t *testing.T) {
+	f, _, rc := parseContractFlags([]string{"create", "spec-1", "--format"})
+	require.Equal(t, contractExitError, rc)
+	assert.Contains(t, f.parseErr, "flag needs an argument: --format")
+}
+
+func TestParseContractFlags_ExtraPositionalRejected(t *testing.T) {
+	f, _, rc := parseContractFlags([]string{"diff", "a", "b", "c"})
+	require.Equal(t, contractExitError, rc)
+	assert.Contains(t, f.parseErr, "unexpected argument: c")
 }
 
 // ---------------------------------------------------------------------------
@@ -164,6 +239,47 @@ func TestRunContract_UnknownSubcommand(t *testing.T) {
 	_, _, err := runContractCLI(t, "frobnicate", "--store", t.TempDir())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `unknown contract subcommand "frobnicate"`)
+}
+
+func TestRunContract_UnknownFlagError(t *testing.T) {
+	// DF-016: unknown flags produce a clear error (non-zero exit at the CLI
+	// level) instead of a confusing "not found" lookup or a silently
+	// dropped flag.
+	_, _, err := runContractCLI(t, "validate", "--file", "/tmp/x.yaml", "--store", t.TempDir())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown flag: --file")
+
+	_, _, err = runContractCLI(t, "validate", "--bogus-flag", "--store", t.TempDir())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown flag: --bogus-flag")
+
+	// The flag is not consumed as a positional id.
+	_, _, err = runContractCLI(t, "show", "--file", "x", "--store", t.TempDir())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown flag: --file")
+	assert.NotContains(t, err.Error(), "load contract")
+}
+
+func TestRunContract_ValidFlagsStillWork(t *testing.T) {
+	// DF-016 guard: per-subcommand whitelisting must not break any valid
+	// flag on its owning subcommand.
+	store := t.TempDir()
+	_, _, err := runContractCLI(t, "create", "SPEC-9", "--format", "protobuf", "--store", store)
+	require.NoError(t, err)
+	_, _, err = runContractCLI(t, "create", "SPEC-10", "--store", store)
+	require.NoError(t, err)
+	_, _, err = runContractCLI(t, "validate", "SPEC-10-openapi", "--json", "--store", store)
+	require.NoError(t, err)
+	_, _, err = runContractCLI(t, "freeze", "SPEC-10-openapi", "--dry-run", "--store", store)
+	require.NoError(t, err)
+	_, _, err = runContractCLI(t, "diff", "SPEC-10-openapi", "SPEC-9-protobuf", "--json", "--store", store)
+	require.NoError(t, err)
+	_, _, err = runContractCLI(t, "consumer-check", "SPEC-10-openapi", "--consumer", "webapp", "--store", store)
+	require.NoError(t, err)
+	_, _, err = runContractCLI(t, "show", "SPEC-10-openapi", "--json", "--store", store)
+	require.NoError(t, err)
+	_, _, err = runContractCLI(t, "list", "--json", "--store", store)
+	require.NoError(t, err)
 }
 
 func TestRunContractWithDryRun_Flag(t *testing.T) {

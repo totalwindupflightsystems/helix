@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -32,15 +33,63 @@ type contractFlags struct {
 	storePath  string
 	jsonOut    bool
 	dryRun     bool
+	parseErr   string // set when parsing fails (unknown flag, missing value)
+}
+
+// contractFlagSets are the flags each contract subcommand accepts. Any other
+// flag-shaped argument is rejected with "unknown flag: <flag>" instead of
+// being silently ignored or consumed as a positional id (DF-016).
+var contractFlagSets = map[string]map[string]bool{
+	"create":         contractFlagSet("--json", "--dry-run", "--format", "--store"),
+	"validate":       contractFlagSet("--json", "--dry-run", "--store"),
+	"freeze":         contractFlagSet("--json", "--dry-run", "--store"),
+	"diff":           contractFlagSet("--json", "--dry-run", "--store"),
+	"consumer-check": contractFlagSet("--json", "--dry-run", "--consumer", "--store"),
+	"list":           contractFlagSet("--json", "--dry-run", "--store"),
+	"show":           contractFlagSet("--json", "--dry-run", "--store"),
+}
+
+// knownContractFlags are the flags the contract parser understands at all;
+// used to decide whether a flag seen before the subcommand is unknown or
+// merely early.
+var knownContractFlags = map[string]bool{
+	"--json": true, "--dry-run": true, "--format": true, "--consumer": true, "--store": true,
+}
+
+// contractFlagSet builds a per-subcommand flag whitelist; --help/-h are
+// accepted by every subcommand.
+func contractFlagSet(names ...string) map[string]bool {
+	set := map[string]bool{"--help": true, "-h": true}
+	for _, n := range names {
+		set[n] = true
+	}
+	return set
 }
 
 func parseContractFlags(args []string) (contractFlags, bool, int) {
 	var f contractFlags
 	helpWanted := false
+	var deferred []string // flag-shaped args seen before the subcommand was known
 
 	i := 0
 	for i < len(args) {
 		arg := args[i]
+
+		// Whitelist check: every flag-shaped argument must belong to the
+		// subcommand's set. Flags seen before the subcommand is known are
+		// deferred and validated after parsing. Unknown subcommands skip the
+		// whitelist so dispatch can report them properly.
+		if strings.HasPrefix(arg, "-") && arg != "--help" && arg != "-h" {
+			if f.subcommand != "" {
+				if set, known := contractFlagSets[f.subcommand]; known && !set[arg] {
+					f.parseErr = fmt.Sprintf("unknown flag: %s", arg)
+					return f, false, contractExitError
+				}
+			} else {
+				deferred = append(deferred, arg)
+			}
+		}
+
 		switch {
 		case arg == "--help" || arg == "-h":
 			helpWanted = true
@@ -51,31 +100,52 @@ func parseContractFlags(args []string) (contractFlags, bool, int) {
 		case arg == "--format":
 			i++
 			if i >= len(args) {
+				f.parseErr = "flag needs an argument: --format"
 				return f, false, contractExitError
 			}
 			f.format = args[i]
 		case arg == "--consumer":
 			i++
 			if i >= len(args) {
+				f.parseErr = "flag needs an argument: --consumer"
 				return f, false, contractExitError
 			}
 			f.consumer = args[i]
 		case arg == "--store":
 			i++
 			if i >= len(args) {
+				f.parseErr = "flag needs an argument: --store"
 				return f, false, contractExitError
 			}
 			f.storePath = args[i]
+		case strings.HasPrefix(arg, "-"):
+			// Flag-shaped argument already validated above (known or deferred).
+		case f.subcommand == "":
+			f.subcommand = arg
+		case f.id == "":
+			f.id = arg
+		case f.oldID == "":
+			f.oldID = arg
 		default:
-			if !strings.HasPrefix(arg, "-") && f.subcommand == "" {
-				f.subcommand = arg
-			} else if !strings.HasPrefix(arg, "-") && f.id == "" {
-				f.id = arg
-			} else if !strings.HasPrefix(arg, "-") && f.oldID == "" {
-				f.oldID = arg
-			}
+			f.parseErr = fmt.Sprintf("unexpected argument: %s", arg)
+			return f, false, contractExitError
 		}
 		i++
+	}
+
+	// Validate flags that appeared before the subcommand was known.
+	for _, arg := range deferred {
+		if f.subcommand == "" {
+			if !knownContractFlags[arg] {
+				f.parseErr = fmt.Sprintf("unknown flag: %s", arg)
+				return f, false, contractExitError
+			}
+			continue
+		}
+		if set, known := contractFlagSets[f.subcommand]; known && !set[arg] {
+			f.parseErr = fmt.Sprintf("unknown flag: %s", arg)
+			return f, false, contractExitError
+		}
 	}
 	return f, helpWanted, contractExitOK
 }
@@ -103,7 +173,12 @@ Environment:
 `
 
 func runContractWithDryRun(args []string, stdout, stderr io.Writer, dryRun bool) error {
-	flags, helpWanted, _ := parseContractFlags(args)
+	flags, helpWanted, rc := parseContractFlags(args)
+	if rc != contractExitOK {
+		// Parse failures (unknown flag, missing value, extra positional)
+		// exit non-zero with the named problem (DF-016).
+		return errors.New(flags.parseErr)
+	}
 	if helpWanted || flags.subcommand == "" {
 		fmt.Fprint(stdout, contractHelp)
 		return nil
