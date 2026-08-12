@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -41,6 +42,7 @@ type sourceFlags struct {
 	specPath      string
 	connection    string
 	baseURL       string
+	probePath     string
 	root          string
 	rateLimit     string
 	tokenEnv      string
@@ -99,6 +101,12 @@ func parseSourceFlags(args []string) (sourceFlags, bool, int) {
 				return f, false, sourceExitError
 			}
 			f.baseURL = args[i]
+		case arg == "--probe-path":
+			i++
+			if i >= len(args) {
+				return f, false, sourceExitError
+			}
+			f.probePath = args[i]
 		case arg == "--root":
 			i++
 			if i >= len(args) {
@@ -149,6 +157,7 @@ Options:
   --spec PATH           OpenAPI spec file path or http(s) URL
   --connection STRING   Postgres connection string (type=postgres)
   --base-url STRING     REST base URL (type=rest)
+  --probe-path PATH     test: REST fallback probe path (default: first GET path from the spec)
   --root PATH           Local filesystem root (type=local)
   --rate-limit SPEC     Rate limit (e.g. 10/s)
   --token-env VAR       Environment variable holding the API token
@@ -401,9 +410,13 @@ func runSourceTest(f sourceFlags, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stdout, "✓ local root %s is a directory\n", src.Root)
 		}
 	case source.SourceTypeREST:
-		if err := probeREST(src.BaseURL); err != nil {
+		warning, err := probeREST(src.BaseURL, restProbePath(f.probePath, src))
+		if err != nil {
 			fmt.Fprintf(stdout, "✗ rest base_url %s: %v\n", src.BaseURL, err)
 			failed++
+		} else if warning != "" {
+			fmt.Fprintln(stdout, warning)
+			fmt.Fprintf(stdout, "✓ rest source %q reachable (fallback probe)\n", src.Name)
 		} else {
 			fmt.Fprintf(stdout, "✓ rest base_url %s reachable\n", src.BaseURL)
 		}
@@ -480,27 +493,114 @@ func runSourceTools(f sourceFlags, stdout, stderr io.Writer) int {
 // Probes
 // ---------------------------------------------------------------------------
 
-// probeREST checks that baseURL is reachable via HTTP. 2xx/3xx responses and
-// auth-wrapped responses (401/403) count as reachable; network errors fail.
-func probeREST(baseURL string) error {
+// probeREST checks that a REST source is reachable via HTTP. The base URL is
+// probed first: 2xx/3xx responses and auth-wrapped responses (401/403) count
+// as reachable. When the base URL answers with any other status — e.g. HTTP
+// 404 on servers that serve no root route (Forgejo) — and a probePath is
+// available (the spec's first GET path or --probe-path), the path is probed
+// instead: ANY HTTP response there proves the server is reachable, and the
+// returned warning reports the degraded probe. Network errors always fail.
+func probeREST(baseURL, probePath string) (string, error) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Head(baseURL)
 	if err != nil {
 		// Some servers reject HEAD; fall back to GET.
 		resp, err = client.Get(baseURL)
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 	defer resp.Body.Close()
 	switch {
 	case resp.StatusCode >= 200 && resp.StatusCode < 400:
-		return nil
+		return "", nil
 	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
-		return nil
+		return "", nil
+	case probePath != "":
+		return probeRESTPath(client, baseURL, probePath, resp.StatusCode)
 	default:
-		return fmt.Errorf("HTTP %d", resp.StatusCode)
+		return "", fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
+}
+
+// probeRESTPath requests path relative to baseURL and treats ANY HTTP
+// response as reachable — the server answered, which is all a connectivity
+// probe needs. The returned warning describes the degraded base-URL probe.
+func probeRESTPath(client *http.Client, baseURL, path string, baseStatus int) (string, error) {
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return "", err
+	}
+	resp, err := client.Get(u.JoinPath(path).String())
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	return fmt.Sprintf("⚠ rest base_url %s: HTTP %d — no root route; probe path %s responds (HTTP %d)",
+		baseURL, baseStatus, path, resp.StatusCode), nil
+}
+
+// restProbePath resolves the fallback probe path for a REST source: an
+// explicit --probe-path wins; otherwise the first GET path from the source's
+// local OpenAPI spec. Remote spec URLs and unparseable specs yield "" (no
+// fallback — the base-URL probe result stands).
+func restProbePath(explicit string, src source.Source) string {
+	if explicit != "" {
+		return explicit
+	}
+	if src.OpenAPI == "" || isHTTPURL(src.OpenAPI) {
+		return ""
+	}
+	p, err := firstGETPath(src.OpenAPI)
+	if err != nil {
+		return ""
+	}
+	return p
+}
+
+// firstGETPath extracts a GET path from an OpenAPI spec file (JSON or YAML,
+// v2 or v3). Non-templated paths are preferred — a path containing {params}
+// cannot be probed as-is; the first (sorted) candidate wins so the choice is
+// deterministic. It returns an error when the spec cannot be read or parsed
+// or defines no GET operations.
+func firstGETPath(specPath string) (string, error) {
+	data, err := os.ReadFile(specPath)
+	if err != nil {
+		return "", err
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(data, &doc); err != nil {
+		if err := yaml.Unmarshal(data, &doc); err != nil {
+			return "", err
+		}
+	}
+	paths, ok := doc["paths"].(map[string]any)
+	if !ok {
+		return "", fmt.Errorf("spec %s has no paths", specPath)
+	}
+	var plain, templated []string
+	for p, methods := range paths {
+		m, ok := methods.(map[string]any)
+		if !ok {
+			continue
+		}
+		if _, hasGet := m["get"]; hasGet {
+			if strings.Contains(p, "{") {
+				templated = append(templated, p)
+			} else {
+				plain = append(plain, p)
+			}
+		}
+	}
+	if len(plain) == 0 && len(templated) == 0 {
+		return "", fmt.Errorf("spec %s has no GET paths", specPath)
+	}
+	if len(plain) > 0 {
+		sort.Strings(plain)
+		return plain[0], nil
+	}
+	sort.Strings(templated)
+	return templated[0], nil
 }
 
 // probeTCP dials host:port with a 5s timeout.

@@ -5,6 +5,9 @@ package main
 
 import (
 	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -81,6 +84,12 @@ func TestParseSourceFlags(t *testing.T) {
 			name:       "test with name",
 			args:       []string{"test", "--name", "db"},
 			want:       sourceFlags{subcommand: "test", name: "db"},
+			wantExitOK: true,
+		},
+		{
+			name:       "test with probe path",
+			args:       []string{"test", "--name", "api", "--probe-path", "/health"},
+			want:       sourceFlags{subcommand: "test", name: "api", probePath: "/health"},
 			wantExitOK: true,
 		},
 		{
@@ -496,4 +505,203 @@ func TestRunSourceWithDryRun_ThreadsGlobalDryRun(t *testing.T) {
 	assert.Contains(t, stdout.String(), "[DRY-RUN]")
 	_, statErr := os.Stat(path)
 	assert.True(t, os.IsNotExist(statErr), "global dry-run must not write the sources file")
+}
+
+// ---------------------------------------------------------------------------
+// probeREST — base-URL probe with spec-path fallback (DF-013)
+// ---------------------------------------------------------------------------
+
+// restTestServer returns an httptest server whose root answers with
+// rootStatus (Forgejo-style 404 when no root route exists) and whose
+// non-root paths answer with pathStatus.
+func restTestServer(t *testing.T, rootStatus, pathStatus int) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" || r.URL.Path == "/api/v1" {
+			w.WriteHeader(rootStatus)
+			return
+		}
+		w.WriteHeader(pathStatus)
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func TestProbeREST_BaseURLReachable(t *testing.T) {
+	srv := restTestServer(t, http.StatusOK, http.StatusOK)
+	warning, err := probeREST(srv.URL+"/api/v1", "")
+	assert.NoError(t, err)
+	assert.Empty(t, warning)
+}
+
+func TestProbeREST_AuthWrappedReachable(t *testing.T) {
+	srv := restTestServer(t, http.StatusUnauthorized, http.StatusUnauthorized)
+	warning, err := probeREST(srv.URL, "")
+	assert.NoError(t, err)
+	assert.Empty(t, warning, "401 on the base URL counts as reachable")
+}
+
+func TestProbeREST_Base404WithoutProbePathFails(t *testing.T) {
+	srv := restTestServer(t, http.StatusNotFound, http.StatusNotFound)
+	warning, err := probeREST(srv.URL, "")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "HTTP 404")
+	assert.Empty(t, warning)
+}
+
+func TestProbeREST_Base404FallsBackToProbePath(t *testing.T) {
+	srv := restTestServer(t, http.StatusNotFound, http.StatusOK)
+	warning, err := probeREST(srv.URL+"/api/v1", "/version")
+	assert.NoError(t, err)
+	require.NotEmpty(t, warning, "degraded probe must be reported as a warning")
+	assert.Contains(t, warning, "HTTP 404")
+	assert.Contains(t, warning, "/version")
+}
+
+func TestProbeREST_FallbackAcceptsAnyStatus(t *testing.T) {
+	// The fallback probe must treat ANY HTTP response — even 404 — as
+	// reachable: the server answered, which is all the probe checks.
+	srv := restTestServer(t, http.StatusNotFound, http.StatusNotFound)
+	warning, err := probeREST(srv.URL, "/anything")
+	assert.NoError(t, err)
+	assert.Contains(t, warning, "/anything")
+}
+
+func TestProbeREST_NetworkErrorFails(t *testing.T) {
+	// A closed port must fail the source test even when a probe path is
+	// offered — the fallback probes the same host.
+	warning, err := probeREST("http://127.0.0.1:1/api/v1", "/version")
+	assert.Error(t, err)
+	assert.Empty(t, warning)
+}
+
+// ---------------------------------------------------------------------------
+// firstGETPath / restProbePath — spec-path derivation
+// ---------------------------------------------------------------------------
+
+func TestFirstGETPath_JSONSpecPrefersNonTemplatedSorted(t *testing.T) {
+	spec := filepath.Join(t.TempDir(), "spec.json")
+	writeSourcesFile(t, spec, `{
+  "swagger": "2.0",
+  "paths": {
+    "/version": {"get": {}},
+    "/repos/{owner}/{repo}": {"get": {}},
+    "/admin/users": {"get": {}}
+  }
+}`)
+	p, err := firstGETPath(spec)
+	require.NoError(t, err)
+	assert.Equal(t, "/admin/users", p, "first non-templated GET path, sorted")
+}
+
+func TestFirstGETPath_YAMLSpec(t *testing.T) {
+	spec := filepath.Join(t.TempDir(), "spec.yaml")
+	writeSourcesFile(t, spec, `openapi: 3.0.0
+paths:
+  /users:
+    get:
+      responses: {}
+  /health:
+    get:
+      responses: {}
+`)
+	p, err := firstGETPath(spec)
+	require.NoError(t, err)
+	assert.Equal(t, "/health", p)
+}
+
+func TestFirstGETPath_TemplatedOnly(t *testing.T) {
+	spec := filepath.Join(t.TempDir(), "spec.json")
+	writeSourcesFile(t, spec, `{"paths": {"/repos/{owner}": {"get": {}}}}`)
+	p, err := firstGETPath(spec)
+	require.NoError(t, err)
+	assert.Equal(t, "/repos/{owner}", p, "templated paths are a last resort")
+}
+
+func TestFirstGETPath_NoGETPaths(t *testing.T) {
+	spec := filepath.Join(t.TempDir(), "spec.json")
+	writeSourcesFile(t, spec, `{"paths": {"/users": {"post": {}}}}`)
+	_, err := firstGETPath(spec)
+	assert.Error(t, err)
+}
+
+func TestFirstGETPath_MissingFile(t *testing.T) {
+	_, err := firstGETPath(filepath.Join(t.TempDir(), "nope.json"))
+	assert.Error(t, err)
+}
+
+func TestRestProbePath_ExplicitFlagWins(t *testing.T) {
+	got := restProbePath("/health", source.Source{OpenAPI: "./spec.json"})
+	assert.Equal(t, "/health", got)
+}
+
+func TestRestProbePath_FromSpec(t *testing.T) {
+	spec := filepath.Join(t.TempDir(), "spec.json")
+	writeSourcesFile(t, spec, `{"paths": {"/version": {"get": {}}}}`)
+	got := restProbePath("", source.Source{OpenAPI: spec})
+	assert.Equal(t, "/version", got)
+}
+
+func TestRestProbePath_RemoteSpecNoFallback(t *testing.T) {
+	got := restProbePath("", source.Source{OpenAPI: "https://example.com/swagger.json"})
+	assert.Empty(t, got)
+}
+
+func TestRestProbePath_UnparseableSpecNoFallback(t *testing.T) {
+	spec := filepath.Join(t.TempDir(), "spec.json")
+	writeSourcesFile(t, spec, "not: [valid")
+	got := restProbePath("", source.Source{OpenAPI: spec})
+	assert.Empty(t, got)
+}
+
+// ---------------------------------------------------------------------------
+// runSourceTest — REST fallback end-to-end (DF-013)
+// ---------------------------------------------------------------------------
+
+func TestRunSourceTest_RESTBase404FallsBackToSpecPath(t *testing.T) {
+	path := setSourcesFileEnv(t)
+	spec := filepath.Join(t.TempDir(), "spec.json")
+	writeSourcesFile(t, spec, `{"paths": {"/version": {"get": {}}}}`)
+	srv := restTestServer(t, http.StatusNotFound, http.StatusOK)
+	writeSourcesFile(t, path, fmt.Sprintf("sources:\n  api:\n    type: rest\n    base_url: %s/api/v1\n    openapi: %s\n", srv.URL, spec))
+	t.Setenv(envMusterURL, "http://127.0.0.1:1") // closed port — warning only
+	var stdout, stderr strings.Builder
+	rc := runSource([]string{"test", "--name", "api"}, &stdout, &stderr)
+	assert.Equal(t, sourceExitOK, rc)
+	out := stdout.String()
+	assert.Contains(t, out, "⚠ rest base_url")
+	assert.Contains(t, out, "HTTP 404")
+	assert.Contains(t, out, "/version")
+	assert.Contains(t, out, "✓ rest source \"api\" reachable (fallback probe)")
+	assert.Contains(t, out, "✓ source \"api\" checks passed")
+}
+
+func TestRunSourceTest_RESTBrokenBaseFails(t *testing.T) {
+	path := setSourcesFileEnv(t)
+	spec := filepath.Join(t.TempDir(), "spec.json")
+	writeSourcesFile(t, spec, `{"paths": {"/version": {"get": {}}}}`)
+	writeSourcesFile(t, path, fmt.Sprintf("sources:\n  api:\n    type: rest\n    base_url: http://127.0.0.1:1/api/v1\n    openapi: %s\n", spec))
+	t.Setenv(envMusterURL, "http://127.0.0.1:1")
+	var stdout, stderr strings.Builder
+	rc := runSource([]string{"test", "--name", "api"}, &stdout, &stderr)
+	assert.Equal(t, sourceExitError, rc)
+	assert.Contains(t, stdout.String(), "✗ rest base_url")
+}
+
+func TestRunSourceTest_RESTProbePathFlag(t *testing.T) {
+	// Explicit --probe-path covers servers whose spec has no usable GET
+	// path (e.g. POST-only specs).
+	path := setSourcesFileEnv(t)
+	spec := filepath.Join(t.TempDir(), "spec.json")
+	writeSourcesFile(t, spec, `{"paths": {"/users": {"post": {}}}}`)
+	srv := restTestServer(t, http.StatusNotFound, http.StatusOK)
+	writeSourcesFile(t, path, fmt.Sprintf("sources:\n  api:\n    type: rest\n    base_url: %s\n    openapi: %s\n", srv.URL, spec))
+	t.Setenv(envMusterURL, "http://127.0.0.1:1")
+	var stdout, stderr strings.Builder
+	rc := runSource([]string{"test", "--name", "api", "--probe-path", "/health"}, &stdout, &stderr)
+	assert.Equal(t, sourceExitOK, rc)
+	out := stdout.String()
+	assert.Contains(t, out, "⚠ rest base_url")
+	assert.Contains(t, out, "/health")
+	assert.Contains(t, out, "✓ source \"api\" checks passed")
 }
