@@ -489,32 +489,109 @@ func missingPieces(needKey, needPAT bool) []string {
 	return out
 }
 
-// deprovisionAgent revokes an offboarded agent's PAT and archives their keys.
-// The Forgejo account is preserved (never deleted) so historical git
-// attribution remains intact.
+// deprovisionAgent revokes an offboarded agent's PAT, deletes its SSH keys
+// server-side, and archives their keys. The Forgejo account is preserved
+// (never deleted) so historical git attribution remains intact.
+//
+// DF-012: the server-side key deletion closes the hole where a deprovisioned
+// agent could still SSH-auth (only the PAT was revoked). Revoking a PAT that
+// is already gone (404) is treated as success so a retry after a mid-flow
+// failure (e.g. key deletion) does not dead-end.
 func (s *Syncer) deprovisionAgent(a *Agent, opts SyncOptions) ProvisioningResult {
 	start := time.Now()
 	r := ProvisioningResult{AgentName: a.Name, Status: a.Status}
 
 	st := s.state.Agents[a.Name]
 	if st == nil || st.PATID == 0 {
-		// Nothing to revoke — agent was never provisioned through us.
-		r.Action = ActionSkipped
+		// No PAT known — but SSH keys may still be registered server-side
+		// or present locally (e.g. a previous deprovision died after
+		// revoking the PAT and clearing state). Delete whatever remains so
+		// the offboarded agent cannot SSH-auth (DF-012).
+		keys, err := s.prov.ListUserKeys(a.Name)
+		if err != nil {
+			if te, ok := err.(*TypedError); ok && te.Kind == ErrKindAPI &&
+				strings.Contains(err.Error(), "404") {
+				// Account doesn't exist — nothing to deprovision.
+				r.Action = ActionSkipped
+				r.Duration = time.Since(start)
+				return r
+			}
+			r.Action = ActionFailed
+			r.Error = err.Error()
+			r.Duration = time.Since(start)
+			return r
+		}
+		deleted := 0
+		for _, k := range keys {
+			if err := s.prov.DeleteUserKey(a.Name, k.ID); err != nil {
+				r.Action = ActionFailed
+				r.Error = err.Error()
+				r.Duration = time.Since(start)
+				return r
+			}
+			deleted++
+		}
+		localPresent := false
+		if !s.cfg.DryRun {
+			if _, err := os.Stat(filepath.Join(expandHome(s.cfg.SSHKeyDir), a.Name)); err == nil {
+				localPresent = true
+			}
+			if err := s.archiveKeys(a.Name); err != nil {
+				s.log.Printf("identity: WARN agent=%s key archive failed: %v",
+					a.Name, err)
+			}
+		}
+		if deleted == 0 && !localPresent {
+			r.Action = ActionSkipped
+		} else {
+			r.Action = ActionDeprovisioned
+		}
 		r.Duration = time.Since(start)
 		return r
 	}
 
 	if err := s.prov.RevokeToken(a.Name, opts.AdminUser, opts.AdminPassword, st.PATID); err != nil {
+		// 404 = the PAT was already revoked (e.g. a previous deprovision
+		// died after revoke but before key deletion). Treat it as done so
+		// the re-run can finish the job instead of failing.
+		if te, ok := err.(*TypedError); ok && te.Kind == ErrKindAPI &&
+			strings.Contains(err.Error(), "404") {
+			s.log.Printf("identity: PAT %d for agent=%s already revoked (404) — continuing",
+				st.PATID, a.Name)
+		} else {
+			r.Action = ActionFailed
+			r.Error = err.Error()
+			r.Duration = time.Since(start)
+			return r
+		}
+	}
+
+	// Delete every SSH key registered for the agent server-side, so the
+	// offboarded agent cannot SSH-auth anymore (DF-012).
+	keys, err := s.prov.ListUserKeys(a.Name)
+	if err != nil {
 		r.Action = ActionFailed
 		r.Error = err.Error()
 		r.Duration = time.Since(start)
 		return r
 	}
+	for _, k := range keys {
+		if err := s.prov.DeleteUserKey(a.Name, k.ID); err != nil {
+			r.Action = ActionFailed
+			r.Error = err.Error()
+			r.Duration = time.Since(start)
+			return r
+		}
+	}
+	if len(keys) > 0 {
+		s.log.Printf("identity: deleted %d SSH key(s) server-side for agent=%s",
+			len(keys), a.Name)
+	}
 
 	// Archive the key directory (best-effort; missing dir is fine).
 	if !s.cfg.DryRun {
 		if err := s.archiveKeys(a.Name); err != nil {
-			// Non-fatal: PAT is revoked, that's the important part.
+			// Non-fatal: PAT revoked + keys deleted, that's the important part.
 			s.log.Printf("identity: WARN agent=%s key archive failed: %v",
 				a.Name, err)
 		}
@@ -642,6 +719,11 @@ func (s *Syncer) writeKeyFiles(a *Agent) (*KeyPair, error) {
 // archiveKeys moves an agent's key directory into a dated archive subdirectory
 // so the material is preserved for forensics but no longer live. The pattern
 // matches the §11.1 deprovision flow.
+//
+// DF-012: the dated subdirectory (src/archive/YYYY-MM-DD) is created with
+// MkdirAll BEFORE the rename — previously only src/archive was created, so
+// every rename into the missing dated dir failed with ENOENT and emitted
+// "WARN key archive failed".
 func (s *Syncer) archiveKeys(name string) error {
 	src := filepath.Join(expandHome(s.cfg.SSHKeyDir), name)
 	if _, err := os.Stat(src); err != nil {
@@ -652,7 +734,7 @@ func (s *Syncer) archiveKeys(name string) error {
 	}
 	stamp := time.Now().UTC().Format("2006-01-02")
 	dst := filepath.Join(src, "archive", stamp)
-	if err := os.MkdirAll(filepath.Dir(dst), 0o700); err != nil {
+	if err := os.MkdirAll(dst, 0o700); err != nil {
 		return err
 	}
 	// Move each file (not the archive subdir itself) into the dated folder.

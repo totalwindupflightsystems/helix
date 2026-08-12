@@ -665,15 +665,10 @@ func TestArchiveKeys(t *testing.T) {
 			}
 		}
 
-		// archiveKeys computes the dated subdir from time.Now() and
-		// creates the parent (`src/archive/`) — but does NOT create the
-		// dated subdir itself before renaming. To exercise the happy
-		// "files get moved" path, pre-create the dated subdir the way
-		// a second archive call on the same day would.
-		dated := filepath.Join(src, "archive", time.Now().UTC().Format("2006-01-02"))
-		if err := os.MkdirAll(dated, 0o700); err != nil {
-			t.Fatalf("mkdir dated: %v", err)
-		}
+		// archiveKeys computes the dated subdir from time.Now() and must
+		// create it (src/archive/YYYY-MM-DD) itself before renaming —
+		// DF-012 regression: it used to create only src/archive/, so the
+		// rename into the missing dated subdir failed with ENOENT.
 
 		if err := s.archiveKeys(name); err != nil {
 			t.Fatalf("archiveKeys: %v", err)

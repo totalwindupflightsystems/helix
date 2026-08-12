@@ -789,7 +789,7 @@ func TestProvisionAgent_CreateTokenFailure(t *testing.T) {
 }
 
 // TestDeprovisionOne_NotInState covers the "no prior state" branch in
-// deprovisionAgent (skipped, no error).
+// deprovisionAgent (account 404s, so nothing to deprovision → skipped).
 func TestDeprovisionOne_NotInState(t *testing.T) {
 	s, _ := newHttptestSyncer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
@@ -809,6 +809,44 @@ func TestDeprovisionOne_NotInState(t *testing.T) {
 	// rather than a real revoke call.
 	if r.Action == ActionFailed {
 		t.Error("Action should not be ActionFailed on a skipped deprovision")
+	}
+}
+
+// TestDeprovisionOne_NoStateButKeysExist covers the DF-012 hole where the
+// state entry is gone (e.g. a previous deprovision died after revoking the
+// PAT and clearing state) but the SSH key is still registered server-side —
+// deprovision must still delete it so the agent cannot SSH-auth.
+func TestDeprovisionOne_NoStateButKeysExist(t *testing.T) {
+	var deleteKeyCalls int
+	keysJSON, _ := json.Marshal([]SSHKey{{
+		ID: 2, Key: "ssh-ed25519 AAAA", Title: "kim-key",
+		Fingerprint: "SHA256:kim", Created: "2026-06-01T00:00:00Z",
+	}})
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/users/kim/keys":
+			_, _ = w.Write(keysJSON)
+		case r.Method == http.MethodDelete && r.URL.Path == "/api/v1/admin/users/kim/keys/2":
+			deleteKeyCalls++
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+	s, _ := newHttptestSyncer(t, handler)
+
+	// No state entry for "kim" — but the key exists server-side.
+	a := &Agent{Name: "kim", Status: StatusOffboarded, Tier: TierFlash}
+	r, err := s.DeprovisionOne(a, SyncOptions{AdminUser: "helio", AdminPassword: "helio123"})
+	if err != nil {
+		t.Fatalf("DeprovisionOne: %v", err)
+	}
+	if r.Action != ActionDeprovisioned {
+		t.Errorf("Action = %q, want %q (server key must be deleted even without state)", r.Action, ActionDeprovisioned)
+	}
+	if deleteKeyCalls != 1 {
+		t.Errorf("DeleteUserKey called %d times, want 1", deleteKeyCalls)
 	}
 }
 
@@ -852,13 +890,24 @@ func TestDeprovisionOne_RevokeFailure(t *testing.T) {
 }
 
 // TestDeprovisionOne_RevokeSuccess covers the happy path: state has PAT,
-// RevokeToken returns 204, result is ActionDeprovisioned + state cleared.
+// RevokeToken returns 204, the SSH key is deleted server-side (DF-012),
+// result is ActionDeprovisioned + state cleared.
 func TestDeprovisionOne_RevokeSuccess(t *testing.T) {
-	var revokeCalls int
+	var revokeCalls, deleteKeyCalls int
+	keysJSON, _ := json.Marshal([]SSHKey{{
+		ID: 2, Key: "ssh-ed25519 AAAA", Title: "grace-key",
+		Fingerprint: "SHA256:grace", Created: "2026-06-01T00:00:00Z",
+	}})
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, "/tokens"):
 			revokeCalls++
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/users/grace/keys":
+			_, _ = w.Write(keysJSON)
+		case r.Method == http.MethodDelete && r.URL.Path == "/api/v1/admin/users/grace/keys/2":
+			deleteKeyCalls++
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -886,9 +935,163 @@ func TestDeprovisionOne_RevokeSuccess(t *testing.T) {
 	if revokeCalls != 1 {
 		t.Errorf("RevokeToken called %d times, want 1", revokeCalls)
 	}
+	if deleteKeyCalls != 1 {
+		t.Errorf("DeleteUserKey called %d times, want 1 (SSH key must be deleted server-side)", deleteKeyCalls)
+	}
 	// State should be cleared for "grace".
 	if _, exists := s.state.Agents["grace"]; exists {
 		t.Error("state.Agents[grace] should be deleted after deprovision")
+	}
+}
+
+// TestDeprovisionOne_DeletesAllServerKeys covers the DF-012 requirement that
+// EVERY SSH key registered for the agent is deleted server-side (key count
+// -> 0), not just the one recorded in state.
+func TestDeprovisionOne_DeletesAllServerKeys(t *testing.T) {
+	var deleteCalls []int64
+	keysJSON, _ := json.Marshal([]SSHKey{
+		{ID: 11, Key: "ssh-ed25519 AAAA", Title: "k1", Fingerprint: "SHA256:k1"},
+		{ID: 22, Key: "ssh-ed25519 BBBB", Title: "k2", Fingerprint: "SHA256:k2"},
+	})
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, "/tokens"):
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/users/henry/keys":
+			_, _ = w.Write(keysJSON)
+		case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, "/api/v1/admin/users/henry/keys/"):
+			var id int64
+			_, _ = fmt.Sscanf(r.URL.Path, "/api/v1/admin/users/henry/keys/%d", &id)
+			deleteCalls = append(deleteCalls, id)
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+	s, _ := newHttptestSyncer(t, handler)
+
+	s.state.Agents["henry"] = &AgentState{
+		ForgejoAccountID: 1,
+		SSHKeyID:         11,
+		SSHFingerprint:   "SHA256:k1",
+		PATLastEight:     "****henryPAT",
+		PATID:            606,
+		LastProvisioned:  time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC),
+	}
+
+	a := &Agent{Name: "henry", Status: StatusOffboarded, Tier: TierFlash}
+	r, err := s.DeprovisionOne(a, SyncOptions{AdminUser: "helio", AdminPassword: "helio123"})
+	if err != nil {
+		t.Fatalf("DeprovisionOne: %v", err)
+	}
+	if r.Action != ActionDeprovisioned {
+		t.Errorf("Action = %q, want %q", r.Action, ActionDeprovisioned)
+	}
+	if len(deleteCalls) != 2 {
+		t.Fatalf("DeleteUserKey called %d times, want 2 (all server keys must be deleted)", len(deleteCalls))
+	}
+	if deleteCalls[0] != 11 || deleteCalls[1] != 22 {
+		t.Errorf("deleted key ids = %v, want [11 22]", deleteCalls)
+	}
+}
+
+// TestDeprovisionOne_Revoke404Continues covers the DF-012 retry path: the PAT
+// was already revoked (404 on the second run after a mid-flow failure) — the
+// deprovision must continue with key deletion + archival instead of failing.
+func TestDeprovisionOne_Revoke404Continues(t *testing.T) {
+	var deleteKeyCalls int
+	keysJSON, _ := json.Marshal([]SSHKey{{
+		ID: 2, Key: "ssh-ed25519 AAAA", Title: "ida-key",
+		Fingerprint: "SHA256:ida", Created: "2026-06-01T00:00:00Z",
+	}})
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, "/tokens"):
+			// PAT already revoked by a previous run.
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"message":"token does not exist"}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/users/ida/keys":
+			_, _ = w.Write(keysJSON)
+		case r.Method == http.MethodDelete && r.URL.Path == "/api/v1/admin/users/ida/keys/2":
+			deleteKeyCalls++
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+	s, _ := newHttptestSyncer(t, handler)
+
+	s.state.Agents["ida"] = &AgentState{
+		ForgejoAccountID: 1,
+		SSHKeyID:         2,
+		SSHFingerprint:   "SHA256:ida",
+		PATLastEight:     "****idaPAT",
+		PATID:            404,
+		LastProvisioned:  time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC),
+	}
+
+	a := &Agent{Name: "ida", Status: StatusOffboarded, Tier: TierFlash}
+	r, err := s.DeprovisionOne(a, SyncOptions{AdminUser: "helio", AdminPassword: "helio123"})
+	if err != nil {
+		t.Fatalf("DeprovisionOne: %v (404 revoke must be tolerated)", err)
+	}
+	if r.Action != ActionDeprovisioned {
+		t.Errorf("Action = %q, want %q", r.Action, ActionDeprovisioned)
+	}
+	if deleteKeyCalls != 1 {
+		t.Errorf("DeleteUserKey called %d times, want 1 (key deletion must continue after 404 revoke)", deleteKeyCalls)
+	}
+}
+
+// TestDeprovisionOne_KeyDeletionFailure covers the DF-012 requirement that a
+// server-side key deletion failure FAILS the deprovision (leaving the key
+// registered would let the agent keep SSH-auth).
+func TestDeprovisionOne_KeyDeletionFailure(t *testing.T) {
+	keysJSON, _ := json.Marshal([]SSHKey{{
+		ID: 2, Key: "ssh-ed25519 AAAA", Title: "jack-key",
+		Fingerprint: "SHA256:jack", Created: "2026-06-01T00:00:00Z",
+	}})
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, "/tokens"):
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/users/jack/keys":
+			_, _ = w.Write(keysJSON)
+		case r.Method == http.MethodDelete && r.URL.Path == "/api/v1/admin/users/jack/keys/2":
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"message":"key deletion failed"}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+	s, _ := newHttptestSyncer(t, handler)
+
+	s.state.Agents["jack"] = &AgentState{
+		ForgejoAccountID: 1,
+		SSHKeyID:         2,
+		SSHFingerprint:   "SHA256:jack",
+		PATLastEight:     "****jackPAT",
+		PATID:            707,
+		LastProvisioned:  time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC),
+	}
+
+	a := &Agent{Name: "jack", Status: StatusOffboarded, Tier: TierFlash}
+	r, err := s.DeprovisionOne(a, SyncOptions{AdminUser: "helio", AdminPassword: "helio123"})
+	if err == nil {
+		t.Fatal("expected error from DeprovisionOne (server-side key deletion failed)")
+	}
+	if r.Action != ActionFailed {
+		t.Errorf("Action = %q, want %q (key deletion failure must fail the deprovision)", r.Action, ActionFailed)
+	}
+	if !strings.Contains(r.Error, "key") {
+		t.Errorf("Error = %q, want mention of the key deletion", r.Error)
+	}
+	// State must be preserved so the operator can retry.
+	if _, exists := s.state.Agents["jack"]; !exists {
+		t.Error("state.Agents[jack] should survive a failed deprovision")
 	}
 }
 
