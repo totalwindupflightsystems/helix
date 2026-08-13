@@ -34,7 +34,7 @@ specs/               Feature specifications + platform docs
   ├── production-verification.md ★ NEW — shadow deployment, canary by trust tier
   ├── integrations.md           9 sub-project adapter interfaces
   ├── deployment.md             Docker Compose + CI/CD
-  ├── config.md                 Platform configuration spec
+  ├── helix-config.md           Platform configuration spec
   ├── build-order.md            Bootstrap and build sequence
   ├── cross-component-wiring.md Component discovery and interaction
   └── error-recovery.md         Recovery procedures per component
