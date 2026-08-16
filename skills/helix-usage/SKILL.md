@@ -89,7 +89,10 @@ that are NOT in the README:
    cwd says `subcommand "helix-estimate" not found` unless the repo root is on
    PATH.
 7. **Health probes can hang** (`/v1/health` on Chimera) — give `helix status`
-   time; `helix doctor` is the better first step.
+   time; `helix doctor` is the better first step. **Audits must probe chimera
+   too** (not just forgejo): `helix status --timeout 2s` exits non-zero and
+   lists per-subsystem state; a down chimera is a FINDING, never "NO findings"
+   (GAP-025).
 8. **Commit convention is enforced by GitReins hooks:** every commit needs
    `Co-authored-by: Name <email>` and `Prompt: prompts/<name>/v<N>.md` in the
    body, or the commit-msg hook blocks it.
