@@ -1,0 +1,113 @@
+{
+  "task_id": "GAP-025",
+  "task_title": "Audit health step must probe chimera/helix status",
+  "task_criteria": [
+    "Audit health step runs helix status (or probes chimera :8765) and gates NO-findings on it",
+    "helix-foreman-ops.md and skills/helix-usage/SKILL.md document the mandatory chimera probe"
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 lint: \n  \u2713 tests: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 Audit health step runs helix status (or probes chimera :8765) and gates NO-findings on it: No code change to any audit health step exists in the diff. The only changes for GAP-025 are .gitreins/tasks.yaml (task definition) and skills/helix-usage/SKILL.md (docs, commit cccbb74). The audit health step that emits 'NO findings' in board ticks is part of the external board/stand-in PM system and was not modified to run `helix status`/probe chimera :8765 or gate NO-findings on it.\n  \u2717 helix-foreman-ops.md and skills/helix-usage/SKILL.md document the mandatory chimera probe: skills/helix-usage/SKILL.md WAS updated (commit cccbb74, lines 92-95: 'Audits must probe chimera too... a down chimera is a FINDING, never \"NO findings\" (GAP-025)'), but helix-foreman-ops.md does NOT exist anywhere in the repo (find returned zero matches). The criterion requires BOTH files to document the probe; one is missing entirely.\nGAP-025 is incomplete: no audit-health-step code change was made (criterion 1), and helix-foreman-ops.md does not exist so only one of the two required docs was updated (criterion 2).",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 Audit health step runs helix status (or probes chimera :8765) and gates NO-findings on it: No code change to any audit health step exists in the diff. The only changes for GAP-025 are .gitreins/tasks.yaml (task definition) and skills/helix-usage/SKILL.md (docs, commit cccbb74). The audit health step that emits 'NO findings' in board ticks is part of the external board/stand-in PM system and was not modified to run `helix status`/probe chimera :8765 or gate NO-findings on it.\n  \u2717 h",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "Audit health step runs helix status (or probes chimera :8765) and gates NO-findings on it",
+                "status": "FAIL",
+                "detail": "No code change to any audit health step exists in the diff. The only changes for GAP-025 are .gitreins/tasks.yaml (task definition) and skills/helix-usage/SKILL.md (docs, commit cccbb74). The audit health step that emits 'NO findings' in board ticks is part of the external board/stand-in PM system and was not modified to run `helix status`/probe chimera :8765 or gate NO-findings on it."
+              },
+              {
+                "criterion": "helix-foreman-ops.md and skills/helix-usage/SKILL.md document the mandatory chimera probe",
+                "status": "FAIL",
+                "detail": "skills/helix-usage/SKILL.md WAS updated (commit cccbb74, lines 92-95: 'Audits must probe chimera too... a down chimera is a FINDING, never \"NO findings\" (GAP-025)'), but helix-foreman-ops.md does NOT exist anywhere in the repo (find returned zero matches). The criterion requires BOTH files to document the probe; one is missing entirely."
+              }
+            ],
+            "summary": "GAP-025 is incomplete: no audit-health-step code change was made (criterion 1), and helix-foreman-ops.md does not exist so only one of the two required docs was updated (criterion 2)."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: GAP-025\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 lint: \n  \u2713 tests: \n  \u2713 secrets: \n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 Audit health step runs helix status (or probes chimera :8765) and gates NO-findings on it: No code change to any audit health step exists in the diff. The only changes for GAP-025 are .gitreins/tasks.yaml (task definition) and skills/helix-usage/SKILL.md (docs, commit cccbb74). The audit health step that emits 'NO findings' in board ticks is part of the external board/stand-in PM system and was not modified to run `helix status`/probe chimera :8765 or gate NO-findings on it.\n  \u2717 helix-foreman-ops.md and skills/helix-usage/SKILL.md document the mandatory chimera probe: skills/helix-usage/SKILL.md WAS updated (commit cccbb74, lines 92-95: 'Audits must probe chimera too... a down chimera is a FINDING, never \"NO findings\" (GAP-025)'), but helix-foreman-ops.md does NOT exist anywhere in the repo (find returned zero matches). The criterion requires BOTH files to document the probe; one is missing entirely.\nGAP-025 is incomplete: no audit-health-step code change was made (criterion 1), and helix-foreman-ops.md does not exist so only one of the two required docs was updated (criterion 2).\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-08-16T17:36:55.551053"
+}

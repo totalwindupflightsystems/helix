@@ -1,0 +1,113 @@
+{
+  "task_id": "GAP-025",
+  "task_title": "Audit health step must probe chimera/helix status",
+  "task_criteria": [
+    "skills/helix-usage/SKILL.md documents that audits must probe chimera (or run helix status) and gate NO-findings on it",
+    "docs/dogfood/diagnostics.md documents the audit health gate requiring a chimera probe"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 lint: \n  \u2713 tests: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 skills/helix-usage/SKILL.md documents that audits must probe chimera (or run helix status) and gate NO-findings on it: skills/helix-usage/SKILL.md lines 91-94: 'Audits must probe chimera too (not just forgejo): helix status --timeout 2s exits non-zero and lists per-subsystem state; a down chimera is a FINDING, never \"NO findings\" (GAP-025).' Explicitly documents probing chimera/helix status and gating NO-findings on it.\n  \u2713 docs/dogfood/diagnostics.md documents the audit health gate requiring a chimera probe: docs/dogfood/diagnostics.md lines 141-149: '## Audit health gate (GAP-025, 2026-08-16)' \u2014 'The foreman audit health step MUST probe chimera :8765 (or run helix status) in addition to forgejo :3030, and gate \"NO findings\" on BOTH being healthy.' Includes curl probe command and states 000/empty = down = FINDING, never 'NO findings'.\nBoth documentation criteria are satisfied: SKILL.md documents that audits must probe chimera/helix status and gate NO-findings on it, and diagnostics.md documents the audit health gate requiring a chimera probe.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 skills/helix-usage/SKILL.md documents that audits must probe chimera (or run helix status) and gate NO-findings on it: skills/helix-usage/SKILL.md lines 91-94: 'Audits must probe chimera too (not just forgejo): helix status --timeout 2s exits non-zero and lists per-subsystem state; a down chimera is a FINDING, never \"NO findings\" (GAP-025).' Explicitly documents probing chimera/helix status and gating NO-findings on it.\n  \u2713 docs/dogfood/diagnostics.md documents the audit health gate",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "skills/helix-usage/SKILL.md documents that audits must probe chimera (or run helix status) and gate NO-findings on it",
+                "status": "PASS",
+                "detail": "skills/helix-usage/SKILL.md lines 91-94: 'Audits must probe chimera too (not just forgejo): helix status --timeout 2s exits non-zero and lists per-subsystem state; a down chimera is a FINDING, never \"NO findings\" (GAP-025).' Explicitly documents probing chimera/helix status and gating NO-findings on it."
+              },
+              {
+                "criterion": "docs/dogfood/diagnostics.md documents the audit health gate requiring a chimera probe",
+                "status": "PASS",
+                "detail": "docs/dogfood/diagnostics.md lines 141-149: '## Audit health gate (GAP-025, 2026-08-16)' \u2014 'The foreman audit health step MUST probe chimera :8765 (or run helix status) in addition to forgejo :3030, and gate \"NO findings\" on BOTH being healthy.' Includes curl probe command and states 000/empty = down = FINDING, never 'NO findings'."
+              }
+            ],
+            "summary": "Both documentation criteria are satisfied: SKILL.md documents that audits must probe chimera/helix status and gate NO-findings on it, and diagnostics.md documents the audit health gate requiring a chimera probe."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: GAP-025\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 lint: \n  \u2713 tests: \n  \u2713 secrets: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 skills/helix-usage/SKILL.md documents that audits must probe chimera (or run helix status) and gate NO-findings on it: skills/helix-usage/SKILL.md lines 91-94: 'Audits must probe chimera too (not just forgejo): helix status --timeout 2s exits non-zero and lists per-subsystem state; a down chimera is a FINDING, never \"NO findings\" (GAP-025).' Explicitly documents probing chimera/helix status and gating NO-findings on it.\n  \u2713 docs/dogfood/diagnostics.md documents the audit health gate requiring a chimera probe: docs/dogfood/diagnostics.md lines 141-149: '## Audit health gate (GAP-025, 2026-08-16)' \u2014 'The foreman audit health step MUST probe chimera :8765 (or run helix status) in addition to forgejo :3030, and gate \"NO findings\" on BOTH being healthy.' Includes curl probe command and states 000/empty = down = FINDING, never 'NO findings'.\nBoth documentation criteria are satisfied: SKILL.md documents that audits must probe chimera/helix status and gate NO-findings on it, and diagnostics.md documents the audit health gate requiring a chimera probe.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-16T17:37:58.827449"
+}
