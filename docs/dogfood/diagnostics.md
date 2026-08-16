@@ -137,3 +137,14 @@ doesn't extract endpoints yet.
   responds, providers degraded (missing creds). SSH port 2222 NOT exposed on
   this host — SSH-as-agent verification impossible here.
 - Host: 82% disk, `go build` fine with `TMPDIR=/home/kara/.cache/go-tmp`.
+
+## Audit health gate (GAP-025, 2026-08-16)
+
+The foreman audit health step MUST probe chimera :8765 (or run `helix status`)
+in addition to forgejo :3030, and gate "NO findings" on BOTH being healthy.
+The forgejo-only probe was a blind spot: tick #168 declared "NO findings"
+while chimera was down (`helix status` → 'Overall: down', exit 2). Probe:
+`curl -s -o /dev/null -w "%{http_code}" --max-time 3
+http://localhost:8765/v1/health` — 000/empty = down = FINDING, never "NO
+findings". This note lives in the repo so the audit procedure is discoverable
+from the codebase; the executable procedure is in the foreman ops reference.
