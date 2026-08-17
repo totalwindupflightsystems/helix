@@ -804,3 +804,16 @@ tasks:
   status: complete
   created_at: '2026-08-16T17:37:33.614747+00:00'
   completed_at: '2026-08-16T17:37:36.732798+00:00'
+- id: INT-CI-001
+  title: PM gap-push commits must carry both trailers (Prompt trailer auto-appended
+    by commit-msg hook)
+  criteria:
+  - 'PASS: .gitreins/commit-msg auto-appends ''Prompt: prompts/coding-hermes/v1.md''
+    as its own paragraph when a commit message lacks any Prompt: line (mirrors prepare-commit-msg
+    Co-authored-by auto-append); installed .git/hooks/commit-msg updated in sync;
+    live hook test on a trailer-less message file exits 0 and the file gains the Prompt
+    trailer; a message already carrying Prompt: stays byte-identical; commit passes
+    gitreins guard 6/6 and CI goes green'
+  status: complete
+  created_at: '2026-08-17T00:45:33.996104+00:00'
+  completed_at: '2026-08-17T00:46:49.023814+00:00'

@@ -1,0 +1,107 @@
+{
+  "task_id": "INT-CI-001",
+  "task_title": "PM gap-push commits must carry both trailers (Prompt trailer auto-appended by commit-msg hook)",
+  "task_criteria": [
+    "PASS: .gitreins/commit-msg auto-appends 'Prompt: prompts/coding-hermes/v1.md' as its own paragraph when a commit message lacks any Prompt: line (mirrors prepare-commit-msg Co-authored-by auto-append); installed .git/hooks/commit-msg updated in sync; live hook test on a trailer-less message file exits 0 and the file gains the Prompt trailer; a message already carrying Prompt: stays byte-identical; commit passes gitreins guard 6/6 and CI goes green"
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 PASS: .gitreins/commit-msg auto-appends 'Prompt: prompts/coding-hermes/v1.md' as its own paragraph when a commit message lacks any Prompt: line (mirrors prepare-commit-msg Co-authored-by auto-append); installed .git/hooks/commit-msg updated in sync; live hook test on a trailer-less message file exits 0 and the file gains the Prompt trailer; a message already carrying Prompt: stays byte-identical; commit passes gitreins guard 6/6 and CI goes green: All sub-parts verified. (1) .gitreins/commit-msg auto-appends 'Prompt: prompts/coding-hermes/v1.md' as its own paragraph via `printf \"\\n\\nPrompt: prompts/coding-hermes/v1.md\\n\" >> \"$COMMIT_MSG_FILE\"` when no Prompt: line exists. (2) Mirrors prepare-commit-msg Co-authored-by auto-append (same printf \"\\n\\n...\\n\" pattern). (3) `diff .gitreins/commit-msg .git/hooks/commit-msg` = IN SYNC. (4) Live hook test on trailer-less file: EXIT=0, file gained 'Prompt: prompts/coding-hermes/v1.md' trailer. (5) Message already carrying Prompt: stayed byte-identical (diff empty). (6) gitreins guard exits 0 (secrets/build/lint/tests PASS), commit-msg checks [5/6] and [6/6] PASS. (7) CI green: `go test -short -count=1 ./pkg/...` all packages ok, `go build ./cmd/...` exit 0, `golangci-lint run` 0 issues. Fix commit b0a69ad carries both Prompt: and Co-authored-by: trailers.\nThe commit-msg hook correctly auto-appends the Prompt trailer as its own paragraph, is in sync with the installed hook, passes live tests (trailer-less gains trailer/exits 0, existing Prompt stays byte-identical), and the gitreins guard 6/6 plus CI (test/build/lint) all go green.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 PASS: .gitreins/commit-msg auto-appends 'Prompt: prompts/coding-hermes/v1.md' as its own paragraph when a commit message lacks any Prompt: line (mirrors prepare-commit-msg Co-authored-by auto-append); installed .git/hooks/commit-msg updated in sync; live hook test on a trailer-less message file exits 0 and the file gains the Prompt trailer; a message already carrying Prompt: stays byte-identical; commit passes gitreins guard 6/6 and CI goes green: All sub-parts verified. (1) .gitrei",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "PASS: .gitreins/commit-msg auto-appends 'Prompt: prompts/coding-hermes/v1.md' as its own paragraph when a commit message lacks any Prompt: line (mirrors prepare-commit-msg Co-authored-by auto-append); installed .git/hooks/commit-msg updated in sync; live hook test on a trailer-less message file exits 0 and the file gains the Prompt trailer; a message already carrying Prompt: stays byte-identical; commit passes gitreins guard 6/6 and CI goes green",
+                "status": "PASS",
+                "detail": "All sub-parts verified. (1) .gitreins/commit-msg auto-appends 'Prompt: prompts/coding-hermes/v1.md' as its own paragraph via `printf \"\\n\\nPrompt: prompts/coding-hermes/v1.md\\n\" >> \"$COMMIT_MSG_FILE\"` when no Prompt: line exists. (2) Mirrors prepare-commit-msg Co-authored-by auto-append (same printf \"\\n\\n...\\n\" pattern). (3) `diff .gitreins/commit-msg .git/hooks/commit-msg` = IN SYNC. (4) Live hook test on trailer-less file: EXIT=0, file gained 'Prompt: prompts/coding-hermes/v1.md' trailer. (5) Message already carrying Prompt: stayed byte-identical (diff empty). (6) gitreins guard exits 0 (secrets/build/lint/tests PASS), commit-msg checks [5/6] and [6/6] PASS. (7) CI green: `go test -short -count=1 ./pkg/...` all packages ok, `go build ./cmd/...` exit 0, `golangci-lint run` 0 issues. Fix commit b0a69ad carries both Prompt: and Co-authored-by: trailers."
+              }
+            ],
+            "summary": "The commit-msg hook correctly auto-appends the Prompt trailer as its own paragraph, is in sync with the installed hook, passes live tests (trailer-less gains trailer/exits 0, existing Prompt stays byte-identical), and the gitreins guard 6/6 plus CI (test/build/lint) all go green."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: INT-CI-001\n\nStage tier1: FAIL\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 PASS: .gitreins/commit-msg auto-appends 'Prompt: prompts/coding-hermes/v1.md' as its own paragraph when a commit message lacks any Prompt: line (mirrors prepare-commit-msg Co-authored-by auto-append); installed .git/hooks/commit-msg updated in sync; live hook test on a trailer-less message file exits 0 and the file gains the Prompt trailer; a message already carrying Prompt: stays byte-identical; commit passes gitreins guard 6/6 and CI goes green: All sub-parts verified. (1) .gitreins/commit-msg auto-appends 'Prompt: prompts/coding-hermes/v1.md' as its own paragraph via `printf \"\\n\\nPrompt: prompts/coding-hermes/v1.md\\n\" >> \"$COMMIT_MSG_FILE\"` when no Prompt: line exists. (2) Mirrors prepare-commit-msg Co-authored-by auto-append (same printf \"\\n\\n...\\n\" pattern). (3) `diff .gitreins/commit-msg .git/hooks/commit-msg` = IN SYNC. (4) Live hook test on trailer-less file: EXIT=0, file gained 'Prompt: prompts/coding-hermes/v1.md' trailer. (5) Message already carrying Prompt: stayed byte-identical (diff empty). (6) gitreins guard exits 0 (secrets/build/lint/tests PASS), commit-msg checks [5/6] and [6/6] PASS. (7) CI green: `go test -short -count=1 ./pkg/...` all packages ok, `go build ./cmd/...` exit 0, `golangci-lint run` 0 issues. Fix commit b0a69ad carries both Prompt: and Co-authored-by: trailers.\nThe commit-msg hook correctly auto-appends the Prompt trailer as its own paragraph, is in sync with the installed hook, passes live tests (trailer-less gains trailer/exits 0, existing Prompt stays byte-identical), and the gitreins guard 6/6 plus CI (test/build/lint) all go green.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-08-17T00:49:04.522230"
+}
