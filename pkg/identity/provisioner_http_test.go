@@ -774,6 +774,82 @@ func TestRevokeToken_NotFound(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// DeleteUser tests (GAP-028: deprovision removes the Forgejo account)
+// ---------------------------------------------------------------------------
+
+func TestDeleteUser_EmptyName(t *testing.T) {
+	cfg := DefaultProvisionerConfig()
+	cfg.ForgejoURL = "http://localhost:3030"
+	cfg.AdminToken = "dummy"
+	p, err := NewProvisioner(cfg)
+	require.NoError(t, err)
+
+	err = p.DeleteUser("")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "empty agent name")
+}
+
+func TestDeleteUser_DryRun(t *testing.T) {
+	cfg := DefaultProvisionerConfig()
+	cfg.DryRun = true
+	// Unreachable URL: if the dry-run short-circuit were missing, this
+	// would fail with a network error instead of returning nil.
+	cfg.ForgejoURL = "http://127.0.0.1:1"
+	cfg.AdminToken = "dummy"
+	p, err := NewProvisioner(cfg)
+	require.NoError(t, err)
+
+	assert.NoError(t, p.DeleteUser("test-agent"))
+}
+
+func TestDeleteUser_Success(t *testing.T) {
+	var method, gotPath string
+	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
+		method, gotPath = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusNoContent)
+	})
+	defer srv.Close()
+
+	p := newTestProvisioner(t, srv, 1)
+	err := p.DeleteUser("df-gap028")
+	assert.NoError(t, err)
+	assert.Equal(t, http.MethodDelete, method)
+	assert.Equal(t, "/api/v1/admin/users/df-gap028", gotPath)
+}
+
+func TestDeleteUser_NotFound(t *testing.T) {
+	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"message":"user does not exist"}`))
+	})
+	defer srv.Close()
+
+	p := newTestProvisioner(t, srv, 1)
+	err := p.DeleteUser("ghost")
+	assert.Error(t, err)
+	// The 404 must surface as a TypedError of kind API whose message
+	// contains "404" — that is the contract the syncer's 404-tolerance
+	// check relies on (same as RevokeToken).
+	te, ok := err.(*TypedError)
+	require.True(t, ok, "want *TypedError, got %T", err)
+	assert.Equal(t, ErrKindAPI, te.Kind)
+	assert.Contains(t, te.Error(), "404")
+}
+
+func TestDeleteUser_UnexpectedStatus(t *testing.T) {
+	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte("nope"))
+	})
+	defer srv.Close()
+
+	p := newTestProvisioner(t, srv, 1)
+	err := p.DeleteUser("test-agent")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unexpected HTTP 403")
+}
+
+// ---------------------------------------------------------------------------
 // IsNetworkError helper (for doWithRetry assertions)
 // ---------------------------------------------------------------------------
 

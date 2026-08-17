@@ -30,7 +30,9 @@ package identity
 // For offboarded agents:
 //
 //   Load → RevokeToken (if PAT known) → delete SSH keys server-side
-//          → archive keys → ActionDeprovisioned (DF-012)
+//          → delete Forgejo account → archive keys → ActionDeprovisioned
+//          (DF-012 + GAP-028: keys so the agent cannot SSH-auth, account
+//          so no orphaned account remains to mint tokens or access repos)
 //
 // Failures at any step are recorded as ActionFailed but do NOT abort the
 // rest of the run — the sync is best-effort across agents, and the final
@@ -489,14 +491,42 @@ func missingPieces(needKey, needPAT bool) []string {
 	return out
 }
 
+// deleteAccount removes the agent's Forgejo account server-side, tolerating
+// 404 (the account is already gone — e.g. a previous deprovision died after
+// revoking the PAT). Returns whether the account was actually deleted (false
+// on 404, and false on failure). Any non-404 failure is returned so the
+// caller can fail the deprovision: a lingering account could still mint new
+// PATs (GAP-028).
+func (s *Syncer) deleteAccount(a *Agent) (bool, error) {
+	if s.cfg.DryRun {
+		// Nothing is actually deleted in dry-run (DeleteUser short-circuits
+		// too); report false so the caller's Skipped/Deprovisioned decision
+		// reflects reality.
+		return false, nil
+	}
+	if err := s.prov.DeleteUser(a.Name); err != nil {
+		if te, ok := err.(*TypedError); ok && te.Kind == ErrKindAPI &&
+			strings.Contains(err.Error(), "404") {
+			s.log.Printf("identity: account for agent=%s already gone (404) — continuing", a.Name)
+			return false, nil
+		}
+		return false, err
+	}
+	s.log.Printf("identity: deleted Forgejo account for agent=%s (any repos owned by the agent are removed with it)", a.Name)
+	return true, nil
+}
+
 // deprovisionAgent revokes an offboarded agent's PAT, deletes its SSH keys
-// server-side, and archives their keys. The Forgejo account is preserved
-// (never deleted) so historical git attribution remains intact.
+// server-side, archives their keys, and deletes the Forgejo account itself
+// (GAP-028: security — no orphaned accounts). Deleting the account also
+// removes any repos it owns; for helix identity agents that is the intent
+// (an offboarded agent must not be able to mint new tokens or access its
+// repos). A 404 on any step (PAT/keys/account already gone) is treated as
+// success so a retry after a mid-flow failure does not dead-end.
 //
 // DF-012: the server-side key deletion closes the hole where a deprovisioned
-// agent could still SSH-auth (only the PAT was revoked). Revoking a PAT that
-// is already gone (404) is treated as success so a retry after a mid-flow
-// failure (e.g. key deletion) does not dead-end.
+// agent could still SSH-auth (only the PAT was revoked). GAP-028: the account
+// deletion closes the hole where the account could still mint new PATs.
 func (s *Syncer) deprovisionAgent(a *Agent, opts SyncOptions) ProvisioningResult {
 	start := time.Now()
 	r := ProvisioningResult{AgentName: a.Name, Status: a.Status}
@@ -531,6 +561,16 @@ func (s *Syncer) deprovisionAgent(a *Agent, opts SyncOptions) ProvisioningResult
 			}
 			deleted++
 		}
+		// The account exists server-side (the key list succeeded) — delete
+		// it so no orphaned account remains (GAP-028). In dry-run this
+		// short-circuits inside the provisioner.
+		acctDeleted, err := s.deleteAccount(a)
+		if err != nil {
+			r.Action = ActionFailed
+			r.Error = fmt.Sprintf("delete Forgejo account for agent=%s: %v", a.Name, err)
+			r.Duration = time.Since(start)
+			return r
+		}
 		localPresent := false
 		if !s.cfg.DryRun {
 			if _, err := os.Stat(filepath.Join(expandHome(s.cfg.SSHKeyDir), a.Name)); err == nil {
@@ -541,7 +581,7 @@ func (s *Syncer) deprovisionAgent(a *Agent, opts SyncOptions) ProvisioningResult
 					a.Name, err)
 			}
 		}
-		if deleted == 0 && !localPresent {
+		if deleted == 0 && !localPresent && !acctDeleted {
 			r.Action = ActionSkipped
 		} else {
 			r.Action = ActionDeprovisioned
@@ -586,6 +626,16 @@ func (s *Syncer) deprovisionAgent(a *Agent, opts SyncOptions) ProvisioningResult
 	if len(keys) > 0 {
 		s.log.Printf("identity: deleted %d SSH key(s) server-side for agent=%s",
 			len(keys), a.Name)
+	}
+
+	// Delete the Forgejo account itself — an offboarded agent must not
+	// leave an orphaned account that could mint new PATs (GAP-028). A 404
+	// (already gone) is tolerated; anything else fails the deprovision.
+	if _, err := s.deleteAccount(a); err != nil {
+		r.Action = ActionFailed
+		r.Error = fmt.Sprintf("delete Forgejo account for agent=%s: %v", a.Name, err)
+		r.Duration = time.Since(start)
+		return r
 	}
 
 	// Archive the key directory (best-effort; missing dir is fine).

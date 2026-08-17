@@ -299,11 +299,12 @@ func runProvision(cmd *cobra.Command, args []string) error {
 func newDeprovisionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "deprovision <name>",
-		Short: "Revoke an agent's PAT and archive their keys",
-		Long: `Deprovisioning revokes the agent's personal access token and
-archives their SSH key material under a dated subdirectory. The Forgejo
-account itself is preserved so historical git attribution remains intact
-(see §3.2 of the spec: DELETE /admin/users is intentionally never used).`,
+		Short: "Revoke an agent's PAT, delete their keys, and remove their account",
+		Long: `Deprovisioning revokes the agent's personal access token, deletes their
+SSH keys server-side, removes the Forgejo account entirely, and archives
+the SSH key material under a dated subdirectory (GAP-028: no orphaned
+accounts — an offboarded agent must not be able to mint new tokens or
+access its repos).`,
 		Args: cobra.ExactArgs(1),
 		RunE: runDeprovision,
 	}
@@ -880,6 +881,7 @@ func renderDryRun(kf *identity.KnownFriends) {
 	}
 	for _, a := range kf.OffboardedAgents() {
 		fmt.Printf("[DRY RUN] DELETE /api/v1/users/%s/tokens/{id}  (revoke PAT)\n", a.Name)
+		fmt.Printf("[DRY RUN] DELETE /api/v1/admin/users/%s  (delete account)\n", a.Name)
 	}
 	sep := strings.Repeat("─", 66)
 	fmt.Println(sep)

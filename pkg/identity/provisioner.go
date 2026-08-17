@@ -382,6 +382,14 @@ func (p *Provisioner) adminUserKeyURL(name string, id int64) string {
 		url.PathEscape(name) + "/keys/" + fmt.Sprintf("%d", id)
 }
 
+// adminDeleteUserURL is DELETE /api/v1/admin/users/{name} — the admin
+// endpoint for deleting a user account entirely (GAP-028: deprovision must
+// not leave orphaned Forgejo accounts behind).
+func (p *Provisioner) adminDeleteUserURL(name string) string {
+	return strings.TrimRight(p.cfg.ForgejoURL, "/") + "/api/v1/admin/users/" +
+		url.PathEscape(name)
+}
+
 // userTokensURL is POST /api/v1/users/{name}/tokens (BasicAuth as admin).
 func (p *Provisioner) userTokensURL(name string) string {
 	return strings.TrimRight(p.cfg.ForgejoURL, "/") + "/api/v1/users/" +
@@ -746,6 +754,47 @@ func (p *Provisioner) DeleteUserKey(name string, keyID int64) error {
 		return NewAPIError(
 			fmt.Sprintf("DeleteUserKey(%s, %d): unexpected HTTP %d: %s",
 				name, keyID, resp.StatusCode, body), nil)
+	}
+}
+
+// DeleteUser removes a Forgejo user account server-side via
+// DELETE /api/v1/admin/users/{name} (admin auth). Used by the deprovision
+// path so an offboarded agent leaves no orphaned account behind — a deleted
+// account can no longer mint PATs, SSH-auth, or access its repos (GAP-028).
+//
+// A 404 (account already gone — e.g. a previous deprovision died mid-flow)
+// is surfaced as a TypedError of kind API whose message contains "404", the
+// same contract RevokeToken uses so the syncer can tolerate it as success.
+func (p *Provisioner) DeleteUser(name string) error {
+	if name == "" {
+		return NewConfigError("DeleteUser: empty agent name", nil)
+	}
+	// Dry-run short-circuits BEFORE validation of anything network-touching —
+	// see RegisterKey.
+	if p.cfg.DryRun {
+		return nil
+	}
+	p.limiter.Acquire()
+
+	resp, err := p.doWithRetry(http.MethodDelete, p.adminDeleteUserURL(name), nil,
+		func(r *http.Request) {
+			p.setAdminAuth(r)
+		})
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusNoContent, http.StatusOK:
+		// 204 is what Forgejo returns; accept 200 too (same 2xx contract
+		// as pkg/forgejo's client).
+		return nil
+	default:
+		body := readAndCloseBody(resp)
+		return NewAPIError(
+			fmt.Sprintf("DeleteUser(%s): unexpected HTTP %d: %s",
+				name, resp.StatusCode, body), nil)
 	}
 }
 

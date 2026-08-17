@@ -1095,6 +1095,232 @@ func TestDeprovisionOne_KeyDeletionFailure(t *testing.T) {
 	}
 }
 
+// TestDeprovisionOne_DeletesAccount covers GAP-028's core requirement: with
+// prior state, deprovision revokes the PAT, deletes every SSH key, AND
+// deletes the Forgejo account itself via the admin endpoint — nothing is
+// left behind.
+func TestDeprovisionOne_DeletesAccount(t *testing.T) {
+	var revokeCalls, deleteKeyCalls, deleteAccountCalls int
+	keysJSON, _ := json.Marshal([]SSHKey{{
+		ID: 2, Key: "ssh-ed25519 AAAA", Title: "nina-key",
+		Fingerprint: "SHA256:nina", Created: "2026-06-01T00:00:00Z",
+	}})
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, "/tokens"):
+			revokeCalls++
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/users/nina/keys":
+			_, _ = w.Write(keysJSON)
+		case r.Method == http.MethodDelete && r.URL.Path == "/api/v1/admin/users/nina/keys/2":
+			deleteKeyCalls++
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodDelete && r.URL.Path == "/api/v1/admin/users/nina":
+			deleteAccountCalls++
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+	s, _ := newHttptestSyncer(t, handler)
+
+	s.state.Agents["nina"] = &AgentState{
+		ForgejoAccountID: 1,
+		SSHKeyID:         2,
+		SSHFingerprint:   "SHA256:nina",
+		PATLastEight:     "****ninaPAT",
+		PATID:            909,
+		LastProvisioned:  time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC),
+	}
+
+	a := &Agent{Name: "nina", Status: StatusOffboarded, Tier: TierFlash}
+	r, err := s.DeprovisionOne(a, SyncOptions{AdminUser: "helio", AdminPassword: "helio123"})
+	if err != nil {
+		t.Fatalf("DeprovisionOne: %v", err)
+	}
+	if r.Action != ActionDeprovisioned {
+		t.Errorf("Action = %q, want %q", r.Action, ActionDeprovisioned)
+	}
+	if revokeCalls != 1 {
+		t.Errorf("RevokeToken called %d times, want 1", revokeCalls)
+	}
+	if deleteKeyCalls != 1 {
+		t.Errorf("DeleteUserKey called %d times, want 1", deleteKeyCalls)
+	}
+	if deleteAccountCalls != 1 {
+		t.Errorf("DeleteUser called %d times, want 1 (Forgejo account must be deleted)", deleteAccountCalls)
+	}
+	// State should be cleared for "nina".
+	if _, exists := s.state.Agents["nina"]; exists {
+		t.Error("state.Agents[nina] should be deleted after deprovision")
+	}
+}
+
+// TestDeprovisionOne_AccountDelete404Tolerated covers GAP-028: a 404 on the
+// account delete (account already gone — deleted out-of-band or by a
+// previous deprovision) is treated as success, same as the PAT-revoke 404
+// tolerance, so a re-run finishes instead of dead-ending.
+func TestDeprovisionOne_AccountDelete404Tolerated(t *testing.T) {
+	var deleteAccountCalls int
+	keysJSON, _ := json.Marshal([]SSHKey{{
+		ID: 2, Key: "ssh-ed25519 AAAA", Title: "omar-key",
+		Fingerprint: "SHA256:omar", Created: "2026-06-01T00:00:00Z",
+	}})
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, "/tokens"):
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/users/omar/keys":
+			_, _ = w.Write(keysJSON)
+		case r.Method == http.MethodDelete && r.URL.Path == "/api/v1/admin/users/omar/keys/2":
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodDelete && r.URL.Path == "/api/v1/admin/users/omar":
+			deleteAccountCalls++
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"message":"user does not exist"}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+	s, _ := newHttptestSyncer(t, handler)
+
+	s.state.Agents["omar"] = &AgentState{
+		ForgejoAccountID: 1,
+		SSHKeyID:         2,
+		SSHFingerprint:   "SHA256:omar",
+		PATLastEight:     "****omarPAT",
+		PATID:            808,
+		LastProvisioned:  time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC),
+	}
+
+	a := &Agent{Name: "omar", Status: StatusOffboarded, Tier: TierFlash}
+	r, err := s.DeprovisionOne(a, SyncOptions{AdminUser: "helio", AdminPassword: "helio123"})
+	if err != nil {
+		t.Fatalf("DeprovisionOne: %v (404 account delete must be tolerated)", err)
+	}
+	if r.Action != ActionDeprovisioned {
+		t.Errorf("Action = %q, want %q", r.Action, ActionDeprovisioned)
+	}
+	if deleteAccountCalls != 1 {
+		t.Errorf("DeleteUser called %d times, want 1", deleteAccountCalls)
+	}
+}
+
+// TestDeprovisionOne_DryRunNeverMutates covers GAP-028: with the syncer in
+// dry-run mode, deprovision must NOT hit the network at all — the account
+// DELETE (like every other call) short-circuits inside the Provisioner.
+func TestDeprovisionOne_DryRunNeverMutates(t *testing.T) {
+	var requests int
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusNotFound)
+	})
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	cfg := DefaultProvisionerConfig()
+	cfg.ForgejoURL = srv.URL
+	cfg.AdminUser = "helio"
+	cfg.AdminPassword = "helio123"
+	cfg.AdminToken = "tok"
+	cfg.DryRun = true
+	cfg.KnownFriendsPath = filepath.Join(t.TempDir(), "known-friends.json")
+	cfg.SSHKeyDir = filepath.Join(t.TempDir(), "keys")
+	cfg.StatePath = filepath.Join(t.TempDir(), "state.json")
+
+	s, err := NewSyncer(cfg, nil)
+	if err != nil {
+		t.Fatalf("NewSyncer: %v", err)
+	}
+
+	s.state.Agents["paula"] = &AgentState{
+		ForgejoAccountID: 1,
+		SSHKeyID:         2,
+		SSHFingerprint:   "SHA256:paula",
+		PATLastEight:     "****paulaPAT",
+		PATID:            707,
+		LastProvisioned:  time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC),
+	}
+
+	a := &Agent{Name: "paula", Status: StatusOffboarded, Tier: TierFlash}
+	r, err := s.DeprovisionOne(a, SyncOptions{AdminUser: "helio", AdminPassword: "helio123"})
+	if err != nil {
+		t.Fatalf("DeprovisionOne (dry-run): %v", err)
+	}
+	if r.Action != ActionDeprovisioned {
+		t.Errorf("Action = %q, want %q (dry-run still reports the would-be action)", r.Action, ActionDeprovisioned)
+	}
+	if requests != 0 {
+		t.Errorf("dry-run deprovision made %d HTTP request(s), want 0 (never mutate)", requests)
+	}
+	// State must survive a dry-run (nothing was actually deprovisioned).
+	if _, exists := s.state.Agents["paula"]; !exists {
+		t.Error("state.Agents[paula] should survive a dry-run deprovision")
+	}
+}
+
+// TestDeprovisionOne_AccountDeleteFailure covers GAP-028: a non-404
+// account-delete failure must FAIL the deprovision with a clear message —
+// silently ignoring it would leave an orphaned account that could mint new
+// PATs. State is preserved so the operator can retry.
+func TestDeprovisionOne_AccountDeleteFailure(t *testing.T) {
+	var deleteAccountCalls int
+	keysJSON, _ := json.Marshal([]SSHKey{{
+		ID: 2, Key: "ssh-ed25519 AAAA", Title: "quincy-key",
+		Fingerprint: "SHA256:quincy", Created: "2026-06-01T00:00:00Z",
+	}})
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, "/tokens"):
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/users/quincy/keys":
+			_, _ = w.Write(keysJSON)
+		case r.Method == http.MethodDelete && r.URL.Path == "/api/v1/admin/users/quincy/keys/2":
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodDelete && r.URL.Path == "/api/v1/admin/users/quincy":
+			deleteAccountCalls++
+			// 403 = admin lacks permission to delete the user. 4xx is
+			// non-retryable, keeping the test fast.
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"message":"user deletion forbidden"}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+	s, _ := newHttptestSyncer(t, handler)
+
+	s.state.Agents["quincy"] = &AgentState{
+		ForgejoAccountID: 1,
+		SSHKeyID:         2,
+		SSHFingerprint:   "SHA256:quincy",
+		PATLastEight:     "****quincyPAT",
+		PATID:            606,
+		LastProvisioned:  time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC),
+	}
+
+	a := &Agent{Name: "quincy", Status: StatusOffboarded, Tier: TierFlash}
+	r, err := s.DeprovisionOne(a, SyncOptions{AdminUser: "helio", AdminPassword: "helio123"})
+	if err == nil {
+		t.Fatal("expected error from DeprovisionOne (account deletion failed)")
+	}
+	if r.Action != ActionFailed {
+		t.Errorf("Action = %q, want %q (account deletion failure must fail the deprovision)", r.Action, ActionFailed)
+	}
+	if deleteAccountCalls == 0 {
+		t.Error("DeleteUser endpoint was not called")
+	}
+	if !strings.Contains(r.Error, "account") {
+		t.Errorf("Error = %q, want mention of the account deletion", r.Error)
+	}
+	// State must be preserved so the operator can retry.
+	if _, exists := s.state.Agents["quincy"]; !exists {
+		t.Error("state.Agents[quincy] should survive a failed deprovision")
+	}
+}
+
 // TestSync_SaveStateFailure covers the state-save-failure branch in Sync
 // (the inner saveState error after a successful agent provision). Hard to
 // trigger without making the state directory read-only post-creation, so we
