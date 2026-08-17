@@ -817,3 +817,20 @@ tasks:
   status: complete
   created_at: '2026-08-17T00:45:33.996104+00:00'
   completed_at: '2026-08-17T00:46:49.023814+00:00'
+- id: GAP-028
+  title: Deprovision removes Forgejo account + repair path truthfulness verified live
+  criteria:
+  - deprovisionAgent deletes the Forgejo account server-side (admin DELETE /api/v1/admin/users/<name>)
+    in addition to revoking PAT and deleting SSH keys; 404 on already-gone account
+    treated as success
+  - 'Dry-run reports the full delta (account+key+PAT would be removed) without mutating:
+    no HTTP requests hit the wire'
+  - Repair path on a half-provisioned agent (user exists, 0 tokens) mints the missing
+    PAT and reports action=updated (NOT action=unchanged); dry-run shows the repair
+    delta
+  - Unit tests cover account deletion, 404 tolerance, dry-run no-mutation, and non-404
+    account-delete failure -> ActionFailed
+  - go build ./... and go test -short -count=1 ./... pass
+  status: complete
+  created_at: '2026-08-17T17:30:17.497829+00:00'
+  completed_at: '2026-08-17T17:44:39.796147+00:00'
