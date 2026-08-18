@@ -834,3 +834,12 @@ tasks:
   status: complete
   created_at: '2026-08-17T17:30:17.497829+00:00'
   completed_at: '2026-08-17T17:44:39.796147+00:00'
+- id: GAP-029
+  title: 'CLI surface regression test: TestCLIHelp asserts helix --help lists every
+    documented subcommand'
+  criteria:
+  - A test asserting helix --help contains every documented subcommand exists and
+    runs in CI (go test -short -count=1 ./cmd/... passes; test lives in cmd/helix)
+  status: complete
+  created_at: '2026-08-18T00:26:58.245295+00:00'
+  completed_at: '2026-08-18T00:34:16.389420+00:00'

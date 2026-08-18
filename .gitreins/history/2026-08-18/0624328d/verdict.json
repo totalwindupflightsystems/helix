@@ -1,0 +1,107 @@
+{
+  "task_id": "GAP-029",
+  "task_title": "CLI surface regression test: TestCLIHelp asserts helix --help lists every documented subcommand",
+  "task_criteria": [
+    "A test asserting helix --help contains every documented subcommand exists and runs in CI (go test -short -count=1 ./cmd/... passes; test lives in cmd/helix)"
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 A test asserting helix --help contains every documented subcommand exists and runs in CI (go test -short -count=1 ./cmd/... passes; test lives in cmd/helix): TestCLIHelp exists in cmd/helix/cli_surface_test.go (package main). It asserts printUsage() output (helix --help) lists allSubcommandNames(), README-documented subcommands, and a curated core backstop. go test -short -count=1 ./cmd/... exit_code=0 (all packages ok); go test -short -count=1 -run TestCLIHelp -v ./cmd/helix/ => '--- PASS: TestCLIHelp (0.00s)'. No LSP diagnostics.\nTestCLIHelp exists in cmd/helix, asserts --help covers all documented subcommands, and the full cmd test suite passes.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 A test asserting helix --help contains every documented subcommand exists and runs in CI (go test -short -count=1 ./cmd/... passes; test lives in cmd/helix): TestCLIHelp exists in cmd/helix/cli_surface_test.go (package main). It asserts printUsage() output (helix --help) lists allSubcommandNames(), README-documented subcommands, and a curated core backstop. go test -short -count=1 ./cmd/... exit_code=0 (all packages ok); go test -short -count=1 -run TestCLIHelp -v ./cmd/helix/ => '-",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "A test asserting helix --help contains every documented subcommand exists and runs in CI (go test -short -count=1 ./cmd/... passes; test lives in cmd/helix)",
+                "status": "PASS",
+                "detail": "TestCLIHelp exists in cmd/helix/cli_surface_test.go (package main). It asserts printUsage() output (helix --help) lists allSubcommandNames(), README-documented subcommands, and a curated core backstop. go test -short -count=1 ./cmd/... exit_code=0 (all packages ok); go test -short -count=1 -run TestCLIHelp -v ./cmd/helix/ => '--- PASS: TestCLIHelp (0.00s)'. No LSP diagnostics."
+              }
+            ],
+            "summary": "TestCLIHelp exists in cmd/helix, asserts --help covers all documented subcommands, and the full cmd test suite passes."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: GAP-029\n\nStage tier1: FAIL\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 A test asserting helix --help contains every documented subcommand exists and runs in CI (go test -short -count=1 ./cmd/... passes; test lives in cmd/helix): TestCLIHelp exists in cmd/helix/cli_surface_test.go (package main). It asserts printUsage() output (helix --help) lists allSubcommandNames(), README-documented subcommands, and a curated core backstop. go test -short -count=1 ./cmd/... exit_code=0 (all packages ok); go test -short -count=1 -run TestCLIHelp -v ./cmd/helix/ => '--- PASS: TestCLIHelp (0.00s)'. No LSP diagnostics.\nTestCLIHelp exists in cmd/helix, asserts --help covers all documented subcommands, and the full cmd test suite passes.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-08-18T00:35:02.468442"
+}
