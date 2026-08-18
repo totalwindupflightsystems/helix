@@ -402,7 +402,13 @@ func runLifecycleStages(flags lcFlags, stdout io.Writer) int {
 }
 
 // runLifecycleWithDryRun wraps runLifecycle with the global --dry-run flag.
+//
+// GAP-035: `helix lifecycle` is the deprecated alias of `helix pipeline`.
+// The deprecation notice is emitted to stderr BEFORE the command runs; the
+// legacy logic then keeps executing so existing scripts and `lifecycle
+// stages` (which has no pipeline equivalent) continue to work.
 func runLifecycleWithDryRun(args []string, stdout, stderr io.Writer, globalDryRun bool) error {
+	fmt.Fprintln(stderr, "DEPRECATED: 'helix lifecycle' is deprecated — use 'helix pipeline run' (or 'helix pipeline show' to render a saved result).")
 	// If the global --dry-run flag was set but the user didn't already pass
 	// --dry-run to the lifecycle subcommand itself, inject it so the
 	// subcommand's own dry-run handler picks it up.

@@ -228,6 +228,20 @@ func TestRunLifecycleWithDryRun_PropagatesError(t *testing.T) {
 	assert.Equal(t, lcExitError, extractExitCode(t, err))
 }
 
+func TestRunLifecycleWithDryRun_DeprecationNotice(t *testing.T) {
+	// GAP-035: `helix lifecycle` is deprecated in favor of `helix pipeline`.
+	// The wrapper must emit the deprecation notice to stderr BEFORE running
+	// and keep the legacy command fully functional (exit 0 for `stages`,
+	// which has no pipeline equivalent).
+	var out, errBuf bytes.Buffer
+	err := runLifecycleWithDryRun([]string{"stages"}, &out, &errBuf, false)
+	assert.NoError(t, err)
+	assert.Contains(t, errBuf.String(), "DEPRECATED: 'helix lifecycle' is deprecated")
+	assert.Contains(t, errBuf.String(), "helix pipeline run")
+	// Functionality preserved: the stages listing still renders on stdout.
+	assert.Contains(t, out.String(), "Lifecycle Stages")
+}
+
 func TestRunLifecycleWithDryRun_GlobalDryRunInjected(t *testing.T) {
 	// When globalDryRun=true and the user did not pass --dry-run, the wrapper
 	// injects --dry-run so the subcommand's own handler activates. Verify by

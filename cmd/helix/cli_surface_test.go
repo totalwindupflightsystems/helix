@@ -51,12 +51,14 @@ func TestCLIHelp(t *testing.T) {
 	}
 
 	// Layer 3: curated hardcoded backstop of the core subcommand surface.
+	// Note: "lifecycle" is intentionally absent — it was folded into
+	// "pipeline" (GAP-035) and must stay hidden from --help.
 	core := []string{
 		"identity", "estimate", "negotiate", "prompt", "marketplace",
 		"sandbox", "version", "banner", "status", "doctor", "dispatch",
 		"dispatcher", "review", "verify", "release", "trust", "mergegate",
 		"security", "forgejo", "coapproval", "adversarial", "secrets",
-		"pipeline", "lifecycle", "webhook", "incident", "config", "alerts",
+		"pipeline", "webhook", "incident", "config", "alerts",
 		"retry", "backup", "degradation", "audit", "api", "integration",
 		"forcemerge", "vuln", "deploy", "ci", "recovery", "memory", "idea",
 		"adr", "spec", "source", "channel", "design", "contract", "notify",
@@ -66,6 +68,14 @@ func TestCLIHelp(t *testing.T) {
 		if !usageListsSubcommand(out, name) {
 			t.Errorf("printUsage() does not list core subcommand %q: a documented CLI contract is missing from --help", name)
 		}
+	}
+
+	// Layer 4: deprecated subcommands must stay hidden (GAP-035).
+	// `helix lifecycle` was folded into `helix pipeline`; it remains
+	// dispatchable for backward compatibility but must not appear as a
+	// separate PR-lifecycle entry in --help.
+	if usageListsSubcommand(out, "lifecycle") {
+		t.Errorf("printUsage() lists deprecated subcommand %q: lifecycle was merged into pipeline (GAP-035) and must stay hidden from --help", "lifecycle")
 	}
 }
 

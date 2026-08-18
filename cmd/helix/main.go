@@ -75,11 +75,16 @@ var subcommands = map[string]string{
 
 // builtinSubcommands lists every subcommand handled by the big switch in
 // dispatch() above. KEEP IN SYNC with the switch cases.
+//
+// Exception: "lifecycle" is deliberately NOT listed here (GAP-035). It is
+// the deprecated alias for "pipeline" — the switch case stays alive for
+// backward compatibility, but the command is hidden from --help and from
+// the unknown-subcommand listing.
 var builtinSubcommands = []string{
 	"version", "banner", "status", "doctor", "dispatch", "coapproval",
 	"adversarial", "secrets", "pipeline", "webhook", "incident", "config",
 	"alerts", "retry", "backup", "degradation", "audit", "api", "integration",
-	"trust", "forgejo", "review", "dispatcher", "mergegate", "lifecycle",
+	"trust", "forgejo", "review", "dispatcher", "mergegate",
 	"verify", "security", "forcemerge", "vuln", "deploy", "ci", "recovery",
 	"memory", "idea", "adr", "spec", "source", "channel", "design", "contract",
 	"notify", "models", "learn",
@@ -442,6 +447,11 @@ func (d *dispatcher) dispatch(args []string) error {
 	case "lifecycle":
 		// `helix lifecycle <run|stages>` runs the PR lifecycle coordinator
 		// pipeline (spec cross-component-wiring.md §1-§5).
+		//
+		// DEPRECATED (GAP-035): `helix pipeline` is the canonical PR-lifecycle
+		// command. This case stays alive for backward compatibility (the
+		// deprecation notice is emitted by runLifecycleWithDryRun), but
+		// "lifecycle" is hidden from --help and the subcommand registry.
 		return RunWithObs("lifecycle", func() error {
 			return runLifecycleWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
@@ -784,7 +794,7 @@ Subcommands:
   banner       Print the HELIX ASCII art banner
   status       Check all component health
   doctor       Run platform diagnostic checks
-  dispatch     Dispatch a spec to an agent for execution
+  dispatch     Run the full spec→PR pipeline (Ralph loop execution) — distinct from dispatcher
   dispatcher   Inspect and drive the Ralph Loop engine (status/tick/list-tasks)
   review       Adversarial review + change management dashboard
   verify       Production verification (shadow/canary/contract)
@@ -796,8 +806,7 @@ Subcommands:
   coapproval   Run human+agent co-approval protocol
   adversarial  Run adversarial review
   secrets      Inspect and rotate secrets
-  pipeline     Run PR lifecycle coordinator
-  lifecycle    PR lifecycle coordinator stages
+  pipeline     Run PR lifecycle coordinator (canonical — lifecycle is deprecated)
   webhook      Run Forgejo webhook ingestion server
   incident     Declare, list, and resolve incidents (spec §6.7)
   config       Validate configuration (env-check)
