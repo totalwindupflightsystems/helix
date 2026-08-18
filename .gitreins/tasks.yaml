@@ -848,5 +848,6 @@ tasks:
   criteria:
   - docs/api/README.md lists every package from README's component table (41 pkg/*
     entries), each with a linked page whose signatures match `go doc github.com/totalwindupflightsystems/helix/pkg/<name>`
-  status: in_progress
+  status: complete
   created_at: '2026-08-18T11:57:21.436543+00:00'
+  completed_at: '2026-08-18T11:59:01.147392+00:00'
