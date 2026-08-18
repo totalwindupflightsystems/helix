@@ -851,3 +851,13 @@ tasks:
   status: complete
   created_at: '2026-08-18T11:57:21.436543+00:00'
   completed_at: '2026-08-18T11:59:01.147392+00:00'
+- id: GAP-035
+  title: Deprecate duplicate PR-lifecycle subcommand (lifecycle vs pipeline) in helix
+    CLI
+  criteria:
+  - helix --help shows exactly one PR-lifecycle entry (pipeline) with no undeprecated
+    duplicate; helix lifecycle prints a deprecation notice pointing to the canonical
+    command; full suite green
+  status: complete
+  created_at: '2026-08-18T18:28:03.573508+00:00'
+  completed_at: '2026-08-18T18:34:53.872642+00:00'
