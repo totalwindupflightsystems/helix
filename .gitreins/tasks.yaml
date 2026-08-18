@@ -843,3 +843,10 @@ tasks:
   status: complete
   created_at: '2026-08-18T00:26:58.245295+00:00'
   completed_at: '2026-08-18T00:34:16.389420+00:00'
+- id: GAP-027
+  title: docs/api pages for all README component-table packages
+  criteria:
+  - docs/api/README.md lists every package from README's component table (41 pkg/*
+    entries), each with a linked page whose signatures match `go doc github.com/totalwindupflightsystems/helix/pkg/<name>`
+  status: in_progress
+  created_at: '2026-08-18T11:57:21.436543+00:00'

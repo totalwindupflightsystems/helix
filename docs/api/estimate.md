@@ -134,3 +134,103 @@ cost, err := est.Estimate(estimate.TaskDesc{
 gate := estimate.NewApprovalGate(pricing)
 decision := gate.Evaluate(budget, cost)
 ```
+
+## Full exported signatures (from `go doc`)
+
+```go
+package estimate // import "github.com/totalwindupflightsystems/helix/pkg/estimate"
+
+Package estimate implements the Helix pre-flight cost estimator.
+
+It estimates the token cost of an agent task BEFORE execution begins,
+checks the estimate against the agent's remaining weekly budget, and either
+approves, denies, or escalates for human approval. Estimation is cache-aware:
+it distinguishes fresh input tokens (full price) from cache-hit tokens (10x
+cheaper) and cache-write tokens (future discount), using configurable per-tier
+cache hit ratios.
+
+Design constraints (specs/cost-estimator.md §4):
+  - Only stdlib + github.com/spf13/cobra + gopkg.in/yaml.v3 may be imported.
+  - No hardcoded prices; all pricing comes from ~/.helix/pricing.yaml.
+  - Cost estimates are always rounded UP to the nearest cent.
+
+This file defines the core data models shared across the estimator, pricing,
+budget, reconciliation, and calibration layers.
+
+const ExitSuccess = 0 ...
+const DriftThresholdPct = 10.0
+const RecentEntryLimit = 20
+var ErrAuthFailed = fmt.Errorf("openrouter: authentication failed (HTTP 401) — key may be dead")
+var ErrRateLimited = fmt.Errorf("openrouter: rate limited (HTTP 429)")
+func AllBlocked(results map[string]GateApprovalResult) bool
+func AnyApproved(results map[string]GateApprovalResult) bool
+func ApprovalExitCode(d ApprovalDecision) int
+func CheckRecalibration(records []EstimationLog, threshold float64, minTasks int) (bool, float64)
+func ExhaustionAction(level BudgetExhaustionLevel) string
+func FormatCostReport(r CostReport) string
+func FormatDriftReport(r DriftReport) string
+func FormatGateResult(r GateApprovalResult) string
+func FormatPeriodInfo(info PeriodInfo) string
+func FormatReconciliation(r ReconciliationResult) string
+func IsNewAgent(b BudgetInfo) bool
+func ReconcileDrift(estimated CostEstimate, actual CostEstimate) float64
+func ReconcilePipeline(agentID string, usage Usage, pricing *PricingYAML, provider, model string, ...) (ReconciliationResult, BudgetInfo, error)
+func RemainingBudget(b BudgetInfo) float64
+func WriteEstimationRecord(path string, entry EstimationLog) error
+type ApprovalDecision struct{ ... }
+    func CheckBudget(budget BudgetInfo, estimate CostEstimate) ApprovalDecision
+type ApprovalGate struct{ ... }
+    func NewApprovalGate(pricing *PricingYAML) *ApprovalGate
+type ApprovalStatus string
+    const StatusAutoApproved ApprovalStatus = "AUTO_APPROVED" ...
+type BlockedOption struct{ ... }
+type BudgetExhaustionLevel int
+    const ExhaustionNone BudgetExhaustionLevel = iota ...
+type BudgetInfo struct{ ... }
+type CacheRatios struct{ ... }
+type CalibrationRecord struct{ ... }
+type Calibrator struct{ ... }
+    func NewCalibrator() *Calibrator
+type CheaperModel struct{ ... }
+type CostAttribute struct{ ... }
+type CostAttributionModel struct{ ... }
+    func NewCostAttributionModel() *CostAttributionModel
+type CostEntry struct{ ... }
+type CostEstimate struct{ ... }
+    func ActualCost(usage Usage, pricing *PricingYAML, provider, model string) (CostEstimate, error)
+type CostHierarchyTier int
+    const TierAgent CostHierarchyTier = iota ...
+type CostReport struct{ ... }
+type DriftEntry struct{ ... }
+type DriftReport struct{ ... }
+type DriftTracker struct{ ... }
+    func NewDriftTracker() *DriftTracker
+type EstimationLog struct{ ... }
+    func ReadEstimationRecords(path string) ([]EstimationLog, error)
+type EstimationLogger struct{ ... }
+    func NewEstimationLogger(verbose bool) *EstimationLogger
+    func NewEstimationLoggerWithWriter(verbose bool, w io.Writer) *EstimationLogger
+type Estimator struct{ ... }
+    func NewEstimator(pricing *PricingYAML, tier string) *Estimator
+type GateApprovalResult struct{ ... }
+type KeyInfo struct{ ... }
+type ModelPrice struct{ ... }
+type OpenRouterClient struct{ ... }
+    func NewOpenRouterClient(baseURL string) *OpenRouterClient
+type PeriodConfig struct{ ... }
+    func DefaultPeriodConfig() PeriodConfig
+type PeriodInfo struct{ ... }
+type PeriodManager struct{ ... }
+    func NewPeriodManager(config PeriodConfig) *PeriodManager
+type PricingYAML struct{ ... }
+    func LoadPricing(path string) (*PricingYAML, error)
+type ProviderPricing struct{ ... }
+type ReconciliationResult struct{ ... }
+    func ReconcileAgent(agentID string, usage Usage, pricing *PricingYAML, provider, model string, ...) (ReconciliationResult, error)
+type TaskDefaults struct{ ... }
+type TaskDesc struct{ ... }
+type TaskType string
+    const TaskSpec TaskType = "spec" ...
+type TokenEstimate struct{ ... }
+type Usage struct{ ... }
+```
