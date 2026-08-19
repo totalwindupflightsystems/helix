@@ -61,3 +61,19 @@ jobs:
 
       - name: Run integration tests
         run: go test -count=1 ./pkg/integration/...
+
+  docs-consistency:
+    name: Docs Consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: README package counts agree (headline == component table == api table)
+        run: |
+          set -euo pipefail
+          headline=$(grep -oP '^## Components \(\K[0-9]+' README.md)
+          table=$(sed -n '/^## Components/,/^## [^#]/p' README.md | grep -oP '`pkg/[a-z0-9_/]+`' | sort -u | wc -l)
+          api=$(grep -oP '`pkg/[a-z0-9_/]+`' docs/api/README.md | sort -u | wc -l)
+          echo "headline=$headline table=$table api=$api"
+          [ "$headline" -eq "$table" ] || { echo "FAIL: README headline ($headline) != component table ($table)"; exit 1; }
+          [ "$table" -eq "$api" ] || { echo "FAIL: component table ($table) != docs/api/README.md ($api)"; exit 1; }
