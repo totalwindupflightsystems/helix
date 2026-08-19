@@ -1,0 +1,107 @@
+{
+  "task_id": "GAP-034",
+  "task_title": "Forgejo port drift 3030 vs 3000 in code docs",
+  "task_criteria": [
+    "All Forgejo-related localhost references in pkg/ and docs/ use http://localhost:3030 (pkg/integration/doc.go and docs/api/integration.md fixed from 3000); deploy.md's forgejo:3000 is explicitly labeled container-internal (host publishes 3030)"
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 All Forgejo-related localhost references in pkg/ and docs/ use http://localhost:3030 (pkg/integration/doc.go and docs/api/integration.md fixed from 3000); deploy.md's forgejo:3000 is explicitly labeled container-internal (host publishes 3030): Commit 3420c6e: pkg/integration/doc.go:15 'FORGEJO_URL \u2014 override default http://localhost:3030'; docs/api/integration.md:26 same; docs/api/deploy.md:47-49 'forgejo:3000 is the container-internal port... host-facing published port is 3030' and :66-68 'service-name ports are container-internal (Forgejo listens on 3000 in-container; host-facing published port is 3030)'. grep -rn 'localhost:3000' pkg/ docs/ (non-test) = 0 hits (exit 1). Remaining localhost:3000 hits are only in *_test.go fixtures and for non-Forgejo services (Hivemind/LangFuse/DuckBrain). go test -short -count=1 ./pkg/... exit 0, 50 packages ok.\nAll Forgejo port references in code docs unified to localhost:3030, deploy.md's forgejo:3000 explicitly labeled container-internal with host publishing 3030, and the full pkg test suite passes.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 All Forgejo-related localhost references in pkg/ and docs/ use http://localhost:3030 (pkg/integration/doc.go and docs/api/integration.md fixed from 3000); deploy.md's forgejo:3000 is explicitly labeled container-internal (host publishes 3030): Commit 3420c6e: pkg/integration/doc.go:15 'FORGEJO_URL \u2014 override default http://localhost:3030'; docs/api/integration.md:26 same; docs/api/deploy.md:47-49 'forgejo:3000 is the container-internal port... host-facing published port is 3030' and",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "All Forgejo-related localhost references in pkg/ and docs/ use http://localhost:3030 (pkg/integration/doc.go and docs/api/integration.md fixed from 3000); deploy.md's forgejo:3000 is explicitly labeled container-internal (host publishes 3030)",
+                "status": "PASS",
+                "detail": "Commit 3420c6e: pkg/integration/doc.go:15 'FORGEJO_URL \u2014 override default http://localhost:3030'; docs/api/integration.md:26 same; docs/api/deploy.md:47-49 'forgejo:3000 is the container-internal port... host-facing published port is 3030' and :66-68 'service-name ports are container-internal (Forgejo listens on 3000 in-container; host-facing published port is 3030)'. grep -rn 'localhost:3000' pkg/ docs/ (non-test) = 0 hits (exit 1). Remaining localhost:3000 hits are only in *_test.go fixtures and for non-Forgejo services (Hivemind/LangFuse/DuckBrain). go test -short -count=1 ./pkg/... exit 0, 50 packages ok."
+              }
+            ],
+            "summary": "All Forgejo port references in code docs unified to localhost:3030, deploy.md's forgejo:3000 explicitly labeled container-internal with host publishing 3030, and the full pkg test suite passes."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: GAP-034\n\nStage tier1: FAIL\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 All Forgejo-related localhost references in pkg/ and docs/ use http://localhost:3030 (pkg/integration/doc.go and docs/api/integration.md fixed from 3000); deploy.md's forgejo:3000 is explicitly labeled container-internal (host publishes 3030): Commit 3420c6e: pkg/integration/doc.go:15 'FORGEJO_URL \u2014 override default http://localhost:3030'; docs/api/integration.md:26 same; docs/api/deploy.md:47-49 'forgejo:3000 is the container-internal port... host-facing published port is 3030' and :66-68 'service-name ports are container-internal (Forgejo listens on 3000 in-container; host-facing published port is 3030)'. grep -rn 'localhost:3000' pkg/ docs/ (non-test) = 0 hits (exit 1). Remaining localhost:3000 hits are only in *_test.go fixtures and for non-Forgejo services (Hivemind/LangFuse/DuckBrain). go test -short -count=1 ./pkg/... exit 0, 50 packages ok.\nAll Forgejo port references in code docs unified to localhost:3030, deploy.md's forgejo:3000 explicitly labeled container-internal with host publishing 3030, and the full pkg test suite passes.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-08-19T00:58:04.628904"
+}
