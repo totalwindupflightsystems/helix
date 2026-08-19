@@ -44,6 +44,11 @@ public edge:
     traces.helixloop.dev   → langfuse:3000
     monitor.helixloop.dev  → grafana:3000
 
+`forgejo:3000` is the container-internal port (service name + listening port
+inside the compose network); the host-facing published port is 3030.
+`langfuse:3000` and `grafana:3000` are likewise container-internal ports for
+their own services, not Forgejo.
+
 This package provides the data layer: Vhost structs (domain, backend, optional
 TLS / path rewrites / basic_auth / rate limiting), a Registry keyed by name,
 and a Renderer that emits valid Caddyfile syntax.
@@ -58,7 +63,9 @@ Design goals:
 
   - Backend URL can be a Docker service name (forgejo:3000) for docker-compose
     deployments or a 127.0.0.1:port for local dev. The package doesn't care — it
-    just emits whatever the caller configures.
+    just emits whatever the caller configures. Note: service-name ports are
+    container-internal (Forgejo listens on 3000 in-container; the host-facing
+    published port is 3030).
 
   - Optional global TLS config. If SetTLSEmail is non-empty, the emitted
     Caddyfile includes an `email` directive for ACME.

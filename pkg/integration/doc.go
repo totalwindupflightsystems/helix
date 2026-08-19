@@ -12,6 +12,6 @@
 // Environment variables:
 //
 //	GOAWAY=1 — skip real network calls even when not in -short mode
-//	FORGEJO_URL — override default http://localhost:3000
+//	FORGEJO_URL — override default http://localhost:3030
 //	CHIMERA_URL — override default http://localhost:8765
 package integration

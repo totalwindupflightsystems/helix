@@ -56,7 +56,7 @@ Check the service table:
 Stop with `./scripts/down.sh` (add `--clean` to also drop data volumes).
 
 > **Port note:** older docs and the `doctor` probe history referenced
-> `localhost:3000` for Forgejo — the canonical URL everywhere in the code
+> Forgejo on port 3000 — the canonical URL everywhere in the code
 > (`pkg/integration`, `helix doctor`, `helix status`) is
 > `http://localhost:3030`. Port 3000 is used by DuckBrain (memory backend) on
 > this host, so never bind Forgejo to 3000 here.
