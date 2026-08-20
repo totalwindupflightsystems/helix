@@ -4,7 +4,9 @@ package main
 import (
 	"bytes"
 	"crypto/ed25519"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"os"
 	"path/filepath"
 	"strings"
@@ -679,6 +681,134 @@ func TestReadPublicKeyFile_OK(t *testing.T) {
 	}
 	if len(pub) != ed25519.PublicKeySize {
 		t.Fatalf("expected %d bytes, got %d", ed25519.PublicKeySize, len(pub))
+	}
+}
+
+// -----------------------------------------------------------------------------
+// PEM PKCS8 ed25519 private key support (INT-CI-002)
+// -----------------------------------------------------------------------------
+
+// writePEMPKCS8Key wraps der in a "PRIVATE KEY" PEM block and writes it to a
+// temp file, returning the path.
+func writePEMPKCS8Key(t *testing.T, der []byte) string {
+	t.Helper()
+	block := &pem.Block{Type: "PRIVATE KEY", Bytes: der}
+	path := filepath.Join(t.TempDir(), "key.pkcs8.pem")
+	if err := os.WriteFile(path, pem.EncodeToMemory(block), 0o600); err != nil {
+		t.Fatalf("write pkcs8 pem: %v", err)
+	}
+	return path
+}
+
+func TestReadPrivateKeyFile_PEM_PKCS8_OK(t *testing.T) {
+	_, priv, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatalf("GenerateKey: %v", err)
+	}
+	der, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		t.Fatalf("MarshalPKCS8PrivateKey: %v", err)
+	}
+	path := writePEMPKCS8Key(t, der)
+	got, err := readPrivateKeyFile(path)
+	if err != nil {
+		t.Fatalf("readPrivateKeyFile: %v", err)
+	}
+	if len(got) != ed25519.PrivateKeySize {
+		t.Fatalf("key size = %d, want %d", len(got), ed25519.PrivateKeySize)
+	}
+	if !got.Equal(priv) {
+		t.Fatal("parsed PKCS8 key does not match the original key")
+	}
+	// Sign/verify round-trip through the parsed key.
+	msg := []byte("INT-CI-002 pkcs8 round-trip")
+	sig := ed25519.Sign(got, msg)
+	if !ed25519.Verify(got.Public().(ed25519.PublicKey), msg, sig) {
+		t.Fatal("signature from parsed PKCS8 key failed to verify")
+	}
+}
+
+func TestReadPrivateKeyFile_PEM_PKCS8_BadDER(t *testing.T) {
+	cases := map[string][]byte{
+		"truncated": {0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04}, // seed cut off
+		"garbage":   {0xde, 0xad, 0xbe, 0xef, 0x00, 0x01, 0x02, 0x03},
+		"wrong-oid": {0x30, 0x05, 0x06, 0x03, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01},
+		"empty":     {},
+	}
+	for name, der := range cases {
+		t.Run(name, func(t *testing.T) {
+			path := writePEMPKCS8Key(t, der)
+			if _, err := readPrivateKeyFile(path); err == nil {
+				t.Fatalf("expected error for %q DER, got nil", name)
+			}
+		})
+	}
+}
+
+func TestParsePKCS8Ed25519_FixedFixture(t *testing.T) {
+	// Known 32-byte seed 0x01..0x20; the derived key must round-trip.
+	seed := make([]byte, ed25519.SeedSize)
+	for i := range seed {
+		seed[i] = byte(i + 1)
+	}
+	// RFC 8410 layout, openssl genpkey form (no NULL parameters):
+	// SEQUENCE { INTEGER 0, SEQUENCE { OID 1.3.101.112 },
+	//            OCTET STRING { OCTET STRING { seed } } }
+	derPlain := append([]byte{
+		0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70,
+		0x04, 0x22, 0x04, 0x20,
+	}, seed...)
+	// Variant with explicit NULL parameters after the OID (some producers emit it).
+	derNull := append([]byte{
+		0x30, 0x30, 0x02, 0x01, 0x00, 0x30, 0x07, 0x06, 0x03, 0x2b, 0x65, 0x70,
+		0x05, 0x00, 0x04, 0x22, 0x04, 0x20,
+	}, seed...)
+	want := ed25519.NewKeyFromSeed(seed)
+	for name, der := range map[string][]byte{"no-null": derPlain, "with-null": derNull} {
+		t.Run(name, func(t *testing.T) {
+			key, err := parsePKCS8Ed25519(der)
+			if err != nil {
+				t.Fatalf("parsePKCS8Ed25519: %v", err)
+			}
+			if !key.Equal(want) {
+				t.Fatal("parsed key does not match NewKeyFromSeed(seed)")
+			}
+			msg := []byte("fixture")
+			if !ed25519.Verify(key.Public().(ed25519.PublicKey), msg, ed25519.Sign(key, msg)) {
+				t.Fatal("fixture key failed sign/verify")
+			}
+		})
+	}
+}
+
+func TestParsePKCS8Ed25519_BadInput(t *testing.T) {
+	seed := make([]byte, ed25519.SeedSize)
+	valid := append([]byte{
+		0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70,
+		0x04, 0x22, 0x04, 0x20,
+	}, seed...)
+	// Outer OCTET STRING well-formed, but the inner seed is 31 bytes, not 32.
+	badSeed := append([]byte{
+		0x30, 0x2d, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70,
+		0x04, 0x21, 0x04, 0x1f,
+	}, make([]byte, 31)...)
+	cases := map[string][]byte{
+		"nil":             nil,
+		"short":           {0x30, 0x02},
+		"no-oid":          {0x30, 0x03, 0x02, 0x01, 0x00},
+		"outer-not-octet": {0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x22, 0x04, 0x20},
+		"truncated-outer": valid[:14],
+		"inner-not-octet": {0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x03, 0x20},
+		"bad-seed-len":    badSeed,
+		"indefinite-len":  {0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x80, 0x04, 0x20},
+	}
+	for name, der := range cases {
+		t.Run(name, func(t *testing.T) {
+			key, err := parsePKCS8Ed25519(der)
+			if err == nil {
+				t.Fatalf("expected error for %q, got key len %d", name, len(key))
+			}
+		})
 	}
 }
 
