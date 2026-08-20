@@ -881,3 +881,15 @@ tasks:
   status: complete
   created_at: '2026-08-19T00:54:42.718740+00:00'
   completed_at: '2026-08-19T00:56:37.454662+00:00'
+- id: INT-CI-002
+  title: 'Fix CI lint SA4023: dead err==nil branch in cmd/helix/review_crypto.go (parsePKCS8Ed25519
+    never returns nil error)'
+  criteria:
+  - 'PASS: golangci-lint run --timeout=5m exits 0 with zero issues on cmd/helix/review_crypto.go;
+    go build ./... and go test -short -count=1 ./cmd/helix/ pass; the PEM PKCS8 ed25519
+    private-key path either genuinely parses a 32-byte seed via ed25519.NewKeyFromSeed
+    (recommended) or the dead branch is removed and the error message no longer advertises
+    PEM PKCS8 support'
+  status: complete
+  created_at: '2026-08-20T11:36:49.723899+00:00'
+  completed_at: '2026-08-20T12:04:56.262847+00:00'

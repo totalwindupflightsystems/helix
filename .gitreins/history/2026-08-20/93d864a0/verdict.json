@@ -1,0 +1,107 @@
+{
+  "task_id": "INT-CI-002",
+  "task_title": "Fix CI lint SA4023: dead err==nil branch in cmd/helix/review_crypto.go (parsePKCS8Ed25519 never returns nil error)",
+  "task_criteria": [
+    "PASS: golangci-lint run --timeout=5m exits 0 with zero issues on cmd/helix/review_crypto.go; go build ./... and go test -short -count=1 ./cmd/helix/ pass; the PEM PKCS8 ed25519 private-key path either genuinely parses a 32-byte seed via ed25519.NewKeyFromSeed (recommended) or the dead branch is removed and the error message no longer advertises PEM PKCS8 support"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 lint: \n  \u2713 tests: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 PASS: golangci-lint run --timeout=5m exits 0 with zero issues on cmd/helix/review_crypto.go; go build ./... and go test -short -count=1 ./cmd/helix/ pass; the PEM PKCS8 ed25519 private-key path either genuinely parses a 32-byte seed via ed25519.NewKeyFromSeed (recommended) or the dead branch is removed and the error message no longer advertises PEM PKCS8 support: SA4023 dead-branch fixed via recommended path: parsePKCS8Ed25519 now genuinely parses the 32-byte seed and returns ed25519.NewKeyFromSeed(inner[1+m:1+m+seedLen]), nil (cmd/helix/review_crypto.go:134); old 'PEM PKCS8 ed25519 not supported' dead-branch error removed. golangci-lint run --timeout=5m ./cmd/helix/ = '0 issues', LINT_EXIT=0 (whole-package run; single-file run shows only false-positive 'unused' warnings because the unused linter needs package context \u2014 all 5 flagged funcs are used in other package files). go build ./... = BUILD_EXIT=0. All crypto tests pass: TestParsePKCS8Ed25519_FixedFixture, TestParsePKCS8Ed25519_BadInput, TestReadPrivateKeyFile_PEM_PKCS8_OK, TestReadPrivateKeyFile_PEM_PKCS8_BadDER (ok ... 0.025s). LSP diagnostics clean. Note: go test -short -count=1 ./cmd/helix/ has one pre-existing environment-dependent failure TestRunDoctorWithConfig_AllPass (disk usage 93.7% > MaxDiskUsagePct 90) which reproduces identically on the parent commit 04d8409^ and is unrelated to the crypto change.\nSA4023 dead-branch fixed via genuine PKCS8 ed25519 seed parsing with ed25519.NewKeyFromSeed; lint (0 issues on package), build, and all crypto tests pass, with only a pre-existing environment-dependent doctor test failure unrelated to this change.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 PASS: golangci-lint run --timeout=5m exits 0 with zero issues on cmd/helix/review_crypto.go; go build ./... and go test -short -count=1 ./cmd/helix/ pass; the PEM PKCS8 ed25519 private-key path either genuinely parses a 32-byte seed via ed25519.NewKeyFromSeed (recommended) or the dead branch is removed and the error message no longer advertises PEM PKCS8 support: SA4023 dead-branch fixed via recommended path: parsePKCS8Ed25519 now genuinely parses the 32-byte seed and returns ed2551",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "PASS: golangci-lint run --timeout=5m exits 0 with zero issues on cmd/helix/review_crypto.go; go build ./... and go test -short -count=1 ./cmd/helix/ pass; the PEM PKCS8 ed25519 private-key path either genuinely parses a 32-byte seed via ed25519.NewKeyFromSeed (recommended) or the dead branch is removed and the error message no longer advertises PEM PKCS8 support",
+                "status": "PASS",
+                "detail": "SA4023 dead-branch fixed via recommended path: parsePKCS8Ed25519 now genuinely parses the 32-byte seed and returns ed25519.NewKeyFromSeed(inner[1+m:1+m+seedLen]), nil (cmd/helix/review_crypto.go:134); old 'PEM PKCS8 ed25519 not supported' dead-branch error removed. golangci-lint run --timeout=5m ./cmd/helix/ = '0 issues', LINT_EXIT=0 (whole-package run; single-file run shows only false-positive 'unused' warnings because the unused linter needs package context \u2014 all 5 flagged funcs are used in other package files). go build ./... = BUILD_EXIT=0. All crypto tests pass: TestParsePKCS8Ed25519_FixedFixture, TestParsePKCS8Ed25519_BadInput, TestReadPrivateKeyFile_PEM_PKCS8_OK, TestReadPrivateKeyFile_PEM_PKCS8_BadDER (ok ... 0.025s). LSP diagnostics clean. Note: go test -short -count=1 ./cmd/helix/ has one pre-existing environment-dependent failure TestRunDoctorWithConfig_AllPass (disk usage 93.7% > MaxDiskUsagePct 90) which reproduces identically on the parent commit 04d8409^ and is unrelated to the crypto change."
+              }
+            ],
+            "summary": "SA4023 dead-branch fixed via genuine PKCS8 ed25519 seed parsing with ed25519.NewKeyFromSeed; lint (0 issues on package), build, and all crypto tests pass, with only a pre-existing environment-dependent doctor test failure unrelated to this change."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: INT-CI-002\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 lint: \n  \u2713 tests: \n  \u2713 secrets: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 PASS: golangci-lint run --timeout=5m exits 0 with zero issues on cmd/helix/review_crypto.go; go build ./... and go test -short -count=1 ./cmd/helix/ pass; the PEM PKCS8 ed25519 private-key path either genuinely parses a 32-byte seed via ed25519.NewKeyFromSeed (recommended) or the dead branch is removed and the error message no longer advertises PEM PKCS8 support: SA4023 dead-branch fixed via recommended path: parsePKCS8Ed25519 now genuinely parses the 32-byte seed and returns ed25519.NewKeyFromSeed(inner[1+m:1+m+seedLen]), nil (cmd/helix/review_crypto.go:134); old 'PEM PKCS8 ed25519 not supported' dead-branch error removed. golangci-lint run --timeout=5m ./cmd/helix/ = '0 issues', LINT_EXIT=0 (whole-package run; single-file run shows only false-positive 'unused' warnings because the unused linter needs package context \u2014 all 5 flagged funcs are used in other package files). go build ./... = BUILD_EXIT=0. All crypto tests pass: TestParsePKCS8Ed25519_FixedFixture, TestParsePKCS8Ed25519_BadInput, TestReadPrivateKeyFile_PEM_PKCS8_OK, TestReadPrivateKeyFile_PEM_PKCS8_BadDER (ok ... 0.025s). LSP diagnostics clean. Note: go test -short -count=1 ./cmd/helix/ has one pre-existing environment-dependent failure TestRunDoctorWithConfig_AllPass (disk usage 93.7% > MaxDiskUsagePct 90) which reproduces identically on the parent commit 04d8409^ and is unrelated to the crypto change.\nSA4023 dead-branch fixed via genuine PKCS8 ed25519 seed parsing with ed25519.NewKeyFromSeed; lint (0 issues on package), build, and all crypto tests pass, with only a pre-existing environment-dependent doctor test failure unrelated to this change.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-20T12:06:37.366739"
+}
