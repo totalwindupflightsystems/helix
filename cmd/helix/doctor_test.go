@@ -2,12 +2,15 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -312,11 +315,14 @@ func TestRunAllChecks_Concurrent(t *testing.T) {
 		HivemindURL:          srv.URL,
 		LangFuseURL:          srv.URL,
 		PrometheusURL:        srv.URL,
-		DiskPath:             t.TempDir(),
-		MaxDiskUsagePct:      99,
-		MaxMemUsagePct:       99,
-		BackupPath:           t.TempDir(),
-		MaxBackupAgeHours:    48,
+		// Disk/memory thresholds at 100 so host state can never add a
+		// spurious FAIL to the exactly-6-fails assertion below (same
+		// "never FAIL on any disk" pattern as TestCheckDiskUsage_Success).
+		DiskPath:          t.TempDir(),
+		MaxDiskUsagePct:   100,
+		MaxMemUsagePct:    100,
+		BackupPath:        t.TempDir(),
+		MaxBackupAgeHours: 48,
 	}
 
 	start := time.Now()
@@ -548,6 +554,148 @@ func containsStr(s, substr string) bool {
 }
 
 // ============================================================================
+// env-robust DiskPath selection for runDoctorWithConfig tests
+// ============================================================================
+//
+// checkDiskUsage FAILs when the filesystem backing DiskPath is >=
+// MaxDiskUsagePct full, so a bare t.TempDir() (default /tmp, on the root
+// partition) made these tests trip on any host whose root fs is >= 90%
+// full. The helpers below pick a DiskPath whose filesystem has headroom
+// instead: a tmpfs subdir under /dev/shm (near-zero usage on any normal
+// Linux host or ubuntu CI runner) with a fallback to the default temp
+// dir and a skip-if-fs-full guard, keeping the tests deterministic on
+// any host.
+
+// fsUsedPct returns the used percentage of the filesystem backing path,
+// mirroring checkDiskUsage's statfs math.
+func fsUsedPct(path string) (float64, error) {
+	var stat syscall.Statfs_t
+	if err := syscall.Statfs(path, &stat); err != nil {
+		return 0, err
+	}
+	total := stat.Blocks * uint64(stat.Bsize)
+	if total == 0 {
+		return 0, fmt.Errorf("statfs: zero total blocks for %s", path)
+	}
+	free := stat.Bfree * uint64(stat.Bsize)
+	return float64(total-free) / float64(total) * 100, nil
+}
+
+// selectDoctorDiskPath creates a fresh temp dir under the first
+// candidate base whose filesystem has used% < maxUsedPct, so the
+// disk-usage check cannot FAIL on host state. It returns an error when
+// no candidate qualifies (callers skip the test). probe is injectable
+// for deterministic unit tests of the full-disk decision.
+func selectDoctorDiskPath(maxUsedPct float64, bases []string, probe func(string) (float64, error)) (string, error) {
+	for _, base := range bases {
+		dir, err := os.MkdirTemp(base, "helix-doctor-*")
+		if err != nil {
+			continue // base missing or not writable — try the next one
+		}
+		used, err := probe(dir)
+		if err == nil && used < maxUsedPct {
+			return dir, nil
+		}
+		_ = os.RemoveAll(dir) // no headroom or unprobeable — try the next base
+	}
+	return "", fmt.Errorf("no writable temp filesystem with < %.0f%% used (checked: %v)", maxUsedPct, bases)
+}
+
+// doctorTestDiskBases lists temp-dir bases in preference order: a tmpfs
+// subdir under /dev/shm first (Linux hosts and CI runners — near-zero
+// usage regardless of how full the root partition is), then the default
+// temp dir.
+func doctorTestDiskBases() []string {
+	if runtime.GOOS == "linux" {
+		if fi, err := os.Stat("/dev/shm"); err == nil && fi.IsDir() {
+			return []string{"/dev/shm", os.TempDir()}
+		}
+	}
+	return []string{os.TempDir()}
+}
+
+// doctorTestDiskPath returns a DiskPath on a filesystem with headroom
+// below maxUsedPct, or skips the test when no candidate qualifies (a
+// host where every temp filesystem is >= maxUsedPct full cannot run the
+// disk-usage check deterministically).
+func doctorTestDiskPath(t *testing.T, maxUsedPct float64) string {
+	t.Helper()
+	dir, err := selectDoctorDiskPath(maxUsedPct, doctorTestDiskBases(), fsUsedPct)
+	if err != nil {
+		t.Skipf("skipping: %v", err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	return dir
+}
+
+func TestFsUsedPct_BadPath(t *testing.T) {
+	_, err := fsUsedPct("/nonexistent-disk-path-xyz-123")
+	require.Error(t, err, "a nonexistent path must surface a statfs error, not a silent zero")
+}
+
+// TestSelectDoctorDiskPath_FullFilesystemReturnsError — when every
+// candidate's filesystem is >= maxUsedPct full, selection must return an
+// error so the caller skips: the full-disk case is handled
+// deterministically, never as a spurious checkDiskUsage FAIL.
+func TestSelectDoctorDiskPath_FullFilesystemReturnsError(t *testing.T) {
+	bases := []string{t.TempDir(), t.TempDir()}
+	_, err := selectDoctorDiskPath(90, bases, func(string) (float64, error) { return 95, nil })
+	require.Error(t, err, "no candidate with headroom must yield an error (caller skips)")
+}
+
+// TestSelectDoctorDiskPath_PicksHeadroomCandidate — selection must skip
+// a full candidate and pick the first one whose filesystem has headroom.
+func TestSelectDoctorDiskPath_PicksHeadroomCandidate(t *testing.T) {
+	bases := []string{t.TempDir(), t.TempDir()}
+	calls := 0
+	dir, err := selectDoctorDiskPath(90, bases, func(string) (float64, error) {
+		calls++
+		if calls == 1 {
+			return 95, nil // first candidate's fs is full
+		}
+		return 10, nil // second candidate has headroom
+	})
+	require.NoError(t, err)
+	require.Equal(t, 2, calls, "must probe both candidates")
+	require.True(t, strings.HasPrefix(dir, bases[1]), "selected %s, want a dir under %s", dir, bases[1])
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+}
+
+// TestSelectDoctorDiskPath_ProbeErrorSkipsCandidate — a statfs error
+// disqualifies the candidate (the caller skips rather than FAIL).
+func TestSelectDoctorDiskPath_ProbeErrorSkipsCandidate(t *testing.T) {
+	_, err := selectDoctorDiskPath(90, []string{t.TempDir()}, func(string) (float64, error) {
+		return 0, fmt.Errorf("statfs failed")
+	})
+	require.Error(t, err)
+}
+
+// TestDoctorTestDiskBases_DefaultTempDirFallback — the candidate list
+// must always end with the default temp dir, and lead with /dev/shm on
+// Linux hosts that have it.
+func TestDoctorTestDiskBases_DefaultTempDirFallback(t *testing.T) {
+	bases := doctorTestDiskBases()
+	require.NotEmpty(t, bases)
+	require.Equal(t, os.TempDir(), bases[len(bases)-1], "default temp dir must be the last resort")
+	if runtime.GOOS == "linux" {
+		if fi, err := os.Stat("/dev/shm"); err == nil && fi.IsDir() {
+			require.Equal(t, "/dev/shm", bases[0], "tmpfs must be preferred on Linux")
+		}
+	}
+}
+
+// TestDoctorTestDiskPath_SelectedDirHasHeadroom — a path chosen by
+// doctorTestDiskPath must never FAIL the disk check at the same
+// threshold, on any host: selection guarantees headroom by construction.
+func TestDoctorTestDiskPath_SelectedDirHasHeadroom(t *testing.T) {
+	dir := doctorTestDiskPath(t, 90)
+	require.NotEmpty(t, dir)
+	result := checkDiskUsage(DoctorConfig{DiskPath: dir, MaxDiskUsagePct: 90})
+	require.NotEqual(t, "FAIL", result.Status,
+		"selected DiskPath must have headroom; got %q: %s", result.Status, result.Detail)
+}
+
+// ============================================================================
 // runDoctorWithConfig coverage — the doctor entry-point that prints the
 // report and returns nil on success / error on failure.
 // ============================================================================
@@ -567,9 +715,12 @@ func TestRunDoctorWithConfig_AllPass(t *testing.T) {
 		HivemindURL:          ok.URL,
 		LangFuseURL:          ok.URL,
 		PrometheusURL:        ok.URL,
-		// DiskPath defaults; BackupPath empty → backup check WARNs but
-		// doesn't FAIL, so AllPassed() stays true.
-		DiskPath:        t.TempDir(),
+		// DiskPath sits on a filesystem with headroom (a tmpfs subdir
+		// under /dev/shm when available), so the disk check cannot trip
+		// on a host whose root partition is >= 90% full. BackupPath
+		// empty → backup check WARNs but doesn't FAIL, so AllPassed()
+		// stays true.
+		DiskPath:        doctorTestDiskPath(t, 90),
 		MaxDiskUsagePct: 90,
 		MaxMemUsagePct:  95,
 	}
@@ -603,7 +754,7 @@ func TestRunDoctorWithConfig_OneCheckFails(t *testing.T) {
 		HivemindURL:          ok.URL,
 		LangFuseURL:          ok.URL,
 		PrometheusURL:        ok.URL,
-		DiskPath:             t.TempDir(),
+		DiskPath:             doctorTestDiskPath(t, 90), // headroom fs — disk check can't spuriously FAIL
 		MaxDiskUsagePct:      90,
 		MaxMemUsagePct:       95,
 	}
@@ -632,7 +783,7 @@ func TestRunDoctorWithConfig_NilStdoutDefaultsToOSStdout(t *testing.T) {
 		HivemindURL:          ok.URL,
 		LangFuseURL:          ok.URL,
 		PrometheusURL:        ok.URL,
-		DiskPath:             t.TempDir(),
+		DiskPath:             doctorTestDiskPath(t, 90), // headroom fs — disk check can't spuriously FAIL
 		MaxDiskUsagePct:      90,
 		MaxMemUsagePct:       95,
 	}

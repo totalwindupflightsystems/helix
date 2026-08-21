@@ -87,6 +87,19 @@ make all      # lint + test + build
 make test-integration
 ```
 
+### Testing notes
+
+`cmd/helix/doctor_test.go` is environment-robust: `checkDiskUsage` FAILs
+whenever the probed filesystem is `>= MaxDiskUsagePct` full, so the
+`runDoctorWithConfig` tests select their `DiskPath` from a tmpfs subdir
+under `/dev/shm` (near-zero usage on any normal Linux host / ubuntu CI
+runner) and fall back to the default temp dir with a skip-if-fs-full
+guard. A host whose root partition is >= 90% full therefore cannot break
+`make test` — the doctor tests either run on tmpfs headroom or skip with
+a clear message. The GitReins pre-commit guard additionally redirects
+`TMPDIR=/dev/shm` for its full-suite run, so `t.TempDir()`-based tests
+throughout the repo also land on tmpfs instead of a full root partition.
+
 ## Commit Rules
 
 - Every commit MUST include `Co-authored-by: wojons <wojonstech@gmail.com>`
