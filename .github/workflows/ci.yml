@@ -68,6 +68,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.8"
+
       - name: README package counts agree (headline == component table == api table)
         run: |
           set -euo pipefail
@@ -77,3 +81,12 @@ jobs:
           echo "headline=$headline table=$table api=$api"
           [ "$headline" -eq "$table" ] || { echo "FAIL: README headline ($headline) != component table ($table)"; exit 1; }
           [ "$table" -eq "$api" ] || { echo "FAIL: component table ($table) != docs/api/README.md ($api)"; exit 1; }
+
+      - name: SKILL.md test-count claim matches repo package count (GAP-037)
+        run: |
+          set -euo pipefail
+          actual=$(go list ./... | wc -l)
+          claim=$(grep -oP 'go test -short -count=1 \./\.\.\.\s+# unit tests \(\K[0-9]+(?=/[0-9]+ pass)' skills/helix-usage/SKILL.md | head -1)
+          [ -n "$claim" ] || { echo "FAIL: no 'unit tests (N/N pass)' claim found in skills/helix-usage/SKILL.md"; exit 1; }
+          [ "$claim" -eq "$actual" ] || { echo "FAIL: SKILL.md test-count claim $claim != actual package count $actual"; exit 1; }
+          echo "OK: SKILL.md unit-test claim $claim/$actual matches go list"
