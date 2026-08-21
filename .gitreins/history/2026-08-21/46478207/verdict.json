@@ -1,0 +1,107 @@
+{
+  "task_id": "GAP-036",
+  "task_title": "Make TestRunDoctorWithConfig_AllPass env-robust (doctor disk-threshold test must not trip on >=90% full root fs)",
+  "task_criteria": [
+    "PASS: make test exits 0 twice in a row with default env on this host (no TMPDIR override); TestRunDoctorWithConfig_AllPass passes even when the fs hosting TMPDIR is >=90% full (tmpfs-backed DiskPath or env-driven threshold/skip); doctor checks remain meaningfully asserted; go test -short -count=1 ./... suite green; AGENTS.md or docs/GETTING-STARTED.md documents the behavior"
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 lsp: \n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 PASS: make test exits 0 twice in a row with default env on this host (no TMPDIR override); TestRunDoctorWithConfig_AllPass passes even when the fs hosting TMPDIR is >=90% full (tmpfs-backed DiskPath or env-driven threshold/skip); doctor checks remain meaningfully asserted; go test -short -count=1 ./... suite green; AGENTS.md or docs/GETTING-STARTED.md documents the behavior: make test exited 0 in two consecutive runs (run2: 60 pkgs ok, run3: 60 pkgs ok; run1 FAIL was a transient Forgejo E2E network timeout at pkg/integration/forgejo_e2e_scenarios_test.go:360, unrelated to the doctor change which only touched cmd/helix/doctor_test.go + AGENTS.md). TestRunDoctorWithConfig_AllPass passes (-v verified, exit 0) using doctorTestDiskPath(t,90) which prefers /dev/shm tmpfs (26% used) via doctorTestDiskBases() returning [\"/dev/shm\", os.TempDir()] on Linux, so the disk check cannot trip on a >=90% full root fs; skip-if-fs-full guard via t.Skipf. Doctor checks remain meaningfully asserted: TestDoctorTestDiskPath_SelectedDirHasHeadroom calls checkDiskUsage and asserts not FAIL; AllPass asserts banner+pass summary; OneCheckFails asserts \u2717+failure count. go test -short -count=1 ./... green (runs 2&3). AGENTS.md:90-101 documents the behavior. LSP diagnostics: none; Skylos: A+ 0 findings.\nThe doctor disk-threshold test is now env-robust via tmpfs-backed DiskPath selection with a skip-if-fs-full guard, the full suite is green in consecutive runs, doctor checks remain meaningfully asserted, and the behavior is documented in AGENTS.md.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 PASS: make test exits 0 twice in a row with default env on this host (no TMPDIR override); TestRunDoctorWithConfig_AllPass passes even when the fs hosting TMPDIR is >=90% full (tmpfs-backed DiskPath or env-driven threshold/skip); doctor checks remain meaningfully asserted; go test -short -count=1 ./... suite green; AGENTS.md or docs/GETTING-STARTED.md documents the behavior: make test exited 0 in two consecutive runs (run2: 60 pkgs ok, run3: 60 pkgs ok; run1 FAIL was a transient For",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "PASS: make test exits 0 twice in a row with default env on this host (no TMPDIR override); TestRunDoctorWithConfig_AllPass passes even when the fs hosting TMPDIR is >=90% full (tmpfs-backed DiskPath or env-driven threshold/skip); doctor checks remain meaningfully asserted; go test -short -count=1 ./... suite green; AGENTS.md or docs/GETTING-STARTED.md documents the behavior",
+                "status": "PASS",
+                "detail": "make test exited 0 in two consecutive runs (run2: 60 pkgs ok, run3: 60 pkgs ok; run1 FAIL was a transient Forgejo E2E network timeout at pkg/integration/forgejo_e2e_scenarios_test.go:360, unrelated to the doctor change which only touched cmd/helix/doctor_test.go + AGENTS.md). TestRunDoctorWithConfig_AllPass passes (-v verified, exit 0) using doctorTestDiskPath(t,90) which prefers /dev/shm tmpfs (26% used) via doctorTestDiskBases() returning [\"/dev/shm\", os.TempDir()] on Linux, so the disk check cannot trip on a >=90% full root fs; skip-if-fs-full guard via t.Skipf. Doctor checks remain meaningfully asserted: TestDoctorTestDiskPath_SelectedDirHasHeadroom calls checkDiskUsage and asserts not FAIL; AllPass asserts banner+pass summary; OneCheckFails asserts \u2717+failure count. go test -short -count=1 ./... green (runs 2&3). AGENTS.md:90-101 documents the behavior. LSP diagnostics: none; Skylos: A+ 0 findings."
+              }
+            ],
+            "summary": "The doctor disk-threshold test is now env-robust via tmpfs-backed DiskPath selection with a skip-if-fs-full guard, the full suite is green in consecutive runs, doctor checks remain meaningfully asserted, and the behavior is documented in AGENTS.md."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: GAP-036\n\nStage tier1: FAIL\n    \u2713 lsp: \n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 PASS: make test exits 0 twice in a row with default env on this host (no TMPDIR override); TestRunDoctorWithConfig_AllPass passes even when the fs hosting TMPDIR is >=90% full (tmpfs-backed DiskPath or env-driven threshold/skip); doctor checks remain meaningfully asserted; go test -short -count=1 ./... suite green; AGENTS.md or docs/GETTING-STARTED.md documents the behavior: make test exited 0 in two consecutive runs (run2: 60 pkgs ok, run3: 60 pkgs ok; run1 FAIL was a transient Forgejo E2E network timeout at pkg/integration/forgejo_e2e_scenarios_test.go:360, unrelated to the doctor change which only touched cmd/helix/doctor_test.go + AGENTS.md). TestRunDoctorWithConfig_AllPass passes (-v verified, exit 0) using doctorTestDiskPath(t,90) which prefers /dev/shm tmpfs (26% used) via doctorTestDiskBases() returning [\"/dev/shm\", os.TempDir()] on Linux, so the disk check cannot trip on a >=90% full root fs; skip-if-fs-full guard via t.Skipf. Doctor checks remain meaningfully asserted: TestDoctorTestDiskPath_SelectedDirHasHeadroom calls checkDiskUsage and asserts not FAIL; AllPass asserts banner+pass summary; OneCheckFails asserts \u2717+failure count. go test -short -count=1 ./... green (runs 2&3). AGENTS.md:90-101 documents the behavior. LSP diagnostics: none; Skylos: A+ 0 findings.\nThe doctor disk-threshold test is now env-robust via tmpfs-backed DiskPath selection with a skip-if-fs-full guard, the full suite is green in consecutive runs, doctor checks remain meaningfully asserted, and the behavior is documented in AGENTS.md.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-08-21T04:48:14.020380"
+}
