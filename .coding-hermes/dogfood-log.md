@@ -47,3 +47,44 @@ First real task (identity create) succeeded immediately; provisioning took
 suffix, contract empty generation, source test 404, silent unknown flags).
 
 **Artifacts:** docs/dogfood/2026-08-12-integration.md · diagnostics.md addendum · skills/helix-usage/SKILL.md (identity/channel/source/contract sections) · board tasks DF-011..DF-016.
+
+## 2026-08-22 — 🟡 PROMISING-BUT-ROUGH (third run)
+
+**Promise:** "A user can operate the platform from the `helix` CLI — health
+checks, cost estimates, idea→spec→contract→CI→deploy planning, prompt
+provenance, identity, and multi-model adversarial PR review — with trustworthy
+signals throughout."
+
+**Reality:** The offline planning pipeline is in good shape: README quickstart
+(`estimate check`, `marketplace search`) works verbatim; idea capture→validate→
+prioritize→promote, spec create/review/gap-analysis/approve, contract create/
+validate/freeze/diff, ci render/validate, deploy systemd, prompt register/list,
+and read-only `identity status` all rc=0 and fast. But the two trust signals a
+user depends on most are wrong: `helix status`/`doctor` report the platform
+CRITICALLY DOWN on a healthy host (3s/5s probe timeout vs chimera `/v1/health`
+~10s readiness latency; `--timeout 30s` proves all 8 subsystems healthy), and
+`helix review run --pr` fabricates success (never fetches the diff, chimera
+leg 404s on `/api/v1/deliberate` vs real `/v1/deliberate`, models_agree 0/2,
+yet exit 0 with a "No diff was provided" verdict).
+
+**Time-to-first-success:** ~2 min (version + quickstart). First failure: `helix
+status` default (false down, DF-017).
+
+**Top 3 findings:**
+1. **DF-017 (P1)** — status/doctor false "DOWN": default probe timeout < chimera
+   `/v1/health` latency; GAP-024's non-zero exit now gates on a false alarm;
+   GAP-025's audit probe prescription inherits the bug.
+2. **DF-018 (P1)** — `review run` false-success stub: placeholder diff, dead
+   `/api/v1/deliberate` path, 0/2 models, exit 0.
+3. **DF-019 (P2)** — `estimate check --json` unknown flag (`--output json` is
+   real); testdata-relative pricing/known-friends defaults. **DF-020 (P2)** —
+   spec edit loop undocumented (hand-edit `~/.helix/specs/<id>.md`; proven
+   score 9.6→17.4).
+
+**Friction count:** 7 project-relevant points.
+
+**Artifacts:** docs/dogfood/2026-08-22-integration.md · diagnostics.md addendum
+· skills/helix-usage/SKILL.md field notes · board tasks DF-017..DF-020.
+**Foreman wake:** skipped — cooldown 21600 = fleet.toml operator pin (board
+precedent GAP-024..026: never PUT below pin); push channel blocked
+(INFRA-GH-001, human). Commits local-only.

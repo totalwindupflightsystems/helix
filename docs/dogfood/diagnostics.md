@@ -148,3 +148,59 @@ while chimera was down (`helix status` → 'Overall: down', exit 2). Probe:
 http://localhost:8765/v1/health` — 000/empty = down = FINDING, never "NO
 findings". This note lives in the repo so the audit procedure is discoverable
 from the codebase; the executable procedure is in the foreman ops reference.
+
+## 2026-08-22 run — health probe latency trap (DF-017) and review stub (DF-018)
+
+**How the health stack is built:** `helix status` probes each subsystem's HTTP
+endpoint in parallel with a 3s default timeout (`cmd/helix/status.go:200-206`,
+`pkg/health/checker.go:108`). `helix doctor` uses 5s. The chimera probe target
+is `GET /v1/health` — which is chimera's **slow readiness check** (pings all 36
+loaded models; measured 200 at ~10.0s twice). Chimera also serves `GET /health`
+(~1ms) and `GET /v1/health/live` (~1ms) — the fast liveness endpoints.
+
+**The error I hit:** `helix status` with no flags printed "Overall: down",
+"unreachable: probe timed out after 3s" for 7 subsystems and exited 2 — while
+`curl http://localhost:8765/health` returned 200 in 1ms and
+`helix status --timeout 30s` showed all 8 subsystems healthy (10.1s latency).
+The platform was fully up; the health signal was structurally guaranteed to
+fail: 3s timeout < 10s endpoint latency.
+
+**Why it happened:** the probe targets the readiness endpoint instead of the
+liveness endpoint, and the timeout was never matched to the endpoint's real
+latency. GAP-025's audit note (above) prescribes the same slow probe with
+`--max-time 3`, so the fleet audit inherits the false-down too. GAP-024 made
+the exit code non-zero on "down" — so automation gating on `helix status`
+blocks a healthy platform.
+
+**Right way:** probe `/health` or `/v1/health/live` for status/doctor (1ms),
+keep `/v1/health` only for deep readiness checks with a ≥15s timeout; update
+the GAP-025 audit probe to the fast endpoint. `pkg/health/remediation.go:222`
+already tells users to verify with `curl -v http://localhost:8765/health` —
+the code and its own remediation docs disagree about which endpoint is real.
+
+**How the review stack is built (and why it lies):** `helix review run --pr`
+(`cmd/helix/review_ops.go:23-80`) builds a 2-model panel (deepseek primary,
+chimera adversarial), but feeds the orchestrator a **placeholder string** —
+the comment at review_ops.go:49-51 admits "Full diff would be fetched from
+Forgejo API". The chimera client (`pkg/review/client_chimera.go:69`) POSTs
+`/api/v1/deliberate`, which chimera does not serve (404) — its real route is
+`/v1/deliberate` (see chimera `/openapi.json`; the repo's own recovery runbook
+at `pkg/recovery/runbook.go:392` documents `/v1/deliberate`). The orchestrator
+degrades silently: my live run exited 0 with models_agree 0/2,
+consensus_level "divergent", and a single "critical" finding whose text is
+literally "No diff was provided in the review request. The PR cannot be
+evaluated." — fabricated success, 21.3s of stall first.
+
+**Right way:** fetch the PR diff via pkg/forgejo before reviewing; point the
+chimera client at `/v1/deliberate`; when a panel member fails to deliberate,
+surface it (non-zero exit or explicit degradation notice) instead of emitting
+a placeholder finding as a verdict.
+
+**How the spec loop actually works (undocumented):** `helix spec create`
+writes a markdown store file at `~/.helix/specs/<id>.md` with placeholder
+sections; `gap-analysis` re-reads that file each run. There is no CLI edit
+command — the intended loop is hand-editing the .md, then re-running
+gap-analysis. Proven live: filling Requirements/Overview/Constraints raised
+the 12-dim score 9.6 → 17.4 (rate_limiting 35 → 70). The `<!-- ann: ... -->`
+comment block in the file is the annotation ledger; `spec review` appends
+annotations, `spec approve --section X` flips the per-section approval marker.

@@ -6,7 +6,7 @@ agent-identity:
         provider: deepseek
 coding-hermes:
     v1:
-        hash: sha256:95b54f583afa3a55b40edde840eb306628540a529bd031d32cd4d1ef1eda09dc
+        hash: sha256:6454e7e455e3d63390eebea4a926162794db249ca79910aca248898e423a212f
         status: draft
         model: ""
         provider: ""

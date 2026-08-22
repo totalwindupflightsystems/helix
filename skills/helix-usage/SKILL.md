@@ -119,3 +119,37 @@ that are NOT in the README:
   canonical, git-tracked) with audit events in `events.jsonl`. The DuckDB
   cache is untracked and rebuildable — never write to it directly. IDs
   follow `<AREA>-NNN` (e.g. DF-001).
+
+## Field notes 2026-08-22 (third dogfood run — read before trusting health/review)
+
+1. **`helix status` false-DOWNs a healthy platform by default (DF-017).** The
+   chimera probe is `GET /v1/health` with a 3s timeout, but that endpoint
+   takes ~10s (36-model readiness check). Fast endpoints: `/health` and
+   `/v1/health/live` (~1ms). Until fixed: run `helix status --timeout 30s`
+   (proven: all 8 subsystems healthy, latency ~10s) or probe
+   `curl -s --max-time 3 http://localhost:8765/health` yourself. Same trap in
+   the GAP-025 audit probe — use `/health`, not `/v1/health`.
+2. **`helix review run --pr <url>` is a stub that reports success (DF-018).**
+   It reviews a placeholder string ("Full diff would be fetched from Forgejo
+   API"), the chimera leg 404s on `/api/v1/deliberate` (real: `/v1/deliberate`),
+   and it still exits 0 with models_agree 0/2. Do NOT use it for real review
+   verdicts until DF-018 lands; check `models_agree`/`consensus_level` in the
+   JSON and treat 0/2 + the "No diff was provided" finding as "did not run".
+3. **Spec editing loop:** `spec create` writes `~/.helix/specs/<id>.md`;
+   there is no `spec edit` — fill the sections by editing that file, then
+   re-run `helix spec gap-analysis <id>` (score re-computes from the file).
+4. **Flag surface:** `estimate check` uses `--output json`, NOT `--json`
+   (DF-019). It also defaults `--pricing`/`--known-friends` to repo-relative
+   `pkg/estimate/testdata/` paths — pass them explicitly outside the repo.
+5. **`deploy render --kind agent|caddy` returns empty JSON silently** when no
+   known-friends.json agents exist (`{"agent":{}}`). Systemd kind always
+   renders. Not a bug per se, but there's no hint about why the registries are
+   empty — check `~/.helix/known-friends.json` first.
+6. **Still-open duplicates (GAP-040/041):** `review` vs `adversarial`,
+   `dispatch` vs `dispatcher` both live in `helix --help` with no deprecation
+   marker; `pipeline` is canonical (GAP-035 fixed). Prefer `review`, `pipeline`.
+7. **Verified working this run:** README quickstart (`estimate check`,
+   `marketplace search`) verbatim; idea capture→validate→prioritize→promote;
+   spec create/review/gap-analysis/approve; contract create/validate/freeze/
+   diff; ci render/validate; deploy tiers/systemd; prompt list/register;
+   identity status read-only. All rc=0, fast.
