@@ -478,3 +478,18 @@ func TestRunAdversarialWithDryRun_HelpFlag(t *testing.T) {
 	// Top-level adversarial help lists subcommands (run-all, run, list, etc).
 	assert.Contains(t, stdout.String(), "run-all")
 }
+
+// TestRunAdversarialWithDryRun_DeprecationNotice — GAP-040: `helix
+// adversarial` is deprecated in favor of `helix review`. The wrapper must
+// emit the deprecation notice to stderr BEFORE running and keep the
+// legacy command fully functional (exit 0 for `list`, which still renders
+// the scenario table on stdout).
+func TestRunAdversarialWithDryRun_DeprecationNotice(t *testing.T) {
+	var out, errBuf bytes.Buffer
+	err := runAdversarialWithDryRun([]string{"list"}, &out, &errBuf, false)
+	assert.NoError(t, err)
+	assert.Contains(t, errBuf.String(), "DEPRECATED: 'helix adversarial' is deprecated")
+	assert.Contains(t, errBuf.String(), "helix review run")
+	// Functionality preserved: the scenario table still renders on stdout.
+	assert.Contains(t, out.String(), "Total:")
+}

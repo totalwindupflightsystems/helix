@@ -76,13 +76,13 @@ var subcommands = map[string]string{
 // builtinSubcommands lists every subcommand handled by the big switch in
 // dispatch() above. KEEP IN SYNC with the switch cases.
 //
-// Exception: "lifecycle" is deliberately NOT listed here (GAP-035). It is
-// the deprecated alias for "pipeline" — the switch case stays alive for
-// backward compatibility, but the command is hidden from --help and from
-// the unknown-subcommand listing.
+// Exception: "lifecycle" (GAP-035) and "adversarial" (GAP-040) are
+// deliberately NOT listed here. They are deprecated — the switch cases
+// stay alive for backward compatibility, but the commands are hidden
+// from --help and from the unknown-subcommand listing.
 var builtinSubcommands = []string{
 	"version", "banner", "status", "doctor", "dispatch", "coapproval",
-	"adversarial", "secrets", "pipeline", "webhook", "incident", "config",
+	"secrets", "pipeline", "webhook", "incident", "config",
 	"alerts", "retry", "backup", "degradation", "audit", "api", "integration",
 	"trust", "forgejo", "review", "dispatcher", "mergegate",
 	"verify", "security", "forcemerge", "vuln", "deploy", "ci", "recovery",
@@ -300,6 +300,14 @@ func (d *dispatcher) dispatch(args []string) error {
 			return runCoapprovalWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
 	case "adversarial":
+		// `helix adversarial <run-all|run|list>` runs the spec §12.4
+		// adversarial scenario pack.
+		//
+		// DEPRECATED (GAP-040): `helix review` is the canonical
+		// adversarial-review command. This case stays alive for backward
+		// compatibility (the deprecation notice is emitted by
+		// runAdversarialWithDryRun), but "adversarial" is hidden from
+		// --help and the subcommand registry.
 		return RunWithObs("adversarial", func() error {
 			return runAdversarialWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
@@ -796,7 +804,7 @@ Subcommands:
   doctor       Run platform diagnostic checks
   dispatch     Run the full spec→PR pipeline (Ralph loop execution) — distinct from dispatcher
   dispatcher   Inspect and drive the Ralph Loop engine (status/tick/list-tasks)
-  review       Adversarial review + change management dashboard
+  review       Adversarial review + change management dashboard (canonical — adversarial is deprecated)
   verify       Production verification (shadow/canary/contract)
   release      Release signoff — dual human+agent gate for production deployment
   trust        Query trust ledger snapshots
@@ -804,7 +812,6 @@ Subcommands:
   security     Deployment security hardening checklist
   forgejo      Inspect the connected Forgejo instance
   coapproval   Run human+agent co-approval protocol
-  adversarial  Run adversarial review
   secrets      Inspect and rotate secrets
   pipeline     Run PR lifecycle coordinator (canonical — lifecycle is deprecated)
   webhook      Run Forgejo webhook ingestion server

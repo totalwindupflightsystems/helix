@@ -144,7 +144,13 @@ func parseAdversarialFlags(args []string, stdout, stderr io.Writer) (adversarial
 // scenarios are pure local computations (no network), so --dry-run is a
 // no-op for now — we only thread it through for consistency with the
 // other subcommands.
+//
+// DEPRECATED (GAP-040): `helix adversarial` is the deprecated alias of
+// `helix review`. The deprecation notice is emitted to stderr BEFORE the
+// command runs; the legacy logic then keeps executing so existing scripts
+// and the scenario-pack surface continue to work.
 func runAdversarialWithDryRun(args []string, stdout, stderr io.Writer, globalDryRun bool) error {
+	fmt.Fprintln(stderr, "DEPRECATED: 'helix adversarial' is deprecated — use 'helix review run --pr <url>' for adversarial PR review (or 'helix review dashboard' for the change management view).")
 	rc := runAdversarial(args, stdout, stderr)
 	if rc != 0 {
 		return errExit{code: rc}
