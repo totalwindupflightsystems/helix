@@ -924,3 +924,15 @@ tasks:
   status: complete
   created_at: '2026-08-23T00:28:28.692477+00:00'
   completed_at: '2026-08-23T00:30:19.506923+00:00'
+- id: DF-021
+  title: 'Review chimera verdict lands: formation map + response contract in pkg/review/client_chimera.go'
+  criteria:
+  - pkg/review/client_chimera.go maps change categories to VALID chimera formations
+    (live GET /v1/formations = audit/auto/debate/simple/speed) and parses the real
+    /v1/deliberate response {answer,trace,request_id}; live POST /v1/deliberate with
+    a mapped formation returns 200 (not 422 Unknown formation); unit tests updated
+    to the answer-contract and pass; go build ./... + go test -short ./pkg/review/
+    pass
+  status: complete
+  created_at: '2026-08-23T10:05:25.693497+00:00'
+  completed_at: '2026-08-23T16:41:39.092499+00:00'
