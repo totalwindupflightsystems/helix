@@ -883,3 +883,81 @@ func TestRunReview_Dashboard_MissingFlags(t *testing.T) {
 		t.Fatalf("expected error without --files, got %d", rc)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// PR URL parsing + degradation detection (DF-018)
+// ---------------------------------------------------------------------------
+
+func TestParsePRURL_Valid(t *testing.T) {
+	tests := []struct {
+		url       string
+		wantOwner string
+		wantRepo  string
+		wantIndex int64
+	}{
+		{"http://localhost:3030/helio/helix-cicd-68531/pulls/1", "helio", "helix-cicd-68531", 1},
+		{"https://holder-cells-bikini-aspect.trycloudflare.com/helio/repo/pulls/42", "helio", "repo", 42},
+		{"http://localhost:3030/helio/repo/pulls/007", "helio", "repo", 7},
+	}
+	for _, tt := range tests {
+		owner, repo, index, err := parsePRURL(tt.url)
+		if err != nil {
+			t.Fatalf("parsePRURL(%q): %v", tt.url, err)
+		}
+		if owner != tt.wantOwner || repo != tt.wantRepo || index != tt.wantIndex {
+			t.Errorf("parsePRURL(%q) = (%s, %s, %d), want (%s, %s, %d)",
+				tt.url, owner, repo, index, tt.wantOwner, tt.wantRepo, tt.wantIndex)
+		}
+	}
+}
+
+func TestParsePRURL_Invalid(t *testing.T) {
+	for _, u := range []string{
+		"", "not-a-url", "http://localhost:3030/owner/repo", "http://localhost:3030/owner/repo/pulls",
+		"http://localhost:3030/owner/repo/issues/1", "http://localhost:3030/owner/repo/pulls/abc",
+		"http://localhost:3030/owner/repo/pulls/0", "http://localhost:3030//repo/pulls/1",
+	} {
+		if _, _, _, err := parsePRURL(u); err == nil {
+			t.Errorf("parsePRURL(%q): expected error, got nil", u)
+		}
+	}
+}
+
+func TestReviewDegradationReasons(t *testing.T) {
+	// Every leg deliberated → no reasons → trustworthy run.
+	clean := &review.ReviewResult{
+		Outcomes: []review.ModelOutcome{
+			{Role: "primary", Model: "deepseek-v4-flash", Verdict: "approved"},
+			{Role: "adversarial", Model: "chimera-default", Verdict: "block"},
+		},
+	}
+	if reasons := reviewDegradationReasons(clean); len(reasons) != 0 {
+		t.Errorf("clean run must have no degradation reasons, got %v", reasons)
+	}
+
+	// A failed leg → hard degradation reason.
+	failed := &review.ReviewResult{
+		Outcomes: []review.ModelOutcome{
+			{Role: "primary", Model: "deepseek-v4-flash", Verdict: "approved"},
+			{Role: "adversarial", Model: "chimera-default", Err: "chimera: http 404"},
+		},
+	}
+	reasons := reviewDegradationReasons(failed)
+	if len(reasons) != 1 {
+		t.Fatalf("expected 1 degradation reason, got %v", reasons)
+	}
+	if !strings.Contains(reasons[0], "adversarial") || !strings.Contains(reasons[0], "http 404") {
+		t.Errorf("degradation reason must name the failed leg and the error, got %q", reasons[0])
+	}
+
+	// A leg that returned no verdict at all → degradation (stub signature).
+	stub := &review.ReviewResult{
+		Outcomes: []review.ModelOutcome{
+			{Role: "primary", Model: "deepseek-v4-flash", Verdict: "approved"},
+			{Role: "adversarial", Model: "chimera-default"}, // no verdict, no error
+		},
+	}
+	if reasons := reviewDegradationReasons(stub); len(reasons) != 1 {
+		t.Errorf("no-verdict leg must be flagged, got %v", reasons)
+	}
+}

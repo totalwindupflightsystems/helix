@@ -121,6 +121,37 @@ func (c *Client) ClosePR(ctx context.Context, owner, repo string, prNumber int64
 }
 
 // ---------------------------------------------------------------------------
+// Pull request diff
+// ---------------------------------------------------------------------------
+
+// GetPullRequestDiff fetches the unified diff of a pull request from the
+// Forgejo API: GET /api/v1/repos/{owner}/{repo}/pulls/{index}.diff.
+//
+// The response is a plain-text git patch (not JSON), so this uses the raw
+// request path rather than doRequest. Auth is conditional: when the client
+// was constructed with credentials they are attached; otherwise the request
+// goes out anonymously (sufficient for public repos). Forgejo's admin
+// credentials / token are the documented override for private repos.
+//
+// Returns the raw diff text. Errors:
+//   - 404 if the PR doesn't exist (APIError).
+//   - network/transport errors flow through as-is.
+func (c *Client) GetPullRequestDiff(ctx context.Context, owner, repo string, prNumber int64) (string, error) {
+	if owner == "" || repo == "" || prNumber <= 0 {
+		return "", fmt.Errorf("forgejo: GetPullRequestDiff requires owner, repo, and valid prNumber")
+	}
+
+	path := fmt.Sprintf("/api/v1/repos/%s/%s/pulls/%d.diff",
+		url.PathEscape(owner), url.PathEscape(repo), prNumber)
+
+	body, err := c.doRawRequest(ctx, http.MethodGet, path)
+	if err != nil {
+		return "", err
+	}
+	return string(body), nil
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 

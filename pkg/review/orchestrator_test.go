@@ -7,6 +7,9 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // =============================================================================
@@ -823,6 +826,62 @@ func TestReview_DispatchesToAllModelsConcurrently(t *testing.T) {
 	}
 	if audit.CallCount() != 1 {
 		t.Errorf("expected audit called once, got %d", audit.CallCount())
+	}
+}
+
+// =============================================================================
+// Outcomes — per-model deliberation record (DF-018)
+// =============================================================================
+
+// TestReview_OutcomesRecordDeliberation — every panel member's outcome
+// must be recorded: a successful leg carries its verdict, a failed leg
+// carries the error (so callers can tell a real review from a stub run).
+func TestReview_OutcomesRecordDeliberation(t *testing.T) {
+	o := NewReviewOrchestrator()
+	primary := newMock("deepseek-v4-flash", "deepseek", VerdictApproved)
+	adversarial := newMockErr("chimera-arbiter", "chimera", errors.New("chimera: http 404"))
+
+	result, err := o.Review(context.Background(), &ReviewPanel{
+		Primary:     primary,
+		Adversarial: adversarial,
+	}, "diff", "commit msg", CategoryBehavioral, "http://localhost:3030/helio/repo/pulls/1")
+	require.NoError(t, err)
+	require.Len(t, result.Outcomes, 2)
+
+	byRole := map[ReviewRole]ModelOutcome{}
+	for _, out := range result.Outcomes {
+		byRole[out.Role] = out
+	}
+
+	// Primary deliberated: verdict recorded, no error.
+	po, ok := byRole[RolePrimary]
+	require.True(t, ok, "expected a primary outcome")
+	assert.Equal(t, "deepseek-v4-flash", po.Model)
+	assert.Equal(t, VerdictApproved, po.Verdict)
+	assert.Empty(t, po.Err)
+
+	// Adversarial failed: error recorded, verdict NOT conflated with a
+	// real block.
+	ao, ok := byRole[RoleAdversarial]
+	require.True(t, ok, "expected an adversarial outcome")
+	assert.Equal(t, "chimera-arbiter", ao.Model)
+	assert.Contains(t, ao.Err, "chimera: http 404")
+	assert.Empty(t, ao.Verdict)
+}
+
+// TestReview_OutcomesAllSuccess — a fully deliberating panel records
+// verdicts for every member and no errors.
+func TestReview_OutcomesAllSuccess(t *testing.T) {
+	o := NewReviewOrchestrator()
+	result, err := o.Review(context.Background(), &ReviewPanel{
+		Primary:     newMock("model-a", "openai", VerdictApproved),
+		Adversarial: newMock("model-b", "deepseek", VerdictApproved),
+	}, "diff", "commit msg", CategoryBehavioral, "http://localhost:3030/helio/repo/pulls/2")
+	require.NoError(t, err)
+	require.Len(t, result.Outcomes, 2)
+	for _, out := range result.Outcomes {
+		assert.Empty(t, out.Err)
+		assert.Equal(t, VerdictApproved, out.Verdict)
 	}
 }
 

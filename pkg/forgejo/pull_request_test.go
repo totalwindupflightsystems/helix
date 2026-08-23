@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -214,4 +215,100 @@ func TestBranchThenPR_EndToEnd(t *testing.T) {
 	assert.Equal(t, 1, prCalls, "exactly one PR POST")
 	assert.Contains(t, mf.calls[0], "/branches")
 	assert.Contains(t, mf.calls[1], "/pulls")
+}
+
+// ---------------------------------------------------------------------------
+// GetPullRequestDiff — real PR diff fetch (DF-018)
+// ---------------------------------------------------------------------------
+
+func TestGetPullRequestDiff_Success(t *testing.T) {
+	mf := newMockForgejo()
+	defer mf.close()
+
+	const wantDiff = "diff --git a/main.go b/main.go\nnew file mode 100644\n--- /dev/null\n+++ b/main.go\n"
+
+	mf.mux.HandleFunc("/api/v1/repos/helix-org/helix/pulls/7.diff", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(wantDiff))
+	})
+
+	c := NewClient(mf.url(), "admin", "secret")
+	diff, err := c.GetPullRequestDiff(context.Background(), "helix-org", "helix", 7)
+	require.NoError(t, err)
+	assert.Equal(t, wantDiff, diff)
+}
+
+// TestGetPullRequestDiff_AnonymousPublicRepo — fetching a diff from a
+// public repo must work without credentials: no Authorization header is
+// sent when the client has none configured (DF-018).
+func TestGetPullRequestDiff_AnonymousPublicRepo(t *testing.T) {
+	// Plain httptest server (newMockForgejo requires admin auth on
+	// every request — a public repo would not).
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/v1/repos/helix-org/public-repo/pulls/3.diff", r.URL.Path)
+		assert.Empty(t, r.Header.Get("Authorization"),
+			"anonymous fetch must not send an Authorization header")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("diff --git a/a.go b/a.go\n"))
+	}))
+	defer srv.Close()
+
+	c := NewClient(srv.URL, "", "") // no credentials
+	diff, err := c.GetPullRequestDiff(context.Background(), "helix-org", "public-repo", 3)
+	require.NoError(t, err)
+	assert.Contains(t, diff, "diff --git a/a.go")
+}
+
+// TestGetPullRequestDiff_AuthenticatedPrivateRepo — credentials (admin
+// BasicAuth or token-as-password) are attached when configured, so
+// private repos work.
+func TestGetPullRequestDiff_AuthenticatedPrivateRepo(t *testing.T) {
+	mf := newMockForgejo()
+	defer mf.close()
+
+	mf.mux.HandleFunc("/api/v1/repos/helix-org/private-repo/pulls/9.diff", func(w http.ResponseWriter, r *http.Request) {
+		user, pass, ok := r.BasicAuth()
+		assert.True(t, ok, "expected BasicAuth on a credentialed fetch")
+		assert.Equal(t, "admin", user)
+		assert.Equal(t, "secret", pass)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("diff --git a/b.go b/b.go\n"))
+	})
+
+	c := NewClient(mf.url(), "admin", "secret")
+	diff, err := c.GetPullRequestDiff(context.Background(), "helix-org", "private-repo", 9)
+	require.NoError(t, err)
+	assert.Contains(t, diff, "diff --git a/b.go")
+}
+
+// TestGetPullRequestDiff_NotFound — a missing PR surfaces a clear APIError.
+func TestGetPullRequestDiff_NotFound(t *testing.T) {
+	mf := newMockForgejo()
+	defer mf.close()
+
+	mf.mux.HandleFunc("/api/v1/repos/helix-org/helix/pulls/404.diff", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"message":"pull request does not exist"}`))
+	})
+
+	c := NewClient(mf.url(), "admin", "secret")
+	_, err := c.GetPullRequestDiff(context.Background(), "helix-org", "helix", 404)
+	require.Error(t, err)
+	var apiErr *APIError
+	require.ErrorAs(t, err, &apiErr)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
+}
+
+// TestGetPullRequestDiff_InvalidArgs — owner/repo/index validation.
+func TestGetPullRequestDiff_InvalidArgs(t *testing.T) {
+	mf := newMockForgejo()
+	defer mf.close()
+
+	c := NewClient(mf.url(), "admin", "secret")
+	_, err := c.GetPullRequestDiff(context.Background(), "", "helix", 1)
+	require.Error(t, err)
+	_, err = c.GetPullRequestDiff(context.Background(), "helix-org", "helix", 0)
+	require.Error(t, err)
 }

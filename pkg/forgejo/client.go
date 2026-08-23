@@ -238,6 +238,56 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body interf
 	return nil
 }
 
+// doRawRequest executes an authenticated HTTP request and returns the
+// raw response body without JSON decoding. Used for endpoints whose
+// response is not JSON (e.g. GET /pulls/{index}.diff returns a plain
+// text patch). Auth is conditional: BasicAuth is only attached when
+// credentials are configured, so callers can fetch from public repos
+// anonymously (DF-018).
+func (c *Client) doRawRequest(ctx context.Context, method, path string) ([]byte, error) {
+	if !c.circuit.Allow() {
+		return nil, ErrCircuitOpen
+	}
+
+	if err := c.rateLimiter.Wait(ctx); err != nil {
+		return nil, fmt.Errorf("rate limit: %w", err)
+	}
+
+	reqURL := c.baseURL + path
+	req, err := http.NewRequestWithContext(ctx, method, reqURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	if c.username != "" || c.password != "" {
+		req.SetBasicAuth(c.username, c.password)
+	}
+	req.Header.Set("Accept", "text/plain")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		c.circuit.RecordFailure()
+		return nil, fmt.Errorf("request to %s: %w", reqURL, err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 16<<20)) // 16MB cap
+	if err != nil {
+		return nil, fmt.Errorf("read response: %w", err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		c.circuit.RecordFailure()
+		return nil, &APIError{
+			StatusCode: resp.StatusCode,
+			Message:    strings.TrimSpace(string(body)),
+			URL:        reqURL,
+		}
+	}
+
+	c.circuit.RecordSuccess()
+	return body, nil
+}
+
 // ---------------------------------------------------------------------------
 // User operations
 // ---------------------------------------------------------------------------

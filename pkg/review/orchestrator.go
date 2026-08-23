@@ -249,6 +249,16 @@ func DiversityScore(f Formation) int {
 	return len(providers)
 }
 
+// ModelOutcome records one panel member's deliberation outcome so
+// callers can distinguish a genuine verdict from a leg that failed or
+// returned nothing (DF-018: no more silent false-success on stub runs).
+type ModelOutcome struct {
+	Role    ReviewRole `json:"role"`
+	Model   string     `json:"model"`
+	Verdict string     `json:"verdict,omitempty"`
+	Err     string     `json:"error,omitempty"`
+}
+
 // ReviewResult is the complete output of a multi-model review session.
 type ReviewResult struct {
 	Bundle         *EvidenceBundle `json:"bundle"`
@@ -259,6 +269,9 @@ type ReviewResult struct {
 	TotalModels int `json:"total_models"`
 	// ConsensusLevel is: "unanimous", "majority", or "divergent".
 	ConsensusLevel string `json:"consensus_level"`
+	// Outcomes lists every panel member's individual outcome (verdict
+	// or error). A non-empty Err means that member did NOT deliberate.
+	Outcomes []ModelOutcome `json:"outcomes"`
 }
 
 // Review orchestrates a full multi-model adversarial review.
@@ -342,18 +355,36 @@ func (o *ReviewOrchestrator) Review(ctx context.Context, panel *ReviewPanel,
 	totalTokens := 0
 	totalModels := 0
 	var firstErr error
+	outcomes := make([]ModelOutcome, 0, len(roles))
 
 	for out := range results {
+		outcome := ModelOutcome{Role: out.role}
+		// Resolve the model identity for the outcome record. The
+		// dispatch closure knows its client; derive the model name
+		// from the role via the panel so the outcome stays accurate
+		// even when Review returned nil.
+		switch out.role {
+		case RolePrimary:
+			outcome.Model = panel.Primary.Info().Model
+		case RoleAdversarial:
+			outcome.Model = panel.Adversarial.Info().Model
+		case RoleAudit:
+			outcome.Model = panel.Audit.Info().Model
+		}
 		if out.err != nil {
 			if firstErr == nil {
 				firstErr = fmt.Errorf("model %s: %w", out.role, out.err)
 			}
 			// Model failed — record as a block for consensus purposes.
 			verdicts[out.role] = VerdictBlock
+			outcome.Err = out.err.Error()
+			outcomes = append(outcomes, outcome)
 			totalModels++
 			continue
 		}
 		verdicts[out.role] = out.result.Verdict
+		outcome.Verdict = out.result.Verdict
+		outcomes = append(outcomes, outcome)
 		for _, f := range out.result.Findings {
 			f.Model = string(out.role)
 			allFindings = append(allFindings, f)
@@ -395,6 +426,7 @@ func (o *ReviewOrchestrator) Review(ctx context.Context, panel *ReviewPanel,
 		ModelsAgree:    modelsAgree,
 		TotalModels:    totalModels,
 		ConsensusLevel: consensusLevel,
+		Outcomes:       outcomes,
 	}, nil
 }
 

@@ -5,10 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
+	"github.com/totalwindupflightsystems/helix/pkg/forgejo"
 	"github.com/totalwindupflightsystems/helix/pkg/review"
 	"github.com/totalwindupflightsystems/helix/pkg/trust"
 )
@@ -17,12 +21,88 @@ import (
 // review run — multi-model adversarial review
 // -----------------------------------------------------------------------------
 
+// parsePRURL extracts owner, repo, and PR index from a Forgejo PR URL of
+// the form http(s)://host/<owner>/<repo>/pulls/<index>. The host is
+// ignored — only the path matters (DF-018).
+func parsePRURL(prURL string) (owner, repo string, index int64, err error) {
+	u, err := url.Parse(prURL)
+	if err != nil {
+		return "", "", 0, fmt.Errorf("invalid PR URL %q: %w", prURL, err)
+	}
+	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+	if len(parts) != 4 || parts[2] != "pulls" {
+		return "", "", 0, fmt.Errorf("PR URL %q must look like http://host/<owner>/<repo>/pulls/<index>", prURL)
+	}
+	owner, repo = parts[0], parts[1]
+	if owner == "" || repo == "" {
+		return "", "", 0, fmt.Errorf("PR URL %q has empty owner or repo", prURL)
+	}
+	index, err = strconv.ParseInt(parts[3], 10, 64)
+	if err != nil || index <= 0 {
+		return "", "", 0, fmt.Errorf("PR URL %q has invalid pull index %q", prURL, parts[3])
+	}
+	return owner, repo, index, nil
+}
+
+// reviewDegradationReasons reports which panel members did NOT actually
+// deliberate: a leg that errored, or a leg that returned no verdict at
+// all. An empty slice means every panel member produced a verdict and
+// the review is trustworthy. DF-018: the CLI must fail loud (non-zero
+// exit + warning) when a stub run would otherwise masquerade as a clean
+// "Review complete".
+func reviewDegradationReasons(result *review.ReviewResult) []string {
+	var reasons []string
+	for _, o := range result.Outcomes {
+		switch {
+		case o.Err != "":
+			reasons = append(reasons, fmt.Sprintf("%s (%s) failed to deliberate: %s", o.Role, o.Model, o.Err))
+		case o.Verdict == "":
+			reasons = append(reasons, fmt.Sprintf("%s (%s) returned no verdict", o.Role, o.Model))
+		}
+	}
+	return reasons
+}
+
 // runReviewRun dispatches a multi-model adversarial review against a PR.
-// It creates model clients for Chimera and DeepSeek, builds a review panel,
-// and runs the orchestrator. Outputs the consensus verdict as JSON.
+// It fetches the REAL PR diff from Forgejo, creates model clients for
+// Chimera and DeepSeek, builds a review panel, and runs the orchestrator.
+// Outputs the consensus verdict as JSON. If any panel member failed to
+// deliberate, the run prints a hard degradation warning and exits
+// non-zero instead of reporting a clean "Review complete" (DF-018).
 func runReviewRun(flags revFlags, stdout, stderr io.Writer) int {
 	if flags.prURL == "" {
 		fmt.Fprintln(stderr, "error: --pr URL is required for review run")
+		return revExitError
+	}
+
+	// Parse the PR URL and fetch the real diff from Forgejo.
+	owner, repo, prIndex, err := parsePRURL(flags.prURL)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return revExitError
+	}
+
+	forgejoBaseURL := os.Getenv("FORGEJO_URL")
+	if forgejoBaseURL == "" {
+		forgejoBaseURL = "http://localhost:3030"
+	}
+	fjUser := os.Getenv("FORGEJO_ADMIN_USER")
+	fjPass := os.Getenv("FORGEJO_ADMIN_PASSWORD")
+	if token := os.Getenv("FORGEJO_ADMIN_TOKEN"); token != "" {
+		// Forgejo accepts a PAT as the BasicAuth password.
+		fjUser, fjPass = "", token
+	}
+	fjClient := forgejo.NewClient(forgejoBaseURL, fjUser, fjPass)
+
+	fetchCtx, cancelFetch := context.WithTimeout(context.Background(), 30*time.Second)
+	diff, err := fjClient.GetPullRequestDiff(fetchCtx, owner, repo, prIndex)
+	cancelFetch()
+	if err != nil {
+		fmt.Fprintf(stderr, "error: fetch diff for PR %s: %v\n", flags.prURL, err)
+		return revExitError
+	}
+	if strings.TrimSpace(diff) == "" {
+		fmt.Fprintf(stderr, "error: PR %s has an empty diff — nothing to review\n", flags.prURL)
 		return revExitError
 	}
 
@@ -46,9 +126,6 @@ func runReviewRun(flags revFlags, stdout, stderr io.Writer) int {
 		Adversarial: chimeraClient,
 	}
 
-	// For the CLI demo, use a small representative diff.
-	// In production this would be fetched from the PR.
-	diff := fmt.Sprintf("Review of PR %s\n\n(Full diff would be fetched from Forgejo API)\n", flags.prURL)
 	commitMsg := "review run via helix CLI"
 
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -61,11 +138,20 @@ func runReviewRun(flags revFlags, stdout, stderr io.Writer) int {
 		return revExitError
 	}
 
+	// DF-018: a panel member that did not deliberate (error or empty
+	// verdict) makes the run DEGRADED — never report clean success.
+	reasons := reviewDegradationReasons(result)
+
 	if flags.jsonOut {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
 		if err := enc.Encode(result); err != nil {
 			fmt.Fprintf(stderr, "error: marshal result: %v\n", err)
+			return revExitError
+		}
+		if len(reasons) > 0 {
+			fmt.Fprintf(stderr, "helix review run: REVIEW DEGRADED — %s\n", strings.Join(reasons, "; "))
+			fmt.Fprintf(stderr, "helix review run: review incomplete; do not treat as a clean verdict\n")
 			return revExitError
 		}
 		return revExitOK
@@ -76,6 +162,19 @@ func runReviewRun(flags revFlags, stdout, stderr io.Writer) int {
 		result.ConsensusLevel, result.ModelsAgree, result.TotalModels)
 	fmt.Fprintf(stdout, "Diversity score: %d\n", result.DiversityScore)
 	fmt.Fprintf(stdout, "Findings: %d\n", len(result.Bundle.Findings))
+	for _, f := range result.Bundle.Findings {
+		fmt.Fprintf(stdout, "  - [%s] %s: %s\n", f.Severity, f.File, f.Description)
+	}
+
+	if len(reasons) > 0 {
+		fmt.Fprintln(stdout)
+		fmt.Fprintln(stdout, "⚠ REVIEW DEGRADED:")
+		for _, r := range reasons {
+			fmt.Fprintf(stdout, "  - %s\n", r)
+		}
+		fmt.Fprintln(stdout, "Review incomplete — do not treat as a clean verdict.")
+		return revExitError
+	}
 	return revExitOK
 }
 

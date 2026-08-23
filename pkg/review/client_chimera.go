@@ -4,8 +4,11 @@
 // deliberation API. It dispatches the review to Chimera's formation of
 // models and returns the merged consensus result.
 //
-// API: POST http://localhost:8765/api/v1/deliberate
+// API: POST http://localhost:8765/v1/deliberate
 // Docs: specs/chimera-api.md
+//
+// NOTE: the route is /v1/deliberate — chimera does NOT serve
+// /api/v1/deliberate (that path returns 404; DF-018).
 
 package review
 
@@ -66,7 +69,7 @@ func (c *ChimeraModelClient) Review(ctx context.Context, req ReviewRequest) (*Mo
 		Formation: formation,
 	}
 
-	respBody, err := doJSONPost(ctx, c.client, c.cfg.BaseURL+"/api/v1/deliberate", c.cfg.APIKey, payload)
+	respBody, err := doJSONPost(ctx, c.client, c.cfg.BaseURL+"/v1/deliberate", c.cfg.APIKey, payload)
 	if err != nil {
 		return nil, fmt.Errorf("chimera: %w", err)
 	}

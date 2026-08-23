@@ -32,7 +32,7 @@ import (
 
 // chimeraMockConfig configures the mock Chimera server behaviour.
 type chimeraMockConfig struct {
-	// deliberationResponse is the raw JSON body returned by POST /api/v1/deliberate.
+	// deliberationResponse is the raw JSON body returned by POST /v1/deliberate.
 	deliberationResponse string
 	// statusCode overrides the default 200 status (for error scenarios).
 	statusCode int
@@ -307,7 +307,7 @@ func TestChimeraMultiModelReview_TracePopulated(t *testing.T) {
 
 	// Verify at the HTTP level that the raw response includes trace.
 	// We make a direct HTTP call to inspect the full response.
-	resp, err := http.Post(srv.URL+"/api/v1/deliberate", "application/json",
+	resp, err := http.Post(srv.URL+"/v1/deliberate", "application/json",
 		strings.NewReader(`{"prompt":"test","formation":"rigorous"}`))
 	require.NoError(t, err)
 	defer resp.Body.Close()
@@ -478,6 +478,45 @@ func TestChimeraMultiModelReview_MalformedResult(t *testing.T) {
 }
 
 // =============================================================================
+// TestChimeraClient_DeliberateRoute — the client must POST to the real
+// chimera route /v1/deliberate (NOT /api/v1/deliberate, which returns
+// 404 — DF-018).
+// =============================================================================
+
+func TestChimeraClient_DeliberateRoute(t *testing.T) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"result": "{\"verdict\":\"approved\",\"findings\":[]}"}`))
+	}))
+	defer srv.Close()
+
+	client := NewChimeraClient(ModelClientConfig{
+		BaseURL: srv.URL,
+		Model:   "chimera-default",
+		Timeout: 5 * time.Second,
+	})
+
+	req := ReviewRequest{
+		Diff:             "diff",
+		NeutralCommitMsg: "test",
+		Role:             RoleAdversarial,
+		Context: ReviewContext{
+			Category: CategoryBehavioral,
+			PRURL:    "http://localhost:3030/helio/repo/pulls/1",
+			ReviewID: "rev-route-001",
+		},
+	}
+
+	_, err := client.Review(context.Background(), req)
+	require.NoError(t, err)
+	assert.Equal(t, "/v1/deliberate", gotPath,
+		"chimera client must POST to /v1/deliberate, not /api/v1/deliberate (DF-018)")
+}
+
+// =============================================================================
 // TestChimeraMultiModelReview_Live — skipped integration test for real Chimera
 // =============================================================================
 
@@ -492,7 +531,7 @@ func TestChimeraMultiModelReview_Live(t *testing.T) {
 
 	// Quick health check — if unreachable, skip with a clear message.
 	hc := &http.Client{Timeout: 2 * time.Second}
-	resp, err := hc.Get(baseURL + "/api/v1/deliberate")
+	resp, err := hc.Get(baseURL + "/v1/deliberate")
 	if err != nil {
 		t.Skipf("Chimera not reachable at %s: %v", baseURL, err)
 	}
