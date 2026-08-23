@@ -1,0 +1,107 @@
+{
+  "task_id": "df-017",
+  "task_title": "Fix helix status/doctor chimera probe false-down",
+  "task_criteria": [
+    "helix status with no flags prints 'Overall: healthy' and exits 0 while chimera liveness is fast but /v1/health readiness is slow; chimera probed at fast endpoint (GET /health or /v1/health/live) not /v1/health; unit tests cover the probe path"
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 helix status with no flags prints 'Overall: healthy' and exits 0 while chimera liveness is fast but /v1/health readiness is slow; chimera probed at fast endpoint (GET /health or /v1/health/live) not /v1/health; unit tests cover the probe path: Code fix in commit ac568f7. (1) status.go:328 prints 'Overall: healthy' (StateHealthy=\"healthy\" per aggregator.go:32) and renderStatusTable returns 0 when AllHealthy (status.go:364). (2) chimera probed at fast endpoint: pkg/health/checker.go:114 URL=http://localhost:8765/health; cmd/helix/status.go:209-215 all chimera-backed subsystems (chimera/negotiate/trust/review/verify/marketplace/estimate) use /health; cmd/helix/doctor.go:72 ChimeraURL=http://localhost:8765/health. (3) unit tests cover probe path: checker_test.go TestDefaultServices_ChimeraFastLiveness PASS, status_test.go TestDefaultSubsystemProbes_ChimeraFastLiveness PASS, doctor_test.go TestDefaultDoctorConfig asserts /health PASS. Verified via actual runs: 'go test -short -count=1 ./pkg/health/...' -> ok (2.731s); 'go test -short -count=1 ./cmd/helix/' -> ok (9.974s); 'go build ./cmd/helix/ ./pkg/health/' -> exit 0; no LSP diagnostics.\nThe chimera probe false-down fix is complete: status/doctor/health now probe the fast /health liveness endpoint instead of slow /v1/health, 'Overall: healthy' + exit 0 logic confirmed, and unit tests covering the probe path all pass.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 helix status with no flags prints 'Overall: healthy' and exits 0 while chimera liveness is fast but /v1/health readiness is slow; chimera probed at fast endpoint (GET /health or /v1/health/live) not /v1/health; unit tests cover the probe path: Code fix in commit ac568f7. (1) status.go:328 prints 'Overall: healthy' (StateHealthy=\"healthy\" per aggregator.go:32) and renderStatusTable returns 0 when AllHealthy (status.go:364). (2) chimera probed at fast endpoint: pkg/health/checker.go:1",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "helix status with no flags prints 'Overall: healthy' and exits 0 while chimera liveness is fast but /v1/health readiness is slow; chimera probed at fast endpoint (GET /health or /v1/health/live) not /v1/health; unit tests cover the probe path",
+                "status": "PASS",
+                "detail": "Code fix in commit ac568f7. (1) status.go:328 prints 'Overall: healthy' (StateHealthy=\"healthy\" per aggregator.go:32) and renderStatusTable returns 0 when AllHealthy (status.go:364). (2) chimera probed at fast endpoint: pkg/health/checker.go:114 URL=http://localhost:8765/health; cmd/helix/status.go:209-215 all chimera-backed subsystems (chimera/negotiate/trust/review/verify/marketplace/estimate) use /health; cmd/helix/doctor.go:72 ChimeraURL=http://localhost:8765/health. (3) unit tests cover probe path: checker_test.go TestDefaultServices_ChimeraFastLiveness PASS, status_test.go TestDefaultSubsystemProbes_ChimeraFastLiveness PASS, doctor_test.go TestDefaultDoctorConfig asserts /health PASS. Verified via actual runs: 'go test -short -count=1 ./pkg/health/...' -> ok (2.731s); 'go test -short -count=1 ./cmd/helix/' -> ok (9.974s); 'go build ./cmd/helix/ ./pkg/health/' -> exit 0; no LSP diagnostics."
+              }
+            ],
+            "summary": "The chimera probe false-down fix is complete: status/doctor/health now probe the fast /health liveness endpoint instead of slow /v1/health, 'Overall: healthy' + exit 0 logic confirmed, and unit tests covering the probe path all pass."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: df-017\n\nStage tier1: FAIL\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 helix status with no flags prints 'Overall: healthy' and exits 0 while chimera liveness is fast but /v1/health readiness is slow; chimera probed at fast endpoint (GET /health or /v1/health/live) not /v1/health; unit tests cover the probe path: Code fix in commit ac568f7. (1) status.go:328 prints 'Overall: healthy' (StateHealthy=\"healthy\" per aggregator.go:32) and renderStatusTable returns 0 when AllHealthy (status.go:364). (2) chimera probed at fast endpoint: pkg/health/checker.go:114 URL=http://localhost:8765/health; cmd/helix/status.go:209-215 all chimera-backed subsystems (chimera/negotiate/trust/review/verify/marketplace/estimate) use /health; cmd/helix/doctor.go:72 ChimeraURL=http://localhost:8765/health. (3) unit tests cover probe path: checker_test.go TestDefaultServices_ChimeraFastLiveness PASS, status_test.go TestDefaultSubsystemProbes_ChimeraFastLiveness PASS, doctor_test.go TestDefaultDoctorConfig asserts /health PASS. Verified via actual runs: 'go test -short -count=1 ./pkg/health/...' -> ok (2.731s); 'go test -short -count=1 ./cmd/helix/' -> ok (9.974s); 'go build ./cmd/helix/ ./pkg/health/' -> exit 0; no LSP diagnostics.\nThe chimera probe false-down fix is complete: status/doctor/health now probe the fast /health liveness endpoint instead of slow /v1/health, 'Overall: healthy' + exit 0 logic confirmed, and unit tests covering the probe path all pass.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-08-23T00:30:19.242860"
+}

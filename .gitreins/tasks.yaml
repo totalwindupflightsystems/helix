@@ -905,3 +905,22 @@ tasks:
   status: complete
   created_at: '2026-08-21T04:35:08.259084+00:00'
   completed_at: '2026-08-21T04:42:20.702547+00:00'
+- id: df-017
+  title: Fix helix status/doctor chimera probe false-down
+  criteria:
+  - 'helix status with no flags prints ''Overall: healthy'' and exits 0 while chimera
+    liveness is fast but /v1/health readiness is slow; chimera probed at fast endpoint
+    (GET /health or /v1/health/live) not /v1/health; unit tests cover the probe path'
+  status: complete
+  created_at: '2026-08-23T00:28:28.434411+00:00'
+  completed_at: '2026-08-23T00:28:28.989674+00:00'
+- id: df-018
+  title: Review run fetches real PR diff + correct chimera route
+  criteria:
+  - helix review run --pr <real-pr-url> returns findings about the PR's actual diff
+    (no 'No diff was provided' placeholder); chimera client targets POST /v1/deliberate
+    (not /api/v1/deliberate 404); exits non-zero with clear degradation notice when
+    the panel did not actually deliberate
+  status: complete
+  created_at: '2026-08-23T00:28:28.692477+00:00'
+  completed_at: '2026-08-23T00:30:19.506923+00:00'

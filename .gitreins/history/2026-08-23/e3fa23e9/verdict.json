@@ -1,0 +1,101 @@
+{
+  "task_id": "df-018",
+  "task_title": "Review run fetches real PR diff + correct chimera route",
+  "task_criteria": [
+    "helix review run --pr <real-pr-url> returns findings about the PR's actual diff (no 'No diff was provided' placeholder); chimera client targets POST /v1/deliberate (not /api/v1/deliberate 404); exits non-zero with clear degradation notice when the panel did not actually deliberate"
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n\n(auto-parsed from non-JSON response) All criteria verified. Let me deliver the verdict.\n\nThe criterion is a single combined criterion with three sub-parts, all of which are satisfied:\n\n1. **Real PR diff fetch**: `runReviewRun` in `cmd/helix/review_ops.go` now parses the PR URL and calls `GetPullRequestDiff` (in `pkg/forgejo/pull_reques",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n\n(auto-parsed from non-JSON response) All criteria verified. Let me deliver the verdict.\n\nThe criterion is a single combined criterion with three sub-parts, all of which are satisfied:\n\n1. **Real PR diff fetch**: `runReviewRun` in `cmd/helix/review_ops.go` now parses the PR URL and calls `GetPullRequestDiff` (in `pkg/forgejo/pull_reques",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [],
+            "summary": "(auto-parsed from non-JSON response) All criteria verified. Let me deliver the verdict.\n\nThe criterion is a single combined criterion with three sub-parts, all of which are satisfied:\n\n1. **Real PR diff fetch**: `runReviewRun` in `cmd/helix/review_ops.go` now parses the PR URL and calls `GetPullRequestDiff` (in `pkg/forgejo/pull_reques"
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: df-018\n\nStage tier1: FAIL\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n\nStage tier2: PASS\n  COMPLETE\n\n(auto-parsed from non-JSON response) All criteria verified. Let me deliver the verdict.\n\nThe criterion is a single combined criterion with three sub-parts, all of which are satisfied:\n\n1. **Real PR diff fetch**: `runReviewRun` in `cmd/helix/review_ops.go` now parses the PR URL and calls `GetPullRequestDiff` (in `pkg/forgejo/pull_reques\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-08-23T00:32:18.894864"
+}
