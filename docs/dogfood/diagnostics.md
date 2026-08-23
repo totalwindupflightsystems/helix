@@ -143,10 +143,15 @@ doesn't extract endpoints yet.
 The foreman audit health step MUST probe chimera :8765 (or run `helix status`)
 in addition to forgejo :3030, and gate "NO findings" on BOTH being healthy.
 The forgejo-only probe was a blind spot: tick #168 declared "NO findings"
-while chimera was down (`helix status` → 'Overall: down', exit 2). Probe:
+while chimera was down (`helix status` → 'Overall: down', exit 2). Probe the
+FAST liveness endpoint:
 `curl -s -o /dev/null -w "%{http_code}" --max-time 3
-http://localhost:8765/v1/health` — 000/empty = down = FINDING, never "NO
-findings". This note lives in the repo so the audit procedure is discoverable
+http://localhost:8765/health` — 000/empty = down = FINDING, never "NO
+findings". Do NOT probe `GET /v1/health` for this gate: it is chimera's slow
+readiness check (pings all ~36 models; measured ~1.7s idle and up to ~10s
+under load) and false-reports a healthy platform as down at a 3s timeout
+(DF-017). Use `/v1/health` only for deep readiness checks with `--max-time
+>=15`. This note lives in the repo so the audit procedure is discoverable
 from the codebase; the executable procedure is in the foreman ops reference.
 
 ## 2026-08-22 run — health probe latency trap (DF-017) and review stub (DF-018)

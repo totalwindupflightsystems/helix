@@ -61,10 +61,15 @@ type DoctorConfig struct {
 // and pkg/config defaults). Port 3000 is DuckBrain HTTP, NOT Forgejo —
 // probing :3000/api/v1/version returns 404 and misreports a healthy
 // Forgejo as degraded.
+//
+// Chimera is probed at the fast liveness endpoint http://localhost:8765/health
+// (~1ms), NOT /v1/health — the slow readiness check (pings all ~36 loaded
+// models; up to ~10s under load) false-reports a healthy platform as FAIL
+// at the 5s doctor probe timeout (DF-017).
 func DefaultDoctorConfig() DoctorConfig {
 	return DoctorConfig{
 		ForgejoURL:           "http://localhost:3030/api/v1/version",
-		ChimeraURL:           "http://localhost:8765/v1/health",
+		ChimeraURL:           "http://localhost:8765/health",
 		ConscientiousnessURL: "http://localhost:8002/health",
 		HivemindURL:          "http://localhost:8003/health",
 		LangFuseURL:          "http://localhost:3001",

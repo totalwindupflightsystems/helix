@@ -212,14 +212,18 @@ func (r *RemediationRegistry) populate() *RemediationRegistry {
 		}).
 
 		// Chimera — required for multi-model review.
+		// Liveness probe: /health (~1ms). /v1/health is the SLOW
+		// readiness check (pings all ~36 models; up to ~10s under
+		// load) — only for deep checks, with a >=15s timeout.
 		Add("Chimera healthy", Remediation{
-			Reason:   "Chimera multi-model review API did not respond",
+			Reason:   "Chimera multi-model review API did not respond to the liveness probe",
 			Severity: SeverityHigh,
 			Steps: []Step{
 				{Cmd: "systemctl status chimera", Doc: "Check Chimera daemon status"},
 				{Cmd: "systemctl restart chimera", Doc: "Restart Chimera"},
 				{Cmd: "journalctl -u chimera -n 50", Doc: "Inspect recent Chimera logs"},
-				{Cmd: "curl -v http://localhost:8765/health", Doc: "Verify health endpoint"},
+				{Cmd: "curl -v http://localhost:8765/health", Doc: "Verify fast liveness endpoint (~1ms)"},
+				{Cmd: "curl -s -o /dev/null -w '%{http_code}\\n' --max-time 15 http://localhost:8765/v1/health", Doc: "Deep readiness check (slow: ~10s under load) — 15s timeout required"},
 			},
 			DocURL:         "specs/integrations.md §Chimera",
 			AutoApplicable: false,

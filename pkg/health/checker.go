@@ -104,8 +104,14 @@ func DefaultServices() []ServiceCheck {
 			Required: true,
 		},
 		{
-			Name:     "chimera",
-			URL:      "http://localhost:8765/v1/health",
+			Name: "chimera",
+			// Liveness probe: /health answers in ~1ms. Do NOT use
+			// /v1/health here — it is chimera's SLOW readiness check
+			// (pings all ~36 loaded models; up to ~10s under load) and
+			// false-reports a healthy platform as DOWN at the default
+			// 5s timeout (DF-017). Deep readiness checks may probe
+			// /v1/health with a >=15s timeout.
+			URL:      "http://localhost:8765/health",
 			Timeout:  DefaultTimeout,
 			Required: true,
 		},

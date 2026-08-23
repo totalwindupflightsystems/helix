@@ -192,18 +192,27 @@ func runStatusNew(args []string, stdout, stderr io.Writer, globalDryRun bool) in
 // and pkg/config defaults). Port 3000 is DuckBrain HTTP, NOT Forgejo —
 // probing :3000/api/v1/version returns 404 and misreports a healthy
 // Forgejo as "degraded HTTP 404".
+//
+// Chimera-backed subsystems (chimera, negotiate, trust, review, verify,
+// marketplace, estimate) probe the FAST liveness endpoint
+// http://localhost:8765/health (~1ms). They must NOT probe
+// /v1/health — that is chimera's SLOW readiness check (pings all ~36
+// loaded models; measured ~1.7s idle and up to ~10s under load), so a
+// default 5s probe timeout false-reports a healthy platform as DOWN
+// (DF-017). /v1/health stays available for deep readiness checks only,
+// with a >=15s timeout.
 var defaultSubsystemProbes = []struct {
 	name string
 	url  string
 }{
 	{"forgejo", "http://localhost:3030/api/v1/version"},
-	{"chimera", "http://localhost:8765/v1/health"},
-	{"negotiate", "http://localhost:8765/v1/health"},
-	{"trust", "http://localhost:8765/v1/health"},
-	{"review", "http://localhost:8765/v1/health"},
-	{"verify", "http://localhost:8765/v1/health"},
-	{"marketplace", "http://localhost:8765/v1/health"},
-	{"estimate", "http://localhost:8765/v1/health"},
+	{"chimera", "http://localhost:8765/health"},
+	{"negotiate", "http://localhost:8765/health"},
+	{"trust", "http://localhost:8765/health"},
+	{"review", "http://localhost:8765/health"},
+	{"verify", "http://localhost:8765/health"},
+	{"marketplace", "http://localhost:8765/health"},
+	{"estimate", "http://localhost:8765/health"},
 }
 
 // registerDefaultSubsystems populates the aggregator with the same
@@ -427,6 +436,9 @@ ENV VARS:
 NOTES:
   Canonical Forgejo API probe: http://localhost:3030/api/v1/version
   (port 3000 is DuckBrain HTTP, not Forgejo — it returns 404 on that path)
+  Chimera liveness probe: http://localhost:8765/health (~1ms).
+  Chimera /v1/health is the SLOW readiness check (~10s under load) —
+  deep checks only, with --timeout >=15s.
 
 EXIT CODES:
   0 — Every subsystem is healthy

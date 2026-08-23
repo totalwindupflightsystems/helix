@@ -375,6 +375,18 @@ func TestDefaultServices(t *testing.T) {
 	assert.False(t, langfuse.Required)
 }
 
+// TestDefaultServices_ChimeraFastLiveness — the default chimera check
+// must probe the FAST liveness endpoint http://localhost:8765/health,
+// NOT the slow /v1/health readiness check (pings all ~36 models; up to
+// ~10s under load) which false-reports a healthy platform as DOWN at
+// the default 5s timeout (DF-017).
+func TestDefaultServices_ChimeraFastLiveness(t *testing.T) {
+	chimera := findService(DefaultServices(), "chimera")
+	assert.Equal(t, "http://localhost:8765/health", chimera.URL,
+		"chimera default check must probe the fast liveness endpoint, not /v1/health (DF-017)")
+	assert.NotContains(t, chimera.URL, "/v1/health")
+}
+
 func TestCheckServices_WithMockServices(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

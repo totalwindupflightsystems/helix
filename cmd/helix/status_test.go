@@ -244,6 +244,32 @@ func TestDefaultSubsystemProbes_ForgejoCanonicalURL(t *testing.T) {
 	t.Fatal("defaultSubsystemProbes has no forgejo entry")
 }
 
+// TestDefaultSubsystemProbes_ChimeraFastLiveness — every chimera-backed
+// subsystem (chimera + negotiate/trust/review/verify/marketplace/estimate)
+// must probe the FAST liveness endpoint http://localhost:8765/health,
+// NOT the slow /v1/health readiness check. /v1/health pings all ~36
+// chimera models (~1.7s idle, up to ~10s under load) and false-reports
+// a healthy platform as DOWN at the default 5s probe timeout (DF-017).
+func TestDefaultSubsystemProbes_ChimeraFastLiveness(t *testing.T) {
+	chimeraBacked := map[string]bool{
+		"chimera": true, "negotiate": true, "trust": true,
+		"review": true, "verify": true, "marketplace": true, "estimate": true,
+	}
+	fastURL := "http://localhost:8765/health"
+	found := 0
+	for _, p := range defaultSubsystemProbes {
+		if !chimeraBacked[p.name] {
+			continue
+		}
+		found++
+		assert.Equal(t, fastURL, p.url,
+			"subsystem %s must probe the chimera liveness endpoint %s, not the slow /v1/health readiness check", p.name, fastURL)
+		assert.NotContains(t, p.url, "/v1/health",
+			"subsystem %s must not probe chimera /v1/health (slow readiness check, DF-017)", p.name)
+	}
+	assert.Equal(t, len(chimeraBacked), found, "every chimera-backed subsystem must be probed")
+}
+
 // TestHTTPSubsystemHealth_Down_5xx — 5xx → down.
 func TestHTTPSubsystemHealth_Down_5xx(t *testing.T) {
 	srv := stubHTTPServer(t, http.StatusInternalServerError, "")

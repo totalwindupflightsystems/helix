@@ -94,6 +94,13 @@ func TestDefaultDoctorConfig(t *testing.T) {
 	if cfg.ChimeraURL == "" {
 		t.Error("expected non-empty ChimeraURL")
 	}
+	// Chimera must be probed at the fast liveness endpoint, NOT the
+	// slow /v1/health readiness check (up to ~10s under load) which
+	// false-reports a healthy platform as FAIL at the 5s doctor probe
+	// timeout (DF-017).
+	if cfg.ChimeraURL != "http://localhost:8765/health" {
+		t.Errorf("expected chimera liveness URL http://localhost:8765/health, got %s", cfg.ChimeraURL)
+	}
 	if cfg.MaxDiskUsagePct == 0 {
 		t.Error("expected non-zero MaxDiskUsagePct")
 	}
