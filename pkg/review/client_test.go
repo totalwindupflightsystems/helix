@@ -219,9 +219,9 @@ func TestFormationForCategory(t *testing.T) {
 		cat      ChangeCategory
 		expected string
 	}{
-		{CategoryContract, "rigorous"},
-		{CategoryBehavioral, "balanced"},
-		{CategoryResilience, "fast"},
+		{CategoryContract, "audit"},
+		{CategoryBehavioral, "debate"},
+		{CategoryResilience, "speed"},
 		{CategoryCosmetic, "auto"},
 	}
 
@@ -229,6 +229,38 @@ func TestFormationForCategory(t *testing.T) {
 		got := formationForCategory(tt.cat)
 		if got != tt.expected {
 			t.Errorf("formationForCategory(%s) = %q, want %q", tt.cat, got, tt.expected)
+		}
+	}
+}
+
+// TestFormationForCategory_ValidPresets guards against DF-021 regression:
+// every mapped formation must be one chimera actually serves. Verified
+// against GET /v1/formations on chimera 0.2.0 (live): audit, auto, debate,
+// simple, spec-writer, speed. "rigorous"/"balanced"/"fast" made every
+// deliberation 422 with "Unknown formation".
+func TestFormationForCategory_ValidPresets(t *testing.T) {
+	valid := map[string]bool{
+		"audit":       true,
+		"auto":        true,
+		"debate":      true,
+		"simple":      true,
+		"spec-writer": true,
+		"speed":       true,
+	}
+
+	categories := []ChangeCategory{
+		CategoryContract,
+		CategoryBehavioral,
+		CategoryResilience,
+		CategoryCosmetic,
+		ChangeCategory("unheard-of-category"), // default branch too
+	}
+
+	for _, cat := range categories {
+		got := formationForCategory(cat)
+		if !valid[got] {
+			t.Errorf("formationForCategory(%q) = %q, which is not in the live-valid formation set %v",
+				cat, got, []string{"audit", "auto", "debate", "simple", "spec-writer", "speed"})
 		}
 	}
 }

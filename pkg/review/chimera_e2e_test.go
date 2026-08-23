@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -74,9 +75,16 @@ func newChimeraMockServer(t *testing.T, cfg chimeraMockConfig) (*httptest.Server
 	return srv, &captured
 }
 
-// standardReviewResultJSON builds a Chimera deliberation response containing
-// a valid review result JSON string as the "result" field, plus a populated trace.
-func standardReviewResultJSON(verdict string, findings []map[string]interface{}) string {
+// standardDeliberationResponse builds a Chimera /v1/deliberate response
+// matching the real DeliberateResponse contract (OpenAPI 3.1, chimera 0.2.0):
+// {"answer": string (REQUIRED), "trace": object (REQUIRED),
+//
+//	"request_id": string (REQUIRED)}. The merged deliberation text in
+//
+// "answer" carries the review-result JSON the model was asked to produce;
+// "trace" is the per-stage execution-graph OBJECT (not an array) observed on
+// the live server (DF-021).
+func standardDeliberationResponse(verdict string, findings []map[string]interface{}) string {
 	inner := map[string]interface{}{
 		"verdict":  verdict,
 		"findings": findings,
@@ -84,30 +92,38 @@ func standardReviewResultJSON(verdict string, findings []map[string]interface{})
 	innerBytes, _ := json.Marshal(inner)
 
 	outer := map[string]interface{}{
-		"result": string(innerBytes),
-		"trace": []map[string]interface{}{
-			{
-				"stage":    "primary",
-				"model":    "deepseek-v4-flash",
-				"output":   verdict,
-				"tokens":   1200,
-				"duration": 1.5,
-			},
-			{
-				"stage":    "adversarial",
-				"model":    "minimax-m3",
-				"output":   "approved",
-				"tokens":   800,
-				"duration": 2.1,
-			},
-			{
-				"stage":    "audit",
-				"model":    "gpt-5.2-luna",
-				"output":   "confirmed",
-				"tokens":   600,
-				"duration": 0.9,
+		"answer": string(innerBytes),
+		"trace": map[string]interface{}{
+			"request_id": "trace-req-001",
+			"formation":  "debate",
+			"stages": []map[string]interface{}{
+				{
+					"stage_id": "worker_1",
+					"kind":     "worker",
+					"model":    "deepseek/deepseek-v4-pro",
+					"output":   verdict,
+					"tokens":   1200,
+					"duration": 1.5,
+				},
+				{
+					"stage_id": "aggregator",
+					"kind":     "aggregator",
+					"model":    "deepseek/deepseek-v4-flash",
+					"output":   verdict,
+					"tokens":   800,
+					"duration": 2.1,
+				},
+				{
+					"stage_id": "merge",
+					"kind":     "merge",
+					"model":    "deepseek/deepseek-v4-flash",
+					"output":   verdict,
+					"tokens":   600,
+					"duration": 0.9,
+				},
 			},
 		},
+		"request_id": "req-001",
 	}
 	outerBytes, _ := json.Marshal(outer)
 	return string(outerBytes)
@@ -119,7 +135,7 @@ func standardReviewResultJSON(verdict string, findings []map[string]interface{})
 
 func TestChimeraMultiModelReview(t *testing.T) {
 	// —— Setup: mock Chimera returning a full multi-model deliberation result ——
-	reviewJSON := standardReviewResultJSON("approved", []map[string]interface{}{
+	reviewJSON := standardDeliberationResponse("approved", []map[string]interface{}{
 		{
 			"severity":    "low",
 			"type":        "style",
@@ -196,7 +212,7 @@ func TestChimeraMultiModelReview(t *testing.T) {
 	var sent map[string]interface{}
 	require.NoError(t, json.Unmarshal(*captured, &sent))
 	assert.Contains(t, sent["prompt"].(string), "hello", "prompt should contain diff content")
-	assert.Equal(t, "balanced", sent["formation"], "formation should map from category")
+	assert.Equal(t, "debate", sent["formation"], "formation should map from category (live-valid preset, DF-021)")
 }
 
 // =============================================================================
@@ -204,16 +220,16 @@ func TestChimeraMultiModelReview(t *testing.T) {
 // =============================================================================
 
 func TestChimeraMultiModelReview_FormationRouting(t *testing.T) {
-	emptyReview := standardReviewResultJSON("approved", nil)
+	emptyReview := standardDeliberationResponse("approved", nil)
 
 	tests := []struct {
 		name          string
 		category      ChangeCategory
 		wantFormation string
 	}{
-		{name: "contract", category: CategoryContract, wantFormation: "rigorous"},
-		{name: "behavioral", category: CategoryBehavioral, wantFormation: "balanced"},
-		{name: "resilience", category: CategoryResilience, wantFormation: "fast"},
+		{name: "contract", category: CategoryContract, wantFormation: "audit"},
+		{name: "behavioral", category: CategoryBehavioral, wantFormation: "debate"},
+		{name: "resilience", category: CategoryResilience, wantFormation: "speed"},
 		{name: "cosmetic", category: CategoryCosmetic, wantFormation: "auto"},
 	}
 
@@ -259,10 +275,11 @@ func TestChimeraMultiModelReview_FormationRouting(t *testing.T) {
 func TestChimeraMultiModelReview_TracePopulated(t *testing.T) {
 	// This test validates that the Chimera deliberation response includes a
 	// trace with per-stage results (model, tokens, duration), even though
-	// the current ChimeraModelClient.Review() only extracts the "result" field.
-	// We validate at the HTTP level that the trace structure is present.
+	// ChimeraModelClient.Review() only extracts the merged "answer" text for
+	// review parsing. We validate at the HTTP level that the trace structure
+	// is present.
 
-	reviewWithFindings := standardReviewResultJSON("block", []map[string]interface{}{
+	reviewWithFindings := standardDeliberationResponse("block", []map[string]interface{}{
 		{
 			"severity":    "critical",
 			"type":        "security",
@@ -299,30 +316,41 @@ func TestChimeraMultiModelReview_TracePopulated(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	// The client parses the "result" field into ModelReviewResult.
+	// The client parses the merged "answer" text into ModelReviewResult.
 	assert.Equal(t, "block", result.Verdict)
 	assert.Len(t, result.Findings, 1)
 	assert.Equal(t, "critical", result.Findings[0].Severity)
 	assert.Equal(t, "security", result.Findings[0].Type)
 
-	// Verify at the HTTP level that the raw response includes trace.
+	// Verify at the HTTP level that the raw response matches the real
+	// DeliberateResponse contract: {"answer", "trace" (object),
+	// "request_id"} — all required (DF-021: there is no "result" field).
 	// We make a direct HTTP call to inspect the full response.
 	resp, err := http.Post(srv.URL+"/v1/deliberate", "application/json",
-		strings.NewReader(`{"prompt":"test","formation":"rigorous"}`))
+		strings.NewReader(`{"prompt":"test","formation":"audit"}`))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
 	var full map[string]interface{}
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&full))
 
-	// Verify trace exists and has stages.
-	trace, ok := full["trace"].([]interface{})
-	require.True(t, ok, "response should contain trace array")
-	assert.Len(t, trace, 3, "should have 3 deliberation stages")
+	// Contract shape: answer + trace + request_id present.
+	answerStr, ok := full["answer"].(string)
+	require.True(t, ok, "answer field should be a string")
+	require.NotEmpty(t, answerStr)
+	assert.Contains(t, answerStr, `"verdict"`)
+	assert.Contains(t, answerStr, `"findings"`)
 
-	// Verify each stage has expected fields.
-	stageFields := []string{"stage", "model", "output", "tokens", "duration"}
-	for i, stageRaw := range trace {
+	traceObj, ok := full["trace"].(map[string]interface{})
+	require.True(t, ok, "response should contain trace as an OBJECT (per-stage execution graph), not an array")
+
+	// The trace object carries per-stage entries; validate their fields.
+	stages, ok := traceObj["stages"].([]interface{})
+	require.True(t, ok, "trace should contain a stages array")
+	require.Len(t, stages, 3)
+
+	stageFields := []string{"stage_id", "model", "output", "tokens", "duration"}
+	for i, stageRaw := range stages {
 		stage, ok := stageRaw.(map[string]interface{})
 		require.True(t, ok, "stage[%d] should be an object", i)
 		for _, field := range stageFields {
@@ -332,18 +360,16 @@ func TestChimeraMultiModelReview_TracePopulated(t *testing.T) {
 
 	// Verify stage models are distinct (multi-model).
 	models := make(map[string]bool)
-	for _, stageRaw := range trace {
+	for _, stageRaw := range stages {
 		stage := stageRaw.(map[string]interface{})
 		models[stage["model"].(string)] = true
 	}
 	assert.GreaterOrEqual(t, len(models), 2, "should use at least 2 distinct models")
 
-	// Verify the "result" field contains valid review JSON.
-	resultStr, ok := full["result"].(string)
-	require.True(t, ok, "result field should be a JSON string")
-	require.NotEmpty(t, resultStr)
-	assert.Contains(t, resultStr, `"verdict"`)
-	assert.Contains(t, resultStr, `"findings"`)
+	// request_id is required by the contract.
+	requestID, ok := full["request_id"].(string)
+	require.True(t, ok, "request_id field should be a string")
+	assert.NotEmpty(t, requestID)
 }
 
 // =============================================================================
@@ -368,7 +394,7 @@ func TestChimeraMultiModelReview_ClientInfo(t *testing.T) {
 
 func TestChimeraMultiModelReview_Timeout(t *testing.T) {
 	srv, _ := newChimeraMockServer(t, chimeraMockConfig{
-		deliberationResponse: `{"result": "{\"verdict\":\"approved\",\"findings\":[]}"}`,
+		deliberationResponse: `{"answer": "{\"verdict\":\"approved\",\"findings\":[]}", "trace": {}, "request_id": "req-timeout-001"}`,
 		delay:                2 * time.Second,
 	})
 	defer srv.Close()
@@ -450,7 +476,7 @@ func TestChimeraMultiModelReview_ServerError(t *testing.T) {
 
 func TestChimeraMultiModelReview_MalformedResult(t *testing.T) {
 	srv, _ := newChimeraMockServer(t, chimeraMockConfig{
-		deliberationResponse: `{"result": "not valid json at all", "trace": []}`,
+		deliberationResponse: `{"answer": "not valid json at all", "trace": {}, "request_id": "req-bad-001"}`,
 	})
 	defer srv.Close()
 
@@ -489,7 +515,7 @@ func TestChimeraClient_DeliberateRoute(t *testing.T) {
 		gotPath = r.URL.Path
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"result": "{\"verdict\":\"approved\",\"findings\":[]}"}`))
+		_, _ = w.Write([]byte(`{"answer": "{\"verdict\":\"approved\",\"findings\":[]}", "trace": {}, "request_id": "req-route-001"}`))
 	}))
 	defer srv.Close()
 
@@ -521,8 +547,13 @@ func TestChimeraClient_DeliberateRoute(t *testing.T) {
 // =============================================================================
 
 func TestChimeraMultiModelReview_Live(t *testing.T) {
-	t.Skip("Chimera not available — the deliberation service is not running on localhost:8765. " +
-		"Start Chimera and set CHIMERA_BASE_URL to run this integration test.")
+	// DF-021: run against live Chimera when CHIMERA_LIVE=1 (or when
+	// CHIMERA_BASE_URL points somewhere); otherwise skip so CI stays green
+	// without a running deliberation service.
+	if lookupEnv("CHIMERA_LIVE") == "" && lookupEnv("CHIMERA_BASE_URL") == "" {
+		t.Skip("live Chimera deliberation disabled; set CHIMERA_LIVE=1 (and " +
+			"optionally CHIMERA_BASE_URL) to run against a running chimera server")
+	}
 
 	baseURL := "http://localhost:8765"
 	if v := lookupEnv("CHIMERA_BASE_URL"); v != "" {
@@ -530,8 +561,10 @@ func TestChimeraMultiModelReview_Live(t *testing.T) {
 	}
 
 	// Quick health check — if unreachable, skip with a clear message.
-	hc := &http.Client{Timeout: 2 * time.Second}
-	resp, err := hc.Get(baseURL + "/v1/deliberate")
+	// 5s budget: /v1/health probes every configured provider and can take
+	// multiple seconds on a loaded server (observed ~2.7s live).
+	hc := &http.Client{Timeout: 5 * time.Second}
+	resp, err := hc.Get(baseURL + "/v1/health")
 	if err != nil {
 		t.Skipf("Chimera not reachable at %s: %v", baseURL, err)
 	}
@@ -540,7 +573,7 @@ func TestChimeraMultiModelReview_Live(t *testing.T) {
 	client := NewChimeraClient(ModelClientConfig{
 		BaseURL: baseURL,
 		Model:   "chimera-default",
-		Timeout: 60 * time.Second,
+		Timeout: 120 * time.Second,
 	})
 
 	req := ReviewRequest{
@@ -561,7 +594,7 @@ func TestChimeraMultiModelReview_Live(t *testing.T) {
 		},
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 
 	result, err := client.Review(ctx, req)
@@ -580,10 +613,8 @@ func TestChimeraMultiModelReview_Live(t *testing.T) {
 	t.Log("Live Chimera multi-model deliberation completed successfully")
 }
 
-// lookupEnv reads an environment variable. Simple helper to avoid importing
-// "os" in the main test file; the live test is skipped by default anyway.
+// lookupEnv reads an environment variable. Kept trivially simple so the
+// live test needs no extra dependencies; returns "" when unset.
 func lookupEnv(key string) string {
-	// Intentionally simple — the live test is always skipped unless
-	// the user explicitly runs it with CHIMERA_BASE_URL set.
-	return ""
+	return os.Getenv(key)
 }

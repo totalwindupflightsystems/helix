@@ -58,11 +58,18 @@ func (c *ChimeraModelClient) Review(ctx context.Context, req ReviewRequest) (*Mo
 	prompt := buildReviewPrompt(req, c.info)
 	formation := formationForCategory(req.Context.Category)
 
-	// Chimera deliberation API.
+	// Chimera deliberation API request (DeliberateRequest in chimera's
+	// OpenAPI): only `prompt` is required; the rest are optional model-routing
+	// overrides. The previously-sent `stage_models` field is accepted by the
+	// server but unused here — replaced by the documented override fields.
 	type deliberateReq struct {
-		Prompt    string            `json:"prompt"`
-		Formation string            `json:"formation"`
-		Models    map[string]string `json:"stage_models,omitempty"`
+		Prompt           string   `json:"prompt"`
+		Formation        string   `json:"formation"`
+		AllowedModels    []string `json:"allowed_models,omitempty"`
+		DisallowedModels []string `json:"disallowed_models,omitempty"`
+		DispatcherModel  string   `json:"dispatcher_model,omitempty"`
+		AggregatorModel  string   `json:"aggregator_model,omitempty"`
+		WorkerModel      string   `json:"worker_model,omitempty"`
 	}
 	payload := deliberateReq{
 		Prompt:    prompt,
@@ -74,15 +81,20 @@ func (c *ChimeraModelClient) Review(ctx context.Context, req ReviewRequest) (*Mo
 		return nil, fmt.Errorf("chimera: %w", err)
 	}
 
-	// Chimera returns: {"result": "...", "trace": [...]}
+	// Chimera returns DeliberateResponse: {answer, trace, request_id} — all
+	// three required. The merged deliberation text lives in "answer" (there
+	// is NO "result" field); "trace" is the per-stage execution-graph object,
+	// so decoding it as a map also enforces the object shape.
 	var chimeraResp struct {
-		Result string `json:"result"`
+		Answer    string                 `json:"answer"`
+		Trace     map[string]interface{} `json:"trace"`
+		RequestID string                 `json:"request_id"`
 	}
 	if err := json.Unmarshal(respBody, &chimeraResp); err != nil {
 		return nil, fmt.Errorf("chimera: parse deliberation response: %w", err)
 	}
 
-	result, err := parseReviewResponse([]byte(chimeraResp.Result), "chimera:"+c.cfg.Model)
+	result, err := parseReviewResponse([]byte(chimeraResp.Answer), "chimera:"+c.cfg.Model)
 	if err != nil {
 		return nil, fmt.Errorf("chimera: %w", err)
 	}
@@ -90,15 +102,26 @@ func (c *ChimeraModelClient) Review(ctx context.Context, req ReviewRequest) (*Mo
 	return result, nil
 }
 
-// formationForCategory maps change category to Chimera formation preset.
+// formationForCategory maps change category to a Chimera formation preset.
+//
+// Only formations that exist on the live Chimera server are used
+// (/v1/formations at chimera 0.2.0: audit, auto, debate, simple,
+// spec-writer, speed — DF-021: "rigorous"/"balanced"/"fast" were never
+// valid and made every deliberation 422):
+//   - CategoryContract -> "audit": full three-stage deliberation with an
+//     audit pass, preserving the original "rigorous" intent.
+//   - CategoryBehavioral -> "debate": best_of_n merge across two aggregator
+//     runs, preserving the consensus intent of the old "balanced".
+//   - CategoryResilience -> "speed": fast 2-worker preset, preserving the
+//     old "fast" intent.
 func formationForCategory(cat ChangeCategory) string {
 	switch cat {
 	case CategoryContract:
-		return "rigorous" // full three-stage deliberation
+		return "audit"
 	case CategoryBehavioral:
-		return "balanced"
+		return "debate"
 	case CategoryResilience:
-		return "fast"
+		return "speed"
 	default:
 		return "auto"
 	}
