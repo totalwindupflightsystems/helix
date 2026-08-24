@@ -954,3 +954,10 @@ tasks:
   status: complete
   created_at: '2026-08-24T05:13:03.471052+00:00'
   completed_at: '2026-08-24T05:19:55.100914+00:00'
+- id: DF-019
+  title: helix estimate check --json alias
+  criteria:
+  - helix estimate check <agent> <task> --json exits 0 and prints JSON
+  status: complete
+  created_at: '2026-08-24T11:30:09.810396+00:00'
+  completed_at: '2026-08-24T11:41:23.710007+00:00'

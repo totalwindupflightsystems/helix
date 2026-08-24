@@ -1,0 +1,107 @@
+{
+  "task_id": "DF-019",
+  "task_title": "helix estimate check --json alias",
+  "task_criteria": [
+    "helix estimate check <agent> <task> --json exits 0 and prints JSON"
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 helix estimate check <agent> <task> --json exits 0 and prints JSON: Direct CLI run of `/tmp/helix-estimate check wojons \"implement cost estimator\" --json --model deepseek-v4-pro --provider deepseek --pricing pkg/estimate/testdata/pricing.yaml --known-friends pkg/estimate/testdata/known-friends.json` exited 0 and printed valid JSON (agent/cost/budget/decision fields). Without --json it prints table format, confirming --json triggers JSON. Implementation in commit 310efec (cmd/helix-estimate/main.go): added jsonOut field, --json flag in addFlags, and applyJSONAlias() called in runCheck/runEstimate before validation. Tests TestApplyJSONAlias, TestJSONFlagRegistered, TestEstimateCmdJSONAliasE2E, TestRunCheck_JSONFlag_Subprocess all PASS; full package suite `ok github.com/totalwindupflightsystems/helix/cmd/helix-estimate 0.072s`; go vet clean; no LSP diagnostics.\nThe --json alias for `helix estimate check` is implemented and verified: the command exits 0 and prints valid JSON, with passing regression tests and a clean build/vet.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 helix estimate check <agent> <task> --json exits 0 and prints JSON: Direct CLI run of `/tmp/helix-estimate check wojons \"implement cost estimator\" --json --model deepseek-v4-pro --provider deepseek --pricing pkg/estimate/testdata/pricing.yaml --known-friends pkg/estimate/testdata/known-friends.json` exited 0 and printed valid JSON (agent/cost/budget/decision fields). Without --json it prints table format, confirming --json triggers JSON. Implementation in commit 310efec (cmd/helix-e",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "helix estimate check <agent> <task> --json exits 0 and prints JSON",
+                "status": "PASS",
+                "detail": "Direct CLI run of `/tmp/helix-estimate check wojons \"implement cost estimator\" --json --model deepseek-v4-pro --provider deepseek --pricing pkg/estimate/testdata/pricing.yaml --known-friends pkg/estimate/testdata/known-friends.json` exited 0 and printed valid JSON (agent/cost/budget/decision fields). Without --json it prints table format, confirming --json triggers JSON. Implementation in commit 310efec (cmd/helix-estimate/main.go): added jsonOut field, --json flag in addFlags, and applyJSONAlias() called in runCheck/runEstimate before validation. Tests TestApplyJSONAlias, TestJSONFlagRegistered, TestEstimateCmdJSONAliasE2E, TestRunCheck_JSONFlag_Subprocess all PASS; full package suite `ok github.com/totalwindupflightsystems/helix/cmd/helix-estimate 0.072s`; go vet clean; no LSP diagnostics."
+              }
+            ],
+            "summary": "The --json alias for `helix estimate check` is implemented and verified: the command exits 0 and prints valid JSON, with passing regression tests and a clean build/vet."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-019\n\nStage tier1: FAIL\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 helix estimate check <agent> <task> --json exits 0 and prints JSON: Direct CLI run of `/tmp/helix-estimate check wojons \"implement cost estimator\" --json --model deepseek-v4-pro --provider deepseek --pricing pkg/estimate/testdata/pricing.yaml --known-friends pkg/estimate/testdata/known-friends.json` exited 0 and printed valid JSON (agent/cost/budget/decision fields). Without --json it prints table format, confirming --json triggers JSON. Implementation in commit 310efec (cmd/helix-estimate/main.go): added jsonOut field, --json flag in addFlags, and applyJSONAlias() called in runCheck/runEstimate before validation. Tests TestApplyJSONAlias, TestJSONFlagRegistered, TestEstimateCmdJSONAliasE2E, TestRunCheck_JSONFlag_Subprocess all PASS; full package suite `ok github.com/totalwindupflightsystems/helix/cmd/helix-estimate 0.072s`; go vet clean; no LSP diagnostics.\nThe --json alias for `helix estimate check` is implemented and verified: the command exits 0 and prints valid JSON, with passing regression tests and a clean build/vet.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-08-24T11:42:19.193080"
+}
