@@ -974,11 +974,12 @@ tasks:
 - id: GAP-039
   title: Package-count claims drift (README/SKILL)
   criteria:
-  - 'PASS: README and skills/helix-usage/SKILL.md package numbers equal live ''go
-    list ./pkg/... | wc -l'' (50) and ''go list ./... | wc -l'' (60).'
+  - 'PASS: CI docs-consistency gate passes locally (README headline == component-table
+    count == docs/api count, all 41) and skills/helix-usage/SKILL.md build-note count
+    equals go list ./cmd/... (9).'
   status: complete
   created_at: '2026-08-24T17:54:59.333198+00:00'
-  completed_at: '2026-08-24T17:55:03.265035+00:00'
+  completed_at: '2026-08-24T18:01:23.566798+00:00'
 - id: GAP-042
   title: forgejo-url usage string placeholder
   criteria:

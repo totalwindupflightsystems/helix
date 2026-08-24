@@ -1,0 +1,107 @@
+{
+  "task_id": "GAP-039",
+  "task_title": "Package-count claims drift (README/SKILL)",
+  "task_criteria": [
+    "PASS: CI docs-consistency gate passes locally (README headline == component-table count == docs/api count, all 41) and skills/helix-usage/SKILL.md build-note count equals go list ./cmd/... (9)."
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 PASS: CI docs-consistency gate passes locally (README headline == component-table count == docs/api count, all 41) and skills/helix-usage/SKILL.md build-note count equals go list ./cmd/... (9).: Ran the exact CI docs-consistency gate commands locally: headline=$(grep -oP '^## Components \\(\\K[0-9]+' README.md)=41, table=$(sed -n '/^## Components/,/^## [^#]/p' README.md | grep -oP '`pkg/[a-z0-9_/]+`' | sort -u | wc -l)=41, api=$(grep -oP '`pkg/[a-z0-9_/]+`' docs/api/README.md | sort -u | wc -l)=41 \u2192 'GATE PASS' (README.md:84 '## Components (41 packages, 9 CLIs)'). SKILL.md build-note at skills/helix-usage/SKILL.md:31 reads 'go build ./cmd/... # 9 packages (the 9 CLIs; CI-asserted vs go list)' and `go list ./cmd/...` returns 9 \u2014 counts match.\n",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 PASS: CI docs-consistency gate passes locally (README headline == component-table count == docs/api count, all 41) and skills/helix-usage/SKILL.md build-note count equals go list ./cmd/... (9).: Ran the exact CI docs-consistency gate commands locally: headline=$(grep -oP '^## Components \\(\\K[0-9]+' README.md)=41, table=$(sed -n '/^## Components/,/^## [^#]/p' README.md | grep -oP '`pkg/[a-z0-9_/]+`' | sort -u | wc -l)=41, api=$(grep -oP '`pkg/[a-z0-9_/]+`' docs/api/README.md | sort -",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "PASS: CI docs-consistency gate passes locally (README headline == component-table count == docs/api count, all 41) and skills/helix-usage/SKILL.md build-note count equals go list ./cmd/... (9).",
+                "status": "PASS",
+                "detail": "Ran the exact CI docs-consistency gate commands locally: headline=$(grep -oP '^## Components \\(\\K[0-9]+' README.md)=41, table=$(sed -n '/^## Components/,/^## [^#]/p' README.md | grep -oP '`pkg/[a-z0-9_/]+`' | sort -u | wc -l)=41, api=$(grep -oP '`pkg/[a-z0-9_/]+`' docs/api/README.md | sort -u | wc -l)=41 \u2192 'GATE PASS' (README.md:84 '## Components (41 packages, 9 CLIs)'). SKILL.md build-note at skills/helix-usage/SKILL.md:31 reads 'go build ./cmd/... # 9 packages (the 9 CLIs; CI-asserted vs go list)' and `go list ./cmd/...` returns 9 \u2014 counts match."
+              }
+            ],
+            "summary": ""
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: GAP-039\n\nStage tier1: FAIL\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 PASS: CI docs-consistency gate passes locally (README headline == component-table count == docs/api count, all 41) and skills/helix-usage/SKILL.md build-note count equals go list ./cmd/... (9).: Ran the exact CI docs-consistency gate commands locally: headline=$(grep -oP '^## Components \\(\\K[0-9]+' README.md)=41, table=$(sed -n '/^## Components/,/^## [^#]/p' README.md | grep -oP '`pkg/[a-z0-9_/]+`' | sort -u | wc -l)=41, api=$(grep -oP '`pkg/[a-z0-9_/]+`' docs/api/README.md | sort -u | wc -l)=41 \u2192 'GATE PASS' (README.md:84 '## Components (41 packages, 9 CLIs)'). SKILL.md build-note at skills/helix-usage/SKILL.md:31 reads 'go build ./cmd/... # 9 packages (the 9 CLIs; CI-asserted vs go list)' and `go list ./cmd/...` returns 9 \u2014 counts match.\n\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-08-24T18:01:49.764544"
+}
