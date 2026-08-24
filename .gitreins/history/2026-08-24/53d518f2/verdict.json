@@ -1,0 +1,107 @@
+{
+  "task_id": "GAP-041",
+  "task_title": "Deprecate dispatch/dispatcher duplicate: one canonical name",
+  "task_criteria": [
+    "PASS: 'helix --help' shows at most ONE dispatch* entry (the canonical command), and invoking the deprecated one prints a DEPRECATED banner while still working. Follow the GAP-040 adversarial pattern: keep the switch case alive, remove from builtinSubcommands, update cli_surface_test.go core/hidden lists, all tests pass."
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 tests: \n  \u2713 lint: \n  \u2713 secrets: ",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 PASS: 'helix --help' shows at most ONE dispatch* entry (the canonical command), and invoking the deprecated one prints a DEPRECATED banner while still working. Follow the GAP-040 adversarial pattern: keep the switch case alive, remove from builtinSubcommands, update cli_surface_test.go core/hidden lists, all tests pass.: (1) `helix --help` shows exactly ONE dispatch* entry: `dispatch` (canonical) \u2014 /tmp/helix-test --help | grep -i dispatch returns only \"dispatch ... canonical (dispatcher is deprecated)\". (2) `helix dispatcher help` prints \"DEPRECATED: 'helix dispatcher' is deprecated \u2014 use 'helix dispatch'...\" to stderr (dispatcher.go:175) and still works (exit 0, dispatches to subcommand logic). (3) Switch case \"dispatcher\" kept alive at main.go:441. (4) \"dispatcher\" removed from builtinSubcommands (main.go:84-95). (5) cli_surface_test.go core list removed \"dispatcher\" (lines 60-61) and hidden list added \"dispatcher\" (line 79). (6) Tests pass: `go test -short -count=1 ./...` in cmd/helix \u2192 \"ok github.com/.../cmd/helix 6.653s\"; TestCLIHelp \u2192 ok; config test_command `go test -short -count=1 ./pkg/...` \u2192 all ok; `go build` exit 0; LSP diagnostics empty.\nGAP-041 fully implemented: dispatcher deprecated in favor of canonical dispatch, hidden from --help, DEPRECATED banner printed while still functional, switch case alive, builtinSubcommands and cli_surface_test.go updated, and all tests pass.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 PASS: 'helix --help' shows at most ONE dispatch* entry (the canonical command), and invoking the deprecated one prints a DEPRECATED banner while still working. Follow the GAP-040 adversarial pattern: keep the switch case alive, remove from builtinSubcommands, update cli_surface_test.go core/hidden lists, all tests pass.: (1) `helix --help` shows exactly ONE dispatch* entry: `dispatch` (canonical) \u2014 /tmp/helix-test --help | grep -i dispatch returns only \"dispatch ... canonical (dispa",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "PASS: 'helix --help' shows at most ONE dispatch* entry (the canonical command), and invoking the deprecated one prints a DEPRECATED banner while still working. Follow the GAP-040 adversarial pattern: keep the switch case alive, remove from builtinSubcommands, update cli_surface_test.go core/hidden lists, all tests pass.",
+                "status": "PASS",
+                "detail": "(1) `helix --help` shows exactly ONE dispatch* entry: `dispatch` (canonical) \u2014 /tmp/helix-test --help | grep -i dispatch returns only \"dispatch ... canonical (dispatcher is deprecated)\". (2) `helix dispatcher help` prints \"DEPRECATED: 'helix dispatcher' is deprecated \u2014 use 'helix dispatch'...\" to stderr (dispatcher.go:175) and still works (exit 0, dispatches to subcommand logic). (3) Switch case \"dispatcher\" kept alive at main.go:441. (4) \"dispatcher\" removed from builtinSubcommands (main.go:84-95). (5) cli_surface_test.go core list removed \"dispatcher\" (lines 60-61) and hidden list added \"dispatcher\" (line 79). (6) Tests pass: `go test -short -count=1 ./...` in cmd/helix \u2192 \"ok github.com/.../cmd/helix 6.653s\"; TestCLIHelp \u2192 ok; config test_command `go test -short -count=1 ./pkg/...` \u2192 all ok; `go build` exit 0; LSP diagnostics empty."
+              }
+            ],
+            "summary": "GAP-041 fully implemented: dispatcher deprecated in favor of canonical dispatch, hidden from --help, DEPRECATED banner printed while still functional, switch case alive, builtinSubcommands and cli_surface_test.go updated, and all tests pass."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: GAP-041\n\nStage tier1: PASS\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2713 build: \n  \u2713 tests: \n  \u2713 lint: \n  \u2713 secrets: \n\nStage tier2: PASS\n  COMPLETE\n  \u2713 PASS: 'helix --help' shows at most ONE dispatch* entry (the canonical command), and invoking the deprecated one prints a DEPRECATED banner while still working. Follow the GAP-040 adversarial pattern: keep the switch case alive, remove from builtinSubcommands, update cli_surface_test.go core/hidden lists, all tests pass.: (1) `helix --help` shows exactly ONE dispatch* entry: `dispatch` (canonical) \u2014 /tmp/helix-test --help | grep -i dispatch returns only \"dispatch ... canonical (dispatcher is deprecated)\". (2) `helix dispatcher help` prints \"DEPRECATED: 'helix dispatcher' is deprecated \u2014 use 'helix dispatch'...\" to stderr (dispatcher.go:175) and still works (exit 0, dispatches to subcommand logic). (3) Switch case \"dispatcher\" kept alive at main.go:441. (4) \"dispatcher\" removed from builtinSubcommands (main.go:84-95). (5) cli_surface_test.go core list removed \"dispatcher\" (lines 60-61) and hidden list added \"dispatcher\" (line 79). (6) Tests pass: `go test -short -count=1 ./...` in cmd/helix \u2192 \"ok github.com/.../cmd/helix 6.653s\"; TestCLIHelp \u2192 ok; config test_command `go test -short -count=1 ./pkg/...` \u2192 all ok; `go build` exit 0; LSP diagnostics empty.\nGAP-041 fully implemented: dispatcher deprecated in favor of canonical dispatch, hidden from --help, DEPRECATED banner printed while still functional, switch case alive, builtinSubcommands and cli_surface_test.go updated, and all tests pass.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-24T05:21:21.418616"
+}

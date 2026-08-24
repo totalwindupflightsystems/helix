@@ -944,3 +944,13 @@ tasks:
   status: complete
   created_at: '2026-08-23T22:54:25.161569+00:00'
   completed_at: '2026-08-23T22:59:34.949853+00:00'
+- id: GAP-041
+  title: 'Deprecate dispatch/dispatcher duplicate: one canonical name'
+  criteria:
+  - 'PASS: ''helix --help'' shows at most ONE dispatch* entry (the canonical command),
+    and invoking the deprecated one prints a DEPRECATED banner while still working.
+    Follow the GAP-040 adversarial pattern: keep the switch case alive, remove from
+    builtinSubcommands, update cli_surface_test.go core/hidden lists, all tests pass.'
+  status: complete
+  created_at: '2026-08-24T05:13:03.471052+00:00'
+  completed_at: '2026-08-24T05:19:55.100914+00:00'
