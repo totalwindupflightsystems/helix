@@ -168,7 +168,13 @@ Exit codes:
 // -----------------------------------------------------------------------------
 
 // runDispatcherWithDryRun wraps runDispatcher with the global --dry-run flag.
+//
+// DEPRECATED (GAP-041): `helix dispatcher` is the deprecated alias of
+// `helix dispatch`. The deprecation notice is emitted to stderr BEFORE the
+// command runs; the legacy logic then keeps executing so existing scripts
+// and the operator subcommands (status/tick/list-tasks) continue to work.
 func runDispatcherWithDryRun(args []string, stdout, stderr io.Writer, globalDryRun bool) error {
+	fmt.Fprintln(stderr, "DEPRECATED: 'helix dispatcher' is deprecated — use 'helix dispatch' for the full spec→PR pipeline; the dispatcher subcommands (status/tick/list-tasks) remain functional.")
 	rc := runDispatcher(args, stdout, stderr)
 	if rc != 0 && rc != dispExitBlock {
 		return errExit{code: rc}

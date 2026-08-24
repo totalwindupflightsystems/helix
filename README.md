@@ -94,7 +94,7 @@ attested.
 | PR Negotiation | `pkg/negotiate` | `helix-negotiate` | Agent debate protocol + Chimera tie-break |
 | Dispatcher | `pkg/dispatcher` | `helix dispatch` | Ralph Loop engine, task decomposition, agent assignment |
 | Sandbox | `pkg/sandbox` | `sandbox` | Bubblewrap-based agent isolation |
-| Clarification Protocol | `pkg/dispatcher` | `helix dispatcher clarify` | Structured agent-human clarification with auto-resolve |
+| Clarification Protocol | `pkg/dispatcher` | `helix dispatcher clarify` (deprecated — use `helix dispatch`) | Structured agent-human clarification with auto-resolve |
 
 ### Review & Quality Gates
 

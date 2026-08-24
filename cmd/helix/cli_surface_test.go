@@ -54,11 +54,12 @@ func TestCLIHelp(t *testing.T) {
 	// Note: "lifecycle" is intentionally absent — it was folded into
 	// "pipeline" (GAP-035) and must stay hidden from --help. Same for
 	// "adversarial" (GAP-040): `helix review` is the canonical
-	// adversarial-review command.
+	// adversarial-review command. Same for "dispatcher" (GAP-041):
+	// `helix dispatch` is the canonical spec→PR pipeline command.
 	core := []string{
 		"identity", "estimate", "negotiate", "prompt", "marketplace",
 		"sandbox", "version", "banner", "status", "doctor", "dispatch",
-		"dispatcher", "review", "verify", "release", "trust", "mergegate",
+		"review", "verify", "release", "trust", "mergegate",
 		"security", "forgejo", "coapproval", "secrets",
 		"pipeline", "webhook", "incident", "config", "alerts",
 		"retry", "backup", "degradation", "audit", "api", "integration",
@@ -72,12 +73,12 @@ func TestCLIHelp(t *testing.T) {
 		}
 	}
 
-	// Layer 4: deprecated subcommands must stay hidden (GAP-035, GAP-040).
-	// `helix lifecycle` was folded into `helix pipeline`; `helix
-	// adversarial` was folded into `helix review`. Both remain
-	// dispatchable for backward compatibility but must not appear as
-	// separate entries in --help.
-	for _, name := range []string{"lifecycle", "adversarial"} {
+	// Layer 4: deprecated subcommands must stay hidden (GAP-035, GAP-040,
+	// GAP-041). `helix lifecycle` was folded into `helix pipeline`; `helix
+	// adversarial` was folded into `helix review`; `helix dispatcher` was
+	// folded into `helix dispatch`. All remain dispatchable for backward
+	// compatibility but must not appear as separate entries in --help.
+	for _, name := range []string{"lifecycle", "adversarial", "dispatcher"} {
 		if usageListsSubcommand(out, name) {
 			t.Errorf("printUsage() lists deprecated subcommand %q: it must stay hidden from --help", name)
 		}

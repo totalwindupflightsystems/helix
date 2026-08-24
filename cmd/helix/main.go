@@ -76,15 +76,16 @@ var subcommands = map[string]string{
 // builtinSubcommands lists every subcommand handled by the big switch in
 // dispatch() above. KEEP IN SYNC with the switch cases.
 //
-// Exception: "lifecycle" (GAP-035) and "adversarial" (GAP-040) are
-// deliberately NOT listed here. They are deprecated — the switch cases
-// stay alive for backward compatibility, but the commands are hidden
-// from --help and from the unknown-subcommand listing.
+// Exception: "lifecycle" (GAP-035), "adversarial" (GAP-040), and
+// "dispatcher" (GAP-041) are deliberately NOT listed here. They are
+// deprecated — the switch cases stay alive for backward compatibility,
+// but the commands are hidden from --help and from the unknown-subcommand
+// listing.
 var builtinSubcommands = []string{
 	"version", "banner", "status", "doctor", "dispatch", "coapproval",
 	"secrets", "pipeline", "webhook", "incident", "config",
 	"alerts", "retry", "backup", "degradation", "audit", "api", "integration",
-	"trust", "forgejo", "review", "dispatcher", "mergegate",
+	"trust", "forgejo", "review", "mergegate",
 	"verify", "security", "forcemerge", "vuln", "deploy", "ci", "recovery",
 	"memory", "idea", "adr", "spec", "source", "channel", "design", "contract",
 	"notify", "models", "learn",
@@ -440,8 +441,13 @@ func (d *dispatcher) dispatch(args []string) error {
 	case "dispatcher":
 		// `helix dispatcher <status|tick|list-tasks>` inspects and drives
 		// the pkg/dispatcher Ralph Loop engine (task decomposition,
-		// assignment, cost guard) — distinct from `helix dispatch` which
-		// runs the full spec→PR pipeline.
+		// assignment, cost guard).
+		//
+		// DEPRECATED (GAP-041): `helix dispatch` is the canonical
+		// spec→PR pipeline command. This case stays alive for backward
+		// compatibility (the deprecation notice is emitted by
+		// runDispatcherWithDryRun), but "dispatcher" is hidden from
+		// --help and the subcommand registry.
 		return RunWithObs("dispatcher", func() error {
 			return runDispatcherWithDryRun(rest, os.Stdout, os.Stderr, dryRun)
 		})
@@ -802,8 +808,7 @@ Subcommands:
   banner       Print the HELIX ASCII art banner
   status       Check all component health
   doctor       Run platform diagnostic checks
-  dispatch     Run the full spec→PR pipeline (Ralph loop execution) — distinct from dispatcher
-  dispatcher   Inspect and drive the Ralph Loop engine (status/tick/list-tasks)
+  dispatch     Run the full spec→PR pipeline (Ralph loop execution) — canonical (dispatcher is deprecated)
   review       Adversarial review + change management dashboard (canonical — adversarial is deprecated)
   verify       Production verification (shadow/canary/contract)
   release      Release signoff — dual human+agent gate for production deployment
