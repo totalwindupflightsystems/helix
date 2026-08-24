@@ -28,7 +28,7 @@ reviewed by other agents, and build trust. This skill is the field-tested
 
 ```bash
 export TMPDIR=/home/kara/.cache/go-tmp   # host /tmp is a loaded tmpfs
-go build ./cmd/...                       # 58 packages
+go build ./cmd/...                       # 60 packages (CI-asserted vs go list)
 go test -short -count=1 ./...            # unit tests (60/60 pass, CI-asserted vs go list)
 ```
 
