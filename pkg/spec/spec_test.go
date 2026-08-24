@@ -433,6 +433,42 @@ func TestAnnotationSerialization(t *testing.T) {
 	})
 }
 
+func TestSetSectionContent(t *testing.T) {
+	t.Run("replaces content and resets approval", func(t *testing.T) {
+		approvedAt := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+		s := &Spec{
+			Sections: []SpecSection{
+				{Title: "Overview", Content: "_Replace with intent and context._", ApprovalStatus: ApprovalApproved, ApprovedBy: "alexis", ApprovedAt: approvedAt},
+				{Title: "Requirements", Content: "Old reqs", ApprovalStatus: ApprovalPending},
+			},
+		}
+		require.True(t, s.SetSectionContent("Overview", "My real intent and context"))
+		assert.Equal(t, "My real intent and context", s.Sections[0].Content)
+		assert.Equal(t, ApprovalPending, s.Sections[0].ApprovalStatus)
+		assert.Empty(t, s.Sections[0].ApprovedBy)
+		assert.True(t, s.Sections[0].ApprovedAt.IsZero())
+		// Unrelated section untouched.
+		assert.Equal(t, "Old reqs", s.Sections[1].Content)
+		assert.Equal(t, ApprovalPending, s.Sections[1].ApprovalStatus)
+	})
+
+	t.Run("matches case-insensitively", func(t *testing.T) {
+		s := &Spec{Sections: []SpecSection{{Title: "Acceptance Criteria", Content: "x", ApprovalStatus: ApprovalPending}}}
+		require.True(t, s.SetSectionContent("acceptance criteria", "y"))
+		assert.Equal(t, "y", s.Sections[0].Content)
+	})
+
+	t.Run("returns false when section is missing", func(t *testing.T) {
+		s := &Spec{Sections: []SpecSection{{Title: "Overview", Content: "x", ApprovalStatus: ApprovalPending}}}
+		require.False(t, s.SetSectionContent("Non-Goals", "y"))
+		assert.Equal(t, "x", s.Sections[0].Content)
+	})
+
+	t.Run("returns false for empty section list", func(t *testing.T) {
+		require.False(t, (&Spec{}).SetSectionContent("Overview", "y"))
+	})
+}
+
 // ---------------------------------------------------------------------------
 // Store tests
 // ---------------------------------------------------------------------------

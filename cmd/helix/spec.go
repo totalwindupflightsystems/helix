@@ -28,6 +28,7 @@ type specFlags struct {
 	ideaID     string
 	title      string
 	section    string
+	content    string
 	approvedBy string
 	storePath  string
 	jsonOut    bool
@@ -66,6 +67,12 @@ func parseSpecFlags(args []string) (specFlags, bool, int) {
 			}
 			i++
 			f.section = args[i]
+		case arg == "--content":
+			if i+1 >= len(args) {
+				return f, false, specExitError
+			}
+			i++
+			f.content = args[i]
 		case arg == "--by":
 			if i+1 >= len(args) {
 				return f, false, specExitError
@@ -106,6 +113,7 @@ Usage:
   helix spec review <spec-id>
   helix spec gap-analysis <spec-id>
   helix spec approve <spec-id> --section "<name>"
+  helix spec edit <spec-id> --section "<name>" --content "<text>"
   helix spec show <spec-id>
   helix spec list
   helix spec help
@@ -113,11 +121,18 @@ Usage:
 Flags:
   --title T      Spec title (create)
   --idea ID      Override idea reference (defaults to positional arg)
-  --section S    Section name to approve (approve)
+  --section S    Section name to approve (approve) or write (edit)
+  --content TEXT Section content to write (edit)
   --by NAME      Approver identity (approve, default: operator)
   --store PATH   Spec store directory (or $HELIX_SPEC_STORE)
   --json         Machine-readable output
   --dry-run      Preview writes without mutating store
+
+Editing section content:
+  Use 'helix spec edit' to replace a section's content via the CLI. The spec
+  store file itself (~/.helix/specs/<spec-id>.md) is also the editable
+  artifact: hand-edit the markdown under a "## <Section>" heading, then
+  re-run 'helix spec gap-analysis' to see the updated score.
 
 Exit codes:
   0  Success
@@ -160,6 +175,8 @@ func runSpec(args []string, stdout, stderr io.Writer) int {
 		return runSpecGapAnalysis(flags, stdout, stderr)
 	case "approve":
 		return runSpecApprove(flags, stdout, stderr)
+	case "edit":
+		return runSpecEdit(flags, stdout, stderr)
 	case "show":
 		return runSpecShow(flags, stdout, stderr)
 	case "list":
@@ -396,6 +413,65 @@ func runSpecApprove(f specFlags, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "approved section %q in spec %s (by %s)\n", f.section, s.ID, approvedBy)
 	if allApproved {
 		fmt.Fprintf(stdout, "all sections approved — spec status is now %q\n", s.Status)
+	}
+	return specExitOK
+}
+
+func runSpecEdit(f specFlags, stdout, stderr io.Writer) int {
+	if f.id == "" {
+		fmt.Fprintln(stderr, "error: spec id required")
+		return specExitError
+	}
+	if f.section == "" {
+		fmt.Fprintln(stderr, "error: --section is required")
+		return specExitError
+	}
+	if f.content == "" {
+		fmt.Fprintln(stderr, "error: --content is required")
+		return specExitError
+	}
+
+	store, err := openSpecStore(f.storePath)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: store: %v\n", err)
+		return specExitError
+	}
+	s, err := store.Load(f.id)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return specExitError
+	}
+
+	if !s.SetSectionContent(f.section, f.content) {
+		fmt.Fprintf(stderr, "error: section %q not found in spec %s\n", f.section, f.id)
+		return specExitError
+	}
+
+	// Content changed, so a previously approved spec is no longer fully approved.
+	if s.Status == spec.StatusApproved {
+		s.Status = spec.StatusDraft
+	}
+
+	if f.dryRun {
+		fmt.Fprintf(stdout, "[DRY RUN] would set section %q in spec %s\n", f.section, f.id)
+		return specExitOK
+	}
+
+	if err := store.Save(s); err != nil {
+		fmt.Fprintf(stderr, "error: save: %v\n", err)
+		return specExitError
+	}
+
+	if f.jsonOut {
+		return writeSpecJSON(stdout, stderr, s)
+	}
+
+	fmt.Fprintf(stdout, "updated section %q in spec %s\n", f.section, s.ID)
+	for _, sec := range s.Sections {
+		if strings.EqualFold(sec.Title, f.section) {
+			fmt.Fprintf(stdout, "  status: %s\n", sec.ApprovalStatus)
+			break
+		}
 	}
 	return specExitOK
 }

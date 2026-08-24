@@ -5,7 +5,10 @@
 // missing coverage. A SpecCompleteness scores the spec across 12 dimensions.
 package spec
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // Spec status constants.
 const (
@@ -73,6 +76,24 @@ type SpecSection struct {
 	ApprovalStatus string    `json:"approval_status"`
 	ApprovedBy     string    `json:"approved_by,omitempty"`
 	ApprovedAt     time.Time `json:"approved_at,omitempty"`
+}
+
+// SetSectionContent replaces the content of the section whose title matches
+// (case-insensitively). It reports whether a section was found and updated.
+// When a section's content changes, its approval status is reset to pending
+// and the approver fields are cleared, since the previously approved text is
+// no longer what is on disk.
+func (s *Spec) SetSectionContent(title, content string) bool {
+	for i := range s.Sections {
+		if strings.EqualFold(s.Sections[i].Title, title) {
+			s.Sections[i].Content = content
+			s.Sections[i].ApprovalStatus = ApprovalPending
+			s.Sections[i].ApprovedBy = ""
+			s.Sections[i].ApprovedAt = time.Time{}
+			return true
+		}
+	}
+	return false
 }
 
 // SpecAnnotation is a co-author annotation on a spec.

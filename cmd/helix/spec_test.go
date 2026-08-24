@@ -152,6 +152,9 @@ func TestPrintSpecHelp(t *testing.T) {
 	out := w.String()
 	assert.Contains(t, out, "helix spec")
 	assert.Contains(t, out, "gap-analysis")
+	assert.Contains(t, out, "helix spec edit <spec-id> --section \"<name>\" --content \"<text>\"")
+	assert.Contains(t, out, "--content TEXT Section content to write (edit)")
+	assert.Contains(t, out, "store file itself (~/.helix/specs/<spec-id>.md)")
 	assert.Contains(t, out, "--dry-run")
 	assert.Contains(t, out, "Exit codes:")
 }
@@ -498,6 +501,117 @@ func TestRunSpecList_WithSpecs(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
 	assert.Len(t, got, 2)
+}
+
+// ---------------------------------------------------------------------------
+// runSpecEdit
+// ---------------------------------------------------------------------------
+
+func TestRunSpecEdit_UsageErrors(t *testing.T) {
+	store := t.TempDir()
+	rc, _, stderr := runSpecCLI(t, "edit", "--section", "X", "--content", "Y", "--store", store)
+	assert.Equal(t, specExitError, rc)
+	assert.Contains(t, stderr, "error: spec id required")
+
+	rc, _, stderr = runSpecCLI(t, "edit", "spec-1", "--content", "Y", "--store", store)
+	assert.Equal(t, specExitError, rc)
+	assert.Contains(t, stderr, "error: --section is required")
+
+	rc, _, stderr = runSpecCLI(t, "edit", "spec-1", "--section", "X", "--store", store)
+	assert.Equal(t, specExitError, rc)
+	assert.Contains(t, stderr, "error: --content is required")
+}
+
+func TestRunSpecEdit_SectionNotFound(t *testing.T) {
+	store := t.TempDir()
+	id := createSpecViaCLI(t, store, "idea-1", "Edit Me")
+	rc, _, stderr := runSpecCLI(t, "edit", id, "--section", "Nope", "--content", "X", "--store", store)
+	assert.Equal(t, specExitError, rc)
+	assert.Contains(t, stderr, `section "Nope" not found`)
+}
+
+func TestRunSpecEdit_HappyPath(t *testing.T) {
+	store := t.TempDir()
+	id := createSpecViaCLI(t, store, "idea-1", "Edit Me")
+
+	rc, stdout, stderr := runSpecCLI(t, "edit", id, "--section", "Overview", "--content", "My real intent and context", "--store", store)
+	require.Equal(t, specExitOK, rc, "stderr: %s", stderr)
+	assert.Contains(t, stdout, `updated section "Overview" in spec `+id)
+	assert.Contains(t, stdout, "status: pending")
+
+	// Persisted: show reflects the new content, not the placeholder.
+	rc, stdout, stderr = runSpecCLI(t, "show", id, "--store", store)
+	require.Equal(t, specExitOK, rc, "stderr: %s", stderr)
+	assert.Contains(t, stdout, "My real intent and context")
+	assert.NotContains(t, stdout, "_Replace with intent and context._")
+}
+
+func TestRunSpecEdit_CaseInsensitiveMatch(t *testing.T) {
+	store := t.TempDir()
+	id := createSpecViaCLI(t, store, "idea-1", "Edit Case")
+
+	rc, _, stderr := runSpecCLI(t, "edit", id, "--section", "overview", "--content", "Lowercase title match", "--store", store)
+	require.Equal(t, specExitOK, rc, "stderr: %s", stderr)
+
+	rc, stdout, _ := runSpecCLI(t, "show", id, "--store", store)
+	require.Equal(t, specExitOK, rc)
+	assert.Contains(t, stdout, "Lowercase title match")
+}
+
+func TestRunSpecEdit_ResetsApprovalStatus(t *testing.T) {
+	store := t.TempDir()
+	id := createSpecViaCLI(t, store, "idea-1", "Edit Approved")
+
+	// Approve the Overview section first.
+	rc, _, stderr := runSpecCLI(t, "approve", id, "--section", "Overview", "--by", "alexis", "--store", store)
+	require.Equal(t, specExitOK, rc, "stderr: %s", stderr)
+
+	// Editing it must reset the section approval to pending.
+	rc, _, stderr = runSpecCLI(t, "edit", id, "--section", "Overview", "--content", "Rewritten after approval", "--store", store)
+	require.Equal(t, specExitOK, rc, "stderr: %s", stderr)
+
+	rc, stdout, _ := runSpecCLI(t, "show", id, "--store", store)
+	require.Equal(t, specExitOK, rc)
+	assert.Contains(t, stdout, "## Overview  [pending]")
+	assert.NotContains(t, stdout, "approved by alexis")
+	assert.Contains(t, stdout, "Rewritten after approval")
+}
+
+func TestRunSpecEdit_DryRunWritesNothing(t *testing.T) {
+	store := t.TempDir()
+	id := createSpecViaCLI(t, store, "idea-1", "Edit Dry")
+
+	rc, stdout, _ := runSpecCLI(t, "edit", id, "--section", "Overview", "--content", "Not persisted", "--store", store, "--dry-run")
+	require.Equal(t, specExitOK, rc)
+	assert.Contains(t, stdout, "[DRY RUN] would set section")
+
+	rc, stdout, _ = runSpecCLI(t, "show", id, "--store", store)
+	require.Equal(t, specExitOK, rc)
+	assert.NotContains(t, stdout, "Not persisted")
+	assert.Contains(t, stdout, "_Replace with intent and context._")
+}
+
+func TestRunSpecEdit_JSONOutput(t *testing.T) {
+	store := t.TempDir()
+	id := createSpecViaCLI(t, store, "idea-1", "Edit JSON")
+
+	rc, stdout, stderr := runSpecCLI(t, "edit", id, "--section", "Requirements", "--content", "Must do the thing", "--store", store, "--json")
+	require.Equal(t, specExitOK, rc, "stderr: %s", stderr)
+
+	var got struct {
+		ID       string `json:"id"`
+		Sections []struct {
+			Title          string `json:"title"`
+			Content        string `json:"content"`
+			ApprovalStatus string `json:"approval_status"`
+		} `json:"sections"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
+	assert.Equal(t, id, got.ID)
+	require.Len(t, got.Sections, 5)
+	assert.Equal(t, "Requirements", got.Sections[1].Title)
+	assert.Equal(t, "Must do the thing", got.Sections[1].Content)
+	assert.Equal(t, "pending", got.Sections[1].ApprovalStatus)
 }
 
 // ---------------------------------------------------------------------------
