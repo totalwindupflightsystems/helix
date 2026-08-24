@@ -115,7 +115,7 @@ touching Forgejo.`,
 	}
 	rootCmd.PersistentFlags().StringVar(&rootFlags.forgejoURL, "forgejo-url",
 		envOr(envForgejoURL, "http://localhost:3030"),
-		"Forgejo base URL (env: "+envForgejoURL+", default http://localhost:3030 — matches `helix status` probes)")
+		"Forgejo base URL (env: "+envForgejoURL+", default http://localhost:3030 — matches helix status probes)")
 	rootCmd.PersistentFlags().StringVar(&rootFlags.adminToken, "admin-token",
 		envOr(envAdminToken, ""),
 		"Forgejo admin token (env: "+envAdminToken+")")
