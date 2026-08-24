@@ -1,0 +1,107 @@
+{
+  "task_id": "GAP-043",
+  "task_title": "Foreign DexDat AGENTS.md in specs",
+  "task_criteria": [
+    "PASS: git ls-files specs/AGENTS.md is empty AND no DexDat charter content matches in specs/ (foreign file verified absent; only legitimate integration-example reference remains in SPECIFICATION.md:952)."
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 PASS: git ls-files specs/AGENTS.md is empty AND no DexDat charter content matches in specs/ (foreign file verified absent; only legitimate integration-example reference remains in SPECIFICATION.md:952).: git ls-files specs/AGENTS.md returns empty (exit 0); ls specs/AGENTS.md returns exit 2 (file absent). grep -rin dexdat specs/ matches only SPECIFICATION.md:952 '| **Repo** | `dexdat/conscientiousness` |' \u2014 a legitimate integration-example repo reference, not foreign charter content. No DexDat charter content exists in specs/.\nForeign DexDat AGENTS.md is absent from specs/ and the only dexdat reference is the legitimate integration-example repo line at SPECIFICATION.md:952.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 PASS: git ls-files specs/AGENTS.md is empty AND no DexDat charter content matches in specs/ (foreign file verified absent; only legitimate integration-example reference remains in SPECIFICATION.md:952).: git ls-files specs/AGENTS.md returns empty (exit 0); ls specs/AGENTS.md returns exit 2 (file absent). grep -rin dexdat specs/ matches only SPECIFICATION.md:952 '| **Repo** | `dexdat/conscientiousness` |' \u2014 a legitimate integration-example repo reference, not foreign charter content.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "PASS: git ls-files specs/AGENTS.md is empty AND no DexDat charter content matches in specs/ (foreign file verified absent; only legitimate integration-example reference remains in SPECIFICATION.md:952).",
+                "status": "PASS",
+                "detail": "git ls-files specs/AGENTS.md returns empty (exit 0); ls specs/AGENTS.md returns exit 2 (file absent). grep -rin dexdat specs/ matches only SPECIFICATION.md:952 '| **Repo** | `dexdat/conscientiousness` |' \u2014 a legitimate integration-example repo reference, not foreign charter content. No DexDat charter content exists in specs/."
+              }
+            ],
+            "summary": "Foreign DexDat AGENTS.md is absent from specs/ and the only dexdat reference is the legitimate integration-example repo line at SPECIFICATION.md:952."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: GAP-043\n\nStage tier1: FAIL\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 PASS: git ls-files specs/AGENTS.md is empty AND no DexDat charter content matches in specs/ (foreign file verified absent; only legitimate integration-example reference remains in SPECIFICATION.md:952).: git ls-files specs/AGENTS.md returns empty (exit 0); ls specs/AGENTS.md returns exit 2 (file absent). grep -rin dexdat specs/ matches only SPECIFICATION.md:952 '| **Repo** | `dexdat/conscientiousness` |' \u2014 a legitimate integration-example repo reference, not foreign charter content. No DexDat charter content exists in specs/.\nForeign DexDat AGENTS.md is absent from specs/ and the only dexdat reference is the legitimate integration-example repo line at SPECIFICATION.md:952.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-08-24T17:56:30.449906"
+}

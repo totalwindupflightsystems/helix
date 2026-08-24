@@ -1,0 +1,107 @@
+{
+  "task_id": "GAP-039",
+  "task_title": "Package-count claims drift (README/SKILL)",
+  "task_criteria": [
+    "PASS: README and skills/helix-usage/SKILL.md package numbers equal live 'go list ./pkg/... | wc -l' (50) and 'go list ./... | wc -l' (60)."
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 PASS: README and skills/helix-usage/SKILL.md package numbers equal live 'go list ./pkg/... | wc -l' (50) and 'go list ./... | wc -l' (60).: Live counts verified via run_command: 'go list ./pkg/... | wc -l' = 50 and 'go list ./... | wc -l' = 60. README.md:84 states '## Components (60 packages, 9 CLIs)' and skills/helix-usage/SKILL.md:31 states 'go build ./cmd/... # 60 packages (CI-asserted vs go list)' (also SKILL.md:32 '60/60 pass'). Both documented numbers equal the live go list ./... count of 60. Commit 0011253 'docs: fix package-count drift in README + helix-usage skill \u2014 live go list = 50 pkg + 9 cmd (60 total). Addresses GAP-039' changed README 41->60 and SKILL 58->60. No drift remains. Test suite: go test -short -count=1 ./pkg/... exit 0.\nREADME and SKILL.md package counts (60) match the live go list ./... count (60); verified via go list and commit 0011253.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 PASS: README and skills/helix-usage/SKILL.md package numbers equal live 'go list ./pkg/... | wc -l' (50) and 'go list ./... | wc -l' (60).: Live counts verified via run_command: 'go list ./pkg/... | wc -l' = 50 and 'go list ./... | wc -l' = 60. README.md:84 states '## Components (60 packages, 9 CLIs)' and skills/helix-usage/SKILL.md:31 states 'go build ./cmd/... # 60 packages (CI-asserted vs go list)' (also SKILL.md:32 '60/60 pass'). Both documented numbers equal the live go list ./",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "PASS: README and skills/helix-usage/SKILL.md package numbers equal live 'go list ./pkg/... | wc -l' (50) and 'go list ./... | wc -l' (60).",
+                "status": "PASS",
+                "detail": "Live counts verified via run_command: 'go list ./pkg/... | wc -l' = 50 and 'go list ./... | wc -l' = 60. README.md:84 states '## Components (60 packages, 9 CLIs)' and skills/helix-usage/SKILL.md:31 states 'go build ./cmd/... # 60 packages (CI-asserted vs go list)' (also SKILL.md:32 '60/60 pass'). Both documented numbers equal the live go list ./... count of 60. Commit 0011253 'docs: fix package-count drift in README + helix-usage skill \u2014 live go list = 50 pkg + 9 cmd (60 total). Addresses GAP-039' changed README 41->60 and SKILL 58->60. No drift remains. Test suite: go test -short -count=1 ./pkg/... exit 0."
+              }
+            ],
+            "summary": "README and SKILL.md package counts (60) match the live go list ./... count (60); verified via go list and commit 0011253."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: GAP-039\n\nStage tier1: FAIL\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 PASS: README and skills/helix-usage/SKILL.md package numbers equal live 'go list ./pkg/... | wc -l' (50) and 'go list ./... | wc -l' (60).: Live counts verified via run_command: 'go list ./pkg/... | wc -l' = 50 and 'go list ./... | wc -l' = 60. README.md:84 states '## Components (60 packages, 9 CLIs)' and skills/helix-usage/SKILL.md:31 states 'go build ./cmd/... # 60 packages (CI-asserted vs go list)' (also SKILL.md:32 '60/60 pass'). Both documented numbers equal the live go list ./... count of 60. Commit 0011253 'docs: fix package-count drift in README + helix-usage skill \u2014 live go list = 50 pkg + 9 cmd (60 total). Addresses GAP-039' changed README 41->60 and SKILL 58->60. No drift remains. Test suite: go test -short -count=1 ./pkg/... exit 0.\nREADME and SKILL.md package counts (60) match the live go list ./... count (60); verified via go list and commit 0011253.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-08-24T17:55:55.475838"
+}

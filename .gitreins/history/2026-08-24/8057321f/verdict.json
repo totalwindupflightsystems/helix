@@ -1,0 +1,107 @@
+{
+  "task_id": "GAP-041b",
+  "task_title": "Reopen: dispatch vs dispatcher binary stale",
+  "task_criteria": [
+    "PASS: rebuilt binaries from HEAD; ./helix --help lists exactly one dispatch entry (canonical 'dispatch', dispatcher deprecated note) and 'helix dispatcher help' still works with DEPRECATED banner."
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 PASS: rebuilt binaries from HEAD; ./helix --help lists exactly one dispatch entry (canonical 'dispatch', dispatcher deprecated note) and 'helix dispatcher help' still works with DEPRECATED banner.: Verified via command output: (1) `./helix --help` lists exactly one dispatch entry \u2014 `grep -c -i dispatch` returns 1, the line being \"dispatch  Run the full spec\u2192PR pipeline (Ralph loop execution) \u2014 canonical (dispatcher is deprecated)\"; no separate dispatcher subcommand appears. (2) `./helix dispatcher help` exits 0 and prints \"DEPRECATED: 'helix dispatcher' is deprecated \u2014 use 'helix dispatch' for the full spec\u2192PR pipeline; the dispatcher subcommands (status/tick/list-tasks) remain functional.\" followed by full help. (3) Binaries rebuilt from HEAD: helix binary timestamp Aug 24 12:52 vs HEAD cd4774f 2026-08-24 12:53:35; working tree only modifies .gitreins/tasks.yaml and .gitreins/usage.jsonl (task tracking), no Go source changes.\nThe rebuilt helix binary from HEAD lists exactly one dispatch entry (canonical 'dispatch' with dispatcher deprecated note) and 'helix dispatcher help' still works with the DEPRECATED banner.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 PASS: rebuilt binaries from HEAD; ./helix --help lists exactly one dispatch entry (canonical 'dispatch', dispatcher deprecated note) and 'helix dispatcher help' still works with DEPRECATED banner.: Verified via command output: (1) `./helix --help` lists exactly one dispatch entry \u2014 `grep -c -i dispatch` returns 1, the line being \"dispatch  Run the full spec\u2192PR pipeline (Ralph loop execution) \u2014 canonical (dispatcher is deprecated)\"; no separate dispatcher subcommand appears. (2) `./h",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "PASS: rebuilt binaries from HEAD; ./helix --help lists exactly one dispatch entry (canonical 'dispatch', dispatcher deprecated note) and 'helix dispatcher help' still works with DEPRECATED banner.",
+                "status": "PASS",
+                "detail": "Verified via command output: (1) `./helix --help` lists exactly one dispatch entry \u2014 `grep -c -i dispatch` returns 1, the line being \"dispatch  Run the full spec\u2192PR pipeline (Ralph loop execution) \u2014 canonical (dispatcher is deprecated)\"; no separate dispatcher subcommand appears. (2) `./helix dispatcher help` exits 0 and prints \"DEPRECATED: 'helix dispatcher' is deprecated \u2014 use 'helix dispatch' for the full spec\u2192PR pipeline; the dispatcher subcommands (status/tick/list-tasks) remain functional.\" followed by full help. (3) Binaries rebuilt from HEAD: helix binary timestamp Aug 24 12:52 vs HEAD cd4774f 2026-08-24 12:53:35; working tree only modifies .gitreins/tasks.yaml and .gitreins/usage.jsonl (task tracking), no Go source changes."
+              }
+            ],
+            "summary": "The rebuilt helix binary from HEAD lists exactly one dispatch entry (canonical 'dispatch' with dispatcher deprecated note) and 'helix dispatcher help' still works with the DEPRECATED banner."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: GAP-041b\n\nStage tier1: FAIL\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 PASS: rebuilt binaries from HEAD; ./helix --help lists exactly one dispatch entry (canonical 'dispatch', dispatcher deprecated note) and 'helix dispatcher help' still works with DEPRECATED banner.: Verified via command output: (1) `./helix --help` lists exactly one dispatch entry \u2014 `grep -c -i dispatch` returns 1, the line being \"dispatch  Run the full spec\u2192PR pipeline (Ralph loop execution) \u2014 canonical (dispatcher is deprecated)\"; no separate dispatcher subcommand appears. (2) `./helix dispatcher help` exits 0 and prints \"DEPRECATED: 'helix dispatcher' is deprecated \u2014 use 'helix dispatch' for the full spec\u2192PR pipeline; the dispatcher subcommands (status/tick/list-tasks) remain functional.\" followed by full help. (3) Binaries rebuilt from HEAD: helix binary timestamp Aug 24 12:52 vs HEAD cd4774f 2026-08-24 12:53:35; working tree only modifies .gitreins/tasks.yaml and .gitreins/usage.jsonl (task tracking), no Go source changes.\nThe rebuilt helix binary from HEAD lists exactly one dispatch entry (canonical 'dispatch' with dispatcher deprecated note) and 'helix dispatcher help' still works with the DEPRECATED banner.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-08-24T17:56:50.935301"
+}

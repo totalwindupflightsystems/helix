@@ -1,0 +1,107 @@
+{
+  "task_id": "DF-020",
+  "task_title": "Spec co-authoring edit loop",
+  "task_criteria": [
+    "PASS: helix spec help mentions how to edit section content (CLI command or explicit store-file pointer). Acceptance: new 'spec edit <id> --section NAME --content ...' subcommand updates the section in the store file; help text updated; tests added."
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 PASS: helix spec help mentions how to edit section content (CLI command or explicit store-file pointer). Acceptance: new 'spec edit <id> --section NAME --content ...' subcommand updates the section in the store file; help text updated; tests added.: (1) Help text: `./helix spec --help` shows `helix spec edit <spec-id> --section \"<name>\" --content \"<text>\"` plus explicit store-file pointer \"The spec store file itself (~/.helix/specs/<spec-id>.md) is also the editable artifact\". (2) Live end-to-end: `./helix spec edit spec-e29ce7a227d61a52 --section Overview --content \"DISK CHECK CONTENT\"` updated the store file on disk (grep confirmed content in $HELIX_SPEC_STORE/$ID.md), `spec show` reflects it, and section status resets to pending. (3) Tests added: cmd/helix/spec_test.go (TestRunSpecEdit_UsageErrors/SectionNotFound/HappyPath/CaseInsensitiveMatch/ResetsApprovalStatus + TestPrintSpecHelp assertions) and pkg/spec/spec_test.go (TestSetSectionContent). go test -count=1 ./cmd/helix/ -run 'TestRunSpecEdit|TestPrintSpecHelp' -> ok (exit 0); go test -count=1 ./pkg/spec/ -> ok (exit 0). No LSP diagnostics.\nThe spec edit subcommand is fully implemented, documented in help text with both CLI command and store-file pointer, verified live to update the store file, and covered by passing tests.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 PASS: helix spec help mentions how to edit section content (CLI command or explicit store-file pointer). Acceptance: new 'spec edit <id> --section NAME --content ...' subcommand updates the section in the store file; help text updated; tests added.: (1) Help text: `./helix spec --help` shows `helix spec edit <spec-id> --section \"<name>\" --content \"<text>\"` plus explicit store-file pointer \"The spec store file itself (~/.helix/specs/<spec-id>.md) is also the editable artifact\". (2) L",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "PASS: helix spec help mentions how to edit section content (CLI command or explicit store-file pointer). Acceptance: new 'spec edit <id> --section NAME --content ...' subcommand updates the section in the store file; help text updated; tests added.",
+                "status": "PASS",
+                "detail": "(1) Help text: `./helix spec --help` shows `helix spec edit <spec-id> --section \"<name>\" --content \"<text>\"` plus explicit store-file pointer \"The spec store file itself (~/.helix/specs/<spec-id>.md) is also the editable artifact\". (2) Live end-to-end: `./helix spec edit spec-e29ce7a227d61a52 --section Overview --content \"DISK CHECK CONTENT\"` updated the store file on disk (grep confirmed content in $HELIX_SPEC_STORE/$ID.md), `spec show` reflects it, and section status resets to pending. (3) Tests added: cmd/helix/spec_test.go (TestRunSpecEdit_UsageErrors/SectionNotFound/HappyPath/CaseInsensitiveMatch/ResetsApprovalStatus + TestPrintSpecHelp assertions) and pkg/spec/spec_test.go (TestSetSectionContent). go test -count=1 ./cmd/helix/ -run 'TestRunSpecEdit|TestPrintSpecHelp' -> ok (exit 0); go test -count=1 ./pkg/spec/ -> ok (exit 0). No LSP diagnostics."
+              }
+            ],
+            "summary": "The spec edit subcommand is fully implemented, documented in help text with both CLI command and store-file pointer, verified live to update the store file, and covered by passing tests."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-020\n\nStage tier1: FAIL\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 PASS: helix spec help mentions how to edit section content (CLI command or explicit store-file pointer). Acceptance: new 'spec edit <id> --section NAME --content ...' subcommand updates the section in the store file; help text updated; tests added.: (1) Help text: `./helix spec --help` shows `helix spec edit <spec-id> --section \"<name>\" --content \"<text>\"` plus explicit store-file pointer \"The spec store file itself (~/.helix/specs/<spec-id>.md) is also the editable artifact\". (2) Live end-to-end: `./helix spec edit spec-e29ce7a227d61a52 --section Overview --content \"DISK CHECK CONTENT\"` updated the store file on disk (grep confirmed content in $HELIX_SPEC_STORE/$ID.md), `spec show` reflects it, and section status resets to pending. (3) Tests added: cmd/helix/spec_test.go (TestRunSpecEdit_UsageErrors/SectionNotFound/HappyPath/CaseInsensitiveMatch/ResetsApprovalStatus + TestPrintSpecHelp assertions) and pkg/spec/spec_test.go (TestSetSectionContent). go test -count=1 ./cmd/helix/ -run 'TestRunSpecEdit|TestPrintSpecHelp' -> ok (exit 0); go test -count=1 ./pkg/spec/ -> ok (exit 0). No LSP diagnostics.\nThe spec edit subcommand is fully implemented, documented in help text with both CLI command and store-file pointer, verified live to update the store file, and covered by passing tests.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-08-24T17:55:19.544860"
+}

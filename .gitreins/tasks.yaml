@@ -961,3 +961,47 @@ tasks:
   status: complete
   created_at: '2026-08-24T11:30:09.810396+00:00'
   completed_at: '2026-08-24T11:41:23.710007+00:00'
+- id: DF-020
+  title: Spec co-authoring edit loop
+  criteria:
+  - 'PASS: helix spec help mentions how to edit section content (CLI command or explicit
+    store-file pointer). Acceptance: new ''spec edit <id> --section NAME --content
+    ...'' subcommand updates the section in the store file; help text updated; tests
+    added.'
+  status: complete
+  created_at: '2026-08-24T17:50:10.074944+00:00'
+  completed_at: '2026-08-24T17:54:38.959949+00:00'
+- id: GAP-039
+  title: Package-count claims drift (README/SKILL)
+  criteria:
+  - 'PASS: README and skills/helix-usage/SKILL.md package numbers equal live ''go
+    list ./pkg/... | wc -l'' (50) and ''go list ./... | wc -l'' (60).'
+  status: complete
+  created_at: '2026-08-24T17:54:59.333198+00:00'
+  completed_at: '2026-08-24T17:55:03.265035+00:00'
+- id: GAP-042
+  title: forgejo-url usage string placeholder
+  criteria:
+  - 'PASS: ./helix identity provision --help shows ''--forgejo-url string'' and the
+    description no longer substitutes the backticked placeholder.'
+  status: complete
+  created_at: '2026-08-24T17:54:59.456283+00:00'
+  completed_at: '2026-08-24T17:55:55.739519+00:00'
+- id: GAP-043
+  title: Foreign DexDat AGENTS.md in specs
+  criteria:
+  - 'PASS: git ls-files specs/AGENTS.md is empty AND no DexDat charter content matches
+    in specs/ (foreign file verified absent; only legitimate integration-example reference
+    remains in SPECIFICATION.md:952).'
+  status: complete
+  created_at: '2026-08-24T17:54:59.579605+00:00'
+  completed_at: '2026-08-24T17:56:17.265937+00:00'
+- id: GAP-041b
+  title: 'Reopen: dispatch vs dispatcher binary stale'
+  criteria:
+  - 'PASS: rebuilt binaries from HEAD; ./helix --help lists exactly one dispatch entry
+    (canonical ''dispatch'', dispatcher deprecated note) and ''helix dispatcher help''
+    still works with DEPRECATED banner.'
+  status: complete
+  created_at: '2026-08-24T17:54:59.707584+00:00'
+  completed_at: '2026-08-24T17:56:30.690878+00:00'

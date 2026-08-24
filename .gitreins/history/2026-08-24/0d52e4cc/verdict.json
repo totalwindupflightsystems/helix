@@ -1,0 +1,107 @@
+{
+  "task_id": "GAP-042",
+  "task_title": "forgejo-url usage string placeholder",
+  "task_criteria": [
+    "PASS: ./helix identity provision --help shows '--forgejo-url string' and the description no longer substitutes the backticked placeholder."
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 PASS: ./helix identity provision --help shows '--forgejo-url string' and the description no longer substitutes the backticked placeholder.: Ran `./helix identity provision --help` (exit 0). Output: `--forgejo-url string      Forgejo base URL (env: FORGEJO_URL, default http://localhost:3030 \u2014 matches helix status probes)`. Flag type renders as 'string' (not 'helix status'), and description has no backticks. Source at HEAD cmd/helix-identity/main.go:118 confirms backticks removed by commit e0e6879.\nThe forgejo-url usage string placeholder is fixed: --help shows '--forgejo-url string' and the description no longer substitutes the backticked placeholder.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 PASS: ./helix identity provision --help shows '--forgejo-url string' and the description no longer substitutes the backticked placeholder.: Ran `./helix identity provision --help` (exit 0). Output: `--forgejo-url string      Forgejo base URL (env: FORGEJO_URL, default http://localhost:3030 \u2014 matches helix status probes)`. Flag type renders as 'string' (not 'helix status'), and description has no backticks. Source at HEAD cmd/helix-identity/main.go:118 confirms backticks removed by c",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "PASS: ./helix identity provision --help shows '--forgejo-url string' and the description no longer substitutes the backticked placeholder.",
+                "status": "PASS",
+                "detail": "Ran `./helix identity provision --help` (exit 0). Output: `--forgejo-url string      Forgejo base URL (env: FORGEJO_URL, default http://localhost:3030 \u2014 matches helix status probes)`. Flag type renders as 'string' (not 'helix status'), and description has no backticks. Source at HEAD cmd/helix-identity/main.go:118 confirms backticks removed by commit e0e6879."
+              }
+            ],
+            "summary": "The forgejo-url usage string placeholder is fixed: --help shows '--forgejo-url string' and the description no longer substitutes the backticked placeholder."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: GAP-042\n\nStage tier1: FAIL\n    \u2713 lsp: \n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 PASS: ./helix identity provision --help shows '--forgejo-url string' and the description no longer substitutes the backticked placeholder.: Ran `./helix identity provision --help` (exit 0). Output: `--forgejo-url string      Forgejo base URL (env: FORGEJO_URL, default http://localhost:3030 \u2014 matches helix status probes)`. Flag type renders as 'string' (not 'helix status'), and description has no backticks. Source at HEAD cmd/helix-identity/main.go:118 confirms backticks removed by commit e0e6879.\nThe forgejo-url usage string placeholder is fixed: --help shows '--forgejo-url string' and the description no longer substitutes the backticked placeholder.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-08-24T17:56:17.040901"
+}
