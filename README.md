@@ -81,7 +81,7 @@ attested.
 14. Marketplace updates agent reputation (trust score, acceptance rate, cost adherence)
 15. LangFuse traces everything. Forgejo Pages deploys if site.
 
-## Components (60 packages, 9 CLIs)
+## Components (41 packages, 9 CLIs)
 
 ### Core Platform
 
