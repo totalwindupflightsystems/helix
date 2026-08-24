@@ -97,6 +97,7 @@ type estimateOptions struct {
 	diffLines     int
 	dryRun        bool
 	output        string
+	jsonOut       bool
 	tier          string
 	pricingPath   string
 	friendsPath   string
@@ -116,9 +117,25 @@ func (o *estimateOptions) addFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVar(&o.diffLines, "diff-lines", 0, "estimated diff lines")
 	cmd.Flags().BoolVar(&o.dryRun, "dry-run", false, "estimate without checking budget")
 	cmd.Flags().StringVar(&o.output, "output", "table", "output format: json|table|summary")
+	// --json is a convenience alias for --output json, matching the flag surface
+	// of the other helix sub-CLIs (idea/spec/deploy/review). Applied by
+	// applyJSONAlias before option validation; explicit --json wins over
+	// whatever --output was given.
+	cmd.Flags().BoolVar(&o.jsonOut, "json", false,
+		"shorthand for --output json (overrides --output)")
 	cmd.Flags().StringVar(&o.tier, "tier", "pro", "agent tier: pro|flash")
 	cmd.Flags().StringVar(&o.pricingPath, "pricing", defaultPricingPath(),
 		"path to pricing.yaml")
+}
+
+// applyJSONAlias forces the json output format when the --json shorthand was
+// given. It must run before validateEstimateOpts so an explicit --json also
+// overrides a bogus or default --output value. Explicit --json wins when both
+// flags are present.
+func (o *estimateOptions) applyJSONAlias() {
+	if o.jsonOut {
+		o.output = "json"
+	}
 }
 
 // testdataPath resolves the repo-relative testdata fixture path rel to an
@@ -275,6 +292,7 @@ the command explicitly skips any budget consideration and exits with code 10.`,
 }
 
 func runEstimate(opts *estimateOptions, desc string) error {
+	opts.applyJSONAlias()
 	if err := validateEstimateOpts(opts); err != nil {
 		fmt.Fprintf(os.Stderr, "ESTIMATION_FAILED: %s\n", err)
 		os.Exit(estimate.ExitEstimationFailed)
@@ -340,6 +358,7 @@ approval regardless of the budget arithmetic.`,
 }
 
 func runCheck(opts *checkOptions, agentName, desc string) error {
+	opts.applyJSONAlias()
 	if err := validateEstimateOpts(opts.estimateOptions); err != nil {
 		fmt.Fprintf(os.Stderr, "ESTIMATION_FAILED: %s\n", err)
 		os.Exit(estimate.ExitEstimationFailed)

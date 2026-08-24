@@ -362,6 +362,74 @@ func TestValidateEstimateOpts(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// applyJSONAlias (DF-019)
+// ---------------------------------------------------------------------------
+
+// TestApplyJSONAlias covers the --json shorthand semantics: explicit --json
+// forces output=json regardless of what --output holds (including bogus values,
+// since the alias runs before validation), and absent --json leaves output
+// untouched.
+func TestApplyJSONAlias(t *testing.T) {
+	t.Run("json_overrides_table_default", func(t *testing.T) {
+		o := &estimateOptions{output: "table", jsonOut: true}
+		o.applyJSONAlias()
+		if o.output != "json" {
+			t.Errorf("output = %q, want json", o.output)
+		}
+	})
+	t.Run("json_overrides_explicit_summary", func(t *testing.T) {
+		o := &estimateOptions{output: "summary", jsonOut: true}
+		o.applyJSONAlias()
+		if o.output != "json" {
+			t.Errorf("explicit --json must win over --output summary: got %q", o.output)
+		}
+	})
+	t.Run("json_rescues_bogus_output_before_validation", func(t *testing.T) {
+		o := &estimateOptions{
+			taskType: "code",
+			model:    "deepseek-v4-pro",
+			provider: "deepseek",
+			output:   "yaml",
+			jsonOut:  true,
+		}
+		o.applyJSONAlias()
+		if err := validateEstimateOpts(o); err != nil {
+			t.Errorf("--json should override bogus --output before validation: %v", err)
+		}
+	})
+	t.Run("absent_json_leaves_output_alone", func(t *testing.T) {
+		o := &estimateOptions{output: "table"}
+		o.applyJSONAlias()
+		if o.output != "table" {
+			t.Errorf("output = %q, want table (alias must be a no-op without --json)", o.output)
+		}
+	})
+}
+
+// TestJSONFlagRegistered confirms both the estimate and check subcommands
+// expose the --json flag (DF-019 flag-surface consistency).
+func TestJSONFlagRegistered(t *testing.T) {
+	t.Run("estimate", func(t *testing.T) {
+		f := newEstimateCmd().Flags().Lookup("json")
+		if f == nil {
+			t.Fatal("estimate command missing --json flag")
+		}
+		if f.DefValue != "false" {
+			t.Errorf("--json default = %q, want false", f.DefValue)
+		}
+	})
+	t.Run("check", func(t *testing.T) {
+		f := newCheckCmd().Flags().Lookup("json")
+		if f == nil {
+			t.Fatal("check command missing --json flag")
+		}
+		if f.DefValue != "false" {
+			t.Errorf("--json default = %q, want false", f.DefValue)
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------
 // estimateTier
 // ---------------------------------------------------------------------------
 
@@ -1803,5 +1871,87 @@ func TestFriendBudgetToBudgetInfo_StatusNotPropagated(t *testing.T) {
 	}
 	if bi.Tier != "pro" {
 		t.Errorf("Tier = %q, want pro", bi.Tier)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// DF-019 end-to-end: --json alias accepted on the command surface
+// ---------------------------------------------------------------------------
+
+// TestEstimateCmdJSONAliasE2E drives the real cobra parser with --json and
+// proves the rendered output is JSON (not the table default). Safe in-process:
+// the estimate happy path returns nil instead of calling os.Exit.
+func TestEstimateCmdJSONAliasE2E(t *testing.T) {
+	root := newRootCmd()
+	root.SetArgs([]string{
+		"estimate",
+		"--model", "deepseek-v4-pro",
+		"--provider", "deepseek",
+		"--pricing", pricingFixturePath(),
+		"--json",
+		"implement cost estimator",
+	})
+
+	out := captureStdoutFunc(func() {
+		if err := root.Execute(); err != nil {
+			t.Errorf("execute with --json failed: %v", err)
+		}
+	})
+
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &result); err != nil {
+		t.Fatalf("--json output should be valid JSON, got %v\noutput: %s", err, out)
+	}
+	if _, ok := result["cost"]; !ok {
+		t.Errorf("JSON output missing cost field: %s", out)
+	}
+}
+
+// TestRunCheck_JSONFlag_Subprocess is the board PASS criterion for DF-019:
+// `check <agent> <task> --json` exits 0 (AUTO_APPROVED agent) and prints JSON.
+// runCheck always os.Exit()s, so it runs under the established subprocess
+// pattern. The child parses its own output to prove the decision JSON is well
+// formed before exiting.
+func TestRunCheck_JSONFlag_Subprocess(t *testing.T) {
+	if os.Getenv("RUN_CHECK_JSON_SUBPROCESS") == "1" {
+		opts := &checkOptions{
+			estimateOptions: &estimateOptions{
+				taskType:    "code",
+				model:       "deepseek-v4-pro",
+				provider:    "deepseek",
+				pricingPath: pricingFixturePath(),
+				output:      "table", // NOT json — proves --json overrides it
+				jsonOut:     true,
+				tier:        "pro",
+				friendsPath: friendsFixturePath(),
+			},
+			autoApprove:  true,
+			requireHuman: false,
+		}
+		_ = runCheck(opts, "wojons", "small fix") // os.Exit(0) on auto-approve
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestRunCheck_JSONFlag_Subprocess")
+	cmd.Env = append(os.Environ(), "RUN_CHECK_JSON_SUBPROCESS=1")
+	out, err := cmd.CombinedOutput()
+	combined := string(out)
+
+	// Exit code must be 0 (AUTO_APPROVED) even though go test wraps the child.
+	if err != nil {
+		t.Fatalf("check --json subprocess should exit 0, got %v\n%s", err, combined)
+	}
+	// Strip the go test harness lines and parse the decision JSON object.
+	start := strings.Index(combined, "{")
+	end := strings.LastIndex(combined, "}")
+	if start < 0 || end <= start {
+		t.Fatalf("subprocess output contains no JSON object:\n%s", combined)
+	}
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(combined[start:end+1]), &result); err != nil {
+		t.Fatalf("check --json should emit valid JSON: %v\n%s", err, combined)
+	}
+	if _, ok := result["decision"]; !ok {
+		t.Errorf("JSON output missing decision field: %s", combined)
 	}
 }
