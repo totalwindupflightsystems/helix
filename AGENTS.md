@@ -7,11 +7,16 @@ participants in the software development lifecycle.
 
 ```
 cmd/
+  helix/             Unified CLI entry point — wraps all sub-CLIs (identity, estimate,
+                     negotiate, prompt, marketplace, sandbox, release) with global flags,
+                     version reporting, and platform status
   helix-identity/    Agent provisioning in Forgejo
   helix-estimate/    Pre-flight cost estimation
   helix-negotiate/   Agent PR debate + Chimera tie-break
   helix-prompt/      Prompt provenance + hash attestation
-  helix-marketplace/ Agent discoverability + trust scoring
+  helix-marketplace/ Agent registry, trust scoring, human ratings
+  helix-release/     Release signoff — dual human+agent gate for production deployment
+  helix-verify/      Production verification — shadow, canary, and differential analysis
   sandbox/           Bubblewrap agent isolation
 pkg/
   identity/          Forgejo OAuth, SSH keys, PAT management
