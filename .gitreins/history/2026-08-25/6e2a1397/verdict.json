@@ -1,0 +1,107 @@
+{
+  "task_id": "DEP-001",
+  "task_title": "Update outdated Go modules",
+  "task_criteria": [
+    "go list -u -m all | grep '\\[' returns 0 for the direct-dependency set (or a documented pinned-exception list); go build ./... and go test -short -count=1 ./... pass"
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 lsp: \n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n",
+      "steps": [
+        {
+          "id": "lsp",
+          "type": "script",
+          "passed": true,
+          "output": "",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "lint",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "build",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'engine'\n",
+          "error": "",
+          "data": {
+            "exit_code": 1
+          }
+        },
+        {
+          "id": "trust_tier",
+          "type": "script",
+          "passed": true,
+          "output": "\u2713 Trust tier: no changed files to check \u2014 PASS\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 go list -u -m all | grep '\\[' returns 0 for the direct-dependency set (or a documented pinned-exception list); go build ./... and go test -short -count=1 ./... pass: Direct-dependency set (google/uuid v1.6.0, spf13/cobra v1.10.2, stretchr/testify v1.12.1, otelhttp v0.70.0, x/time v0.15.0, yaml.v3 v3.0.1) has zero outdated entries \u2014 grep for outdated direct deps returned exit 1 (no matches); the 118 outdated modules are all indirect deps, excluded by the criterion's direct-set scope and documented in commit 584a74b ('sole outdated direct dep; 120 indirect churn'). go build ./... exit 0. go test -short -count=1 ./... exit 0 with 60 pkgs ok, no FAIL/panic. Commit 584a74b upgraded testify v1.11.1->v1.12.1 (the sole outdated direct dep).\nDEP-001 complete: sole outdated direct dependency (testify) upgraded to v1.12.1, direct-dependency set clean, go build and go test -short -count=1 ./... both pass (exit 0, 60 pkgs ok).",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 go list -u -m all | grep '\\[' returns 0 for the direct-dependency set (or a documented pinned-exception list); go build ./... and go test -short -count=1 ./... pass: Direct-dependency set (google/uuid v1.6.0, spf13/cobra v1.10.2, stretchr/testify v1.12.1, otelhttp v0.70.0, x/time v0.15.0, yaml.v3 v3.0.1) has zero outdated entries \u2014 grep for outdated direct deps returned exit 1 (no matches); the 118 outdated modules are all indirect deps, excluded by the criterion's direct-set scope ",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "go list -u -m all | grep '\\[' returns 0 for the direct-dependency set (or a documented pinned-exception list); go build ./... and go test -short -count=1 ./... pass",
+                "status": "PASS",
+                "detail": "Direct-dependency set (google/uuid v1.6.0, spf13/cobra v1.10.2, stretchr/testify v1.12.1, otelhttp v0.70.0, x/time v0.15.0, yaml.v3 v3.0.1) has zero outdated entries \u2014 grep for outdated direct deps returned exit 1 (no matches); the 118 outdated modules are all indirect deps, excluded by the criterion's direct-set scope and documented in commit 584a74b ('sole outdated direct dep; 120 indirect churn'). go build ./... exit 0. go test -short -count=1 ./... exit 0 with 60 pkgs ok, no FAIL/panic. Commit 584a74b upgraded testify v1.11.1->v1.12.1 (the sole outdated direct dep)."
+              }
+            ],
+            "summary": "DEP-001 complete: sole outdated direct dependency (testify) upgraded to v1.12.1, direct-dependency set clean, go build and go test -short -count=1 ./... both pass (exit 0, 60 pkgs ok)."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DEP-001\n\nStage tier1: FAIL\n    \u2713 lsp: \n  \u2717 lint: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 build: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 secrets: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2717 tests: Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No mo\n  \u2713 trust_tier: \u2713 Trust tier: no changed files to check \u2014 PASS\n\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 go list -u -m all | grep '\\[' returns 0 for the direct-dependency set (or a documented pinned-exception list); go build ./... and go test -short -count=1 ./... pass: Direct-dependency set (google/uuid v1.6.0, spf13/cobra v1.10.2, stretchr/testify v1.12.1, otelhttp v0.70.0, x/time v0.15.0, yaml.v3 v3.0.1) has zero outdated entries \u2014 grep for outdated direct deps returned exit 1 (no matches); the 118 outdated modules are all indirect deps, excluded by the criterion's direct-set scope and documented in commit 584a74b ('sole outdated direct dep; 120 indirect churn'). go build ./... exit 0. go test -short -count=1 ./... exit 0 with 60 pkgs ok, no FAIL/panic. Commit 584a74b upgraded testify v1.11.1->v1.12.1 (the sole outdated direct dep).\nDEP-001 complete: sole outdated direct dependency (testify) upgraded to v1.12.1, direct-dependency set clean, go build and go test -short -count=1 ./... both pass (exit 0, 60 pkgs ok).\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-08-25T00:09:31.979373"
+}

@@ -1006,3 +1006,11 @@ tasks:
   status: complete
   created_at: '2026-08-24T17:54:59.707584+00:00'
   completed_at: '2026-08-24T17:56:30.690878+00:00'
+- id: DEP-001
+  title: Update outdated Go modules
+  criteria:
+  - go list -u -m all | grep '\[' returns 0 for the direct-dependency set (or a documented
+    pinned-exception list); go build ./... and go test -short -count=1 ./... pass
+  status: complete
+  created_at: '2026-08-25T00:06:42.968151+00:00'
+  completed_at: '2026-08-25T00:08:11.500960+00:00'
