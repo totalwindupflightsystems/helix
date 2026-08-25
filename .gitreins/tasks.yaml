@@ -1014,3 +1014,23 @@ tasks:
   status: complete
   created_at: '2026-08-25T00:06:42.968151+00:00'
   completed_at: '2026-08-25T00:08:11.500960+00:00'
+- id: GAP-044
+  title: 'Board closure-evidence gap: complete rows lack commit_hash/verification
+    notes'
+  criteria:
+  - 'Every complete row in .coding-hermes/board/tasks.jsonl among {CH-002,CH-003,CI-002,GAP-024,GAP-026,GAP-031,NEVER-DONE}
+    carries a commit_hash OR an explicit verification note in foreman_note; CI-002
+    closure cites evidence (tick #95 board commit 7ed48f6 + run 31129310629 SUCCESS);
+    CH-002 and CH-003 carry their implementation commit hashes (bef8c9b, 3f10b50).'
+  status: complete
+  created_at: '2026-08-25T11:08:48.960277+00:00'
+  completed_at: '2026-08-25T11:09:28.586433+00:00'
+- id: GAP-045
+  title: 'AGENTS.md Project Structure block drift: undocumented cmd/ entries'
+  criteria:
+  - AGENTS.md Project Structure block lists every cmd/ entry (helix, helix-identity,
+    helix-estimate, helix-negotiate, helix-prompt, helix-marketplace, helix-release,
+    helix-verify, sandbox); AGENTS.md contains no stale bin/ artifact references.
+  status: complete
+  created_at: '2026-08-25T11:08:49.099772+00:00'
+  completed_at: '2026-08-25T11:09:59.134769+00:00'
