@@ -1,10 +1,13 @@
-.PHONY: build test lint clean docker-build docker-up docker-up all install
+.PHONY: build test lint clean docker-build docker-up docker-up all install .ensure-tmpdir
 
-# Go tmpfs redirect — /tmp on this host is a 30G tmpfs at 80%+ util.
-# Trust ledger integration tests use t.TempDir() and hit quota. Persist via go env -w
-# AND export TMPDIR for the linker (which doesn't honour GOTMPDIR).
-export TMPDIR ?= /home/kara/.cache/go-tmp
-GOTMPCACHE := /home/kara/.cache/go-build
+# Go tmp redirect — default under $(HOME) so it works on any host (this host's /tmp is a loaded tmpfs).
+# Trust ledger integration tests use t.TempDir() and the linker honours TMPDIR (not GOTMPDIR), so
+# export it and create the dir before test/build. ?= keeps an externally-set TMPDIR in effect
+# (e.g. CI redirecting to tmpfs).
+export TMPDIR ?= $(HOME)/.cache/helix-tmp
+
+.ensure-tmpdir:
+	mkdir -p "$(TMPDIR)"
 
 # Default target
 all: lint test build
@@ -14,7 +17,7 @@ all: lint test build
 # builds and DISCARDS the executables (go1.26); `-o .` is required so the
 # binaries actually land in the repo root, where the unified `helix` CLI
 # and `make install` expect them.
-build:
+build: | .ensure-tmpdir
 	go build -o . ./cmd/...
 
 # Install prefix for `make install` (override, e.g. `make install PREFIX=$(HOME)/.local`)
@@ -29,7 +32,7 @@ install: build
 	install -m 0755 helix helix-identity helix-estimate helix-marketplace helix-negotiate helix-prompt helix-release helix-verify sandbox "$(BINDIR)/"
 
 # Run unit tests (short mode, no integration)
-test:
+test: | .ensure-tmpdir
 	go test -short -count=1 ./...
 
 # Run integration tests
