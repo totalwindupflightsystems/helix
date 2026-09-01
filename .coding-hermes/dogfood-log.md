@@ -88,3 +88,5 @@ status` default (false down, DF-017).
 **Foreman wake:** skipped — cooldown 21600 = fleet.toml operator pin (board
 precedent GAP-024..026: never PUT below pin); push channel blocked
 (INFRA-GH-001, human). Commits local-only.
+2026-09-01 | PROMISING-BUT-ROUGH | 181s t2fs | friction 8 | 5 findings
+
