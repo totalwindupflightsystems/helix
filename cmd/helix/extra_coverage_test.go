@@ -747,6 +747,12 @@ func TestDispatch_DelegatesToMissingBinary(t *testing.T) {
 	dryRun = false
 	defer func() { dryRun = oldDry }()
 
+	// Hermetic PATH: hosts with `make install`ed CLIs (e.g. ~/.local/bin)
+	// resolve helix-identity via PATH, which would make this test fail.
+	// Point PATH at an empty temp dir so the missing-binary path is
+	// exercised deterministically.
+	t.Setenv("PATH", t.TempDir())
+
 	d := rootCmd()
 	err := d.dispatch([]string{"identity"})
 	require.Error(t, err)

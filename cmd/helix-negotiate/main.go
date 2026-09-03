@@ -206,12 +206,34 @@ func runDebate(opts *debateOptions, prURL string) error {
 				prevState, newState, neg.Neg.Round)
 		}
 		if advErr != nil {
+			// Escalation (e.g. Chimera unavailable at StateChimeraTiebreak)
+			// must NOT exit 0 — the negotiation did not resolve. Map the
+			// reason to the spec §14 exit code (2 = chimera unavailable).
 			fmt.Fprintf(os.Stderr, "negotiation step error: %v\n", advErr)
-			break
+			if neg.Neg.State == negotiate.StateEscalated {
+				reason := negotiate.EscalationChimeraUnavailable
+				if strings.Contains(advErr.Error(), "timeout") {
+					reason = negotiate.EscalationTimeout
+				}
+				fmt.Fprintln(os.Stderr, negotiate.EscalationMessage(reason, advErr.Error()))
+				exitProcess(negotiate.EscalationExitCode(reason))
+			} else {
+				exitProcess(negotiate.ExitCodeFromError(advErr))
+			}
+			return advErr
 		}
 		if newState == prevState {
 			break // no state change — avoid infinite loop
 		}
+	}
+
+	// Terminal state reached — if it is an escalation, exit non-zero.
+	if neg.Neg.State == negotiate.StateEscalated {
+		reason := negotiate.EscalationChimeraUnavailable
+		msg := negotiate.EscalationMessage(reason, "negotiation escalated to human review")
+		fmt.Fprintln(os.Stderr, msg)
+		exitProcess(negotiate.EscalationExitCode(reason))
+		return fmt.Errorf("%s", msg)
 	}
 
 	renderNegotiationResult(os.Stdout, neg, auditPath)
@@ -368,6 +390,9 @@ func runResolveWithPositions(opts *resolveOptions, prNumber int) error {
 	ctx := context.Background()
 	resolution, err := neg.Negotiate(ctx, prCtx)
 	if err != nil {
+		// Map to the spec §14 exit code (2 = chimera unavailable) instead
+		// of the generic main() exit 1.
+		exitProcess(negotiate.ExitCodeFromError(err))
 		return err
 	}
 

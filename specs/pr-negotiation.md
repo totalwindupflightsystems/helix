@@ -77,13 +77,20 @@ Review body format for negotiation:
 
 ### 3.3 Chimera Arbiter Formation
 
+> **Live contract (verified 2026-09-01, DF-HELIX-1):** Chimera serves
+> `POST /v1/deliberate` — NOT `/deliberate` (404) and NOT `/api/v1/deliberate`
+> (404). The only valid formations are `audit, auto, debate, simple,
+> spec-writer, speed` (`GET /v1/formations`); `"arbiter"` returns 422. The
+> response is `{answer, trace, request_id}` — the verdict text lives in
+> `answer`; there is no `status`/`confidence`/`summary` field.
+
 ```
-POST http://chimera:8765/deliberate
+POST http://chimera:8765/v1/deliberate
 Body: {
   "prompt": "<full debate transcript + PR diff + spec files>",
-  "formation": "arbiter"
+  "formation": "debate"
 }
-Response: ChimeraVerdict (see §9)
+Response: {answer, trace, request_id} — verdict parsed from "answer"
 ```
 
 ### 3.4 CLI Interface
@@ -151,7 +158,7 @@ helix negotiate resolve <pr-url> [flags]
                  ┌───────────────▼──────────────────────────────┐
                  │              External APIs                    │
                  │  Forgejo: PR review CRUD                      │
-                 │  Chimera: POST /deliberate (formation=arbiter)│
+                 │  Chimera: POST /v1/deliberate (formation=debate)│
                  │  known-friends.json: trust_level lookup       │
                  └──────────────────────────────────────────────┘
 ```
@@ -273,11 +280,16 @@ If Chimera tie-break determines a veto was frivolous (no spec violation found):
 
 ### 9.1 Arbiter Formation
 
+> **Live contract (verified 2026-09-01, DF-HELIX-1):** route is
+> `POST /v1/deliberate`; formation `"arbiter"` is NOT valid (422) — use
+> `"debate"` (best_of_n merge, closest to arbiter intent) or omit to let
+> the server default to `auto`. Response is `{answer, trace, request_id}`.
+
 ```
-POST http://chimera:8765/deliberate
+POST http://chimera:8765/v1/deliberate
 {
   "prompt": "<full context below>",
-  "formation": "arbiter"
+  "formation": "debate"
 }
 ```
 
@@ -512,7 +524,7 @@ Test fixtures (in `pkg/negotiate/testdata/`):
 | Negotiation state machine | ✅ Live | All 6 states, all transitions (negotiator.go) |
 | Debate round manager | ✅ Live | 3 rounds, evidence validation, strike system (debate.go) |
 | Forgejo review API client | ✅ Live | pkg/forgejo client (GET/POST reviews, MergePR) |
-| Chimera arbiter client | ✅ Live | POST /deliberate, verdict parsing (arbiter.go) |
+| Chimera arbiter client | ✅ Live | POST /v1/deliberate, answer-based verdict parsing (arbiter.go) |
 | Trust adjustment engine | ✅ Live | All delta calculations (trust.go, trust_adjustment.go) |
 | Timeout watcher | ✅ Live | Per-round + global timeout (timeout.go) |
 | Evidence validator | ✅ Live | Minimum 2 items, 1 spec ref required (debate_validator.go) |

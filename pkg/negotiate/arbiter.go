@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -22,32 +24,17 @@ func NewArbiterClient(baseURL string) *ArbiterClient {
 	}
 }
 
-// chimeraResponse is the JSON shape returned by Chimera's /deliberate endpoint.
-// The testdata fixtures (chimera-arbiter-approve.json, chimera-arbiter-reject.json)
-// use "status" for the verdict field, not "verdict".
+// chimeraResponse is the JSON shape returned by Chimera's /v1/deliberate
+// endpoint (verified live 2026-09-01): {answer, trace, request_id}.
+// The verdict text lives in "answer"; "trace" is an execution-graph object
+// that does NOT reliably carry {source, duration, total_tokens}.
 type chimeraResponse struct {
-	Status     string           `json:"status"`
-	Confidence float64          `json:"confidence"`
-	Summary    string           `json:"summary"`
-	Findings   []chimeraFinding `json:"findings"`
-	Trace      chimeraTrace     `json:"trace"`
+	Answer    string                 `json:"answer"`
+	Trace     map[string]interface{} `json:"trace"`
+	RequestID string                 `json:"request_id"`
 }
 
-type chimeraFinding struct {
-	Severity    string `json:"severity"`
-	Category    string `json:"category"`
-	File        string `json:"file"`
-	Line        int    `json:"line"`
-	Description string `json:"description"`
-}
-
-type chimeraTrace struct {
-	Source      string  `json:"source"`
-	Duration    float64 `json:"duration"`
-	TotalTokens int     `json:"total_tokens"`
-}
-
-// deliberationRequest is the JSON body sent to Chimera's /deliberate endpoint.
+// deliberationRequest is the JSON body sent to Chimera's /v1/deliberate endpoint.
 type deliberationRequest struct {
 	Prompt    string `json:"prompt"`
 	Formation string `json:"formation"`
@@ -59,22 +46,34 @@ type deliberationRequest struct {
 func (c *ArbiterClient) Deliberate(prompt string) (*ChimeraVerdict, error) {
 	payload := deliberationRequest{
 		Prompt:    prompt,
-		Formation: "arbiter",
+		Formation: "debate",
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("marshal deliberation request: %w", err)
 	}
 
-	url := c.BaseURL + "/deliberate"
+	// Live Chimera serves /v1/deliberate — NOT /deliberate (404) and NOT
+	// /api/v1/deliberate (404). Verified live 2026-09-01 (DF-HELIX-1).
+	url := strings.TrimRight(c.BaseURL, "/") + "/v1/deliberate"
 	resp, err := c.Client.Post(url, "application/json", bytes.NewReader(body))
 	if err != nil {
-		return nil, fmt.Errorf("CHIMERA_UNAVAILABLE: %w", err)
+		return nil, NewChimeraUnavailableError(err.Error())
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("CHIMERA_UNAVAILABLE: HTTP %d", resp.StatusCode)
+		// Include a body snippet so 404 (path) vs 422 (payload) vs 5xx
+		// (down) are distinguishable.
+		snippet := ""
+		if b, rerr := io.ReadAll(io.LimitReader(resp.Body, 512)); rerr == nil {
+			snippet = strings.TrimSpace(string(b))
+		}
+		detail := fmt.Sprintf("HTTP %d", resp.StatusCode)
+		if snippet != "" {
+			detail += ": " + snippet
+		}
+		return nil, NewChimeraUnavailableError(detail)
 	}
 
 	var cr chimeraResponse
@@ -82,12 +81,33 @@ func (c *ArbiterClient) Deliberate(prompt string) (*ChimeraVerdict, error) {
 		return nil, fmt.Errorf("parse Chimera response: %w", err)
 	}
 
+	verdict, err := parseChimeraVerdict(cr.Answer)
+	if err != nil {
+		return nil, err
+	}
+
 	return &ChimeraVerdict{
-		Verdict:    cr.Status,
-		Confidence: cr.Confidence,
-		Cost:       estimateArbiterCost(cr.Trace.TotalTokens),
-		Trace:      cr.Summary,
+		Verdict:    verdict,
+		Confidence: 0, // live API does not return confidence — defensive zero
+		Cost:       estimateArbiterCost(0),
+		Trace:      cr.Answer,
 	}, nil
+}
+
+// parseChimeraVerdict extracts an APPROVE/REJECT verdict from Chimera's
+// free-text "answer" field. The live server returns the verdict as plain
+// text (e.g. "REJECT"); tolerate surrounding prose and case variants.
+// "APPROVED" normalizes to "APPROVE" (the ChimeraVerdict convention).
+func parseChimeraVerdict(answer string) (string, error) {
+	upper := strings.ToUpper(strings.TrimSpace(answer))
+	switch {
+	case strings.Contains(upper, "APPROVE"):
+		return "APPROVE", nil
+	case strings.Contains(upper, "REJECT"):
+		return "REJECT", nil
+	default:
+		return "", fmt.Errorf("parse Chimera response: no APPROVE/REJECT verdict in answer %q", answer)
+	}
 }
 
 // SplitCost divides the tie-break cost evenly between two agents (spec §9.3).

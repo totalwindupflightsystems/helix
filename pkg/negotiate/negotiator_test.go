@@ -444,7 +444,7 @@ func TestAdvance_NormalFlow(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"status":"APPROVE","confidence":0.92,"summary":"approved after arbiter deliberation","trace":{"source":"test","duration":0.1,"total_tokens":500}}`))
+			_, _ = w.Write([]byte(`{"answer":"APPROVE","trace":{"stages":[{"stage":"execute"}]},"request_id":"test-0001"}`))
 		}))
 		defer ts.Close()
 
@@ -942,7 +942,7 @@ func TestNegotiate(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"status":"REJECT","confidence":0.85,"summary":"rejected due to missing tests","trace":{"source":"test","duration":0.2,"total_tokens":300}}`))
+			_, _ = w.Write([]byte(`{"answer":"REJECT","trace":{"stages":[{"stage":"execute"}]},"request_id":"test-0005"}`))
 		}))
 		defer ts.Close()
 
@@ -987,7 +987,7 @@ func TestEscalateToChimera(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"status":"APPROVE","confidence":0.95,"summary":"approved","trace":{"source":"test","duration":0.1,"total_tokens":200}}`))
+			_, _ = w.Write([]byte(`{"answer":"APPROVE","trace":{"stages":[{"stage":"execute"}]},"request_id":"test-0002"}`))
 		}))
 		defer ts.Close()
 
@@ -1007,8 +1007,9 @@ func TestEscalateToChimera(t *testing.T) {
 		if verdict.Verdict != "APPROVE" {
 			t.Errorf("Verdict = %q, want APPROVE", verdict.Verdict)
 		}
-		if verdict.Confidence != 0.95 {
-			t.Errorf("Confidence = %f, want 0.95", verdict.Confidence)
+		// Live API has no confidence field — defensive zero is expected.
+		if verdict.Confidence != 0 {
+			t.Errorf("Confidence = %f, want 0 (live API has no confidence field)", verdict.Confidence)
 		}
 	})
 
@@ -1080,7 +1081,7 @@ func TestEscalateToChimera_VerdictFields(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"status":"APPROVE","confidence":0.72,"summary":"Approved via arbiter","trace":{"source":"chimera","duration":0.55,"total_tokens":1000}}`))
+		_, _ = w.Write([]byte(`{"answer":"APPROVE","trace":{"stages":[{"stage":"execute"}]},"request_id":"test-0003"}`))
 	}))
 	defer ts.Close()
 
@@ -1099,15 +1100,17 @@ func TestEscalateToChimera_VerdictFields(t *testing.T) {
 	if verdict.Verdict != "APPROVE" {
 		t.Errorf("Verdict = %q, want APPROVE", verdict.Verdict)
 	}
-	if verdict.Confidence != 0.72 {
-		t.Errorf("Confidence = %f, want 0.72", verdict.Confidence)
+	// Live API (verified 2026-09-01) has no confidence field — defensive zero.
+	if verdict.Confidence != 0 {
+		t.Errorf("Confidence = %f, want 0 (live API has no confidence field)", verdict.Confidence)
 	}
-	if verdict.Trace != "Approved via arbiter" {
-		t.Errorf("Trace = %q, want 'Approved via arbiter'", verdict.Trace)
+	// Trace carries the raw answer text.
+	if verdict.Trace != "APPROVE" {
+		t.Errorf("Trace = %q, want the answer text 'APPROVE'", verdict.Trace)
 	}
-	// Cost should be tokens * 0.00000032
-	expectedCost := float64(1000) * 0.00000032
-	if verdict.Cost != expectedCost {
-		t.Errorf("Cost = %f, want %f (1000 tokens * 0.00000032)", verdict.Cost, expectedCost)
+	// Cost is defensive zero — the live trace is an execution-graph object
+	// with no reliable total_tokens field.
+	if verdict.Cost != 0 {
+		t.Errorf("Cost = %f, want 0 (live API trace has no total_tokens)", verdict.Cost)
 	}
 }

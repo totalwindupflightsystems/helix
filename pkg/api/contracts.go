@@ -262,7 +262,7 @@ type ChimeraHealthResponse struct {
 // ChimeraEndpoints returns all Chimera API endpoints.
 func ChimeraEndpoints() []EndpointDef {
 	return []EndpointDef{
-		{Service: ServiceChimera, Method: MethodPost, Path: "/deliberate", Name: "Run Deliberation", ResponseType: "ChimeraDeliberateResponse", StatusCodes: []int{200, 400, 429, 500, 504}},
+		{Service: ServiceChimera, Method: MethodPost, Path: "/v1/deliberate", Name: "Run Deliberation", ResponseType: "ChimeraDeliberateResponse", StatusCodes: []int{200, 400, 422, 429, 500, 504}},
 		{Service: ServiceChimera, Method: MethodGet, Path: "/formations", Name: "List Formations", ResponseType: "ChimeraListFormationsResponse", StatusCodes: []int{200}},
 		{Service: ServiceChimera, Method: MethodGet, Path: "/health", Name: "Health Check", ResponseType: "ChimeraHealthResponse", StatusCodes: []int{200, 503}},
 	}

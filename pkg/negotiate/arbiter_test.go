@@ -1,7 +1,12 @@
 package negotiate
 
 import (
+	"encoding/json"
+	"errors"
 	"math"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -157,5 +162,123 @@ func TestNewArbiterClient_CustomURL(t *testing.T) {
 	client := NewArbiterClient("https://chimera.example.com:443")
 	if client.BaseURL != "https://chimera.example.com:443" {
 		t.Errorf("BaseURL = %q, want %q", client.BaseURL, "https://chimera.example.com:443")
+	}
+}
+
+// =============================================================================
+// Deliberate tests (live contract verified 2026-09-01: POST /v1/deliberate,
+// response {answer, trace, request_id})
+// =============================================================================
+
+func TestDeliberate_Success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/deliberate" {
+			t.Errorf("path = %q, want /v1/deliberate", r.URL.Path)
+		}
+		if r.Method != http.MethodPost {
+			t.Errorf("method = %s, want POST", r.Method)
+		}
+		var req deliberationRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		if req.Formation != "debate" {
+			t.Errorf("formation = %q, want debate (live-valid preset)", req.Formation)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"answer":"REJECT","trace":{"stages":[{"stage":"execute"}]},"request_id":"live-0001"}`))
+	}))
+	defer ts.Close()
+
+	client := NewArbiterClient(ts.URL)
+	verdict, err := client.Deliberate("Resolve this conflict.")
+	if err != nil {
+		t.Fatalf("Deliberate error: %v", err)
+	}
+	if verdict.Verdict != "REJECT" {
+		t.Errorf("Verdict = %q, want REJECT", verdict.Verdict)
+	}
+	if verdict.Trace != "REJECT" {
+		t.Errorf("Trace = %q, want the answer text", verdict.Trace)
+	}
+}
+
+func TestDeliberate_AnswerWithProse(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"answer":"I recommend APPROVE based on the evidence.","trace":{},"request_id":"live-0002"}`))
+	}))
+	defer ts.Close()
+
+	client := NewArbiterClient(ts.URL)
+	verdict, err := client.Deliberate("Resolve this conflict.")
+	if err != nil {
+		t.Fatalf("Deliberate error: %v", err)
+	}
+	if verdict.Verdict != "APPROVE" {
+		t.Errorf("Verdict = %q, want APPROVE (parsed from prose)", verdict.Verdict)
+	}
+}
+
+func TestDeliberate_HTTP404(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"route not found"}`))
+	}))
+	defer ts.Close()
+
+	client := NewArbiterClient(ts.URL)
+	_, err := client.Deliberate("Resolve this conflict.")
+	if err == nil {
+		t.Fatal("expected error for 404, got nil")
+	}
+	if !strings.Contains(err.Error(), "CHIMERA_UNAVAILABLE") {
+		t.Errorf("error should contain CHIMERA_UNAVAILABLE, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "404") {
+		t.Errorf("error should contain status code 404, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "route not found") {
+		t.Errorf("error should include body snippet, got: %v", err)
+	}
+	var negErr *NegotiationError
+	if !errors.As(err, &negErr) {
+		t.Fatalf("error should be a NegotiationError, got %T", err)
+	}
+	if negErr.Code != ExitCodeChimeraUnavailable {
+		t.Errorf("exit code = %d, want %d", negErr.Code, ExitCodeChimeraUnavailable)
+	}
+}
+
+func TestDeliberate_EmptyAnswer(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"answer":"","trace":{},"request_id":"live-0003"}`))
+	}))
+	defer ts.Close()
+
+	client := NewArbiterClient(ts.URL)
+	_, err := client.Deliberate("Resolve this conflict.")
+	if err == nil {
+		t.Fatal("expected error for empty answer, got nil")
+	}
+	if !strings.Contains(err.Error(), "no APPROVE/REJECT verdict") {
+		t.Errorf("error should mention missing verdict, got: %v", err)
+	}
+}
+
+func TestDeliberate_ConnectionError(t *testing.T) {
+	// Point at a closed port — connection refused.
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	url := ts.URL
+	ts.Close()
+
+	client := NewArbiterClient(url)
+	_, err := client.Deliberate("Resolve this conflict.")
+	if err == nil {
+		t.Fatal("expected error for connection failure, got nil")
+	}
+	if !strings.Contains(err.Error(), "CHIMERA_UNAVAILABLE") {
+		t.Errorf("error should contain CHIMERA_UNAVAILABLE, got: %v", err)
 	}
 }

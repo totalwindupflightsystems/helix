@@ -544,6 +544,62 @@ func TestRunDebate_DryRunConflict(t *testing.T) {
 	}
 }
 
+// TestRunDebate_EscalationExitsNonZero verifies the DF-HELIX-1 fix: when the
+// negotiation escalates (Chimera unavailable at the tie-break), the CLI must
+// exit with the spec §14 code 2 (CHIMERA_UNAVAILABLE) — NOT rc=0.
+func TestRunDebate_EscalationExitsNonZero(t *testing.T) {
+	// Chimera server that 404s — the pre-fix behavior was a silent rc=0.
+	chimera := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"route not found"}`))
+	}))
+	defer chimera.Close()
+
+	var exited int
+	exitProcess = func(code int) { exited = code }
+	defer func() { exitProcess = os.Exit }()
+
+	// Redirect HOME so the audit log lands in a temp dir.
+	fakeHome := t.TempDir()
+	t.Setenv("HOME", fakeHome)
+
+	// Capture stderr for the escalation message.
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldStderr := os.Stderr
+	os.Stderr = w
+	defer func() { os.Stderr = oldStderr }()
+
+	opts := &debateOptions{
+		globalOptions: &globalOptions{
+			configPath: defaultConfigPath(),
+			verbose:    false,
+		},
+		agentA:     "alice",
+		agentB:     "bob",
+		verdictA:   "APPROVED",
+		verdictB:   "REQUEST_CHANGES",
+		chimeraURL: chimera.URL,
+		maxRounds:  3,
+		timeout:    30 * time.Minute,
+	}
+	_ = runDebate(opts, "http://localhost:3030/helix/helix/pulls/78")
+	w.Close()
+
+	var buf bytes.Buffer
+	_, _ = buf.ReadFrom(r)
+	stderr := buf.String()
+
+	if exited != 2 {
+		t.Errorf("expected exit code 2 (CHIMERA_UNAVAILABLE) on escalation, got %d", exited)
+	}
+	if !strings.Contains(stderr, "CHIMERA_UNAVAILABLE") {
+		t.Errorf("expected CHIMERA_UNAVAILABLE on stderr, got:\n%s", stderr)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // runResolve handler
 // ---------------------------------------------------------------------------
@@ -645,18 +701,13 @@ func TestRunResolveWithPositions_HappyPath(t *testing.T) {
 	t.Setenv("HOME", fakeHome)
 
 	// Mock Chimera arbiter — returns an APPROVED verdict.
-	// Response shape: {status, confidence, summary, trace:{source, duration, total_tokens}}
+	// Response shape (live 2026-09-01): {answer, trace, request_id}
 	chimera := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"status":     "APPROVED",
-			"confidence": 0.85,
-			"summary":    "alice's evidence was stronger (covers 4/5 spec requirements)",
-			"trace": map[string]any{
-				"source":       "arbiter-formation",
-				"duration":     1.234,
-				"total_tokens": 1234,
-			},
+			"answer":     "APPROVE",
+			"trace":      map[string]any{"stages": []any{map[string]any{"stage": "execute"}}},
+			"request_id": "test-0004",
 		})
 	}))
 	defer chimera.Close()
