@@ -90,3 +90,5 @@ precedent GAP-024..026: never PUT below pin); push channel blocked
 (INFRA-GH-001, human). Commits local-only.
 2026-09-01 | PROMISING-BUT-ROUGH | 181s t2fs | friction 8 | 5 findings
 
+2026-09-04 | PROMISING-BUT-ROUGH | 117s t2fs | friction 11 | 5 findings
+
