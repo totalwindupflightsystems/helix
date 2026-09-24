@@ -66,7 +66,7 @@ FAIL  github.com/totalwindupflightsystems/helix/pkg/prompt  0.704s
 ```
 
 CI agrees on the pushed commit — `Test` job, step *"Run unit tests"* → `failure`
-(run [34507859513](https://github.com/totalwindupflightsystems/helix/actions/runs/34507859513));
+(run [34507859593](https://github.com/totalwindupflightsystems/helix/actions/runs/34507859593));
 the `Build`, `Lint` and `Docs Consistency` jobs are green. CI has been red on 4 of
 the last 8 pushes.
 
