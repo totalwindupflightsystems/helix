@@ -153,3 +153,58 @@ that are NOT in the README:
    spec create/review/gap-analysis/approve; contract create/validate/freeze/
    diff; ci render/validate; deploy tiers/systemd; prompt list/register;
    identity status read-only. All rc=0, fast.
+
+## Field notes 2026-09-24 (fifth run — read this BEFORE running `make test` or trusting the README table)
+
+This run took the surfaces the four previous runs did not: the **README-derived
+CLI contract** and **install-from-scratch on a clean box**.
+
+1. **`make test` FAILS on a clean checkout — `FAIL pkg/prompt`. Do not read a red
+   suite as your own setup problem.** `TestVerify/head_commit_with_path_style_attestation`
+   (`pkg/prompt/attester_extended_test.go:134`) sets `RegistryDir = findGitRoot()`
+   and calls `Verify("HEAD")`, so it asserts on **whatever commit is checked out**.
+   Board-writer commits (`board: …`, `foreman tick [ci skip]`, `qa-cron: …`) carry
+   no `Prompt:` trailer, so the test fails on most commits — including the one a
+   fresh clone gets and the one CI tests. Reproduced on a clean `HOME` and on a
+   fresh clone, and confirmed by CI (run 34507859593, `Test` job → "Run unit tests"
+   → failure). To test `pkg/prompt` locally, use a worktree pinned to a commit whose
+   message carries a *valid* `Prompt:` trailer, or expect this one failure.
+2. **Go is not documented as a prerequisite.** `README` Quickstart says
+   `make build`; on a bare Debian box that is `make: go: No such file or directory`
+   / rc=2. `go.mod` requires **go >= 1.25.8**. Install Go user-locally first
+   (`curl -fsSL https://go.dev/dl/go1.25.8.linux-amd64.tar.gz | tar -C ~ -xz`),
+   then `make build` takes **214s** on a cold cache (dependency download dominates).
+   `make install PREFIX=$HOME/.local` then works with no sudo.
+3. **`helix dispatch` reads only a narrow slice of specs.** `DecomposeSpec` accepts
+   `## … PHASE|FEATURE` H2s or an H1 matching `^# Helix Feature`. Of the repo's own
+   24 specs in `specs/`, **1** carries that H1 and **15 fail outright** with
+   `no Phase or Feature sections found` — including `specs/SPECIFICATION.md`. Also,
+   `Task.Description` is set only from the heading (the declared `currentDesc`
+   builder is never written to), so each task's single step just repeats its title
+   with an empty `expected_output`. Prefer specs that carry `## … Phase` headings.
+4. **Three CLI names in the README component table do not exist:** `helix coordinator`
+   (→ `helix pipeline`), `helix health` (→ `helix doctor` / `helix status`), and
+   `helix adversarial` (deprecated shim; canonical is `helix review`). The
+   docs-consistency CI gate only counts `pkg/...` strings, so it stays green.
+5. **`helix adversarial` prints a 100×-wrong rate.** "Pass rate: 1.0%" for 5/5 —
+   `%.1f` applied to a 0–1 ratio (`cmd/helix/adversarial.go:392`) while the
+   same package's `PassRate()` returns a percentage. Read the pass/fail counts,
+   not the percentage.
+6. **`helix identity create --name X` writes `X.hid` + `X.hid.key` into CWD** and
+   `.gitignore` does **not** cover them (it names only `/test-gap-hunter.hid*`).
+   `git add -A` at the repo root stages an agent private key. Run it in a scratch
+   directory, or add `*.hid` / `*.hid.key` to `.gitignore`.
+7. **`docs/GETTING-STARTED.md` uses a subcommand that does not exist:**
+   `helix identity list` → unknown subcommand. Use `helix-identity status`.
+8. **The README quickstart's identity step omits the credential exports.**
+   `helix identity provision test-agent` → `FORGEJO_ADMIN_TOKEN or
+   FORGEJO_ADMIN_USER+FORGEJO_ADMIN_PASSWORD must be set` (rc=3) unless you
+   `mkdir -p ~/.helix && cp known-friends.example.json ~/.helix/known-friends.json`
+   **and** export both admin vars.
+9. **Perf (measured, nothing actionable):** `helix version` 13.3ms,
+   `estimate check` 17.0ms, `marketplace search` 18.0ms (hyperfine, 20 runs). The
+   CLI is sub-30ms; no PERF rows filed.
+10. **`helix mergegate check`'s `trust_tier` gate passes vacuously with no changed
+    files** ("no changed files to check — tier requirement trivially met"). On a
+    clean tree the flagship gate reports 1 pass / 3 fail / 1 skip — treat the
+    `trust_tier` PASS as unproven, not as evidence the tier policy works.

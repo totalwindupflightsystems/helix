@@ -209,3 +209,174 @@ gap-analysis. Proven live: filling Requirements/Overview/Constraints raised
 the 12-dim score 9.6 → 17.4 (rate_limiting 35 → 70). The `<!-- ann: ... -->`
 comment block in the file is the annotation ledger; `spec review` appends
 annotations, `spec approve --section X` flips the per-section approval marker.
+
+## 2026-09-24 run — the documented contract vs. a fresh machine (angle: L3 install + README table)
+
+This run deliberately took the surfaces the previous five did not: the
+**README-derived CLI contract** and **install-from-scratch on a clean box**.
+Reading source was limited to explaining failures already observed live.
+
+### How the CI docs gate actually works (and what it cannot see)
+
+`.github/workflows/ci.yml` has a step *"README package counts agree (headline ==
+component table == api table)"* that greps exactly three numbers:
+
+```bash
+headline=$(grep -oP '^## Components \(\K[0-9]+' README.md)
+table=$(sed -n '/^## Components/,/^## [^#]/p' README.md | grep -oP '`pkg/[a-z0-9_/]+`' | sort -u | wc -l)
+api=$(grep -oP '`pkg/[a-z0-9_/]+`' docs/api/README.md | sort -u | wc -l)
+```
+
+It passes today (41 == 41 == 41) and that is the whole extent of its authority:
+it counts **distinct `pkg/...` strings**, so a row with the correct package and a
+**nonexistent CLI** sails through. Reproduced verbatim: the gate prints PASS while
+`helix coordinator`, `helix health` and `helix adversarial` are all dead names.
+The structural fix is one more assertion on the same step (extract every
+backticked `helix*` token from the component table, resolve each against
+`helix --help`), reusing machinery the step already has — not new infrastructure.
+
+### How the prompt-attestation test actually behaves (the 14-day red branch)
+
+`pkg/prompt/attester.go` accepts a prompt reference in two shapes: a hash
+(`Prompt: sha256:<hex>`) or a **path** — `reAttestPath =
+(?m)^Prompt:\s*(prompts/[^\s]+\.md)\s*$`, matching flat `prompts/<name>/v<N>.md`
+or nested `prompts/<component>/<version>/prompt.md`.
+
+`attester_extended_test.go:134` sets `RegistryDir = findGitRoot()` and then calls
+`Verify("HEAD")`. That means the test asserts on **the commit that happens to be
+checked out** — ambient state, not a fixture. The table has two cases:
+`invalid_commit_ref_returns_git_error` (fine) and
+`head_commit_with_path_style_attestation` (`wantErr: false`), which requires the
+current commit to carry a *valid* prompt reference.
+
+Proof it is ambient, by replaying commits in a scratch worktree:
+
+| Commit | HEAD commit message | Subtest result |
+|---|---|---|
+| `b070d0d` (parent of 34e473d) | board tick, `Prompt: prompts/gap-004/v1.md` | **subtest does not exist yet** — `grep -c` → 0, so "ok" is a false control |
+| `34e473d` (the GAP-004 fix that added it) | `Prompt: prompts/gap-004/v1.md` | ❌ `TAMPER_DETECTED: stored hash != computed hash` — **`prompts/gap-004/v1.md` does not exist in the tree** |
+| `97ea52b` (CI-green era) | board commit, **no `Prompt:` line** | ❌ `ATTESTATION_MISSING` |
+| `acf2c90` (what a fresh clone gets) | `qa-cron: …` — no `Prompt:` line | ❌ `ATTESTATION_MISSING` |
+
+So the test can only pass on the rare commit whose own message satisfies the guard
+(`34e473d` had the trailer but a dangling path, so even that one failed). CI run
+34507859593 on `acf2c90` fails in the `Test` job at step *"Run unit tests"*;
+`Build`, `Lint` and `Docs Consistency` pass.
+
+### The maintainers already diagnosed this — and the mitigation is insufficient
+
+`.gitreins/commit-msg` **auto-appends** the trailer when one is missing:
+
+```bash
+# Auto-append the default Prompt trailer instead of blocking ...
+# A trailer-less commit breaks pkg/prompt TestVerify on CI (INT-CI-001: the
+# stand-in PM's gap-push d84ed93 bypassed this hook with --no-verify and went
+# red). Self-healing beats blocking: a blocked commit gets retried with
+# --no-verify and ships trailer-less anyway.
+printf "\n\nPrompt: prompts/coding-hermes/v1.md\n" >> "$COMMIT_MSG_FILE"
+```
+
+So the exact failure was already identified and treated as commit-message hygiene.
+That mitigation is structurally insufficient, and measurably so:
+
+| Commit | Writer | `Prompt:` trailer present? |
+|---|---|---|
+| `94da863` | foreman tick | ✅ yes (hook auto-appended) |
+| `87d9a15` | foreman tick | ✅ yes (hook auto-appended) |
+| `acf2c90` | `qa-cron:` — **the pushed HEAD** | ❌ **no** |
+| `9dd9ad1` | `dogfood:` — previous dogfood commit | ❌ **no** |
+
+The machine writers bypass (or predate) that hook — 12 recent commits carry
+`[ci skip]` — and CI tests whichever commit was pushed. **A commit-msg hook can
+never guarantee the ambient `HEAD` at test time**, which is precisely why the test
+must not read `HEAD`. This narrows the fix rather than widening it: make the test
+hermetic and the branch goes green no matter who commits next, including the
+board writers.
+
+**Right way:** the same file already builds temp repos with
+`GIT_*`-stripped helpers (commit `6291f3a`), so the fix is to use a fixture commit
+there too and stop reading `HEAD`. Nothing else on the branch needs to change.
+
+### How the submitter-side discovery happened
+
+`helix dispatch` is a thin CLI over `pkg/dispatcher`. `DecomposeSpec`
+(`decomposer.go`) matches `^## …PHASE|FEATURE` H2s **or** an H1 matching
+`^# Helix Feature` — the doc comment at :19-21 states the second form exists
+"so those specs decompose cleanly". Measured against the repo's own corpus:
+**1 of 24** specs carries that H1 (`agent-identity.md`); 15 fail outright,
+including `specs/SPECIFICATION.md`. The rest decompose via `## … Phase`
+H2s. The doc comment's promise covers phantom files.
+
+Second defect in the same function: `currentDesc` is declared (`:29`) and
+`Reset()` (`:46`) but **never written to** — grep confirms no `currentDesc.Write*`
+call exists. `Task.Description` is assigned only `currentHeading` (`:36`), so the
+documented "body until the next heading is captured as context" never happens and
+`DecomposeTask` has nothing to split. The dry-run plan output proves the
+consequence: one step whose `action` duplicates the task title and whose
+`expected_output` is empty.
+
+### The private-key-in-cwd trap
+
+`helix identity create --name test-agent` (GETTING-STARTED §130) writes
+`test-agent.hid` + `test-agent.hid.key` into **cwd** at 0600. `.gitignore` covers
+only two hardcoded names (`/test-gap-hunter.hid{,.key}`) and neither of these
+matched; `git add -An` in the repo root listed both for staging. A secrets
+scanner does not catch a generated key pair by pattern, so GitReins' secrets gate
+is not a backstop here. Prefer `~/.helix/keys/` (where `~/.helix/keys/` already
+exists for provisioned agents) or add `*.hid` / `*.hid.key` to `.gitignore`.
+
+### Right way, end to end (verified on a fresh box)
+
+```bash
+# 1. Go is NOT documented as a prerequisite. go.mod requires go >= 1.25.8.
+curl -fsSL -o go.tgz https://go.dev/dl/go1.25.8.linux-amd64.tar.gz && tar -C ~ -xzf go.tgz
+export PATH=$HOME/go/bin:$PATH GOROOT=$HOME/go GOPATH=$HOME/gopath
+
+# 2. then the README quickstart works verbatim
+git clone https://github.com/totalwindupflightsystems/helix.git ~/app && cd ~/app
+make build            # 214s incl. dependency download, rc=0, 9 binaries
+make install PREFIX=$HOME/.local   # rc=0, no sudo
+
+# 3. offline smoke (these are the parts that need no stack)
+./helix version && ./helix estimate check wojons "Write a Go HTTP server" \
+  --model deepseek-v4-pro --provider deepseek && ./helix marketplace search --capability go --min-trust 50
+
+# 4. identity needs BOTH the roster AND admin creds; the quickstart shows neither
+mkdir -p ~/.helix && cp known-friends.example.json ~/.helix/known-friends.json
+export FORGEJO_ADMIN_USER=… FORGEJO_ADMIN_PASSWORD=…   # else rc=3 at token creation
+
+# 5. dispatch only reads specs that carry '## … Phase|Feature' or '# Helix Feature'
+./helix dispatch --dry-run --spec specs/agent-identity.md --agent test-agent
+```
+
+### Host-environment trap (not a Helix defect, but it cost time)
+
+Bunker agents on `las-03` **share `/tmp`**, and `/tmp` is world-writable. A
+redirect to `/tmp/build.log` was denied (the file belonged to another uid), and my
+next read of `tail /tmp/build.log` returned a **sibling fleet worker's log from
+2026-09-19** — a Rust `hilo` release build finishing in 33m44s with no `helix`
+binary, which read exactly like a catastrophic Helix build failure. It was not.
+On shared-`/tmp` ephemeral boxes: write logs under `$HOME`, and check
+`ls -l <log>` ownership before trusting any log you did not just create.
+
+### Foreign-AGENTS.md injection, reproduced in this repo (U-GAP-054)
+
+Any agent that touches a path under `/home/kara/helix/skills/` gets a **subdirectory
+context** block injected into its tool results that reads:
+
+> `# skills/ + optional-skills/ — bundled skills, authoring standards, curator`
+
+with hardline rules like "`description` ≤ 60 chars", a `tests/skills/test_<skill>_skill.py`
+requirement, and a "Curator (skill lifecycle)" section. **None of that is Helix's.**
+`/home/kara/helix/skills/` contains only `helix-usage/SKILL.md` and has no
+`AGENTS.md`; the discovery cache is keyed by directory *name*, so the resolver
+matched `/home/kara/.hermes/hermes-agent/skills/AGENTS.md` (the Hermes repo's own
+skill-authoring standards) and injected it here. Proven by
+`grep -rl "skills_hub_official" --include=AGENTS.md /home/kara` →
+`…/hermes-agent/skills/AGENTS.md`, `…/worktrees/hermes-agent-GAP-060/skills/AGENTS.md`.
+
+Consequence: an agent told to "add a skill to Helix" would obey a 60-char
+description cap and a curator path that do not exist in this project, and could
+write files the repo's own GitReins hooks then reject. **Right way:** ship a
+`skills/AGENTS.md` in this repo stating Helix's real conventions (or, in the
+tooling, key the discovery cache by resolved path rather than directory name).

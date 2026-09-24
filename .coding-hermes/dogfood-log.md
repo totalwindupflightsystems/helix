@@ -92,3 +92,61 @@ precedent GAP-024..026: never PUT below pin); push channel blocked
 
 2026-09-04 | PROMISING-BUT-ROUGH | 117s t2fs | friction 11 | 5 findings
 
+## 2026-09-24 — 🟡 PROMISING-BUT-ROUGH (fifth run, angle: L3 documented-contract + fresh machine)
+
+**Promise:** "A user can clone the documented origin, run the README Quickstart
+(`make build`, `make test`), install the 9 CLIs, and drive the platform — every
+component in the README table reachable at the CLI named there, and the flagship
+`helix dispatch` turning a spec file into agent work."
+
+**Angle:** previous runs (08-02, 08-12, 08-22 deep; 09-01, 09-04 short) swept the
+offline CLI, identity/Forgejo, contracts, trust and verify. This run took the two
+surfaces none of them touched: **the README-as-contract CLI table** and
+**install-from-scratch on an ephemeral bunker box**.
+
+**Reality:** The offline core is good — `make build` succeeds from a clean clone
+in 214s, `make install PREFIX=$HOME/.local` works without sudo, and the quickstart
+CLIs are correct and fast (13–18ms). But the two things a first-time user does
+first both fail: `make test` is **deterministically red on the default branch**
+(`FAIL pkg/prompt`), and the README component table names **three CLIs that do not
+exist**. The flagship `helix dispatch` cannot decompose 15 of the repo's own 24
+specs, including `specs/SPECIFICATION.md`. On a bare Debian box the documented
+`make build` cannot even start — Go is not a documented prerequisite.
+
+**Time-to-first-success:** ~4 min (Go 9s + `make build` 214s + smoke).
+**Time-to-first-failure:** ~1 min — documented `make build` on a box without Go.
+**Friction count:** 11 project-relevant points (+1 host-environment note: los-03
+agents share `/tmp`, which produced one false reading — see diagnostics).
+
+**Top 3 findings:**
+1. **DF-HELIX-6 (P0)** — default branch red: `make test` fails on a clean clone.
+   `TestVerify/head_commit_with_path_style_attestation` asserts on ambient `HEAD`;
+   board-writer commits carry no `Prompt:` trailer → fails on most commits.
+   Reproduced on the fresh clone + this host + a pristine HOME; CI run 34507859593
+   Test job agrees; red on 4 of the last 8 master pushes.
+2. **DF-HELIX-7 (P0)** — `helix dispatch` decomposes 9 of 24 own specs; the
+   `currentDesc` body-capture is dead code, so task steps are title-only with empty
+   `expected_output`.
+3. **DF-HELIX-8 (P1)** — README table's `helix adversarial` / `helix coordinator` /
+   `helix health` are dead names; the existing docs-consistency CI gate counts
+   `pkg/...` strings and is structurally blind to CLI names.
+
+**Also:** DF-HELIX-9 (Go prerequisite undocumented; quickstart omits FORGEJO_ADMIN_*
+exports), DF-HELIX-10 (agent private key written to repo CWD, .gitignore-unprotected),
+DF-HELIX-11 (`trust_tier` gate passes vacuously on an empty diff).
+
+**Deliverables:** docs/dogfood/2026-09-24-integration.md · diagnostics.md addendum
+(CI-gate behavior, the ambient-HEAD test, the decomposer, the key-in-cwd trap, the
+U-GAP-054 foreign-AGENTS.md injection reproduced in this repo) ·
+skills/helix-usage/SKILL.md field notes · board rows DF-HELIX-6..11 + task_created
+events.
+
+**Perf:** measured, nothing actionable — `helix version` 13.3ms, `estimate check`
+17.0ms, `marketplace search` 18.0ms (hyperfine, 20 runs). No PERF rows filed.
+
+**Install leg:** 2026-09-24 | PROMISING-BUT-ROUGH | install_seconds=223 (make build
+214s after a 9s user-local Go install; first attempt rc=2, `make: go: No such file
+or directory`) | bunker=las-bunker-03 agent=3bc183ac (destroyed) | smoke=partial
+(version/estimate/marketplace ok; status rc=2 no stack; identity provision rc=3
+missing documented env) | make test=FAIL (DF-HELIX-6)
+
