@@ -208,3 +208,76 @@ CLI contract** and **install-from-scratch on a clean box**.
     files** ("no changed files to check — tier requirement trivially met"). On a
     clean tree the flagship gate reports 1 pass / 3 fail / 1 skip — treat the
     `trust_tier` PASS as unproven, not as evidence the tier policy works.
+
+## Field notes 2026-09-30 (sixth run — the docs themselves as the user contract)
+
+Angle: walked `docs/GETTING-STARTED.md` §2→§8 top-down in a fresh clone, every
+command verbatim, then audited all 41 `docs/api/*.md` pages against source.
+Rows DF-HELIX-12..16. Report: `docs/dogfood/2026-09-30-helix-docs-integration.md`.
+
+1. **`make test` is red at HEAD 11c42e0 with a NEW cause (DF-HELIX-12).** The
+   09-24 ambient-HEAD `pkg/prompt` failure is FIXED (pkg/prompt passes, 63s).
+   The red is now `pkg/integration`: all 5 `TestForgejoE2E*` 401 because
+   `pkg/integration/suite.go:36` hardcodes `DefaultAdminPassword = "helio123"`
+   while docker-compose/docs default is `changeme`. On any doc-following host
+   with the stack up → 401s; with no stack → different failures. And the wall
+   time is ~16 min (`pkg/mergegate` 53s), so GETTING-STARTED's "unit tests
+   (fast, no services required)" is false on both counts.
+2. **GETTING-STARTED §3 cannot reach a running platform as written
+   (DF-HELIX-13).** On a fresh `forgejo-data` volume Forgejo boots into its
+   INSTALL WIZARD: `/api/v1/version` → 404, so `scripts/up.sh` polls for 120s
+   and exits 1. Driving the wizard via curl (the form has no CSRF token in
+   this build): required fields surface ONE per round-trip (`http_port`,
+   `log_root_path`, then a log-path permission error), and accepting the
+   wizard's defaults sets `HTTP_PORT=3030` INSIDE the container while compose
+   maps host 3030→container 3000 — the API silently vanishes from the
+   documented port until `/data/gitea/conf/app.ini` is hand-edited back to
+   3000 and the container restarted. That is 4 undocumented fixes to first
+   API 200. Right way for now: `docker compose up -d forgejo`, then POST the
+   wizard with `http_port=3000` + `log_root_path=/data/git/log`, or bake a
+   pre-installed `app.ini` (INSTALL_LOCK) into the compose volume.
+3. **The compose pin `forgejo:1.21` serves 1.21.11+2 — the RCE version**
+   (CVE-2026-89094, fixed ≥16.0.4). The docs direct every new user to stand up
+   a vulnerable forge. Bump the pin (SEC-HELIX tracks the prod instance).
+4. **§6 `estimate check` always BLOCKs as documented (DF-HELIX-14).** The doc's
+   example agent `codex-alpha` is not in `known-friends.example.json`, and
+   every roster agent lacks budget fields, so `estimate check test-agent …`
+   reports `$0.10 estimated > $0.00 remaining` → BLOCKED, exit 1 — always.
+   `cmd/helix-estimate/main.go:498` reads `budget_usd_weekly` from
+   known-friends.json; the field is documented ONLY in
+   `specs/cost-estimator.md:68`, never in GETTING-STARTED or the example
+   roster. Add the field to the example roster + §5 schema, and use a roster
+   agent in §6 examples.
+5. **§5/§8 command rot (DF-HELIX-15):** `helix identity list` now EXISTS (the
+   09-24 note above is stale) but requires `--forge URL` (undocumented in
+   GETTING-STARTED) and lists OAuth2 applications, not provisioned agents —
+   `helix identity status` is still the agent roster view. §8's
+   `helix forgejo status` does not exist (`forgejo ping --url … --user …
+   --password …`), and §8's `helix channel create #agents` is invalid args
+   (`channel create --name agents --type task`).
+6. **docs/api audit (DF-HELIX-16): 41 pages, ZERO dead package refs, ZERO dead
+   symbols** — every func/type/var name on every page exists in source (the
+   pages are NOT rotten; rare and worth keeping). But all 28 extracted Go
+   "examples" are non-compilable identifier fragments (0/28 pass `go vet` as
+   standalone mains) — nothing can even parse them, so nothing guards the
+   pages against future rot. Also: `helix doctor` exits 1 (bare AND piped)
+   when only the documented "expected, not a failure" environment-dependent
+   checks fail — the exit contract contradicts the doc's own text.
+7. **Verified-good this run (docs claims that held up):** `helix --help`
+   "lists all 50 subcommands" → 52 ✓; §5 provision→verify→(delete PAT
+   server-side)→re-provision → `action=updated` + PAT re-created ✓ (the
+   08-12 DF-011 idempotency lie is genuinely fixed); §7 prompt
+   register/list/test all work ✓; §4 `status --json` reports healthy on a
+   healthy host ✓ (08-22 false-down fixed); CLI latency 21–32ms ✓.
+8. **Install leg (bunker-las-03 agent 7b900211, destroyed):** documented
+   origin clone ✓ (network fetch); documented `make build` → `go: No such
+   file or directory` rc=2 in 0s (DF-HELIX-9 still open — no documented Go
+   prerequisite); with user-local Go 1.25.8: build rc=0 in **155s**, smoke
+   `helix version` 19ms + `estimate estimate` ✓. Consistent with the 09-24
+   run (214s, same first-attempt failure).
+9. **Infra note (not a helix defect):** `~/.ssh/id_ed25519_bunker` on the
+   control host is CORRUPTED — it is a 21MB Go ELF binary (both the live key
+   and the `.broken-binary-backup`), so direct `ssh bunker3` can never
+   authenticate. Bunker agents still work: `bunker spawn` mints per-agent
+   keys under `~/.bunker/keys/<id>`. File a host-side fix (regenerate the
+   key from `id_ed25519_bunker.pub`) outside this repo.

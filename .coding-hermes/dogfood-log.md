@@ -150,3 +150,50 @@ or directory`) | bunker=las-bunker-03 agent=3bc183ac (destroyed) | smoke=partial
 (version/estimate/marketplace ok; status rc=2 no stack; identity provision rc=3
 missing documented env) | make test=FAIL (DF-HELIX-6)
 
+## 2026-09-30 — 🟡 PROMISING-BUT-ROUGH (sixth run, angle: the docs themselves as the user contract)
+
+**Promise:** "This guide gets you from a fresh checkout to a running platform
+in ~10 minutes" (docs/GETTING-STARTED.md) — with every docs/api page accurate.
+
+**Angle:** runs 1-5 swept the CLI, identity/Forgejo, contracts, trust, verify,
+README table, fresh-machine install. Nobody had EXECUTED the docs. This run:
+fresh clone → GETTING-STARTED §2-§8 verbatim → 41-page docs/api audit
+(static symbols + compile + go doc) → bunker install leg.
+
+**Reality:** The docs' static accuracy is excellent — 41/41 pages reference
+real packages, 0 dead symbols (DF-HELIX-16 records this positively). But the
+GETTING-STARTED walkthrough fails at three consecutive steps: §2 `make test`
+is red at HEAD with a NEW cause (pkg/integration E2E hardcodes admin password
+`helio123` vs compose default `changeme` → 5×401; DF-HELIX-12), §3 `up.sh`
+can never succeed on a fresh volume (install-wizard 404 on its probe URL;
+wizard defaults put Forgejo on an unmapped container port; 4 undocumented
+manual fixes to first API 200; and the compose pin serves the RCE-vulnerable
+1.21.11+2; DF-HELIX-13), §6 `estimate check` is always-BLOCKED because no
+roster agent has the `budget_usd_weekly` field the gate reads (DF-HELIX-14).
+§5/§8 carry 3 dead/misleading commands (DF-HELIX-15). Meanwhile the things
+runs 1-5 flagged as broken that ARE now fixed: pkg/prompt ambient-HEAD test
+✓, provision idempotency repair ✓, status false-down ✓.
+
+**Time-to-first-success:** ~5 min (build + version). Time-to-running-platform
+via the documented path: unbounded (up.sh never returns); ~8 min via the
+undocumented manual path. **Friction count:** 12 project-relevant points.
+
+**Top 3 findings:** DF-HELIX-12 (P0, make test red — new cause), DF-HELIX-13
+(P1, §3 stack path broken + vulnerable pin), DF-HELIX-14 (P1, §6 budget gate
+always-blocked as documented).
+
+**Artifacts:** docs/dogfood/2026-09-30-helix-docs-integration.md ·
+diagnostics.md addendum · skills/helix-usage/SKILL.md 2026-09-30 field notes ·
+board rows DF-HELIX-12..16 + task_created events.
+
+**Perf:** hyperfine 20 runs — `helix version` 21.5ms ±3.0, `estimate
+estimate` 32.1ms ±3.1. Nothing actionable; no PERF rows.
+
+**Install leg:** 2026-09-30 | install_seconds=155 (make build rc=0 after an
+undocumented user-local Go 1.25.8 install; documented path fails rc=2 in 0s —
+DF-HELIX-9 still open) | bunker=las-bunker-03 agent=7b900211 (destroyed) |
+smoke=ok (version 19ms, estimate ✓)
+
+**Foreman wake:** none per cron instruction — cooldowns pinned at fleet law;
+rows picked up at normal cadence.
+
