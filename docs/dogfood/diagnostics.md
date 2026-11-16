@@ -380,3 +380,48 @@ description cap and a curator path that do not exist in this project, and could
 write files the repo's own GitReins hooks then reject. **Right way:** ship a
 `skills/AGENTS.md` in this repo stating Helix's real conventions (or, in the
 tooling, key the discovery cache by resolved path rather than directory name).
+
+## 2026-09-30 — docs walkthrough (sixth run): how the docs were audited, and what they taught
+
+**Method (reproducible):** fresh clone at HEAD 11c42e0 → `make build` →
+execute `docs/GETTING-STARTED.md` §2→§8 top-down with every command verbatim
+(identity against a live Forgejo stood up for the run) → then a three-layer
+audit of `docs/api/*.md`: (1) static — each page's `import "…"` path must
+resolve to a `pkg/` dir, and every `func`/`type`/`var` name in the page's go
+blocks must appear in the package source; (2) compile — each non-`package`
+go block extracted to a standalone main and `go vet`ted; (3) `go doc` —
+documented signatures diffed against the package's exported surface (with
+the caveat that `go doc pkg` lists no methods, so method names must be
+checked by grep, not by `go doc`).
+
+**Result:** static layer clean (41/41 pages resolve, 0 dead symbols — the
+doc set is in unusually good shape); compile layer 0/28 (the "examples" are
+identifier sketches, not programs — see DF-HELIX-16); the GETTING-STARTED
+walkthrough failed early and instructively (§2 test red, §3 stack
+unreachable, §6 budget gate always-blocked — DF-HELIX-12/13/14).
+
+**Why the board commit guard mattered this run:** `boardctl create` re-serializes
+every row it touches — its `validate` pass NORMALIZED pre-existing
+`guard_result` free-text values (`PASS 4/4` → `PASS`, `n/a (board-only)` →
+`SKIP`) on 67 sibling rows. The diff was caught by comparing worktree rows
+against `git show HEAD:` line-wise before committing, and the 67 originals
+were restored programmatically (keep my 5 new rows, rewrite only rows whose
+parsed `guard_result` differed from HEAD). **Right way:** after ANY boardctl
+mutation on a shared board, diff row-by-row against HEAD and restore
+normalized fields before committing — the board's history is evidence.
+
+**Forgejo-from-scratch mechanics (the parts the docs don't say):** the
+install wizard requires `http_port` and `log_root_path` (both empty in the
+rendered form → one-per-request validation errors); the log path must be
+writable by the `git` user inside the container (`/data/log` is root-owned
+in this image, `/data/git/log` works); and the wizard's port default is the
+CONTAINER port as rendered (3030 here), which must equal the compose
+INTERNAL mapping (3000) or the published port goes dark. Pre-installing via
+`INSTALL_LOCK=1` + a baked `app.ini` (the upstream-documented way to
+auto-install) is the fix direction filed in DF-HELIX-13.
+
+**Also observed:** `docker logs helix-forgejo` shows `Prepare to run install
+page` at boot — that line is the earliest signal that the data volume is
+fresh and `up.sh`'s `/api/v1/version` probe will never succeed. A readiness
+probe on `/api/healthz` (200 even pre-install) would let up.sh fail fast
+with a "run the installer" message instead of timing out.
