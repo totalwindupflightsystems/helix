@@ -25,3 +25,4 @@
 {"ts": 1787616571.9765859, "tokens_in": 88892, "tokens_out": 3028, "cache_read": 0, "cache_write": 0, "step": "tier2"}
 {"ts": 1787656198.8239977, "tokens_in": 99590, "tokens_out": 2639, "cache_read": 0, "cache_write": 0, "step": "tier2"}
 {"ts": 1787656211.361839, "tokens_in": 24996, "tokens_out": 1131, "cache_read": 0, "cache_write": 0, "step": "tier2"}
+{"ts": 1794860216.771705, "tokens_in": 234748, "tokens_out": 2268, "cache_read": 0, "cache_write": 0, "step": "tier2", "outcome": "graded", "model": "deepseek-v4-flash", "base_url_source": "GITREINS_LLM_BASE_URL", "api_key_source": "GITREINS_LLM_API_KEY"}

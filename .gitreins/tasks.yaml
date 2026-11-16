@@ -1034,3 +1034,17 @@ tasks:
   status: complete
   created_at: '2026-08-25T11:08:49.099772+00:00'
   completed_at: '2026-08-25T11:09:59.134769+00:00'
+- id: DF-HELIX-7
+  title: 'helix dispatch: decompose all in-repo specs and carry the spec body into
+    the task'
+  criteria:
+  - 'go build ./... exits 0. go vet ./... and gofmt -l clean on changed files. go
+    test -short -count=1 ./pkg/dispatcher/... ./cmd/helix/... passes. A table-driven
+    test over every file in specs/*.md asserts DecomposeSpec returns at least one
+    Task and no ErrDecomposeFailed for all 25 files, and that each Task carries non-empty
+    body context captured from its section. Live: go run ./cmd/helix dispatch --dry-run
+    --spec specs/deployment.md --agent test-agent --repo helix exits 0 and its JSON
+    output contains a task_description and at least one step.'
+  status: complete
+  created_at: '2026-11-16T19:59:00.001487+00:00'
+  completed_at: '2026-11-16T20:12:35.033283+00:00'

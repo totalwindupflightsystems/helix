@@ -1,0 +1,1237 @@
+commit a4a858b8df2f96036c71da2fb254b95e2d26872a
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Mon Nov 16 15:09:27 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Mon Nov 16 15:09:27 2026 -0500
+
+    fix(dispatcher): decompose every repo spec and carry the section body into steps. Addresses DF-HELIX-7.
+    
+    `helix dispatch` failed on 15 of the repo's own 25 specs and, even when it
+    succeeded, dispatched a single heading-shaped step with an empty
+    expected_output because the spec body was never captured.
+    
+    Decomposition (pkg/dispatcher/decomposer.go) now follows an explicit fallback
+    ladder instead of only recognising PHASE/FEATURE headings:
+    
+      1. the legacy rule, unchanged: H1 "# Helix Feature ..." and H2 headings
+         containing PHASE or FEATURE still start tasks with the same IDs,
+         priorities and order, so Phase/Feature specs decompose exactly as before;
+      2. otherwise each H2 ("## 1. Mission", ...) section becomes one task;
+      3. otherwise the whole file becomes ONE task titled from the H1, or from the
+         filename when there is no H1.
+    
+    ErrDecomposeFailed is now reserved for empty or unreadable input; a readable
+    document can no longer produce "no Phase or Feature sections found". Headings
+    inside fenced code blocks are not boundaries, so markdown fences and shell
+    comments ("# restart the container") cannot fracture a document.
+    
+    Body capture no longer dead code: Task gains an additive
+    `Body string `json:"body,omitempty"`` holding the text between a task's heading
+    and the next boundary. Description stays the heading text because callers
+    depend on it, existing fields are untouched, and empty bodies are omitted from
+    JSON.
+    
+    Steps are derived from that body: ForgejoLoop.Plan and AssignAgent now call the
+    new DecomposeTaskWithBody, which extracts prose statements and list/table items
+    from the section, joining wrapped lines into paragraphs before splitting on
+    sentences and dropping markdown scaffolding (headings, table separator rows,
+    fence content). Bodies that carry no prose - diagram-only sections - fall back
+    to the description, and every step now gets a non-empty expected_output.
+    DecomposeTask keeps its signature and legacy output (empty expected_output) for
+    callers that pass only a description.
+    
+    Tests (pkg/dispatcher): a corpus test globs specs/*.md from the module root
+    (found by walking up from the test file, failing loudly when the directory
+    exists but is empty) and asserts no error, >= 1 task, non-empty Description
+    and an ID for every task, unique IDs, and at least one non-empty Body per spec;
+    focused regressions for the "# Title" + "## 1. Mission" shape, the
+    "# Helix Feature 1 - X" single-task rule, PHASE heading preservation, the
+    whole-file and filename-titled fallbacks, blank-input failure, fenced-heading
+    safety, body-to-step extraction with the maxBodySteps cap, the unchanged
+    DecomposeTask contract, and ForgejoLoop.Plan producing body-derived steps.
+    Two pre-existing tests encoded the old never-decompose contract and were
+    updated to it: their "no Phase/Feature" fixtures now assert the H2 split, and
+    their error-path fixtures use a blank document, which is the only input that
+    may still fail.
+    
+    Verified: gofmt clean, go vet ./... quiet, go build ./... exit 0,
+    go test -short -count=1 ./pkg/dispatcher/... ./cmd/helix/... all ok, and
+    `dispatch --dry-run` over all 25 specs/*.md exits 0 with no FAIL lines.
+    
+    Prompt: prompts/coding-hermes/v1.md
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ pkg/dispatcher/assigner.go                 |   2 +-
+ pkg/dispatcher/decomposer.go               | 522 +++++++++++++++++++++++++----
+ pkg/dispatcher/decomposer_fallback_test.go | 426 +++++++++++++++++++++++
+ pkg/dispatcher/dispatcher_test.go          |  26 +-
+ pkg/dispatcher/extra_coverage_test.go      |   4 +-
+ pkg/dispatcher/forgejo_loop.go             |   4 +-
+ pkg/dispatcher/forgejo_loop_test.go        |  17 +-
+ pkg/dispatcher/types.go                    |  13 +-
+ 8 files changed, 935 insertions(+), 79 deletions(-)
+
+diff --git a/pkg/dispatcher/assigner.go b/pkg/dispatcher/assigner.go
+index edb4a84..b76c6ca 100644
+--- a/pkg/dispatcher/assigner.go
++++ b/pkg/dispatcher/assigner.go
+@@ -80,7 +80,7 @@ func AssignAgent(task Task, agents []AgentProfile) (*DispatchResult, error) {
+ 	})
+ 
+ 	best := candidates[0].agent
+-	steps, _ := DecomposeTask(task.Description)
++	steps, _ := DecomposeTaskWithBody(task.Description, task.Body)
+ 
+ 	result := &DispatchResult{
+ 		WorkItem: WorkItem{
+diff --git a/pkg/dispatcher/decomposer.go b/pkg/dispatcher/decomposer.go
+index afe5b9a..72f0d45 100644
+--- a/pkg/dispatcher/decomposer.go
++++ b/pkg/dispatcher/decomposer.go
+@@ -1,92 +1,244 @@
+ package dispatcher
+ 
+ import (
+-	"bufio"
+ 	"fmt"
+ 	"os"
++	"path/filepath"
+ 	"strings"
+ )
+ 
+-// DecomposeSpec reads a spec markdown file and extracts tasks from sections
+-// headed with "Phase" or "Feature". Each section becomes one Task. Priority
+-// is assigned based on section ordering (first section = highest priority 1).
++// maxBodySteps bounds how many steps DecomposeTaskWithBody extracts from a
++// section body. Spec sections can be hundreds of lines; a single dispatch
++// should stay reviewable.
++const maxBodySteps = 16
++
++// minStepLen is the shortest body fragment worth calling a step. Below this
++// the candidate is a heading stub, a list-artifact or a diagram label.
++const minStepLen = 20
++
++// actionVerbs drive step extraction. A candidate sentence that contains any
++// of these substrings is considered actionable.
++var actionVerbs = []string{
++	"create", "write", "implement", "add", "update", "delete",
++	"remove", "refactor", "test", "verify", "build", "deploy",
++	"configure", "setup", "set up", "run", "check", "read",
++	"modify", "edit", "replace", "migrate", "extract", "merge",
++}
++
++// specHeading is a level-1 or level-2 ATX heading located outside a fenced
++// code block. Index is the 0-based line index of the heading line itself.
++type specHeading struct {
++	Level int
++	Text  string
++	Index int
++}
++
++// DecomposeSpec reads a spec markdown file and extracts tasks from it.
++//
++// Decomposition follows an explicit fallback ladder so that every readable,
++// non-empty markdown document yields at least one task:
++//
++//  1. Legacy markers — an H1 heading beginning "# Helix Feature" (or
++//     "# HELIX FEATURE", case-insensitive) and any H2 heading containing
++//     "PHASE" or "FEATURE". This is the historical rule and produces exactly
++//     the same tasks, in the same order, with the same IDs and priorities as
++//     before; it is evaluated first so existing specs do not change.
++//  2. Otherwise, if the document has H2 ("## ") sections, each H2 section
++//     becomes one task, titled by the heading text. This covers the repo's
++//     own titled-H1 specs ("## 1. Mission", "## 2. Scope", ...). A document
++//     with several top-level H1s and H2 sections also lands here — splitting
++//     on H2 is the only sane generalisation, and erroring would violate the
++//     never-fail contract below.
++//  3. Otherwise (no H2 sections at all) the whole file becomes ONE task
++//     titled by its H1, or by the file name when there is no H1.
++//
++// Every task also carries Body: the section text between its heading and the
++// next task boundary. The Description remains the heading text alone because
++// callers depend on it.
+ //
+-// The spec file is expected to use ## headings. A line like "## PHASE 1: Title"
+-// or "## Feature: Title" starts a new task. The heading text becomes the task
+-// description; the body until the next heading is captured as context.
++// ErrDecomposeFailed is returned only for empty or unreadable input, never for
++// a readable document that happens to use headings the legacy rule ignored.
+ //
+-// Helix's own specs (specs/*.md) use a different layout: an H1 title of the
+-// form "# Helix Feature N — Title" with H2 sections ("## 1. Mission", etc.)
+-// that carry no Phase/Feature keywords. An H1 matching "^# Helix Feature"
+-// (case-insensitive) also starts a new task so those specs decompose cleanly.
++// Headings inside fenced code blocks (``` / ~~~) are not task boundaries —
++// shell comments such as "# restart the container" would otherwise fracture
++// the document.
+ func DecomposeSpec(specPath string) ([]Task, error) {
+ 	data, err := os.ReadFile(specPath)
+ 	if err != nil {
+ 		return nil, fmt.Errorf("%w: %s: %v", ErrSpecNotFound, specPath, err)
+ 	}
+ 
+-	var tasks []Task
+-	var currentDesc strings.Builder
+-	var currentHeading string
+-	priority := 0
++	text := strings.ReplaceAll(string(data), "\r\n", "\n")
++	lines := strings.Split(text, "\n")
++	if !hasNonBlankLine(lines) {
++		return nil, fmt.Errorf("%w: empty spec %s", ErrDecomposeFailed, specPath)
++	}
+ 
+-	flush := func() {
+-		if currentHeading == "" {
+-			return
++	headings := scanHeadings(lines)
++	boundaries := selectBoundaries(headings)
++	return assembleTasks(specPath, lines, boundaries), nil
++}
++
++// selectBoundaries applies the decomposition ladder and returns the heading
++// lines that start a task, in document order.
++func selectBoundaries(headings []specHeading) []specHeading {
++	var legacy []specHeading
++	for _, h := range headings {
++		switch h.Level {
++		case 1:
++			if isHelixFeatureHeading(h.Text) {
++				legacy = append(legacy, h)
++			}
++		case 2:
++			upper := strings.ToUpper(h.Text)
++			if strings.Contains(upper, "PHASE") || strings.Contains(upper, "FEATURE") {
++				legacy = append(legacy, h)
++			}
++		}
++	}
++	if len(legacy) > 0 {
++		return legacy
++	}
++
++	var sections []specHeading
++	for _, h := range headings {
++		if h.Level == 2 {
++			sections = append(sections, h)
+ 		}
+-		priority++
++	}
++	if len(sections) > 0 {
++		return sections
++	}
++
++	// No boundaries: the caller builds a single whole-file task.
++	return nil
++}
++
++// assembleTasks turns boundary headings into tasks, capturing each section's
++// body. With no boundaries it produces exactly one task for the whole file.
++func assembleTasks(specPath string, lines []string, boundaries []specHeading) []Task {
++	if len(boundaries) == 0 {
++		return []Task{wholeFileTask(specPath, lines)}
++	}
++
++	tasks := make([]Task, 0, len(boundaries))
++	for i, b := range boundaries {
++		end := len(lines)
++		if i+1 < len(boundaries) {
++			end = boundaries[i+1].Index
++		}
++
++		priority := i + 1
+ 		tasks = append(tasks, Task{
+ 			ID:          fmt.Sprintf("task-%03d", priority),
+ 			SpecRef:     specPath,
+-			Description: strings.TrimSpace(currentHeading),
++			Description: strings.TrimSpace(b.Text),
++			Body:        strings.TrimSpace(strings.Join(lines[b.Index+1:end], "\n")),
+ 			Priority:    priority,
+ 			Status:      StatusPending,
+ 		})
+-		currentHeading = ""
+-		currentDesc.Reset()
+-	}
+-
+-	scanner := bufio.NewScanner(strings.NewReader(string(data)))
+-	for scanner.Scan() {
+-		line := scanner.Text()
+-		trimmed := strings.TrimSpace(line)
+-
+-		// Detect H1 "# Helix Feature N — Title" headings — Helix's own specs
+-		// use this layout (specs/*.md) with H2 sections that carry no
+-		// Phase/Feature keywords. Each feature H1 starts a new task.
+-		upperLine := strings.ToUpper(trimmed)
+-		if strings.HasPrefix(upperLine, "# HELIX FEATURE") {
+-			flush()
+-			currentHeading = strings.TrimPrefix(trimmed, "# ")
+-			continue
+-		}
++	}
++	return tasks
++}
+ 
+-		// Detect ## headings
+-		if strings.HasPrefix(trimmed, "## ") {
+-			flush()
+-			heading := strings.TrimPrefix(trimmed, "## ")
+-			upper := strings.ToUpper(heading)
+-			if strings.Contains(upper, "PHASE") || strings.Contains(upper, "FEATURE") {
+-				currentHeading = heading
+-			}
++// wholeFileTask builds the single task used when a document has no boundaries.
++// The title comes from the first H1; the body is everything after that heading
++// (or the whole document when there is no H1).
++func wholeFileTask(specPath string, lines []string) Task {
++	title := ""
++	bodyStart := 0
++	for i, raw := range lines {
++		trimmed := strings.TrimSpace(raw)
++		if strings.HasPrefix(trimmed, "# ") {
++			title = strings.TrimSpace(strings.TrimPrefix(trimmed, "# "))
++			bodyStart = i + 1
++			break
+ 		}
+ 	}
+-	// Flush last section
+-	flush()
++	if title == "" {
++		title = fileTitle(specPath)
++		bodyStart = 0
++	}
+ 
+-	if err := scanner.Err(); err != nil {
+-		return nil, fmt.Errorf("dispatcher: error reading spec: %w", err)
++	return Task{
++		ID:          "task-001",
++		SpecRef:     specPath,
++		Description: title,
++		Body:        strings.TrimSpace(strings.Join(lines[bodyStart:], "\n")),
++		Priority:    1,
++		Status:      StatusPending,
+ 	}
++}
+ 
+-	if len(tasks) == 0 {
+-		return nil, fmt.Errorf("%w: no Phase or Feature sections found in %s", ErrDecomposeFailed, specPath)
++// fileTitle derives a task title from a spec path when the document has no H1.
++func fileTitle(specPath string) string {
++	base := filepath.Base(specPath)
++	base = strings.TrimSuffix(base, filepath.Ext(base))
++	base = strings.ReplaceAll(base, "-", " ")
++	base = strings.ReplaceAll(base, "_", " ")
++	if trimmed := strings.TrimSpace(base); trimmed != "" {
++		return trimmed
+ 	}
++	return filepath.Base(specPath)
++}
+ 
+-	return tasks, nil
++// scanHeadings returns every H1/H2 heading outside fenced code blocks.
++func scanHeadings(lines []string) []specHeading {
++	var out []specHeading
++	inFence := false
++	for i, raw := range lines {
++		trimmed := strings.TrimSpace(raw)
++		if isFence(trimmed) {
++			inFence = !inFence
++			continue
++		}
++		if inFence {
++			continue
++		}
++		switch {
++		case strings.HasPrefix(trimmed, "## "):
++			out = append(out, specHeading{
++				Level: 2,
++				Text:  strings.TrimSpace(strings.TrimPrefix(trimmed, "## ")),
++				Index: i,
++			})
++		case strings.HasPrefix(trimmed, "# "):
++			out = append(out, specHeading{
++				Level: 1,
++				Text:  strings.TrimSpace(strings.TrimPrefix(trimmed, "# ")),
++				Index: i,
++			})
++		}
++	}
++	return out
++}
++
++// isHelixFeatureHeading reports whether an H1 heading opens a Helix feature
++// section ("# Helix Feature N — Title").
++func isHelixFeatureHeading(text string) bool {
++	return strings.HasPrefix(strings.ToUpper(strings.TrimSpace(text)), "HELIX FEATURE")
++}
++
++// isFence reports whether a trimmed line opens or closes a code fence.
++func isFence(trimmed string) bool {
++	return strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~")
++}
++
++// hasNonBlankLine reports whether the document carries any content at all.
++func hasNonBlankLine(lines []string) bool {
++	for _, raw := range lines {
++		if strings.TrimSpace(raw) != "" {
++			return true
++		}
++	}
++	return false
+ }
+ 
+ // DecomposeTask breaks a task description into actionable steps. Each sentence
+ // (delimited by ". " or newline) that contains an action verb becomes a step.
++//
++// Its signature and output (empty ExpectedOutput) are unchanged for existing
++// callers; use DecomposeTaskWithBody when the task carries a spec section body.
+ func DecomposeTask(taskDesc string) ([]Step, error) {
+ 	if strings.TrimSpace(taskDesc) == "" {
+ 		return nil, fmt.Errorf("%w: empty task description", ErrDecomposeFailed)
+@@ -96,29 +248,18 @@ func DecomposeTask(taskDesc string) ([]Step, error) {
+ 	raw := strings.ReplaceAll(taskDesc, "\n", ". ")
+ 	parts := strings.Split(raw, ". ")
+ 
+-	actionVerbs := []string{
+-		"create", "write", "implement", "add", "update", "delete",
+-		"remove", "refactor", "test", "verify", "build", "deploy",
+-		"configure", "setup", "set up", "run", "check", "read",
+-		"modify", "edit", "replace", "migrate", "extract", "merge",
+-	}
+-
+ 	var steps []Step
+ 	for _, part := range parts {
+ 		part = strings.TrimSpace(part)
+ 		if part == "" {
+ 			continue
+ 		}
+-		lower := strings.ToLower(part)
+-		for _, verb := range actionVerbs {
+-			if strings.Contains(lower, verb) {
+-				steps = append(steps, Step{
+-					Action:         part,
+-					ExpectedOutput: "",
+-					Status:         StepPending,
+-				})
+-				break
+-			}
++		if containsActionVerb(part) {
++			steps = append(steps, Step{
++				Action:         part,
++				ExpectedOutput: "",
++				Status:         StepPending,
++			})
+ 		}
+ 	}
+ 
+@@ -133,3 +274,244 @@ func DecomposeTask(taskDesc string) ([]Step, error) {
+ 
+ 	return steps, nil
+ }
++
++// DecomposeTaskWithBody derives a task's steps from its spec section body,
++// falling back to the description when the body yields nothing actionable.
++//
++// This is the entry point used when a WorkItem is built (ForgejoLoop.Plan and
++// AssignAgent): a heading alone produces a heading-shaped step with an empty
++// expected output, which is not a plan. Every returned step carries a
++// non-empty ExpectedOutput so completion markers are checkable.
++func DecomposeTaskWithBody(taskDesc, body string) ([]Step, error) {
++	steps, err := DecomposeTask(taskDesc)
++	if err != nil {
++		return nil, err
++	}
++	if strings.TrimSpace(body) != "" {
++		if bodySteps := stepsFromBody(body, maxBodySteps); len(bodySteps) > 0 {
++			steps = bodySteps
++		}
++	}
++	stampExpectedOutput(steps, taskDesc)
++	return steps, nil
++}
++
++// stepsFromBody extracts actionable sentences from a section body.
++//
++// Markdown scaffolding is dropped rather than turned into steps: headings,
++// table separator rows, list markers, blockquote markers and fenced code
++// blocks (shell comments and YAML keys are noise, not actions). Consecutive
++// prose lines are joined into paragraphs before sentence splitting, so a
++// wrapped sentence yields one step instead of one fragment per source line.
++func stepsFromBody(body string, limit int) []Step {
++	var steps []Step
++	seen := make(map[string]bool)
++
++	add := func(candidate string) {
++		if len(steps) >= limit {
++			return
++		}
++		candidate = cleanStepLine(candidate)
++		if !isStepCandidate(candidate) {
++			return
++		}
++		key := strings.ToLower(candidate)
++		if seen[key] {
++			return
++		}
++		seen[key] = true
++		steps = append(steps, Step{Action: candidate, Status: StepPending})
++	}
++
++	for _, block := range proseBlocks(body) {
++		for _, sentence := range strings.Split(block, ". ") {
++			add(sentence)
++		}
++	}
++	return steps
++}
++
++// isStepCandidate rejects the residue that survives scaffolding removal:
++// fragments, separators and stub-length lines.
++func isStepCandidate(candidate string) bool {
++	if candidate == "" || len(candidate) < minStepLen {
++		return false
++	}
++	if isTableSeparator(candidate) {
++		return false
++	}
++	if strings.Trim(candidate, "-—*_ 	") == "" {
++		return false
++	}
++	return len(strings.Fields(candidate)) >= 3
++}
++
++// proseBlocks groups a markdown body into candidate blocks: paragraphs of
++// joined prose lines, plus one block per list item and per table row.
++func proseBlocks(body string) []string {
++	var blocks []string
++	var para []string
++
++	flushPara := func() {
++		if len(para) > 0 {
++			blocks = append(blocks, strings.Join(para, " "))
++			para = nil
++		}
++	}
++
++	inFence := false
++	for _, raw := range strings.Split(body, "\n") {
++		trimmed := strings.TrimSpace(raw)
++		switch {
++		case isFence(trimmed):
++			flushPara()
++			inFence = !inFence
++		case inFence, trimmed == "":
++			if trimmed == "" {
++				flushPara()
++			}
++		case strings.HasPrefix(trimmed, "#"):
++			flushPara() // headings and sub-headings are not actions
++		case isTableSeparator(trimmed):
++			flushPara()
++		case isBlockStart(trimmed):
++			flushPara()
++			blocks = append(blocks, trimmed)
++		default:
++			para = append(para, trimmed)
++		}
++	}
++	flushPara()
++	return blocks
++}
++
++// isBlockStart reports whether a line starts a self-contained block (list item
++// or table row) rather than continuing a prose paragraph.
++func isBlockStart(trimmed string) bool {
++	if strings.HasPrefix(trimmed, "|") {
++		return true
++	}
++	for _, marker := range []string{"- ", "* ", "+ "} {
++		if strings.HasPrefix(trimmed, marker) {
++			return true
++		}
++	}
++	return hasOrderedListMarker(trimmed)
++}
++
++// hasOrderedListMarker reports whether trimmed begins with "12. " / "12) ".
++func hasOrderedListMarker(trimmed string) bool {
++	digits := 0
++	for digits < len(trimmed) && trimmed[digits] >= '0' && trimmed[digits] <= '9' {
++		digits++
++	}
++	if digits == 0 || digits >= len(trimmed)-1 {
++		return false
++	}
++	if trimmed[digits] != '.' && trimmed[digits] != ')' {
++		return false
++	}
++	return strings.HasPrefix(trimmed[digits+1:], " ")
++}
++
++// cleanStepLine strips markdown list/table/quote markers and collapses
++// whitespace. Returns "" for lines that are pure scaffolding.
++func cleanStepLine(s string) string {
++	s = strings.TrimSpace(s)
++	s = strings.TrimPrefix(s, ">")
++	s = strings.TrimSpace(s)
++
++	// Table rows: drop the outer pipes, keep the prose.
++	if strings.HasPrefix(s, "|") || strings.HasSuffix(s, "|") {
++		s = strings.Trim(s, "|")
++		s = strings.TrimSpace(s)
++		s = strings.ReplaceAll(s, "|", " ")
++	}
++
++	// List markers: "- ", "* ", "+ ", "1. ", "1) ".
++	for _, marker := range []string{"- ", "* ", "+ "} {
++		if strings.HasPrefix(s, marker) {
++			s = strings.TrimSpace(strings.TrimPrefix(s, marker))
++			break
++		}
++	}
++	s = strings.TrimSpace(stripOrderedListMarker(s))
++	s = strings.Join(strings.Fields(s), " ")
++
++	// A sentence fragment must carry some substance to be a step.
++	if len([]rune(s)) < 8 {
++		return ""
++	}
++	// Trailing sentence punctuation is cosmetic for a step action.
++	s = strings.TrimSpace(strings.TrimRight(s, "."))
++	return s
++}
++
++// stripOrderedListMarker removes a leading "12. " / "12) " marker.
++func stripOrderedListMarker(s string) string {
++	digits := 0
++	for digits < len(s) && s[digits] >= '0' && s[digits] <= '9' {
++		digits++
++	}
++	if digits == 0 || digits >= len(s)-1 {
++		return s
++	}
++	if s[digits] != '.' && s[digits] != ')' {
++		return s
++	}
++	rest := s[digits+1:]
++	if !strings.HasPrefix(rest, " ") {
++		return s
++	}
++	return strings.TrimSpace(rest)
++}
++
++// isTableSeparator reports whether a line is a markdown table separator row
++// such as "|---|---|" or ":--|--:".
++func isTableSeparator(trimmed string) bool {
++	if !strings.Contains(trimmed, "-") {
++		return false
++	}
++	for _, r := range trimmed {
++		switch r {
++		case '|', '-', ':', ' ', '\t':
++		default:
++			return false
++		}
++	}
++	return true
++}
++
++// containsActionVerb reports whether s contains any known action verb.
++func containsActionVerb(s string) bool {
++	lower := strings.ToLower(s)
++	for _, verb := range actionVerbs {
++		if strings.Contains(lower, verb) {
++			return true
++		}
++	}
++	return false
++}
++
++// stampExpectedOutput gives every step a non-empty expected output derived
++// from its position in the task, so a completion marker has something to
++// check. Steps mutated in place.
++func stampExpectedOutput(steps []Step, taskDesc string) {
++	label := oneLineLabel(taskDesc, 60)
++	for i := range steps {
++		if strings.TrimSpace(steps[i].ExpectedOutput) != "" {
++			continue
++		}
++		steps[i].ExpectedOutput = fmt.Sprintf("step %d/%d of %q complete", i+1, len(steps), label)
++	}
++}
++
++// oneLineLabel collapses whitespace and truncates to limit runes.
++func oneLineLabel(s string, limit int) string {
++	s = strings.Join(strings.Fields(s), " ")
++	runes := []rune(s)
++	if len(runes) <= limit {
++		return s
++	}
++	return strings.TrimSpace(string(runes[:limit])) + "…"
++}
+diff --git a/pkg/dispatcher/decomposer_fallback_test.go b/pkg/dispatcher/decomposer_fallback_test.go
+new file mode 100644
+index 0000000..35be70e
+--- /dev/null
++++ b/pkg/dispatcher/decomposer_fallback_test.go
+@@ -0,0 +1,426 @@
++package dispatcher
++
++import (
++	"errors"
++	"os"
++	"path/filepath"
++	"runtime"
++	"strings"
++	"testing"
++)
++
++// ---------------------------------------------------------------------------
++// Helpers
++// ---------------------------------------------------------------------------
++
++// repoRoot walks up from this test file to the module root (the directory that
++// holds go.mod) so the corpus test never hardcodes a checkout path.
++func repoRoot(t *testing.T) string {
++	t.Helper()
++	_, file, _, ok := runtime.Caller(0)
++	if !ok {
++		t.Fatal("runtime.Caller failed: cannot locate the test file")
++	}
++	dir := filepath.Dir(file)
++	for {
++		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
++			return dir
++		}
++		parent := filepath.Dir(dir)
++		if parent == dir {
++			t.Fatalf("no go.mod in any parent of %s", filepath.Dir(file))
++		}
++		dir = parent
++	}
++}
++
++// writeTempSpec writes body to a temp file named name and returns its path.
++func writeTempSpec(t *testing.T, name, body string) string {
++	t.Helper()
++	path := filepath.Join(t.TempDir(), name)
++	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
++		t.Fatalf("WriteFile(%s): %v", name, err)
++	}
++	return path
++}
++
++// ---------------------------------------------------------------------------
++// Every spec in the repository's own corpus must decompose
++// ---------------------------------------------------------------------------
++
++// TestDecomposeSpec_RepoSpecsAllDecompose is the DF-HELIX-7 regression: the
++// repo's own specs/*.md must all decompose without error, produce at least one
++// task each, keep every Description non-empty, and carry a section body.
++func TestDecomposeSpec_RepoSpecsAllDecompose(t *testing.T) {
++	specsDir := filepath.Join(repoRoot(t), "specs")
++	paths, err := filepath.Glob(filepath.Join(specsDir, "*.md"))
++	if err != nil {
++		t.Fatalf("glob %s: %v", specsDir, err)
++	}
++	if len(paths) == 0 {
++		if _, statErr := os.Stat(specsDir); statErr != nil {
++			t.Skipf("specs/ absent at %s: nothing to check", specsDir)
++		}
++		t.Fatalf("specs/ exists at %s but holds no markdown specs: the corpus check would be vacuous", specsDir)
++	}
++
++	for _, path := range paths {
++		path := path
++		t.Run(filepath.Base(path), func(t *testing.T) {
++			tasks, err := DecomposeSpec(path)
++			if err != nil {
++				t.Fatalf("DecomposeSpec(%s): %v", filepath.Base(path), err)
++			}
++			if len(tasks) == 0 {
++				t.Fatalf("DecomposeSpec(%s) = 0 tasks, want >= 1", filepath.Base(path))
++			}
++
++			seenIDs := make(map[string]bool, len(tasks))
++			withBody := 0
++			for i, task := range tasks {
++				if strings.TrimSpace(task.Description) == "" {
++					t.Errorf("task[%d] (%s) Description is empty", i, task.ID)
++				}
++				if task.ID == "" {
++					t.Errorf("task[%d] ID is empty", i)
++				}
++				if seenIDs[task.ID] {
++					t.Errorf("task[%d] ID %q is duplicated", i, task.ID)
++				}
++				seenIDs[task.ID] = true
++				if task.Status != StatusPending {
++					t.Errorf("task[%d] Status = %q, want %q", i, task.Status, StatusPending)
++				}
++				if task.SpecRef != path {
++					t.Errorf("task[%d] SpecRef = %q, want %q", i, task.SpecRef, path)
++				}
++				if strings.TrimSpace(task.Body) != "" {
++					withBody++
++				}
++			}
++			if withBody == 0 {
++				t.Errorf("no task carries a body: the spec section text was dropped")
++			}
++		})
++	}
++}
++
++// ---------------------------------------------------------------------------
++// Fallback ladder
++// ---------------------------------------------------------------------------
++
++// TestDecomposeSpec_TitledH1NumberedSections is the focused regression for the
++// 15-failure shape: a titled H1 plus numbered H2 sections that carry no
++// Phase/Feature keyword.
++func TestDecomposeSpec_TitledH1NumberedSections(t *testing.T) {
++	specPath := writeTempSpec(t, "deployment.md", `# Helix Platform — Deployment Specification
++
++This document describes how the platform is deployed.
++
++## 1. Mission
++
++Deploy the platform reliably. Operators must verify every container starts.
++
++## 2. Topology
++
++Run each service on its own host. Configure the reverse proxy per service.
++
++## 3. Rollback
++
++Revert the previous release and restart the affected containers.
++`)
++
++	tasks, err := DecomposeSpec(specPath)
++	if err != nil {
++		t.Fatalf("DecomposeSpec() error: %v", err)
++	}
++	if len(tasks) != 3 {
++		t.Fatalf("DecomposeSpec() returned %d tasks, want 3 (one per H2)", len(tasks))
++	}
++
++	wantDescs := []string{"1. Mission", "2. Topology", "3. Rollback"}
++	for i, want := range wantDescs {
++		if tasks[i].Description != want {
++			t.Errorf("task[%d].Description = %q, want %q", i, tasks[i].Description, want)
++		}
++		if tasks[i].Priority != i+1 {
++			t.Errorf("task[%d].Priority = %d, want %d", i, tasks[i].Priority, i+1)
++		}
++		if strings.TrimSpace(tasks[i].Body) == "" {
++			t.Errorf("task[%d].Body is empty", i)
++		}
++	}
++
++	if !strings.Contains(tasks[0].Body, "reliably") {
++		t.Errorf("task[0].Body should hold the section prose, got %q", tasks[0].Body)
++	}
++	if strings.Contains(tasks[0].Body, "Rollback") {
++		t.Errorf("task[0].Body leaked the next section: %q", tasks[0].Body)
++	}
++}
++
++// TestDecomposeSpec_HelixFeatureH1StillOneTask locks the legacy H1 rule: a
++// "# Helix Feature 1 — X" document yields a single task for that H1, with its
++// H2s captured as the body.
++func TestDecomposeSpec_HelixFeatureH1StillOneTask(t *testing.T) {
++	specPath := writeTempSpec(t, "agent-identity.md", `# Helix Feature 1 — Agent Identity in Forgejo
++
++## 1. Mission
++
++Provide an identity for every agent. Create a Forgejo user per agent.
++
++## 2. Scope
++
++In scope for v1: provisioning and listing.
++`)
++
++	tasks, err := DecomposeSpec(specPath)
++	if err != nil {
++		t.Fatalf("DecomposeSpec() error: %v", err)
++	}
++	if len(tasks) != 1 {
++		t.Fatalf("DecomposeSpec() returned %d tasks, want 1", len(tasks))
++	}
++	if tasks[0].Description != "Helix Feature 1 — Agent Identity in Forgejo" {
++		t.Errorf("task[0].Description = %q", tasks[0].Description)
++	}
++	if !strings.Contains(tasks[0].Body, "Mission") || !strings.Contains(tasks[0].Body, "Scope") {
++		t.Errorf("task[0].Body should span both H2 sections, got %q", tasks[0].Body)
++	}
++}
++
++// TestDecomposeSpec_PhaseHeadingsPreserved locks the rest of the legacy rule:
++// H2 headings containing PHASE keep their task shape.
++func TestDecomposeSpec_PhaseHeadingsPreserved(t *testing.T) {
++	specPath := writeTempSpec(t, "phases.md", `# Build Order
++
++## 1. Dependency Graph
++
++Lay out the graph first.
++
++## 2. Phase 0: Infrastructure Prerequisites
++
++Provision the hosts.
++
++## 3. Phase 1: Forgejo
++
++Deploy Forgejo as the foundation.
++`)
++
++	tasks, err := DecomposeSpec(specPath)
++	if err != nil {
++		t.Fatalf("DecomposeSpec() error: %v", err)
++	}
++	if len(tasks) != 2 {
++		t.Fatalf("DecomposeSpec() returned %d tasks, want 2 (only PHASE H2s)", len(tasks))
++	}
++	if tasks[0].Description != "2. Phase 0: Infrastructure Prerequisites" {
++		t.Errorf("task[0].Description = %q", tasks[0].Description)
++	}
++	if tasks[0].Priority != 1 || tasks[1].Priority != 2 {
++		t.Errorf("priorities = %d,%d; want 1,2", tasks[0].Priority, tasks[1].Priority)
++	}
++}
++
++// TestDecomposeSpec_WholeFileWithoutH2 covers ladder step 3: no H2 sections
++// means one task titled from the H1 whose body is the rest of the document.
++func TestDecomposeSpec_WholeFileWithoutH2(t *testing.T) {
++	specPath := writeTempSpec(t, "notes.md", `# Sandbox Threat Model
++
++An agent can reach the network unless the sandbox denies egress.
++
++The sandbox must isolate the filesystem per session.
++`)
++
++	tasks, err := DecomposeSpec(specPath)
++	if err != nil {
++		t.Fatalf("DecomposeSpec() error: %v", err)
++	}
++	if len(tasks) != 1 {
++		t.Fatalf("DecomposeSpec() returned %d tasks, want 1", len(tasks))
++	}
++	if tasks[0].Description != "Sandbox Threat Model" {
++		t.Errorf("task[0].Description = %q, want the H1 text", tasks[0].Description)
++	}
++	if !strings.Contains(tasks[0].Body, "denies egress") {
++		t.Errorf("task[0].Body = %q, want the document text", tasks[0].Body)
++	}
++}
++
++// TestDecomposeSpec_NoHeadingsUsesFilename covers the no-H1 tail of ladder
++// step 3.
++func TestDecomposeSpec_NoHeadingsUsesFilename(t *testing.T) {
++	specPath := writeTempSpec(t, "runbook-notes.md", `Operators must restart the daemon after a config change.
++`)
++
++	tasks, err := DecomposeSpec(specPath)
++	if err != nil {
++		t.Fatalf("DecomposeSpec() error: %v", err)
++	}
++	if len(tasks) != 1 {
++		t.Fatalf("DecomposeSpec() returned %d tasks, want 1", len(tasks))
++	}
++	if tasks[0].Description != "runbook notes" {
++		t.Errorf("task[0].Description = %q, want the filename-derived title", tasks[0].Description)
++	}
++}
++
++// TestDecomposeSpec_EmptyInputStillFails keeps ErrDecomposeFailed for the only
++// input class that may still fail: a document with no content.
++func TestDecomposeSpec_EmptyInputStillFails(t *testing.T) {
++	specPath := writeTempSpec(t, "blank.md", "  \n\t\n\n")
++
++	_, err := DecomposeSpec(specPath)
++	if err == nil {
++		t.Fatal("DecomposeSpec() on a blank file = nil error, want ErrDecomposeFailed")
++	}
++	if !errors.Is(err, ErrDecomposeFailed) {
++		t.Fatalf("DecomposeSpec() error = %v, want ErrDecomposeFailed", err)
++	}
++}
++
++// TestDecomposeSpec_FencedHeadingsAreNotBoundaries proves fenced code comment
++// lines ("# restart the container") neither create tasks nor truncate a body.
++func TestDecomposeSpec_FencedHeadingsAreNotBoundaries(t *testing.T) {
++	specPath := writeTempSpec(t, "recovery.md", `# Error Recovery
++
++## 1. Forgejo Recovery
++
++Restart the container when it stops.
++
++`+"```bash"+`
++# restart forgejo
++docker compose restart forgejo
++`+"```"+`
++
++## 2. Disk Recovery
++
++Clean Docker images when the disk fills.
++`)
++
++	tasks, err := DecomposeSpec(specPath)
++	if err != nil {
++		t.Fatalf("DecomposeSpec() error: %v", err)
++	}
++	if len(tasks) != 2 {
++		t.Fatalf("DecomposeSpec() returned %d tasks, want 2 (fenced '# ' lines ignored)", len(tasks))
++	}
++	if !strings.Contains(tasks[0].Body, "docker compose restart forgejo") {
++		t.Errorf("task[0].Body lost the fenced block: %q", tasks[0].Body)
++	}
++}
++
++// ---------------------------------------------------------------------------
++// Body → steps
++// ---------------------------------------------------------------------------
++
++// TestDecomposeTaskWithBody_PopulatesSteps proves the dispatched work item gets
++// real steps from the section body rather than a single heading-shaped step
++// with an empty expected output.
++func TestDecomposeTaskWithBody_PopulatesSteps(t *testing.T) {
++	desc := "1. Mission"
++	body := `Deploy the platform reliably. Operators must verify every container starts.
++
++- Run the smoke test after each deploy.
++- Configure the reverse proxy per service.
++
++| Component | Requirement |
++|---|---|
++| Forgejo | Create the admin user |`
++
++	steps, err := DecomposeTaskWithBody(desc, body)
++	if err != nil {
++		t.Fatalf("DecomposeTaskWithBody() error: %v", err)
++	}
++	if len(steps) < 3 {
++		t.Fatalf("got %d steps, want >= 3 from the body; steps=%+v", len(steps), steps)
++	}
++	if len(steps) > maxBodySteps {
++		t.Errorf("got %d steps, want <= %d", len(steps), maxBodySteps)
++	}
++	for i, step := range steps {
++		if strings.TrimSpace(step.Action) == "" {
++			t.Errorf("step[%d].Action is empty", i)
++		}
++		if strings.TrimSpace(step.ExpectedOutput) == "" {
++			t.Errorf("step[%d].ExpectedOutput is empty: %+v", i, step)
++		}
++		if step.Status != StepPending {
++			t.Errorf("step[%d].Status = %q, want %q", i, step.Status, StepPending)
++		}
++		// Markdown scaffolding must not survive as a step.
++		if strings.HasPrefix(step.Action, "#") || isTableSeparator(step.Action) {
++			t.Errorf("step[%d].Action is markdown scaffolding: %q", i, step.Action)
++		}
++	}
++	if !strings.Contains(strings.ToLower(steps[0].Action), "deploy") {
++		t.Errorf("step[0].Action = %q, want the first body sentence", steps[0].Action)
++	}
++
++	// An empty body must fall back to the description without failing.
++	fallback, err := DecomposeTaskWithBody(desc, "")
++	if err != nil {
++		t.Fatalf("DecomposeTaskWithBody(empty body) error: %v", err)
++	}
++	if len(fallback) == 0 {
++		t.Fatal("DecomposeTaskWithBody(empty body) returned no steps")
++	}
++	for i, step := range fallback {
++		if strings.TrimSpace(step.ExpectedOutput) == "" {
++			t.Errorf("fallback step[%d].ExpectedOutput is empty", i)
++		}
++	}
++}
++
++// TestDecomposeTask_LegacyOutputUnchanged guards the contract existing callers
++// rely on: DecomposeTask still leaves ExpectedOutput empty and keeps its
++// sentence-splitting behaviour.
++func TestDecomposeTask_LegacyOutputUnchanged(t *testing.T) {
++	steps, err := DecomposeTask("Create the types file. Write the implementation. Add tests.")
++	if err != nil {
++		t.Fatalf("DecomposeTask() error: %v", err)
++	}
++	if len(steps) != 3 {
++		t.Fatalf("DecomposeTask() returned %d steps, want 3", len(steps))
++	}
++	for i, step := range steps {
++		if step.ExpectedOutput != "" {
++			t.Errorf("step[%d].ExpectedOutput = %q, want empty (legacy contract)", i, step.ExpectedOutput)
++		}
++	}
++}
++
++// TestForgejoLoop_Plan_UsesSectionBody proves the dispatch path (not just the
++// helper) turns a spec section body into steps.
++func TestForgejoLoop_Plan_UsesSectionBody(t *testing.T) {
++	specPath := writeTempSpec(t, "spec.md", `# Helix Platform — Deployment
++
++## 1. Topology
++
++Deploy each service on its own host. Configure the reverse proxy per service.
++
++## 2. Rollback
++
++Revert the previous release. Restart the affected containers.
++`)
++
++	f := &ForgejoLoop{Owner: "org", Repo: "repo", DryRun: true}
++	task, steps, err := f.Plan(specPath, "agent-x")
++	if err != nil {
++		t.Fatalf("Plan() error: %v", err)
++	}
++	if task.Description != "1. Topology" {
++		t.Errorf("task.Description = %q, want the first H2 heading", task.Description)
++	}
++	if strings.TrimSpace(task.Body) == "" {
++		t.Fatal("task.Body is empty: the spec body was dropped before dispatch")
++	}
++	if len(steps) < 2 {
++		t.Fatalf("Plan() produced %d steps, want >= 2 from the body: %+v", len(steps), steps)
++	}
++	for i, step := range steps {
++		if strings.TrimSpace(step.ExpectedOutput) == "" {
++			t.Errorf("step[%d].ExpectedOutput is empty", i)
++		}
++	}
++}
+diff --git a/pkg/dispatcher/dispatcher_test.go b/pkg/dispatcher/dispatcher_test.go
+index 4302791..7ca042b 100644
+--- a/pkg/dispatcher/dispatcher_test.go
++++ b/pkg/dispatcher/dispatcher_test.go
+@@ -195,7 +195,9 @@ Agent registry.
+ 		}
+ 	})
+ 
+-	t.Run("no phase or feature sections", func(t *testing.T) {
++	t.Run("title and unnumbered-keyword sections fall back to H2 split", func(t *testing.T) {
++		// DF-HELIX-7: a titled H1 with H2 sections that carry no Phase/Feature
++		// keyword used to return ErrDecomposeFailed. It must now decompose.
+ 		dir := t.TempDir()
+ 		specPath := filepath.Join(dir, "empty.md")
+ 		content := `# Empty Spec
+@@ -207,6 +209,28 @@ Nothing here.
+ 			t.Fatalf("WriteFile failed: %v", err)
+ 		}
+ 
++		tasks, err := DecomposeSpec(specPath)
++		if err != nil {
++			t.Fatalf("DecomposeSpec() error: %v", err)
++		}
++		if len(tasks) != 1 {
++			t.Fatalf("DecomposeSpec() returned %d tasks, want 1 (one per H2)", len(tasks))
++		}
++		if tasks[0].Description != "Overview" {
++			t.Errorf("task[0].Description = %q, want %q", tasks[0].Description, "Overview")
++		}
++		if tasks[0].Body != "Nothing here." {
++			t.Errorf("task[0].Body = %q, want %q", tasks[0].Body, "Nothing here.")
++		}
++	})
++
++	t.Run("empty spec file", func(t *testing.T) {
++		dir := t.TempDir()
++		specPath := filepath.Join(dir, "blank.md")
++		if err := os.WriteFile(specPath, []byte(" \n\n"), 0o644); err != nil {
++			t.Fatalf("WriteFile failed: %v", err)
++		}
++
+ 		_, err := DecomposeSpec(specPath)
+ 		if err == nil {
+ 			t.Fatal("DecomposeSpec() = nil, want error")
+diff --git a/pkg/dispatcher/extra_coverage_test.go b/pkg/dispatcher/extra_coverage_test.go
+index 8f15dc5..dce38e3 100644
+--- a/pkg/dispatcher/extra_coverage_test.go
++++ b/pkg/dispatcher/extra_coverage_test.go
+@@ -288,10 +288,12 @@ func TestCheck_NoEstimator_ApproachingLimit(t *testing.T) {
+ // =====================================================================
+ 
+ // TestForgejoLoop_Plan_EmptyTasks covers the "decomposed to 0 tasks" branch.
++// Only an EMPTY document fails decomposition now (DF-HELIX-7): any readable
++// markdown yields at least one task, so the error branch needs blank input.
+ func TestForgejoLoop_Plan_EmptyTasks(t *testing.T) {
+ 	tmpDir := t.TempDir()
+ 	specPath := filepath.Join(tmpDir, "empty-spec.md")
+-	if err := os.WriteFile(specPath, []byte("# Empty\n\nNo tasks here.\n"), 0o644); err != nil {
++	if err := os.WriteFile(specPath, []byte("  \n\n"), 0o644); err != nil {
+ 		t.Fatal(err)
+ 	}
+ 
+diff --git a/pkg/dispatcher/forgejo_loop.go b/pkg/dispatcher/forgejo_loop.go
+index bb1f752..0f1f3f7 100644
+--- a/pkg/dispatcher/forgejo_loop.go
++++ b/pkg/dispatcher/forgejo_loop.go
+@@ -138,7 +138,9 @@ func (f *ForgejoLoop) Plan(specPath, agent string) (Task, []Step, error) {
+ 	}
+ 	task := tasks[0]
+ 	task.AssignedAgent = agent
+-	steps, err := DecomposeTask(task.Description)
++	// Steps come from the section body when there is one: a heading alone is
++	// not a plan (it yields one heading-shaped step with no expected output).
++	steps, err := DecomposeTaskWithBody(task.Description, task.Body)
+ 	if err != nil {
+ 		return Task{}, nil, fmt.Errorf("forgejo_loop: decompose task %s: %w", task.ID, err)
+ 	}
+diff --git a/pkg/dispatcher/forgejo_loop_test.go b/pkg/dispatcher/forgejo_loop_test.go
+index 7d39086..ecc69f4 100644
+--- a/pkg/dispatcher/forgejo_loop_test.go
++++ b/pkg/dispatcher/forgejo_loop_test.go
+@@ -150,14 +150,27 @@ func TestForgejoLoop_Plan_NoSpecFile(t *testing.T) {
+ }
+ 
+ func TestForgejoLoop_Plan_NoTasks(t *testing.T) {
+-	// Spec file with no Phase/Feature headings.
+-	specPath := mockSpec(t, "# Just a title\n\nNo phases here.\n")
++	// Only an empty document fails decomposition (DF-HELIX-7): a title-only
++	// or keyword-less markdown spec now yields one whole-file task.
++	specPath := mockSpec(t, " \n\n")
+ 	f := &ForgejoLoop{}
+ 	_, _, err := f.Plan(specPath, "test-agent")
+ 	require.Error(t, err)
+ 	assert.ErrorIs(t, err, ErrDecomposeFailed)
+ }
+ 
++// TestForgejoLoop_Plan_TitleOnlySpecDecomposes locks the new contract: a spec
++// with a title and prose but no Phase/Feature markers is dispatchable.
++func TestForgejoLoop_Plan_TitleOnlySpecDecomposes(t *testing.T) {
++	specPath := mockSpec(t, "# Just a title\n\nOperators must deploy the daemon.\n")
++	f := &ForgejoLoop{}
++	task, steps, err := f.Plan(specPath, "test-agent")
++	require.NoError(t, err)
++	assert.Equal(t, "Just a title", task.Description)
++	assert.NotEmpty(t, task.Body)
++	assert.NotEmpty(t, steps)
++}
++
+ // ---------------------------------------------------------------------------
+ // Dry-run mode
+ // ---------------------------------------------------------------------------
+diff --git a/pkg/dispatcher/types.go b/pkg/dispatcher/types.go
+index 737dd3c..2465091 100644
+--- a/pkg/dispatcher/types.go
++++ b/pkg/dispatcher/types.go
+@@ -73,9 +73,16 @@ func (s StepStatus) IsValid() bool {
+ 
+ // Task is a single unit of work decomposed from a specification.
+ type Task struct {
+-	ID            string          `json:"id"`
+-	SpecRef       string          `json:"spec_ref"`
+-	Description   string          `json:"description"`
++	ID          string `json:"id"`
++	SpecRef     string `json:"spec_ref"`
++	Description string `json:"description"`
++
++	// Body holds the spec section text this task was decomposed from
++	// (between its heading and the next task boundary). Description stays the
++	// heading text alone; Body is what step extraction reads. Additive and
++	// omitted when empty so existing JSON consumers are unaffected.
++	Body string `json:"body,omitempty"`
++
+ 	Priority      int             `json:"priority"`
+ 	AssignedAgent string          `json:"assigned_agent"`
+ 	Status        TaskStatus      `json:"status"`
