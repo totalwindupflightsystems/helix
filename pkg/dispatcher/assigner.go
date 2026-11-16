@@ -80,7 +80,7 @@ func AssignAgent(task Task, agents []AgentProfile) (*DispatchResult, error) {
 	})
 
 	best := candidates[0].agent
-	steps, _ := DecomposeTask(task.Description)
+	steps, _ := DecomposeTaskWithBody(task.Description, task.Body)
 
 	result := &DispatchResult{
 		WorkItem: WorkItem{

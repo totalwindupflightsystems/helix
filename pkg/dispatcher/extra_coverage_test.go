@@ -288,10 +288,12 @@ func TestCheck_NoEstimator_ApproachingLimit(t *testing.T) {
 // =====================================================================
 
 // TestForgejoLoop_Plan_EmptyTasks covers the "decomposed to 0 tasks" branch.
+// Only an EMPTY document fails decomposition now (DF-HELIX-7): any readable
+// markdown yields at least one task, so the error branch needs blank input.
 func TestForgejoLoop_Plan_EmptyTasks(t *testing.T) {
 	tmpDir := t.TempDir()
 	specPath := filepath.Join(tmpDir, "empty-spec.md")
-	if err := os.WriteFile(specPath, []byte("# Empty\n\nNo tasks here.\n"), 0o644); err != nil {
+	if err := os.WriteFile(specPath, []byte("  \n\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

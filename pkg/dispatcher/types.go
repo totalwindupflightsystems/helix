@@ -73,9 +73,16 @@ func (s StepStatus) IsValid() bool {
 
 // Task is a single unit of work decomposed from a specification.
 type Task struct {
-	ID            string          `json:"id"`
-	SpecRef       string          `json:"spec_ref"`
-	Description   string          `json:"description"`
+	ID          string `json:"id"`
+	SpecRef     string `json:"spec_ref"`
+	Description string `json:"description"`
+
+	// Body holds the spec section text this task was decomposed from
+	// (between its heading and the next task boundary). Description stays the
+	// heading text alone; Body is what step extraction reads. Additive and
+	// omitted when empty so existing JSON consumers are unaffected.
+	Body string `json:"body,omitempty"`
+
 	Priority      int             `json:"priority"`
 	AssignedAgent string          `json:"assigned_agent"`
 	Status        TaskStatus      `json:"status"`

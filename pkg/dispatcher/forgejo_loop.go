@@ -138,7 +138,9 @@ func (f *ForgejoLoop) Plan(specPath, agent string) (Task, []Step, error) {
 	}
 	task := tasks[0]
 	task.AssignedAgent = agent
-	steps, err := DecomposeTask(task.Description)
+	// Steps come from the section body when there is one: a heading alone is
+	// not a plan (it yields one heading-shaped step with no expected output).
+	steps, err := DecomposeTaskWithBody(task.Description, task.Body)
 	if err != nil {
 		return Task{}, nil, fmt.Errorf("forgejo_loop: decompose task %s: %w", task.ID, err)
 	}

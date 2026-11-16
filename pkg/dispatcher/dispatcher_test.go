@@ -195,7 +195,9 @@ Agent registry.
 		}
 	})
 
-	t.Run("no phase or feature sections", func(t *testing.T) {
+	t.Run("title and unnumbered-keyword sections fall back to H2 split", func(t *testing.T) {
+		// DF-HELIX-7: a titled H1 with H2 sections that carry no Phase/Feature
+		// keyword used to return ErrDecomposeFailed. It must now decompose.
 		dir := t.TempDir()
 		specPath := filepath.Join(dir, "empty.md")
 		content := `# Empty Spec
@@ -204,6 +206,28 @@ Agent registry.
 Nothing here.
 `
 		if err := os.WriteFile(specPath, []byte(content), 0o644); err != nil {
+			t.Fatalf("WriteFile failed: %v", err)
+		}
+
+		tasks, err := DecomposeSpec(specPath)
+		if err != nil {
+			t.Fatalf("DecomposeSpec() error: %v", err)
+		}
+		if len(tasks) != 1 {
+			t.Fatalf("DecomposeSpec() returned %d tasks, want 1 (one per H2)", len(tasks))
+		}
+		if tasks[0].Description != "Overview" {
+			t.Errorf("task[0].Description = %q, want %q", tasks[0].Description, "Overview")
+		}
+		if tasks[0].Body != "Nothing here." {
+			t.Errorf("task[0].Body = %q, want %q", tasks[0].Body, "Nothing here.")
+		}
+	})
+
+	t.Run("empty spec file", func(t *testing.T) {
+		dir := t.TempDir()
+		specPath := filepath.Join(dir, "blank.md")
+		if err := os.WriteFile(specPath, []byte(" \n\n"), 0o644); err != nil {
 			t.Fatalf("WriteFile failed: %v", err)
 		}
 

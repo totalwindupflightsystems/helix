@@ -150,12 +150,25 @@ func TestForgejoLoop_Plan_NoSpecFile(t *testing.T) {
 }
 
 func TestForgejoLoop_Plan_NoTasks(t *testing.T) {
-	// Spec file with no Phase/Feature headings.
-	specPath := mockSpec(t, "# Just a title\n\nNo phases here.\n")
+	// Only an empty document fails decomposition (DF-HELIX-7): a title-only
+	// or keyword-less markdown spec now yields one whole-file task.
+	specPath := mockSpec(t, " \n\n")
 	f := &ForgejoLoop{}
 	_, _, err := f.Plan(specPath, "test-agent")
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrDecomposeFailed)
+}
+
+// TestForgejoLoop_Plan_TitleOnlySpecDecomposes locks the new contract: a spec
+// with a title and prose but no Phase/Feature markers is dispatchable.
+func TestForgejoLoop_Plan_TitleOnlySpecDecomposes(t *testing.T) {
+	specPath := mockSpec(t, "# Just a title\n\nOperators must deploy the daemon.\n")
+	f := &ForgejoLoop{}
+	task, steps, err := f.Plan(specPath, "test-agent")
+	require.NoError(t, err)
+	assert.Equal(t, "Just a title", task.Description)
+	assert.NotEmpty(t, task.Body)
+	assert.NotEmpty(t, steps)
 }
 
 // ---------------------------------------------------------------------------
