@@ -1,6 +1,13 @@
 guards:
   test_mode: diff
   test_command: go test -short -count=1 ./pkg/...
+  # Board-only (zero-Go-file) commits are the normal case on this repo: the
+  # foreman and the COS write .coding-hermes/board/*.jsonl without touching Go.
+  # Without this, gitreins reports DEGRADED PASS and the pre-commit hook exits
+  # nonzero, so every board write fails closed and callers reach for hook
+  # bypasses (which would skip the secrets scan too). Skips are accepted only
+  # for zero-work runs; any staged Go file still runs build/lint/tests.
+  allow_skips: true
   secrets: true
   lint: true
   tests: true
